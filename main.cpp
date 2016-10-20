@@ -129,7 +129,7 @@ int*		NIdxGridA;//index of the neighbour within the block
 int*		NIdxGridB;// index of the relative position of the block of the neighbour in the greed along tr. vect. a
 int*		NIdxGridC;// index of the relative position of the block of the neighbour in the greed along tr. vect. b
 int*		SIdx     ;// index of the shell corresponding to this pair
-float			Box[3][3];		// box for the simulated domain 
+float		Box[3][3];		// box for the simulated domain 
 float*		Jexc;//isotropic Heisenberg exchange constant
 float*		Bexc;//bi-quadratic exchange constant
 float*		Dexc;//isotropic Heisenberg exchange constant
@@ -210,7 +210,6 @@ int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 /* this function is run by the second thread */
 void *INFO_THREAD(void *void_ptr)
 {
-
 
 /* the function must return something - NULL will do */
 return NULL;
