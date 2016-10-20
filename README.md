@@ -1,6 +1,6 @@
 #Magnoom
 
-Advanced software for Atomistic Spin Dynamics
+Advanced software for Atomistic Spin Dynamics allowing in real-time visualization and control
 
 ###Developers:
   1. [Nikolai S. Kiselev](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Kiselev_N.html?nn=758466)
@@ -14,7 +14,7 @@ Advanced software for Atomistic Spin Dynamics
 
 ###Dependencies:
   * gcc >=4.8.1 (possibly can be compiled also with earlier versions of gcc)
-  * OpenGL >= 3.0 On Ubuntu you may check your version of OpenGL with `glxinfo | grep "OpenGL version"`
+  * OpenGL >= 2.1 (On Ubuntu and MacOS check your version of OpenGL with `glxinfo | grep "OpenGL version"`
   * [AntTweakBar](http://anttweakbar.sourceforge.net/)
 
 ###Building from source:
