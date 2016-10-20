@@ -1,6 +1,6 @@
 #Magnoom
 
-Advanced software for Atomistic Spin Dynamics
+Advanced software for Atomistic Spin Dynamics allowing in real-time visualization and control
 
 ###Developers:
   1. [Nikolai S. Kiselev](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Kiselev_N.html?nn=758466)
