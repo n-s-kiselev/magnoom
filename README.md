@@ -21,7 +21,7 @@ Main features:
     - MacOSX: [link] (https://developer.apple.com/xcode/download/)
     - Windows: [link] (http://sourceforge.net/projects/mingw-w64/)
   * install AntTweakBar library and its header files 
-  * copile with 
+  * compile with 
     - Ubuntu:`g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL`
     - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL`
     - Windows:`not known`
