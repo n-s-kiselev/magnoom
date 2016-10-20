@@ -7,7 +7,7 @@ Advanced software for Atomistic Spin Dynamics
 Main features:
   * platform independent code writen in C/C++
   * minimal dependencies on external libraries
-  * GUI based entirely on OpenGL 3.0  
+  * GUI entirely based on OpenGL 
   * real time control of the parameters
 
 ##Dependencies:
