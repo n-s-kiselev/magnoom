@@ -143,27 +143,6 @@ float		Jij[]={		// Jij[shell]
 			0,	// second shell
 			0,	// third shell
 			-0.22,	// fourth shell
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
 			0.0
 			};
 //bi-quadratic exchange
@@ -172,27 +151,6 @@ float		Bij[]={		// Bij[shell]
 			0.0,	// second shell
 			0.0,	// third shell
 			0.0,	// fourth shell
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
 			0.0
 			};
 //Dzyaloshinskii-Moriya Interaction
@@ -201,26 +159,6 @@ float		Dij[]={	// Dij[shell] abs value for DMI vector
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
-			0.0,
 			0.0,
 			0.0
 			};
@@ -263,9 +201,9 @@ float			FPS, IPS;
 FILE*			outFile;//sxsysz output file
 int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 
-#include "MATH.cpp"/*All Mathematical Fuctiona*/
-#include "GEOM.cpp"/*All Functions Calculating Size and Naighbors*/
-#include "ENGINE.cpp"/*All Visualization Functions*/
+#include "MATH.cpp"/*All mathematical fuctions*/
+#include "GEOM.cpp"/*All functions salculating size and neighbors*/
+#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
 #include "OPGL.cpp"/*VISUAL THREAD: All Visualization Functions*/
 #include "INITSTATE.cpp"/*Set of functions for initial states*/
 

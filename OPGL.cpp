@@ -1,13 +1,5 @@
-
-//GLUI_Button *	play_button;
-char            play_button_name[10]="Play";
-GLuint 			GLUT_window; //  The id of the main window
-const char *	WINDOWTITLE = { "juSpinX 2.2 double " };
-const char *	GLUITITLE   = { "Settings" };
-char			shortBufer[80];
-char			CharIteration[60];
-char			CharIPS[60]="IPS:";
-char 			CharFPS[60]="FPS:";
+GLuint 			GLUT_window;
+const char *	WINDOWTITLE = { "Magnoom v1.0" };
 int				window_width	= 1024;
 int				window_height	= 768;
 float 			asp_rat			= (float)( ((double)window_width)/((double)window_height) );
@@ -70,20 +62,19 @@ const GLfloat 	Colors[ ][3] =
 
 typedef enum	{ARROW1, CONE1, CANE, POINT, PLANE} enVectorMode; // which mode
 enVectorMode	WhichVectorMode	= CANE;	// CANE by default 
-
+char shortBufer[80];
 char inputfilename[64] = "input.csv";
 char outputfilename[64] = "output.csv";
 
 #define ESCAPE    0x1b // the escape key:
 #define SPACE     0x20 // the space  key:
-#define PLUS      0x2b
-#define MINUS     0x2d
+#define PLUS      0x2b // "+" key
+#define MINUS     0x2d // "-" key
 
-//Color map
-int				ColorShift=0;
-int				InvertHue=0;
-int				InvertValue=0;
-int				Show_add_set=0;
+//Color map control parameters
+int				ColorShift=0; // by default the red collor corresponds to phi=0
+int				InvertHue=0; // by default the sequence is red-green-blue for phi=0,120,240(-120) degrees respectively
+int				InvertValue=0; //n_z=+1 (white), -1 (black). For InvertHue=1 vice versa 
 
 // non-constant global variables:
 int				ActiveButton;	// current mous button that is down
