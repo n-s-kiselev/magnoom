@@ -25,7 +25,7 @@ Advanced software for Atomistic Spin Dynamics
   * install [AntTweakBar](http://anttweakbar.sourceforge.net/) library and its header files such that gcc can find them
   * compile with 
     - Ubuntu:`g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL`
-    - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL`
+    - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL -Wno-deprecated-declarations`
     - Windows:`not known`
     
 ###Contributing:
