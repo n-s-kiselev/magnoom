@@ -1,16 +1,13 @@
 //*****************************************************************************
 //
-//  File Name : JuSpinX2.0
-//  Author    : Nikolai S. Kiselev
-//  Created   : April 2016
-//  Modified  : 
+//  Project Name : Magnoom
+//  Author       : Nikolai S. Kiselev
+//  Created      : April 2016
+//  Modified     : October 2016
 //  
-//  Description : double precision!
-//  
-//
-//  Compilation : 
-//    Windows7 :  ???
-//    Mac OS X :  
+//  Compilation  : 
+//    Windows7   :  ???
+//    Mac OS X   :  
 //    Before you can use a dynamic library as a dependent library, 
 //    the library and its header files must be installed on your computer. 
 //    The standard locations for header files are ~/include, /usr/local/include and /usr/include. 
