@@ -122,7 +122,7 @@ float*		GHue;
 float*		BHue;
 
 //Allocate arrays for neighbours map
-int		NeighborPairs;
+int		    NeighborPairs;
 int*		AIdxBlock;//index of the atom within the block
 int*		NIdxBlock;//index of the neighbour within the block
 int*		NIdxGridA;//index of the neighbour within the block
@@ -323,12 +323,12 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 
 	Etot = (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
 //	For 100x100x100x10^6 spins total allocated memory is about 6*12 = 72 Mega Byte
-// in total possibly may reach up to 100 Mb
+//  in total possibly may reach up to 100 Mb
 
 	InitCriticalSection(&culc_mutex);
 	InitCriticalSection(&show_mutex);
 
-	pthread_t INFO_THREAD_idx;
+	//pthread_t INFO_THREAD_idx;
 	pthread_t CALC_THREAD_idx;
 
 /* create the second thread which executes CALC_THREAD(&x) */
@@ -338,11 +338,11 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 		return 1;
 	}
 /* create the third thread which executes INFO_THREAD(&x) */
-	if(pthread_create(&INFO_THREAD_idx, NULL, INFO_THREAD, NULL)) 
-	{
-		fprintf(stderr, "Error in creating INFO_THREA thread\n");
-		return 1;
-	}
+	// if(pthread_create(&INFO_THREAD_idx, NULL, INFO_THREAD, NULL)) 
+	// {
+	// 	fprintf(stderr, "Error in creating INFO_THREA thread\n");
+	// 	return 1;
+	// }
 
 
 	GetBox(abc, ABC, Box);
@@ -359,13 +359,11 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
 	CreateNewVBO( );
 	UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI, vertices, normals, colors, indices);
-	  
-//  Setup all GLUI stuff
-	//setupGLUI ();
 
 //  Start GLUT event processing loop
 	glutMainLoop();
-//after fropgram is finished:
+
+//  Free memory before out the program:
 	free(AIdxBlock);
 	free(NIdxBlock);
 	free(NIdxGridA);
@@ -373,34 +371,16 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	free(NIdxGridC);
 	free(SIdx); 
 
-	free(Jexc);
-	free(Bexc);
-	free(Dexc);
-	free(VDMx);
-	free(VDMy);
-	free(VDMz);
+	free(Jexc);  free(Bexc);  free(Dexc);
+	free(VDMx);  free(VDMy);  free(VDMz);
 
-	free(Sx);
-	free(Sy);
-	free(Sz);
-	free(tSx);
-	free(tSy);
-	free(tSz);
-	free(bSx);
-	free(bSy);
-	free(bSz);
-	free(Heffx);
-	free(Heffy);
-	free(Heffz);
-	free(RNx);
-	free(RNy);
-	free(RNz);
-	free(Px);
-	free(Py);
-	free(Pz); 
-	free(RHue);
-	free(GHue);
-	free(BHue);
+	free(Sx);    free(Sy);    free(Sz);
+	free(tSx);   free(tSy);   free(tSz);
+	free(bSx);   free(bSy);   free(bSz);
+	free(Heffx); free(Heffy); free(Heffz);
+	free(RNx);   free(RNy);   free(RNz);
+	free(Px);    free(Py);    free(Pz); 
+	free(RHue);  free(GHue);  free(BHue);
 	free(vertices);
 	free(normals);
 	free(colors);

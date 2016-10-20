@@ -94,7 +94,7 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 }
 
 double
-GetTotalEM(	double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
+GetTotalEnergyMoment(	double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
 {
 	double tmp0 = 0;
 	Mtot[0] = 0;
@@ -106,6 +106,88 @@ GetTotalEM(	double* sx, double* sy, double* sz, double* Hx, double* Hy, double* 
 		Mtot[0] = Mtot[0] + sx[i];
 		Mtot[1] = Mtot[1] + sy[i];
 		Mtot[2] = Mtot[2] + sz[i];
+		tmp0 = tmp0 + Etot[i];
+	}
+	return tmp0;
+}
+
+double
+GetTotalEnergyFerro(double sx, double sy, double sz, 
+					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
+					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
+					double* Etot, int N)
+{
+	double tmp0=1.0/sqrt(sx*sx+sy*sy+sz*sz);
+	sx = sx/tmp0;
+	sy = sy/tmp0;
+	sz = sz/tmp0;
+	tmp0=0;
+	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
+	for (int i=0; i<N; i++)
+	{
+	//H-field (Zeeman energy):
+	//Etot[i] =-Hfield*(VHfield[0]*sx+VHfield[1]*sy+VHfield[2]*sz);
+	Etot[i] =-Hfield*((VHfield[0]+AC_FIELD_ON*HacTime*VHac[0])*sx+(VHfield[1]+AC_FIELD_ON*HacTime*VHac[1])*sy+(VHfield[2]+AC_FIELD_ON*HacTime*VHac[2])*sz);
+	//uniaxial anisotropy:
+	tmp0 = sx*vku[0] + sy*vku[1] + sz*vku[2];
+	Etot[i]-= ku * tmp0 * tmp0;
+	//cubic anisotropy:
+	Etot[i]-= kc * (sx*sx*sx*sx + sy*sy*sy*sy + sz*sz*sz*sz);	
+	}
+	// pairwise spin interactions
+	int Ip, I, J, K, L;
+	int S;
+	double Je, Bq, dx, dy, dz, DM;
+	int i,j;
+	int na1, Na = ABC[0];
+	int nb1, Nb = ABC[1];
+	int nc1, Nc = ABC[2];
+	int bc_a; // boundary condition along "a"
+	int bc_b; // boundary condition along "b"
+	int bc_c; // boundary condition along "c"
+	int bc_f=1; // boundary condition factor 
+	for (int ni=0; ni<numNeighbors; ni++)
+	{
+		Ip= aidxBlock[ni];//index I^prime of spin in the block
+		I = nidxBlock[ni];//index I of neghbor spin in the block
+		J = nidxGridA[ni];//relative index J of block along a-vector for neghbor I
+		K = nidxGridB[ni];//relative index K of block along b-vector for neghbor I
+		L = nidxGridC[ni];//relative index L of block along c-vector for neghbor I
+		S = shellIdx[ni];
+		Je= 0.5*Jij[S];//Note, here we have factor 1/2 which comes from bouble summation over all spins
+		//Je= 0.5*Jij[S]*Jexc[ni];
+		Bq= 0.5*Bij[S];//because Jij, Bij, and Dij are coupling constants per PAIR of spins
+		DM= 0.5*Dij[S];//Note, factor 1/2 is mising in effective field expression!!!
+		dx= VDMx[ni];// in general vector (dx, dy, dz) are assumed to be unit vector
+		dy= VDMy[ni];// but not necessarily,
+		dz= VDMz[ni];// and if so, then DM (= Dij) should be set to 1.0
+		for (int nc=0; nc<Nc; nc++)
+		{
+			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
+			for (int nb=0; nb<Nb; nb++)
+			{
+				bc_b = 1 - (1-Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
+				for (int na=0; na<Na; na++)
+				{
+					bc_a = 1 - (1-Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
+					bc_f = bc_a*bc_b*bc_c;
+					na1 = na;
+					nb1 = Na * nb;
+					nc1 = Na * Nb * nc;
+					i = Ip + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
+					na1 = (Na + na + J)%Na;
+					nb1 = Na * ((Nb + nb + K)%Nb);
+					nc1 = Na * Nb * ((Nc + nc + L)%Nc);;
+					j = I  + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
+					tmp0 = sx*sx + sy*sy + sz*sz;
+					Etot[i] = Etot[i] - bc_f*( Je * tmp0 + Bq * tmp0 * tmp0 + DM*(dx*(sy*sz - sz*sy) + dy*(sz*sx - sx*sz) + dz*(sx*sy - sy*sx)) );
+				}
+			}
+		}
+	}
+	tmp0=0;
+	for (i=0;i<NOS;i++)
+	{
 		tmp0 = tmp0 + Etot[i];
 	}
 	return tmp0;
@@ -202,191 +284,6 @@ GetTotalEnergy(	double* sx, double* sy, double* sz,
 	return tmp0;
 }
 
-double
-GetTotalEnergyFerro(double sx, double sy, double sz, 
-					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
-					double* Etot, int N)
-{
-	double tmp0=1.0/sqrt(sx*sx+sy*sy+sz*sz);
-	sx = sx/tmp0;
-	sy = sy/tmp0;
-	sz = sz/tmp0;
-	tmp0=0;
-	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
-	for (int i=0; i<N; i++)
-	{
-	//H-field (Zeeman energy):
-	//Etot[i] =-Hfield*(VHfield[0]*sx+VHfield[1]*sy+VHfield[2]*sz);
-	Etot[i] =-Hfield*((VHfield[0]+AC_FIELD_ON*HacTime*VHac[0])*sx+(VHfield[1]+AC_FIELD_ON*HacTime*VHac[1])*sy+(VHfield[2]+AC_FIELD_ON*HacTime*VHac[2])*sz);
-	//uniaxial anisotropy:
-	tmp0 = sx*vku[0] + sy*vku[1] + sz*vku[2];
-	Etot[i]-= ku * tmp0 * tmp0;
-	//cubic anisotropy:
-	Etot[i]-= kc * (sx*sx*sx*sx + sy*sy*sy*sy + sz*sz*sz*sz);	
-	}
-	// pairwise spin interactions
-	int Ip, I, J, K, L;
-	int S;
-	double Je, Bq, dx, dy, dz, DM;
-	int i,j;
-	int na1, Na = ABC[0];
-	int nb1, Nb = ABC[1];
-	int nc1, Nc = ABC[2];
-	int bc_a; // boundary condition along "a"
-	int bc_b; // boundary condition along "b"
-	int bc_c; // boundary condition along "c"
-	int bc_f=1; // boundary condition factor 
-	for (int ni=0; ni<numNeighbors; ni++)
-	{
-		Ip= aidxBlock[ni];//index I^prime of spin in the block
-		I = nidxBlock[ni];//index I of neghbor spin in the block
-		J = nidxGridA[ni];//relative index J of block along a-vector for neghbor I
-		K = nidxGridB[ni];//relative index K of block along b-vector for neghbor I
-		L = nidxGridC[ni];//relative index L of block along c-vector for neghbor I
-		S = shellIdx[ni];
-		Je= 0.5*Jij[S];//Note, here we have factor 1/2 which comes from bouble summation over all spins
-		//Je= 0.5*Jij[S]*Jexc[ni];
-		Bq= 0.5*Bij[S];//because Jij, Bij, and Dij are coupling constants per PAIR of spins
-		DM= 0.5*Dij[S];//Note, factor 1/2 is mising in effective field expression!!!
-		dx= VDMx[ni];// in general vector (dx, dy, dz) are assumed to be unit vector
-		dy= VDMy[ni];// but not necessarily,
-		dz= VDMz[ni];// and if so, then DM (= Dij) should be set to 1.0
-		for (int nc=0; nc<Nc; nc++)
-		{
-			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
-			for (int nb=0; nb<Nb; nb++)
-			{
-				bc_b = 1 - (1-Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
-				for (int na=0; na<Na; na++)
-				{
-					bc_a = 1 - (1-Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
-					bc_f = bc_a*bc_b*bc_c;
-					na1 = na;
-					nb1 = Na * nb;
-					nc1 = Na * Nb * nc;
-					i = Ip + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
-					na1 = (Na + na + J)%Na;
-					nb1 = Na * ((Nb + nb + K)%Nb);
-					nc1 = Na * Nb * ((Nc + nc + L)%Nc);;
-					j = I  + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
-					tmp0 = sx*sx + sy*sy + sz*sz;
-					Etot[i] = Etot[i] - bc_f*( Je * tmp0 + Bq * tmp0 * tmp0 + DM*(dx*(sy*sz - sz*sy) + dy*(sz*sx - sx*sz) + dz*(sx*sy - sy*sx)) );
-				}
-			}
-		}
-	}
-	tmp0=0;
-	for (i=0;i<NOS;i++)
-	{
-		tmp0 = tmp0 + Etot[i];
-	}
-	return tmp0;
-}
-
-double
-GetTotalEnergyWRTFerro(	double nx, double ny, double nz, double* sx, double* sy, double* sz, 
-					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
-					double* Etot,double* Mtot, int N)
-{
-	//first we get unit vector for spins in ferromagnetic state
-	double tmp0=1.0/sqrt(nx*nx+ny*ny+nz*nz);
-	nx = nx/tmp0;
-	ny = ny/tmp0;
-	nz = nz/tmp0;
-	//caclucate energy density per spin for ferromagnetic state
-	double eferro = GetTotalEnergyFerro( nx, ny, nz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, NOS );
-	eferro = eferro/NOS;
-	//now we enter the main loop of subroutine
-	tmp0 = 0;
-	Mtot[0] = 0;
-	Mtot[1] = 0;
-	Mtot[2] = 0;
-	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
-	for (int i=0; i<N; i++)
-	{
-	//H-field (Zeeman energy):
-	//Etot[i] =-Hfield*(VHfield[0]*sx[i]+VHfield[1]*sy[i]+VHfield[2]*sz[i]);
-	Etot[i] =-Hfield*((VHfield[0]+AC_FIELD_ON*HacTime*VHac[0])*sx[i]+(VHfield[1]+AC_FIELD_ON*HacTime*VHac[1])*sy[i]+(VHfield[2]+AC_FIELD_ON*HacTime*VHac[2])*sz[i]);
-	//uniaxial anisotropy:
-	tmp0 = sx[i]*vku[0] + sy[i]*vku[1] + sz[i]*vku[2];
-	Etot[i]-= ku * tmp0 * tmp0;
-	//cubic anisotropy:
-	Etot[i]-= kc * (sx[i]*sx[i]*sx[i]*sx[i] + sy[i]*sy[i]*sy[i]*sy[i] + sz[i]*sz[i]*sz[i]*sz[i]);	
-	Mtot[0] = Mtot[0] + sx[i];
-	Mtot[1] = Mtot[1] + sy[i];
-	Mtot[2] = Mtot[2] + sz[i];
-	}
-
-	// pairwise spin interactions
-	int Ip, I, J, K, L;
-	int S;
-	float Je, Bq, dx, dy, dz, DM;
-	int i,j;
-	int na1, Na = ABC[0];
-	int nb1, Nb = ABC[1];
-	int nc1, Nc = ABC[2];
-	int bc_a; // boundary condition along "a"
-	int bc_b; // boundary condition along "b"
-	int bc_c; // boundary condition along "c"
-	int bc_f=1; // boundary condition factor 
-	for (int ni=0; ni<numNeighbors; ni++)
-	{
-		Ip= aidxBlock[ni];//index I^prime of spin in the block
-		I = nidxBlock[ni];//index I of neghbor spin in the block
-		J = nidxGridA[ni];//relative index J of block along a-vector for neghbor I
-		K = nidxGridB[ni];//relative index K of block along b-vector for neghbor I
-		L = nidxGridC[ni];//relative index L of block along c-vector for neghbor I
-		S = shellIdx[ni];
-		Je= 0.5*Jij[S];//Note, here we have factor 1/2 which comes from bouble summation over all spins
-		//Je= 0.5*Jij[S]*Jexc[ni];
-		Bq= 0.5*Bij[S];//because Jij, Bij, and Dij are coupling constants per PAIR of spins
-		DM= 0.5*Dij[S];//Note, factor 1/2 is mising in effective field expression!!!
-		dx= VDMx[ni];// in general vector (dx, dy, dz) are assumed to be unit vector
-		dy= VDMy[ni];// but not necessarily,
-		dz= VDMz[ni];// and if so, then DM (= Dij) should be set to 1.0
-		for (int nc=0; nc<Nc; nc++)
-		{
-			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
-			for (int nb=0; nb<Nb; nb++)
-			{
-				bc_b = 1 - (1-Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
-				for (int na=0; na<Na; na++)
-				{
-					bc_a = 1 - (1-Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
-					bc_f = bc_a*bc_b*bc_c;
-					na1 = na;
-					nb1 = Na * nb;
-					nc1 = Na * Nb * nc;
-					i = Ip + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
-					na1 = (Na + na + J)%Na;
-					nb1 = Na * ((Nb + nb + K)%Nb);
-					nc1 = Na * Nb * ((Nc + nc + L)%Nc);;
-					j = I  + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
-					//Symmetric Heisenberg exchange:
-					// Etot[i]-= Je * (sx[i]*sx[j]+sy[i]*sy[j]+sz[i]*sz[j]);
-					// //bi-quadratic exchange:
-					// tmp0 = sx[i]*sx[j] + sy[i]*sy[j] + sz[i]*sz[j];
-					// Etot[i]-= Bq * tmp0 * tmp0;
-					// //Dzyaloshinskii-Moriya interaction (antisymmetric exchange):
-					// Etot[i]-= DM*(dx*(sy[i]*sz[j] - sz[i]*sy[j]) + dy*(sz[i]*sx[j] - sx[i]*sz[j]) + dz*(sx[i]*sy[j] - sy[i]*sx[j]));
-					tmp0 = sx[i]*sx[j] + sy[i]*sy[j] + sz[i]*sz[j];
-					Etot[i] = Etot[i] - bc_f*( Je * tmp0 + Bq * tmp0 * tmp0 + DM*(dx*(sy[i]*sz[j] - sz[i]*sy[j]) + dy*(sz[i]*sx[j] - sx[i]*sz[j]) + dz*(sx[i]*sy[j] - sy[i]*sx[j])) );
-				}
-			}
-		}
-	}
-	tmp0=0;
-	for (i=0;i<NOS;i++)
-	{
-		Etot[i] = Etot[i]-eferro; //now Etot[i] energy of spin i w.r.t. ferromagnetic state
-		tmp0 = tmp0 + Etot[i];//iNOS = 1/NOS is the global variable see GEOM.cpp 
-	}
-	return tmp0*iNOS; //returns energy density per spin with respect to energy of ferromagnetic state e-eferro
-}
 
 void
 GetFluctuations( float* rx, float* ry, float* rz, int N )
@@ -563,29 +460,7 @@ SimpleMinimizer(double* inx,		double* iny,		double* inz,		// input vector field
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
 				float temperature)
 {	
-	//Simply turn each spin towards the effective field at each iteration
-	double nx, ny, nz;// components of the unit vector
-	double ax, ay, az;// temp
-	double tmp1;	 // temporal variable
 
-	GetEffectiveField( 	inx, iny, inz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS );
-
-	for (int i=0;i<nos;i++)
-	{
-		ax = (Heffx[i]-inx[i])*0.05;	
-		ay = (Heffy[i]-iny[i])*0.05;	
-		az = (Heffz[i]-inz[i])*0.05; //a is the vecor H_eff-s, connecting end of vector s with the end of vector H_eff 
-		nx = -Heffx[i];//nx + ax;	
-		ny = -Heffy[i];//ny + ay;	
-		nz = -Heffz[i];//nz + az;
-		tmp1 = 1.0f/sqrt(nx*nx + ny*ny + nz*nz);
-		
-		inx[i] = nx*tmp1;
-		iny[i] = ny*tmp1;
-		inz[i] = nz*tmp1;
-	}
 }
 
 
@@ -614,6 +489,7 @@ CALC_THREAD(void *void_ptr)
 		if (damping<10){
 			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature);
 		}else{
+			//here should be energy minimization function
 			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, 100, t_step, Temperature);
 			//SimpleMinimizer( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature);
 		}
@@ -626,17 +502,7 @@ CALC_THREAD(void *void_ptr)
 				bSy[i]=Sy[i];
 				bSz[i]=Sz[i];
 			}
-					// totalEnergy = GetTotalEnergy( 	Sx, Sy, Sz, 
-					// 			NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-					// 			Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
-					// perSpEnergy = totalEnergy/NOS;	
-					// printf("Etot=%f \t Eper=%f \t",  totalEnergy, perSpEnergy );
-					// GetEffectiveField( 	Sx, Sy, Sz, 
-					// 			NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-					// 			Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS );
-					// totalEnergy = GetTotalEM(Sx, Sy, Sz, Heffx, Heffy, Heffz, Etot, Mtot, NOS);
-					// perSpEnergy = totalEnergy/NOS;
-					// printf("Etot=%f \t Eper=%f\n",  totalEnergy, perSpEnergy );
+
 			EnterCriticalSection(&show_mutex);
 				FLAG_SHOW=TAKE_DATA;
 				currentIteration=ITERATION;
@@ -644,7 +510,7 @@ CALC_THREAD(void *void_ptr)
 		}
 
 		if (Record!=0 && ITERATION%rec_iteration == 0){
-			Etotal = GetTotalEM(Sx, Sy, Sz, Heffx, Heffy, Heffz, Etot, m, NOS);
+			Etotal = GetTotalEnergyMoment(Sx, Sy, Sz, Heffx, Heffy, Heffz, Etot, m, NOS);
 			// Etotal = GetTotalEnergy( 	Sx, Sy, Sz, 
 			// 				NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
 			// 	 			Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
@@ -655,7 +521,6 @@ CALC_THREAD(void *void_ptr)
 			  }
 			//printf("%d \t %f \t %f \t %f \n",  ITERATION, Mtot[0],Mtot[1],Mtot[2] );
 		}
-
 		ITERATION++;
 }
 fclose (outFile);

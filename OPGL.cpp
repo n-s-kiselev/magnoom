@@ -66,10 +66,10 @@ char shortBufer[80];
 char inputfilename[64] = "input.csv";
 char outputfilename[64] = "output.csv";
 
-#define ESCAPE    0x1b // the escape key:
-#define SPACE     0x20 // the space  key:
-#define PLUS      0x2b // "+" key
-#define MINUS     0x2d // "-" key
+#define ESCAPE  0x1b // the escape key:
+#define SPACE   0x20 // the space  key:
+#define PLUS    0x2b // "+" key
+#define MINUS   0x2d // "-" key
 
 //Color map control parameters
 int				ColorShift=0; // by default the red collor corresponds to phi=0
@@ -118,8 +118,8 @@ float axis[] = { 0.7f, 0.7f, 0.0f }; // initial model rotation
 float angle = 0.8f;
 
 // Shapes material
-float g_MatAmbient[] = { 0.5f, 0.0f, 0.0f, 1.0f };
-float g_MatDiffuse[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+// float g_MatAmbient[] = { 0.5f, 0.0f, 0.0f, 1.0f };
+// float g_MatDiffuse[] = { 1.0f, 1.0f, 0.0f, 1.0f };
 // Light parameter
 float g_LightMultiplier = 1.0f;
 float g_LightDirection[] = { 0.0f, 0.0f, -1.0f };
@@ -839,12 +839,6 @@ void idle ()
 						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, NOS );
 			totalEnergyFerro = totalEnergyFerro/NOS;	
 			perSpEnergyMinusFerro = perSpEnergy - totalEnergyFerro;
-			// the following didnot help me to get higher precision
-			// printf("e-eferro=%f \t ",  perSpEnergyMinusFerro*100);
-			// perSpEnergyMinusFerro = GetTotalEnergyWRTFerro(0, 1, 0, bSx, bSy, bSz, 
-			// 			NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-			// 			Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
-			// printf("e-eferro=%f \n",  perSpEnergyMinusFerro*100);
 			}
 			if (timeInterval > 2000)//~2 seconds
 			{
@@ -1391,19 +1385,20 @@ TwAddSeparator(control_bar, "sep4", NULL);
 	TwDefine(" Initial_State help='F4: show/hide Initial state bar' "); // change default tweak bar size and color
 
 	{
-	TwEnumVal		enIniStateTw[] = { 	{RND, 		"Random"		}, 
-										{HOMO, 		"Homogeneous"	}, 
-										{SKYRM1, 	"Skyrmion Q=1"	}, 
-										{SKYRM2, 	"Skyrmion Q=2"	}, 
-										{SKYRM3, 	"Skyrmion Q=3"	}, 
-										{BOBBER_T, 	"Bobber top"	},  
-										{BOBBER_B, 	"Bobber bottom"	},
-										{BOBBER_L,	"Bobber lattice"	}, 
-										{BOBBER_L_T,"Bobber latt. top"	},  
+	TwEnumVal		enIniStateTw[] = { 	{RND, 		"Random"		        }, 
+										{HOMO, 		"Homogeneous"	        }, 
+										{SKYRM1, 	"Skyrmion Q=1"	        }, 
+										{SKYRM2, 	"Skyrmion Q=2"	        }, 
+										{SKYRM3, 	"Skyrmion Q=3"	        }, 
+										{BOBBER_T, 	"Bobber top"	        },  
+										{BOBBER_B, 	"Bobber bottom"	        },
+										{BOBBER_L,	"Bobber lattice"	    }, 
+										{BOBBER_L_T,"Bobber latt. top"	    },  
 										{BOBBER_L_B,"Bobber latt. bottom"	}, 
-										{HOPFION1, 	"Hopfion"		}, 
-										{SPIRAL, 	"Spiral"		}, 
-										{SKYRMION_L,"Sk. lattice"	}};
+										{HOPFION1, 	"Hopfion"		        }, 
+										{SPIRAL, 	"Spiral"		        }, 
+										{SKYRMION_L,"Sk. lattice"	        }
+									};
 	TwType			TV_TYPE_INI_STATE = TwDefineEnum("IniState", enIniStateTw, 13);
 	TwAddVarRW(initial_bar, "Choose ini. state", TV_TYPE_INI_STATE, &WhichInitialState, "help='Choose initial spin configuration'");
 	}
@@ -2252,6 +2247,10 @@ UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			cnini=(Clayer-1);
 	        cnfin=Clayer;
 		break;
+		case ABC_AXIS:
+            //
+		break;
+
 	}
 	j=-1;
 	switch (mode)
@@ -2433,6 +2432,9 @@ ReallocateArrayDrawing(int faces, int mode)
 		break;
 		case C_AXIS:
 		NOS_L=NOS_CL;
+		break;
+		case ABC_AXIS:
+		//
 		break;
 	}
 
