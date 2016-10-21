@@ -8,9 +8,10 @@ Advanced software for Atomistic Spin Dynamics allowing in real-time visualizatio
 
 ###Main features:
   * platform independent code writen in C/C++
-  * minimal dependencies on external libraries
-  * GUI entirely based on OpenGL 
   * real time control of the parameters
+  * GUI entirely based on OpenGL 
+  * minimal dependencies on external libraries
+
 
 ###Dependencies:
   * gcc >=4.8.1 (possibly can be compiled also with earlier versions of gcc)
