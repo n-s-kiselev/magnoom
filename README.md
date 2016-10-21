@@ -23,7 +23,7 @@ Advanced software for Atomistic Spin Dynamics allowing in real-time visualizatio
     - Ubuntu: `sudo apt-get install gcc`
     - MacOSX: [link] (https://developer.apple.com/xcode/download/)
     - Windows: [link] (http://sourceforge.net/projects/mingw-w64/)
-  * install [AntTweakBar](http://anttweakbar.sourceforge.net/) library and its header files such that gcc can find them
+  * install [AntTweakBar](http://anttweakbar.sourceforge.net/) library and its header files such that gcc can find them, for detail see [likn](http://anttweakbar.sourceforge.net/doc/tools:anttweakbar:download#contact)
   * compile with 
     - Ubuntu:`g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL`
     - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL -Wno-deprecated-declarations`
