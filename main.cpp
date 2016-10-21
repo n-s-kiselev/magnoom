@@ -211,6 +211,7 @@ int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 void *INFO_THREAD(void *void_ptr)
 {
 
+
 /* the function must return something - NULL will do */
 return NULL;
 }

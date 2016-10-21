@@ -20,13 +20,13 @@
       0.5f, 0.5f, 0.5f, 
     };*/
 //Simple Cubic 1 [001]
-float		abc[3][3] = {
-				{	1.0f, 0.0f, 0.0f }, // a
-				{	0.0f, 1.0f, 0.0f }, // b
-				{	0.0f, 0.0f, 1.0f }};// c
-float			Block[][3] = { 
-				{0.5f, 0.5f, 0.5f},  
-				};
+// float		abc[3][3] = {
+// 				{	1.0f, 0.0f, 0.0f }, // a
+// 				{	0.0f, 1.0f, 0.0f }, // b
+// 				{	0.0f, 0.0f, 1.0f }};// c
+// float			Block[][3] = { 
+// 				{0.5f, 0.5f, 0.5f},  
+// 				};
 // Simple Cubic 2 [011]
 // float		abc[3][3] = {
 // 				{	1.0f, 0.0f, 0.0f }, // a
@@ -127,17 +127,17 @@ float			Block[][3] = {
 // 				{0.5f-uB20,	1.0f-uB20,	0.5f+uB20}	
 // 				};
 //B20(2)
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, 1.0f, 0.0f }, // b
-// 				{	0.0f, 0.0f, 1.0f }};// c
-// #define uB20		0.138f
-// float		Block[][3] = {		
-// 				{   0.,		   0.,	    0.},	
-// 				{0.5f,	0.5f-2*uB20,	1.0f-2*uB20},
-// 				{1.0f-2*uB20,	0.5f,	0.5f-2*uB20},	
-// 				{0.5f-2*uB20,	1.0f-2*uB20,	0.5f}	
-// 				};
+float		abc[3][3] = {
+				{	1.0f, 0.0f, 0.0f }, // a
+				{	0.0f, 1.0f, 0.0f }, // b
+				{	0.0f, 0.0f, 1.0f }};// c
+#define uB20		0.138f
+float		Block[][3] = {		
+				{   0.,		   0.,	    0.},	
+				{0.5f,	0.5f-2*uB20,	1.0f-2*uB20},
+				{1.0f-2*uB20,	0.5f,	0.5f-2*uB20},	
+				{0.5f-2*uB20,	1.0f-2*uB20,	0.5f}	
+				};
 //B20(Maria)
 // float		abc[3][3] = {
 // 				{	1.0f, 0.0f, 0.0f }, // a
@@ -161,7 +161,7 @@ float			Block[][3] = {
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			ABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 //int			ABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-int			ABC[3] = {30,30,20};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
+int			ABC[3] = {30,30,10};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 //int			ABC[3] = {288,288,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 int			Boundary[3] = {0, 0, 0};// boundary conditions along a, b, c translation vectors
 
