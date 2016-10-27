@@ -87,7 +87,7 @@ float			Pivot = 0.55f;
 int				Alayer = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
 int				Blayer = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
 int				Clayer = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
-typedef enum	{A_AXIS, B_AXIS, C_AXIS, ABC_AXIS} enSliceMode; // which mode
+typedef enum	{A_AXIS, B_AXIS, C_AXIS} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
 float			chSize = 71; // characteristic size of initial state in units of "a"
@@ -1241,8 +1241,8 @@ void setupTweakBar()
 	}
 
 	{
-	TwEnumVal		enSliceModeTw[] = { {A_AXIS, "a-axis"}, {B_AXIS, "b-axis"}, {C_AXIS, "c-axis"}, {ABC_AXIS, "a+b+c"}};
-	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
+	TwEnumVal		enSliceModeTw[] = { {A_AXIS, "a-axis"}, {B_AXIS, "b-axis"}, {C_AXIS, "c-axis"}};
+	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 3);
 	TwAddVarCB(view_bar, "Slicing plane", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "help='Slising plane perpenticulat to the choosen axis' ");
 	}
 
@@ -1685,10 +1685,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 				 break;
 				 case C_AXIS:
 				 	if (Clayer<ABC[2]) Clayer+=1;
-				 break;
-				 case ABC_AXIS:
-				 	//if (Clayer<ABC[2]) Clayer+=1;
-				 break;				 
+				 break;			 
 				}
 				ChangeVectorMode(1);
 				break;
@@ -1703,9 +1700,6 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 				 case C_AXIS:
 				 	if (Clayer>1) Clayer-=1;
 				 break;
-				 case ABC_AXIS:
-				 	//if (Clayer<ABC[2]) Clayer+=1;
-				 break;	
 				}
 				ChangeVectorMode(1);
 				break;
@@ -2202,9 +2196,6 @@ UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 		case C_AXIS:
 		NOS_L=NOS_CL;
 		break;
-		case ABC_AXIS:
-		//NOS_L=NOS_AL+NOS_BL+NOS_CL
-		break;	
 	}
 
 	for (int n = 0; n<NOS_L; n++)//NOS_L number of spins per slic layer.
@@ -2247,10 +2238,6 @@ UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			cnini=(Clayer-1);
 	        cnfin=Clayer;
 		break;
-		case ABC_AXIS:
-            //
-		break;
-
 	}
 	j=-1;
 	switch (mode)
@@ -2444,9 +2431,6 @@ ReallocateArrayDrawing(int faces, int mode)
 		break;
 		case C_AXIS:
 		NOS_L=NOS_CL;
-		break;
-		case ABC_AXIS:
-		//
 		break;
 	}
 

@@ -12,15 +12,15 @@
 //    the library and its header files must be installed on your computer. 
 //    The standard locations for header files are ~/include, /usr/local/include and /usr/include. 
 //    The standard locations for dynamic libraries are ~/lib, /usr/local/lib, and /usr/lib.
-//    % g++ JS2v7.cpp -o JS2v7.exe -O3 -Wall -fno-strict-aliasing -I ./include/ -L ./lib -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
+//    % g++ main.cpp -o magnoom -O3 -Wall -fno-strict-aliasing -I ./include/ -L ./lib -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
 //    % echo "" | gcc -xc - -v -E
 //    % sudo cp ~/Documents/Nick/AntTweakBar/lib/libAntTweakBar.dylib /usr/local/lib
 //    % sudo cp ~/Documents/Nick/AntTweakBar/include/AntTweakBar.h /usr/local/include/
 //    % sudo cp -r ~/Documents/Nick/AntTweakBar /usr/local/
-//    % g++ JS2v7.cpp -o JS2v7.exe -O3 -Wall -fno-strict-aliasing -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
+//    % g++ main.cpp -o magnoom -O3 -Wall -fno-strict-aliasing -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
 //    Note, in OS X: https://lukecyca.com/2008/glui-235-framework-for-mac-os-x.html
 //    Ubuntu   :  
-//    $ g++ JS2v7.cpp -o JS2v7.exe -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL     
+//    $ g++ main.cpp -o magnoom -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL     
 //    $ sudo export PATH="/usr/bin:$PATH" {/usr/local/bin/ld: this linker was not configured to use sysroots}
 //    CentOS   : 
 //    $ g++ JS2v7.cpp -o JS2v7 -pthread -O3 -Wall -fno-strict-aliasing -I ./include -L ./lib -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL
