@@ -84,9 +84,14 @@ float			TransXYZ[3];	// set by glui translation widgets
 float			Scale = 1.f;	// scaling factors for arrows [0.1-2] 
 float			Pivot = 0.55f;
 
-int				Alayer = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
-int				Blayer = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
-int				Clayer = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+// Slicing parameters
+int				A_layer_min = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+int				B_layer_min = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+int				C_layer_min = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+int				A_layer_max = A_layer_min+1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+int				B_layer_max = B_layer_min+1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+int				C_layer_max = B_layer_min+1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+
 typedef enum	{A_AXIS, B_AXIS, C_AXIS} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
@@ -110,6 +115,7 @@ GLfloat			AXES_LENGTH	= 2.;
 //tweak menu
 TwBar *help_bar; // Pointer to the default help tweak bar
 TwBar *view_bar; // Pointer to the tweak bar with widgets controling view options
+TwBar *slicing_bar; // Pointer to the tweak bar with widgets controling view options
 TwBar *control_bar; // Pointer to the tweak bar with widgets controling calculations
 TwBar *initial_bar; // Pointer to the tweak bar with widgets controling generation of initial state
 TwBar *ac_field_bar; // Pointer to the tweak bar with widgets controling generation of initial state
@@ -913,23 +919,6 @@ void TW_CALL CB_GetVectorMode(void *value, void *clientData)
     *(int *)value = WhichVectorMode; // just copy Scale to value
 }
 
-void TW_CALL CB_SetSliceMode(const void *value, void *clientData )
-{
-	(void)clientData; // unused
-    WhichSliceMode = *( enSliceMode *)value; // copy value to Scale
-		ReallocateArrayDrawing(arrowFaces, WhichVectorMode);
-		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
-		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
-		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
-		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
-}
-
-//  Callback function called by the tweak bar to get the 'AutoRotate' value
-void TW_CALL CB_GetSliceMode(void *value, void *clientData)
-{
-    (void)clientData; // unused
-    *(int *)value = WhichSliceMode; // just copy Scale to value
-}
 
 void TW_CALL CB_SetFaces(const void *value, void *clientData )
 {
@@ -1136,6 +1125,68 @@ void TW_CALL CB_CleanSxSySzFile( void *clientData )
  }
 
 
+void TW_CALL CB_SetSliceMode(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+    WhichSliceMode = *( enSliceMode *)value; // copy value to Scale
+		ReallocateArrayDrawing(arrowFaces, WhichVectorMode);
+		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
+		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+}
+
+//  Callback function called by the tweak bar to get the 'AutoRotate' value
+void TW_CALL CB_GetSliceMode(void *value, void *clientData)
+{
+    (void)clientData; // unused
+    *(int *)value = WhichSliceMode; // just copy Scale to value
+}
+
+void TW_CALL CB_SetAlayerMin(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+	int test= *( int *)value; // copy value to A_layer_min
+	if (test>=1 && test<=A_layer_max){
+        A_layer_min = test; // copy value to A_layer_min
+		ReallocateArrayDrawing(arrowFaces, WhichVectorMode);
+		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
+		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+	}
+}
+
+//  Callback function called by the tweak bar to get the 'AutoRotate' value
+void TW_CALL CB_GetAlayerMin(void *value, void *clientData)
+{
+    (void)clientData; // unused
+    *(int *)value = A_layer_min; // just copy A_layer_min to value
+}
+
+
+void TW_CALL CB_SetAlayerMax(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+	int test= *( int *)value; // copy value to A_layer_min
+	if (test<=ABC[0] && test>=A_layer_min){
+        A_layer_max = test; // copy value to A_layer_min
+		ReallocateArrayDrawing(arrowFaces, WhichVectorMode);
+		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
+		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+	}
+}
+
+//  Callback function called by the tweak bar to get the 'AutoRotate' value
+void TW_CALL CB_GetAlayerMax(void *value, void *clientData)
+{
+    (void)clientData; // unused
+    *(int *)value = A_layer_max; // just copy A_layer_min to value
+}
+
+
 void TW_CALL CB_ResetIterations( void *clientData )
 {
   ITERATION=0;
@@ -1217,6 +1268,7 @@ void setupTweakBar()
 	help_bar = TwGetBarByIndex(0);
 	TwDefine(" TW_HELP size='440 510' color='70 100 100'");
 	TwDefine(" TW_HELP help='F1: show/hide (this) Help bar' "); // change default tweak bar size and color
+
 //////////////////////////////////////////////// View F2 ///////////////////////////////////////////////////////////////
     view_bar = TwNewBar("View");
     TwDefine(" View iconified=true "); 
@@ -1238,12 +1290,6 @@ void setupTweakBar()
 	TwEnumVal		enVectorModeTw[] = { {ARROW1, "Arrows"}, {CONE1, "Cones"}, {CANE, "Canes"}, {POINT, "Points"} };
 	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Type_of_vectors", enVectorModeTw, 4);
 	TwAddVarCB(view_bar, "Type of vectors", TV_TYPE_VEC_MOD, CB_SetVectorMode, CB_GetVectorMode, &WhichVectorMode, "help='Type of 3D vectors' ");
-	}
-
-	{
-	TwEnumVal		enSliceModeTw[] = { {A_AXIS, "a-axis"}, {B_AXIS, "b-axis"}, {C_AXIS, "c-axis"}};
-	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 3);
-	TwAddVarCB(view_bar, "Slicing plane", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "help='Slising plane perpenticulat to the choosen axis' ");
 	}
 
 	TwAddVarCB(view_bar, "Pivot", TW_TYPE_FLOAT, CB_SetPivot, CB_GetPivot,  &Pivot, " min=0 max=1 step=0.01 help='Pivot of 3D arrow.' ");
@@ -1290,11 +1336,25 @@ void setupTweakBar()
 	TwAddVarCB(view_bar, "Color scheme", TV_TYPE_COL_SCH, CB_SetColorScheme, CB_GetColorScheme, &WhichColorScheme, "help='Type of 3D vectors' group='HSV color map' ");
 	}
 
-///////////////////////////////////////// Parameters&Controls F3 ///////////////////////////////////////////////////////
+//////////////////////////////////////////////// View F3 ///////////////////////////////////////////////////////////////
+    slicing_bar = TwNewBar("Slicing");
+    TwDefine(" Slicing iconified=true "); 
+    TwDefine(" Slicing size='220 220' color='224 216 96' alpha=200 "); // change default tweak bar size and color
+    TwDefine(" Slicing help='F3: show/hide Slicing bar' "); // change default tweak bar size and color
+
+	{
+	TwEnumVal		enSliceModeTw[] = { {A_AXIS, "a-axis"}, {B_AXIS, "b-axis"}, {C_AXIS, "c-axis"}};
+	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 3);
+	TwAddVarCB(slicing_bar, "Slicing plane", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' help='Slising plane perpenticulat to the choosen axis' ");
+	}
+	TwAddVarCB(slicing_bar, "a layer min", TW_TYPE_INT32, CB_SetAlayerMin, CB_GetAlayerMin,  &A_layer_min, "step=1 help='Bottom layer of slicing along a-axis' ");
+	TwAddVarCB(slicing_bar, "a layer max", TW_TYPE_INT32, CB_SetAlayerMax, CB_GetAlayerMax,  &A_layer_max, "step=1 help='Top layer of slicing along a-axis' ");
+
+///////////////////////////////////////// Parameters&Controls F4 ///////////////////////////////////////////////////////
 	control_bar = TwNewBar("Parameters&Controls");
     TwDefine(" Parameters&Controls iconified=true "); 
     TwDefine(" Parameters&Controls size='220 510' color='224 96 216' alpha=200 "); // change default tweak bar size and color
-    TwDefine(" Parameters&Controls help='F3: show/hide Control bar' "); // change default tweak bar size and color
+    TwDefine(" Parameters&Controls help='F4: show/hide Control bar' "); // change default tweak bar size and color
 
 	TwAddButton(control_bar, "Run", CB_Run, NULL, "key=SPACE label='RUN simulation' ");
 	TwAddVarRW(control_bar, "Record", TW_TYPE_BOOL32, &Record, 
@@ -1378,11 +1438,11 @@ TwAddSeparator(control_bar, "sep4", NULL);
 	TwAddVarRW(control_bar, "CurrentDir", TW_TYPE_DIR3F, &VCu, 
 	"label='cur. dir.' opened=true help='The polarization direction of electric current' ");
 
-///////////////////////////////////////// Initial state F4 ///////////////////////////////////////////////////////
+///////////////////////////////////////// Initial state F5 ///////////////////////////////////////////////////////
 	initial_bar = TwNewBar("Initial_State");
 	TwDefine(" Initial_State iconified=true "); 
 	TwDefine(" Initial_State size='220 510' color='180 180 254'  alpha=200"); // change default tweak bar size and color
-	TwDefine(" Initial_State help='F4: show/hide Initial state bar' "); // change default tweak bar size and color
+	TwDefine(" Initial_State help='F5: show/hide Initial state bar' "); // change default tweak bar size and color
 
 	{
 	TwEnumVal		enIniStateTw[] = { 	{RND, 		"Random"		        }, 
@@ -1428,11 +1488,11 @@ TwAddSeparator(control_bar, "sep4", NULL);
 	TwAddVarRW(initial_bar, "Input file name:", TW_TYPE_CSSTRING(sizeof(inputfilename)), inputfilename, "");
 	TwAddButton(initial_bar, "Read from CSV", CB_ReadCSV, NULL, "label='read state from JSINI.csv' ");	
 
-///////////////////////////////////////// AC field F5 ///////////////////////////////////////////////////////
+///////////////////////////////////////// AC field F6 ///////////////////////////////////////////////////////
 	ac_field_bar = TwNewBar("AC_Field");
 	TwDefine(" AC_Field iconified=true "); 
 	TwDefine(" AC_Field size='300 510' color='180 100 140'  alpha=200"); // change default tweak bar size and color
-	TwDefine(" AC_Field help='F5: show/hide AC Field bar' "); // change default tweak bar size and color
+	TwDefine(" AC_Field help='F6: show/hide AC Field bar' "); // change default tweak bar size and color
 
 	{
 	TwEnumVal		enenACFieldTw[] = { {SIN_FIELD,  	"AC Sin(omega*t) "		},
@@ -1587,6 +1647,82 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 		fprintf( stderr, "Keyboard: '%c' (0x%0x)\n", c, c );
 		switch( c )
 		{
+			case '<':
+				switch(WhichSliceMode)
+                {case A_AXIS:
+					if (A_layer_min>1) A_layer_min-=1;
+				 break;
+				 case B_AXIS:
+				    if (B_layer_min>1) B_layer_min-=1;
+				 break;
+				 case C_AXIS:
+				 	if (C_layer_min>1) C_layer_min-=1;
+				 break;			 
+				}
+				ReallocateArrayDrawing(arrowFaces, WhichVectorMode);
+				UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+				UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
+				UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+				UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+			break;
+
+			case '>':
+				switch(WhichSliceMode)
+                {case A_AXIS:
+					if (A_layer_min<A_layer_max) A_layer_min+=1;
+				 break;
+				 case B_AXIS:
+				    if (B_layer_min<B_layer_max) B_layer_min+=1;
+				 break;
+				 case C_AXIS:
+				 	if (C_layer_min<C_layer_max) C_layer_min+=1;
+				 break;			 
+				}
+				ReallocateArrayDrawing(arrowFaces, WhichVectorMode);
+				UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+				UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
+				UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+				UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+			break;
+
+			case ',':
+				switch(WhichSliceMode)
+                {case A_AXIS:
+					if (A_layer_max>A_layer_min) A_layer_max-=1;
+				 break;
+				 case B_AXIS:
+				    if (B_layer_max>B_layer_min) B_layer_max-=1;
+				 break;
+				 case C_AXIS:
+				 	if (C_layer_max>C_layer_min) C_layer_max-=1;
+				 break;			 
+				}
+				ReallocateArrayDrawing(arrowFaces, WhichVectorMode);
+				UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+				UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
+				UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+				UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+			break;
+
+			case '.':
+				switch(WhichSliceMode)
+                {case A_AXIS:
+					if (A_layer_max<ABC[0]) A_layer_max+=1;
+				 break;
+				 case B_AXIS:
+				    if (B_layer_max<ABC[1]) B_layer_max+=1;
+				 break;
+				 case C_AXIS:
+				 	if (C_layer_max<ABC[2]) C_layer_max+=1;
+				 break;			 
+				}
+				ReallocateArrayDrawing(arrowFaces, WhichVectorMode);
+				UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+				UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
+				UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+				UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+			break;
+
 			case 'q':
 			case 'Q':
 				Rot[2] -= 0.25;
@@ -1678,13 +1814,13 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 			case GLUT_KEY_UP:
 				switch (WhichSliceMode)
 				{case A_AXIS:
-					if (Alayer<ABC[0]) Alayer+=1;
+					if (A_layer_max<ABC[0]) {A_layer_max+=1; A_layer_min+=1;}
 				 break;
 				 case B_AXIS:
-				    if (Blayer<ABC[1]) Blayer+=1;
+				    if (B_layer_max<ABC[1]) {B_layer_max+=1; B_layer_min+=1;}
 				 break;
 				 case C_AXIS:
-				 	if (Clayer<ABC[2]) Clayer+=1;
+				 	if (C_layer_max<ABC[2]) {C_layer_max+=1; C_layer_min+=1;}
 				 break;			 
 				}
 				ChangeVectorMode(1);
@@ -1692,13 +1828,13 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 			case GLUT_KEY_DOWN:
 				switch (WhichSliceMode)
 				{case A_AXIS:
-					if (Alayer>1) Alayer-=1;
+					if (A_layer_min>1) {A_layer_min-=1; A_layer_max-=1;}
 				 break;
 				 case B_AXIS:
-				    if (Blayer>1) Blayer-=1;
+				    if (B_layer_min>1) {B_layer_min-=1; B_layer_max-=1;}
 				 break;
 				 case C_AXIS:
-				 	if (Clayer>1) Clayer-=1;
+				 	if (C_layer_min>1) {C_layer_min-=1; C_layer_max-=1;}
 				 break;
 				}
 				ChangeVectorMode(1);
@@ -1720,6 +1856,14 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 				}
 				break;
 			case  GLUT_KEY_F3:
+				TwGetParam(slicing_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
+				if (isiconified){
+					TwDefine(" Slicing iconified=false ");				
+				}else{
+					TwDefine(" Slicing iconified=true ");
+				}
+				break;
+			case  GLUT_KEY_F4:
 				TwGetParam(control_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Parameters&Controls iconified=false ");				
@@ -1727,7 +1871,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Parameters&Controls iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F4:
+			case  GLUT_KEY_F5:
 				TwGetParam(initial_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Initial_State iconified=false ");				
@@ -1735,7 +1879,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Initial_State iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F5:
+			case  GLUT_KEY_F6:
 				TwGetParam(ac_field_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" AC_Field iconified=false ");				
@@ -2188,13 +2332,13 @@ UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 	switch( WhichSliceMode)
 	{
 		case A_AXIS:
-		NOS_L=NOS_AL;
+		NOS_L=NOS_AL * (1+A_layer_max - A_layer_min);
 		break;
 		case B_AXIS:
-		NOS_L=NOS_BL;
+		NOS_L=NOS_BL * (1+B_layer_max - B_layer_min);
 		break;
 		case C_AXIS:
-		NOS_L=NOS_CL;
+		NOS_L=NOS_CL * (1+C_layer_max - C_layer_min);
 		break;
 	}
 
@@ -2227,16 +2371,16 @@ UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	switch( WhichSliceMode)
 	{
 		case A_AXIS:
-			anini=(Alayer-1);
-	        anfin=Alayer;
+			anini=(A_layer_min-1);
+	        anfin=A_layer_max;
 		break;
 		case B_AXIS:
-			bnini=(Blayer-1);
-	        bnfin=Blayer;
+			bnini=(B_layer_min-1);
+	        bnfin=B_layer_max;
 		break;
 		case C_AXIS:
-			cnini=(Clayer-1);
-	        cnfin=Clayer;
+			cnini=(C_layer_min-1);
+	        cnfin=C_layer_max;
 		break;
 	}
 	j=-1;
@@ -2424,13 +2568,13 @@ ReallocateArrayDrawing(int faces, int mode)
 	switch( WhichSliceMode)
 	{
 		case A_AXIS:
-		NOS_L=NOS_AL;
+		NOS_L=NOS_AL * (1+A_layer_max - A_layer_min);
 		break;
 		case B_AXIS:
-		NOS_L=NOS_BL;
+		NOS_L=NOS_BL * (1+B_layer_max - B_layer_min);
 		break;
 		case C_AXIS:
-		NOS_L=NOS_CL;
+		NOS_L=NOS_CL * (1+C_layer_max - C_layer_min);
 		break;
 	}
 
