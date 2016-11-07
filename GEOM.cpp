@@ -1,6 +1,6 @@
 ////////////////////////////////////////////// GEOMETRY ////////////////////////////////////////////
 //translation vectors cubic:
-// float		abc[3][3] = {
+//float		abc[3][3] = {
 // 				{	1.0f, 0.0f, 0.0f }, // a
 // 				{	0.0f, 1.0f, 0.0f }, // b
 // 				{	0.0f, 0.0f, 1.0f }};// c
@@ -8,17 +8,19 @@
 //atom positions in basic domain: {x0,y0,z0, x1,y1,z1,...}
 //not more then 100 atoms per basic domain
 //FCC
-// float	Block[4*3] = 
+//float	Block[4*3] = 
 // 		{	0.0f,	0.0f,	0.0f,	
 // 			0.5f,	0.5f,	0.0f,
 // 			0.5f,	0.0f,	0.5f,
 // 			0.0f,	0.5f,	0.5f	
 // 		};
 //BCC
-/*float Block[2*3] = 
+/*
+float Block[2*3] = 
     { 0.0f, 0.0f, 0.0f, 
       0.5f, 0.5f, 0.5f, 
-    };*/
+    };
+ */
 //Simple Cubic 1 [001]
 // float		abc[3][3] = {
 // 				{	1.0f, 0.0f, 0.0f }, // a
@@ -38,14 +40,14 @@
 // 				};	
 
 //Simple Cubic 3 [111]
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, sqrt(2.f), 0.0f }, // b
-// 				{	0.0f, 0.0f, sqrt(2.f) }};// c				
-// float		Block[][3] = {		
-// 				{0,		      0,	          0},	
-// 				{0,	sqrt(2.f)/2,	sqrt(2.f)/2}
-// 				};
+float		abc[3][3] = {
+				{	1.0f, 0.0f, 0.0f }, // a
+				{	0.0f, sqrt(2.f), 0.0f }, // b
+				{	0.0f, 0.0f, sqrt(2.f) }};// c				
+float		Block[][3] = {		
+				{0,		      0,	          0},	
+				{0,	sqrt(2.f)/2,	sqrt(2.f)/2}
+				};
 
 //FCC 2
 // float		abc[3][3] = {
@@ -68,55 +70,6 @@
 // 				{0,		      0,	          0},	
 // 				};
 
-//FCC 2 Markus Hofmann1 4 atoms in the unit cell
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, sqrt(2.f), 0.0f }, // b
-// 				{	0.0f, 0.0f, 0.0f }};// c				
-// float		Block[][3] = {		
-// 				{0,		          0,             0},	
-// 				{0,	    sqrt(2.f)/2,             0},
-// 				{0.5,	sqrt(2.f)/4,   sqrt(2.f)/4},
-// 				{0.5, 3*sqrt(2.f)/4,   sqrt(2.f)/4}
-// 				};
-
-//FCC 2 Markus Hofmann2 2 atoms in the unit cell
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, sqrt(2.f)/2, 0.0f }, // b
-// 				{	0.0f, 0.0f, 0.0f }};// c //				
-// float		Block[][3] = {		
-// 				{0,		          0,             0},	
-// 				{0.5,	sqrt(2.f)/4,   sqrt(2.f)/4},
-// 				};
-
-//BCC 2 Markus Hofmann2 2 atoms in the unit cell
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.5f, sqrt(2.f)/2, 0.0f }, // b
-// 				{	0.0f, 0.0f, 0.0f }};// c //				
-// float		Block[][3] = {		
-// 				{0,		          0,             0},	
-// 				{0.5,	0,   sqrt(2.f)/2},
-// 				};
-
-//BCC 2 Example for Markus Hofmann2 1 atoms in the unit cell
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.5f, sqrt(2.f)/2, 0.0f }, // b
-// 				{	0.0f, 0.0f, 0.0f }};// c //				
-// float		Block[][3] = {		
-// 				{0,		          0,             0},	
-// 				};
-
-// float		abc[3][3] = {
-// 				{	sqrt(2.f)/2, -0.5f, 0.0f }, // a
-// 				{	sqrt(2.f)/2,  0.5f, 0.0f }, // b
-// 				{	0.0f, 0.0f, 0.0f }};// c //				
-// float		Block[][3] = {		
-// 				{0,		          0,             0},
-// 				//{sqrt(2.f)/2,	  0,  -sqrt(2.f)/2},	
-// 				};
 
 //B20(1)
 // #define uB20		0.138f
@@ -127,6 +80,7 @@
 // 				{0.5f-uB20,	1.0f-uB20,	0.5f+uB20}	
 // 				};
 //B20(2)
+/*
 float		abc[3][3] = {
 				{	1.0f, 0.0f, 0.0f }, // a
 				{	0.0f, 1.0f, 0.0f }, // b
@@ -138,34 +92,35 @@ float		Block[][3] = {
 				{1.0f-2*uB20,	0.5f,	0.5f-2*uB20},	
 				{0.5f-2*uB20,	1.0f-2*uB20,	0.5f}	
 				};
+*/
 //B20(Maria)
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, 1.0f, 0.0f }, // b
-// 				{	0.0f, 0.0f, 1.0f }};// c
-// //#define uB20		0.138f//MnSi
-// // float		Block[][3] = {		
-// // 				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
-// // 				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
-// // 				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
-// // 				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
-// // 				};
-// #define uB20		0.135f//FeGe
+/*float		abc[3][3] = {
+				{	1.0f, 0.0f, 0.0f }, // a
+				{	0.0f, 1.0f, 0.0f }, // b
+				{	0.0f, 0.0f, 1.0f }};// c
+//#define uB20		0.138f//MnSi
 // float		Block[][3] = {		
 // 				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
 // 				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
 // 				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
 // 				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
 // 				};
+#define uB20		0.135f//FeGe
+float		Block[][3] = {		
+				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
+				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
+				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
+				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
+				};*/
 
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			ABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 //int			ABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-int			ABC[3] = {30,30,50};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
+int			ABC[3] = {5,5,5};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 //int			ABC[3] = {288,288,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 int			Boundary[3] = {0, 0, 0};// boundary conditions along a, b, c translation vectors
 
-int			ShellNumber = 4;
+int			ShellNumber = 1;
 int			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
 float*		RadiusOfShell = (float *)calloc(ShellNumber , sizeof(float));  
 int*		NeighborsPerAtom = (int *)calloc(AtomsPerBlock, sizeof(int));
@@ -174,7 +129,14 @@ int			NOS=AtomsPerBlock*ABC[0]*ABC[1]*ABC[2]; // number of spins
 int			NOS_AL=AtomsPerBlock*ABC[1]*ABC[2]; // number of spins per A layer
 int			NOS_BL=AtomsPerBlock*ABC[0]*ABC[2]; // number of spins per B layer
 int			NOS_CL=AtomsPerBlock*ABC[0]*ABC[1]; // number of spins per C layer
+
 double 		iNOS = 1.0/NOS;
+
+int			NOB=ABC[0]*ABC[1]*ABC[2]; // number of Blocks
+int			NOB_AL=ABC[1]*ABC[2]; // number of spins per A layer
+int			NOB_BL=ABC[0]*ABC[2]; // number of spins per B layer
+int			NOB_CL=ABC[0]*ABC[1]; // number of spins per C layer
+
 void	
 GetShells(float abc[][3], float block[][3], int atomsPerBlock, int ShellNum, float * R)
 {
@@ -289,7 +251,7 @@ GetNeighborsNumber(
 
 
 void
-CreateNeighborsMap( 
+CreateMapOfNeighbors( 
 	float abc[][3], float block[][3], int atomsPerBlock, int shellNum, float * R,
 	int* aiBlock, int* niBlock, int* niGridA, int* niGridB, int* niGridC, int* sIdx)
 {

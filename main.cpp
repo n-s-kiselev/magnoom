@@ -19,6 +19,11 @@
 //    % sudo cp -r ~/Documents/Nick/AntTweakBar /usr/local/
 //    % g++ main.cpp -o magnoom -O3 -Wall -fno-strict-aliasing -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
 //    Note, in OS X: https://lukecyca.com/2008/glui-235-framework-for-mac-os-x.html
+//
+//    Raspberry Pi3:
+//    pi@raspberrypi: sudo apt-get install libgl1-mesa-dev libgles2-mesa-dev libglew-dev:armhf libglewmx-dev:armhf libglib2.0-dev libglu1-mesa-dev
+//    pi@raspberrypi: g++ main.cpp -o magnoom -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL
+//
 //    Ubuntu   :  
 //    $ g++ main.cpp -o magnoom -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL     
 //    $ sudo export PATH="/usr/bin:$PATH" {/usr/local/bin/ld: this linker was not configured to use sysroots}
@@ -97,9 +102,13 @@ float*		RNx; // array of x-components for random vector
 float*		RNy; // array of y-components for random vector 
 float*		RNz; // array of z-components for random vector 
 
-float*		Px; // x component position array
-float*		Py; // y component position array
-float*		Pz; // z component position array 
+float*		Px; // x spin position array
+float*		Py; // y spin position array
+float*		Pz; // z spin position array 
+
+float*		BPx; // x Block position array
+float*		BPy; // y Block position array
+float*		BPz; // z Block position array 
 
 double*		Heffx; // x component position array
 double*		Heffy; // y component position array
@@ -246,9 +255,7 @@ NIdxGridB = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative p
 NIdxGridC = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. b
 SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corresponding to this pair
 
-
-
-	CreateNeighborsMap( abc, Block, AtomsPerBlock, ShellNumber, RadiusOfShell, 
+	CreateMapOfNeighbors( abc, Block, AtomsPerBlock, ShellNumber, RadiusOfShell, 
 						AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx);
 	Jexc = (float *)calloc(NeighborPairs, sizeof(float));
 	Bexc = (float *)calloc(NeighborPairs, sizeof(float));
@@ -317,6 +324,10 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	Py = (float *)calloc(NOS, sizeof(float));
 	Pz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
 
+	BPx = (float *)calloc(NOB, sizeof(float));
+	BPy = (float *)calloc(NOB, sizeof(float));
+	BPz = (float *)calloc(NOB, sizeof(float));	// <-- + 12 Mega Byte
+
 	Heffx = (double *)calloc(NOS, sizeof(double));
 	Heffy = (double *)calloc(NOS, sizeof(double));
 	Heffz = (double *)calloc(NOS, sizeof(double));// <-- + 12 Mega Byte
@@ -380,6 +391,7 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	free(Heffx); free(Heffy); free(Heffz);
 	free(RNx);   free(RNy);   free(RNz);
 	free(Px);    free(Py);    free(Pz); 
+	free(BPx);   free(BPy);   free(BPz); 
 	free(RHue);  free(GHue);  free(BHue);
 	free(vertices);
 	free(normals);
