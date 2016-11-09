@@ -2030,6 +2030,17 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 	float P = H*Pivot;	// pivot - central point on which the arrow turns (shift up in Z from 0 to 1)
 	float cosF0, cosF1, cosF2, sinF0, sinF1, sinF2;
 	float tmp0[3], tmp1[3], tmp2[3], tmp3[3];
+	float v[8][3]={	{0,0,0},
+					{abc[0][0],abc[0][1],abc[0][2]},
+					{abc[1][0],abc[1][1],abc[1][2]},
+					{abc[0][0]+abc[1][0],abc[0][1]+abc[1][1],abc[0][2]+abc[1][2]},
+					{abc[2][0],abc[2][1],abc[2][2]},
+					{abc[2][0]+abc[0][0],abc[2][1]+abc[0][1],abc[2][2]+abc[0][2]},
+					{abc[2][0]+abc[1][0],abc[2][1]+abc[1][1],abc[2][2]+abc[1][2]},
+					{abc[2][0]+abc[0][0]+abc[1][0],
+						abc[2][1]+abc[0][1]+abc[1][1],
+							abc[2][2]+abc[0][2]+abc[1][2]},
+				};
 
 	//float h=H-H/GoldenRatio;	//H - head
 	//float R=h/GoldenRatio;	//big radius
@@ -2218,9 +2229,9 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 
 	case BOX1:
 
-			i++; V[i] = tmp0[0] = 0.0;		
-			i++; V[i] = tmp0[1] = 0.0;		
-			i++; V[i] = tmp0[2] = 0.0;		
+			i++; V[i] = tmp0[0] = v[0][0];		
+			i++; V[i] = tmp0[1] = v[0][0];		
+			i++; V[i] = tmp0[2] = v[0][0];		
 
 			i++; V[i] = tmp1[0] = abc[0][0];
 			i++; V[i] = tmp1[1] = abc[0][1];
