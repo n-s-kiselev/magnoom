@@ -2233,17 +2233,17 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 			i++; V[i] = tmp0[1] = v[0][0];		
 			i++; V[i] = tmp0[2] = v[0][0];		
 
-			i++; V[i] = tmp1[0] = abc[0][0];
-			i++; V[i] = tmp1[1] = abc[0][1];
-			i++; V[i] = tmp1[2] = abc[0][2];	
+			i++; V[i] = tmp1[0] = v[1][0];
+			i++; V[i] = tmp1[1] = v[1][1];
+			i++; V[i] = tmp1[2] = v[1][2];	
 
-			i++; V[i] = tmp2[0] = abc[1][0];	
-			i++; V[i] = tmp2[1] = abc[1][1];	
-			i++; V[i] = tmp2[2] = abc[1][2];
+			i++; V[i] = tmp2[0] = v[2][0];	
+			i++; V[i] = tmp2[1] = v[2][1];	
+			i++; V[i] = tmp2[2] = v[2][2];
 			
-			i++; V[i] = abc[0][0]+abc[1][0];	
-			i++; V[i] = abc[0][1]+abc[1][1];	
-			i++; V[i] = abc[0][2]+abc[1][2];		
+			i++; V[i] = v[3][0];	
+			i++; V[i] = v[3][1];	
+			i++; V[i] = v[3][2];		
 
 			Enorm( tmp0, tmp1, tmp2, tmp3);
 
