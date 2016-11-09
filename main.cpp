@@ -279,29 +279,28 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	float NXYZ[3] = {0.0, 0.0, 0.0};//neighbor position
 //Neighbours map to console	
 	printf("  N\t| Ia\t| In\t| Jn\t| Kn\t| Ln\t| Sn\t| Ax\t| Ay\t| Az\t| Nx\t| Ny\t| Nz\t|Dist\t| Jij\t| Dij\t| D_x\t| D_y\t| D_z\t|\n");
-	 for(int i=0;i<NeighborPairs;i++) 
-		{
-			printf("%3d  \t|", i);
-			printf("%3d  \t|", AIdxBlock[i]); //I'
-			printf("%3d  \t|", NIdxBlock[i]); //I
-			printf("%3d  \t|", NIdxGridA[i]); //J
-			printf("%3d  \t|", NIdxGridB[i]); //K
-			printf("%3d  \t|", NIdxGridC[i]); //L
-			printf("%3d  \t|",  SIdx[i]); //S
-			GetPosition( abc, Block, AIdxBlock[i], 0, 0, 0, AXYZ);
-			printf("%2.3f\t|%2.3f\t|%2.3f\t|",AXYZ[0],AXYZ[1],AXYZ[2]);
-			GetPosition( abc, Block, NIdxBlock[i], NIdxGridA[i], NIdxGridB[i], NIdxGridC[i], NXYZ);
-			printf("%2.3f\t|%2.3f\t|%2.3f\t|",NXYZ[0],NXYZ[1],NXYZ[2]);
-			AXYZ[0]-=NXYZ[0];
-			AXYZ[1]-=NXYZ[1];
-			AXYZ[2]-=NXYZ[2];
-			printf("%2.3f\t|",  sqrt(AXYZ[0]*AXYZ[0]+AXYZ[1]*AXYZ[1]+AXYZ[2]*AXYZ[2])); //Distance
-			printf("%2.3f\t|",  Jexc[i]); //Jij 
-			printf("%2.3f\t|",  Dexc[i]); //Jij 
-			printf("%2.3f\t|",  VDMx[i]); //DMI x
-			printf("%2.3f\t|",  VDMy[i]); //DMI y
-			printf("%2.3f\t|\n",VDMz[i]); //DMI z
-		}
+	for(int i=0;i<NeighborPairs;i++) {
+		printf("%3d  \t|",            i);
+		printf("%3d  \t|", AIdxBlock[i]); //I'
+		printf("%3d  \t|", NIdxBlock[i]); //I
+		printf("%3d  \t|", NIdxGridA[i]); //J
+		printf("%3d  \t|", NIdxGridB[i]); //K
+		printf("%3d  \t|", NIdxGridC[i]); //L
+		printf("%3d  \t|",      SIdx[i]); //S
+		GetPosition( abc, Block, AIdxBlock[i], 0, 0, 0, AXYZ);
+		printf("%2.3f\t|%2.3f\t|%2.3f\t|",AXYZ[0],AXYZ[1],AXYZ[2]);
+		GetPosition( abc, Block, NIdxBlock[i], NIdxGridA[i], NIdxGridB[i], NIdxGridC[i], NXYZ);
+		printf("%2.3f\t|%2.3f\t|%2.3f\t|",NXYZ[0],NXYZ[1],NXYZ[2]);
+		AXYZ[0]-=NXYZ[0];
+		AXYZ[1]-=NXYZ[1];
+		AXYZ[2]-=NXYZ[2];
+		printf("%2.3f\t|",  sqrt(AXYZ[0]*AXYZ[0]+AXYZ[1]*AXYZ[1]+AXYZ[2]*AXYZ[2])); //Distance
+		printf("%2.3f\t|",  Jexc[i]); //Jij 
+		printf("%2.3f\t|",  Dexc[i]); //Jij 
+		printf("%2.3f\t|",  VDMx[i]); //DMI x
+		printf("%2.3f\t|",  VDMy[i]); //DMI y
+		printf("%2.3f\t|\n",VDMz[i]); //DMI z
+	}
 
 //	Memory allocation:
 	Sx = (double *)calloc(NOS, sizeof(double));
@@ -364,10 +363,12 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 //  Set OpenGL context initial state.
 	setupOpenGL();
 //  Allocate memory for vetices, normals, colors and indicies array used in drawing subrutines
-	ChangeVectorMode ( 0 );
-//  Fill big array for indecies for all ARROW1 or cans 
+	ReallocateArrayDrawing();
+	// Fill array for prototype (arrow or cane) array 
+	UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+	// Fill big array for indecies for all arrows, cans, cones or boxes 
 	UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
-	UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+	UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, bSx, bSy, bSz, WhichVectorMode);
 	CreateNewVBO( );
 	UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI, vertices, normals, colors, indices);
 

@@ -1,7 +1,7 @@
 GLuint 			GLUT_window;
 const char *	WINDOWTITLE = { "Magnoom v1.0" };
-int				window_width	= 1024;//400;//
-int				window_height	= 768;//300;//
+int				window_width	= 800;//1024;//400;//
+int				window_height	= 600;//768;//300;//
 float 			asp_rat			= (float)( ((double)window_width)/((double)window_height) );
 float 			asp_rat_inv		= (float)( ((double)window_height)/((double)window_width) );
 
@@ -60,8 +60,13 @@ const GLfloat 	Colors[ ][3] =
 				{ 0.8, 0.8, 1. },	// blue
 };
 
-typedef enum	{ARROW1, CONE1, CANE, POINT, BOX1} enVectorMode; // which mode
-enVectorMode	WhichVectorMode	= CANE;	// CANE by default 
+typedef enum	{ARROW1 
+				,CONE1 
+				,CANE
+				,POINT 
+				,BOX1
+				} enVectorMode; // which mode
+enVectorMode	WhichVectorMode	= BOX1;	// CANE by default 
 char shortBufer[80];
 char inputfilename[64] = "input.csv";
 char outputfilename[64] = "output.csv";
@@ -85,16 +90,17 @@ float			Scale = 1.f;	// scaling factors for arrows [0.1-2]
 float			Pivot = 0.55f;
 
 // Slicing parameters
-int				A_layer_min = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
-int				B_layer_min = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+int				A_layer_min = 1;	// which layer (along a tr. vect. ) to show max=ABC[0]
+int				B_layer_min = 1;	// which layer (along b tr. vect. ) to show max=ABC[1]
 int				C_layer_min = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
-int				A_layer_max = A_layer_min+1;	// which layer (along c tr. vect. ) to show max=ABC[2]
-int				B_layer_max = B_layer_min+1;	// which layer (along c tr. vect. ) to show max=ABC[2]
-int				C_layer_max = B_layer_min+1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+int				A_layer_max = 1;	// which layer (along a tr. vect. ) to show max=ABC[0]
+int				B_layer_max = 1;	// which layer (along b tr. vect. ) to show max=ABC[1]
+int				C_layer_max = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
 
 typedef enum	{A_AXIS, B_AXIS, C_AXIS} enSliceMode; // which mode
-enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
+enSliceMode	    WhichSliceMode	= A_AXIS;	// CANE by default 
 
+// Parameters for initial state 
 float			chSize = 71; // characteristic size of initial state in units of "a"
 float			chDir[3] = {0,1,0}; // characteristic size of initial state in units of "a"
 GLuint 			iStart;
@@ -163,10 +169,9 @@ int			Play=0;
 
 int			DataTransfer=1;
 
-void			ChangeVectorMode ( int );
-void			ChangeColorMap ( int );
-void			ChangeScale ( int );
-void			ChangeInitialState ( int );
+void			ChangeVectorMode( int );
+void			ChangeColorMap( int );
+void			ChangeInitialState( int );
 void			Buttons( int );
 void			Keyboard( unsigned char, int, int );
 void			KeyboardAdd( int, int, int );
@@ -174,7 +179,7 @@ void			MouseButton( int, int, int, int );
 void			MouseMotion( int, int );
 float			ElapsedSeconds( );
 // color control functions
-void			HSVtoRGB( float[3], float [3] , int, int);
+void			HSVtoRGB(float[3], float [3] , int, int);
 void			InitRGB(float* , float* , float* , int*);
 // VBO array preparing functions
 void			ReallocateArrayDrawing();
@@ -188,19 +193,16 @@ void			UpdateIndices(GLuint * , int, GLuint *, int, int);
 void			UpdateVerticesNormalsColors(float *, float *, int, float *, float *, float *, int, float * , float * , float *, double * , double * , double *, int);
 // drawing functions
 void			GetBox(float[][3], int[3], float[4][3]);
-void			drawVBO( int, int );
-void			idle ();
+void			drawVBO();
+void			idle();
 void			setupTweakBar();
 // return the number of seconds since the start of the program:
-float
-ElapsedSeconds( )	
-{
+float ElapsedSeconds( )	{
 	int ms = glutGet( GLUT_ELAPSED_TIME );	// get # of milliseconds since the start of the program
 	return (float)ms / 1000.;				// convert it to seconds:
 }
 
-void
-Resize( int window_width, int window_height) // called when user resizes the window
+void Resize( int window_width, int window_height) // called when user resizes the window
 {
 	asp_rat     = (float)((   ((double)window_width)/((double)window_height)   ));
 	asp_rat_inv = (float)((   ((double)window_height)/((double)window_width)   ));
@@ -211,31 +213,27 @@ Resize( int window_width, int window_height) // called when user resizes the win
     TwWindowSize(window_width, window_height);
 }
 
-void
-Reset( )
+void Reset( )
 {
 	Rot[0] = Rot[1] = Rot[2] = TransXYZ[0] = TransXYZ[1] = TransXYZ[2] = 0.;
 	PerspSet[0] =60.f;
 }
 
-void
-Xup( )
+void Xup( )
 {
 	Rot[1] = 0.;
 	Rot[0] = Rot[2] = 270.;
 	TransXYZ[0] = TransXYZ[1] = 0.;
 }
 
-void
-Yup( )
+void Yup( )
 {
 	Rot[2] = 180;
 	Rot[0] = 270.;
 	TransXYZ[0] = TransXYZ[1] = 0.;
 }
 
-void
-Zup( )
+void Zup( )
 {
 	Rot[0] = Rot[1] = Rot[2] = TransXYZ[0] = TransXYZ[1] = 0.;
 }
@@ -731,7 +729,7 @@ void Display (void)
 	glRotatef( (GLfloat)Rot[1], 0., 1., 0. ); //@Y
 	glRotatef( (GLfloat)Rot[2], 0., 0., 1. ); //@Z
 
-	drawVBO(VCNum, WhichVectorMode); // Draw VBO for spins
+	drawVBO(); // Draw VBO for spins
 	
 	// possibly draw the box and periodic boundary condition :
 	if( BoxOn != 0 ) 
@@ -765,7 +763,7 @@ void setupOpenGL ()
 	glewInit();
 	#endif
 
-// initialize element of the drawing scene which remain unchanged e.g. coordinate basis, domain boundary etc.
+    // initialize element of the drawing scene which remain unchanged e.g. coordinate basis, domain boundary etc.
 	InitLists(abc, ABC);
 	InitRGB(RHue, GHue, BHue, HueMapRGB);
 	// Set the GLUT callback functions
@@ -807,8 +805,8 @@ void setupOpenGL ()
 	glShadeModel (GL_SMOOTH); //set the shader to smooth shader GL_SMOOTH/GL_FLAT
 
 	glEnable(GL_COLOR_MATERIAL);
-	glCullFace(GL_FRONT);
-	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT_AND_BACK);//GL_FRONT
+	//glEnable(GL_CULL_FACE);
 
 	glEnable(GL_POINT_SMOOTH);
 	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
@@ -831,7 +829,7 @@ void idle ()
 		{
 			if (DataTransfer==1)
 			{
-			ChangeVectorMode (1);
+			ChangeVectorMode(1);
 			totalEnergy = GetTotalEnergy( 	bSx, bSy, bSz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
 						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
@@ -886,9 +884,9 @@ void TW_CALL CB_SetScale(const void *value, void *clientData )
 {
 	(void)clientData; // unused
     Scale = *( float *)value; // copy value to Scale
-if(WhichVectorMode==ARROW1||WhichVectorMode==CONE1) 
-   {UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);}
-	ChangeVectorMode (1);
+// if(WhichVectorMode==ARROW1||WhichVectorMode==CONE1) 
+//    {UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);}
+	ChangeVectorMode (0);
 }
 
 //  Callback function called by the tweak bar to get the 'AutoRotate' value
@@ -902,51 +900,51 @@ void TW_CALL CB_GetScale(void *value, void *clientData)
 void TW_CALL CB_SetVectorMode(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    WhichVectorMode = *( enVectorMode *)value; // copy value to Scale
+    WhichVectorMode = *( enVectorMode *)value; // copy value to WhichVectorMode
     ChangeVectorMode (0);
 }
 
-//  Callback function called by the tweak bar to get the 'AutoRotate' value
+
 void TW_CALL CB_GetVectorMode(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(int *)value = WhichVectorMode; // just copy Scale to value
+    *(int *)value = WhichVectorMode; // just copy WhichVectorMode to value
 }
 
 
 void TW_CALL CB_SetFaces(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    arrowFaces = *( int *)value; // copy value to Scale
+    arrowFaces = *( int *)value; // copy value to arrowFaces
 	ChangeVectorMode (0);
 }
 
-//  Callback function called by the tweak bar to get the 'AutoRotate' value
+
 void TW_CALL CB_GetFaces(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(int *)value = arrowFaces; // just copy Scale to value
+    *(int *)value = arrowFaces; // just copy arrowFaces to value
 }
 
 void TW_CALL CB_SetPivot(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    Pivot = *( float *)value; // copy value to Scale
+    Pivot = *( float *)value; // copy value to Pivot
 	ChangeVectorMode (0);
 }
 
-//  Callback function called by the tweak bar to get the 'AutoRotate' value
+
 void TW_CALL CB_GetPivot(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(float *)value = Pivot; // just copy Scale to value
+    *(float *)value = Pivot; // just copy Pivot to value
 }
 
 
 void TW_CALL CB_SetColorShift(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    ColorShift = *( int *)value; // copy value to Scale
+    ColorShift = *( int *)value; // copy value to ColorShift
 		if(WhichColorScheme==RGB)
 		{
 		HueMap[0]=HueMapRGB[0]+ColorShift;;
@@ -972,7 +970,7 @@ void TW_CALL CB_SetColorShift(const void *value, void *clientData )
 void TW_CALL CB_GetColorShift(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(int *)value = ColorShift; // just copy Scale to value
+    *(int *)value = ColorShift; // just copy ColorShift to value
 }
 
 
@@ -1002,30 +1000,31 @@ void TW_CALL CB_SetColorScheme(const void *value, void *clientData )
 		ChangeVectorMode (1);
 }
 
+
 void TW_CALL CB_GetColorScheme(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(enColorScheme *)value = WhichColorScheme; // just copy Scale to value
+    *(enColorScheme *)value = WhichColorScheme; // just copy WhichColorScheme to value
 }
 
 
 void TW_CALL CB_SetInvHue(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    InvertHue = *( int *)value; // copy value to Scale
+    InvertHue = *( int *)value; // copy value to InvertHue
 	ChangeVectorMode (1);
 }
 
 void TW_CALL CB_GetInvHue(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(int *)value = InvertHue; // just copy Scale to value
+    *(int *)value = InvertHue; // just copy InvertHue to value
 }
 
 void TW_CALL CB_SetInvVal(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    InvertValue = *( int *)value; // copy value to Scale
+    InvertValue = *( int *)value; // copy value to InvertValue
 	ChangeVectorMode (1);
 }
 
@@ -1045,7 +1044,7 @@ void TW_CALL CB_SetACPeriod(const void *value, void *clientData )
 void TW_CALL CB_GetACPeriod(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(float *)value = Period_dc; // just copy Scale to value
+    *(float *)value = Period_dc; // just copy Period_dc to value
 }
 
 void TW_CALL CB_SetOmega(const void *value, void *clientData )
@@ -1058,7 +1057,7 @@ void TW_CALL CB_SetOmega(const void *value, void *clientData )
 void TW_CALL CB_GetOmega(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(float *)value = Omega_dc; // just copy Scale to value
+    *(float *)value = Omega_dc; // just copy Omega_dc to value
 }
 
 void TW_CALL CB_SetInitial( void *clientData )
@@ -1073,9 +1072,9 @@ void TW_CALL CB_RotateAllSpins( void *clientData )
 		double tmp[3];
 		for (int i=0; i<NOS; i++) {
 			RotateVector(Sx[i], Sy[i], Sz[i], chDir[0], chDir[1], chDir[2], RotateAllSpins, tmp);
-			Sx[i] = tmp[0];
-			Sy[i] = tmp[1];
-			Sz[i] = tmp[2];
+			bSx[i] = Sx[i] = tmp[0];
+			bSy[i] = Sy[i] = tmp[1];
+			bSz[i] = Sz[i] = tmp[2];
 		}
 		ChangeVectorMode(1);		
 	}
@@ -1083,19 +1082,19 @@ void TW_CALL CB_RotateAllSpins( void *clientData )
 
 void TW_CALL CB_InvertX( void *clientData )
 {
-	for (int i=0; i<NOS; i++) {Sx[i] = -Sx[i];}
+	for (int i=0; i<NOS; i++) {Sx[i] = -Sx[i]; bSx[i] = -bSx[i];}
 	ChangeVectorMode(1);
 }
 
 void TW_CALL CB_InvertY( void *clientData )
 {
-	for (int i=0; i<NOS; i++) {Sy[i] = -Sy[i];}
+	for (int i=0; i<NOS; i++) {Sy[i] = -Sy[i]; bSy[i] = -bSy[i];}
 	ChangeVectorMode(1);
 }
 
 void TW_CALL CB_InvertZ( void *clientData )
 {
-	for (int i=0; i<NOS; i++) {Sz[i] = -Sz[i];}
+	for (int i=0; i<NOS; i++) {Sz[i] = -Sz[i]; bSz[i] = -bSz[i];}
 	ChangeVectorMode(1);
 }
 
@@ -1110,20 +1109,17 @@ void TW_CALL CB_CleanSxSySzFile( void *clientData )
 void TW_CALL CB_SetSliceMode(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    WhichSliceMode = *( enSliceMode *)value; // copy value to Scale
-		ReallocateArrayDrawing();
-		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
-		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
-		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
-		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+    WhichSliceMode = *( enSliceMode *)value; // copy value to WhichSliceMode
+    ChangeVectorMode(0);
 }
 
-//  Callback function called by the tweak bar to get the 'AutoRotate' value
+
 void TW_CALL CB_GetSliceMode(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(int *)value = WhichSliceMode; // just copy Scale to value
+    *(int *)value = WhichSliceMode; // just copy WhichSliceMode to value
 }
+
 
 void TW_CALL CB_SetAlayerMin(const void *value, void *clientData )
 {
@@ -1131,15 +1127,11 @@ void TW_CALL CB_SetAlayerMin(const void *value, void *clientData )
 	int test= *( int *)value; // copy value to A_layer_min
 	if (test>=1 && test<=A_layer_max){
         A_layer_min = test; // copy value to A_layer_min
-		ReallocateArrayDrawing();
-		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
-		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
-		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
-		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+        ChangeVectorMode(0);
 	}
 }
 
-//  Callback function called by the tweak bar to get the 'AutoRotate' value
+
 void TW_CALL CB_GetAlayerMin(void *value, void *clientData)
 {
     (void)clientData; // unused
@@ -1153,15 +1145,11 @@ void TW_CALL CB_SetAlayerMax(const void *value, void *clientData )
 	int test= *( int *)value; // copy value to A_layer_min
 	if (test<=ABC[0] && test>=A_layer_min){
         A_layer_max = test; // copy value to A_layer_min
-		ReallocateArrayDrawing();
-		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
-		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
-		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
-		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+        ChangeVectorMode(0);
 	}
 }
 
-//  Callback function called by the tweak bar to get the 'AutoRotate' value
+
 void TW_CALL CB_GetAlayerMax(void *value, void *clientData)
 {
     (void)clientData; // unused
@@ -1172,7 +1160,7 @@ void TW_CALL CB_GetAlayerMax(void *value, void *clientData)
 void TW_CALL CB_ResetIterations( void *clientData )
 {
   ITERATION=0;
- }
+}
 
 
 void TW_CALL CB_SaveCSV( void *clientData )
@@ -1206,8 +1194,6 @@ void TW_CALL CB_ReadCSV( void *clientData )
 		    	}
 		    }while(c != EOF && c != '\n');
 
-
-
 		//printf("%s\n", line);
     	int i=0;//line (spin) index
 		do { // read all lines in file
@@ -1228,30 +1214,30 @@ void TW_CALL CB_ReadCSV( void *clientData )
 				// Px[i]=px;
 				// Py[i]=py;
 				// Pz[i]=pz;
-				Sx[i]=sx;
-				Sy[i]=sy;
-				Sz[i]=sz;
+				bSx[i]=Sx[i]=sx;
+				bSy[i]=Sy[i]=sy;
+				bSz[i]=Sz[i]=sz;
 		 	}
 		 	i++;
 		}while(c != EOF); 
     fclose(pFile);           
     }
-		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
-		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI, vertices, normals, colors, indices);
+	ChangeVectorMode(1);
 }
 
 void setupTweakBar()
 {
+/*  Global settings for the bar-menu  */
 	TwDefine(" GLOBAL iconpos=topleft "); // icons go to top-left corner of the window
 	TwDefine(" GLOBAL iconalign=horizontal "); // icons will be aligned horizontally
 	TwDefine(" GLOBAL contained=true "); // bars cannot move outside of the window
-	TwDefine(" GLOBAL iconmargin='1 1' ");
-////////////////////////////////////////////// Help Bar F1 /////////////////////////////////////////////////////////////
+	TwDefine(" GLOBAL iconmargin='1 8'  "); // icons will be displayed at 1 and 16 pixels from the horizontal and vertical window borders respectively
+/*  Help Bar F1 */
 	help_bar = TwGetBarByIndex(0);
 	TwDefine(" TW_HELP size='440 510' color='70 100 100'");
 	TwDefine(" TW_HELP help='F1: show/hide (this) Help bar' "); // change default tweak bar size and color
 
-//////////////////////////////////////////////// View F2 ///////////////////////////////////////////////////////////////
+/*  View Bar F2 */
     view_bar = TwNewBar("View");
     TwDefine(" View iconified=true "); 
     TwDefine(" View size='220 510' color='224 216 96' alpha=200 "); // change default tweak bar size and color
@@ -1269,13 +1255,14 @@ void setupTweakBar()
 	}
 
 	{
-	TwEnumVal		enVectorModeTw[] = {{ARROW1, "Arrows"}, 
-										{CONE1,   "Cones"}, 
-										{CANE,    "Canes"}, 
-										{POINT,  "Points"},
-										{BOX1,    "Boxes"}};
+	TwEnumVal		enVectorModeTw[] = {{ARROW1, "Arrows"} 
+										,{CONE1,   "Cones"} 
+										,{CANE,    "Canes"} 
+										,{POINT,  "Points"}
+										,{BOX1,    "Boxes"}
+									};
 	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Type_of_vectors", enVectorModeTw, 5);
-	TwAddVarCB(view_bar, "Type of vectors", TV_TYPE_VEC_MOD, CB_SetVectorMode, CB_GetVectorMode, &WhichVectorMode, "keyIncr='v' help='Type of 3D vectors' ");
+	TwAddVarCB(view_bar, "Type of vectors", TV_TYPE_VEC_MOD, CB_SetVectorMode, CB_GetVectorMode, &WhichVectorMode, "keyIncr='v' keyDecr='V' help='Type of 3D vectors' ");
 	}
 
 	TwAddVarCB(view_bar, "Pivot", TW_TYPE_FLOAT, CB_SetPivot, CB_GetPivot,  &Pivot, " min=0 max=1 step=0.01 help='Pivot of 3D arrow.' ");
@@ -1322,21 +1309,25 @@ void setupTweakBar()
 	TwAddVarCB(view_bar, "Color scheme", TV_TYPE_COL_SCH, CB_SetColorScheme, CB_GetColorScheme, &WhichColorScheme, "help='Type of 3D vectors' group='HSV color map' ");
 	}
 
-//////////////////////////////////////////////// View F3 ///////////////////////////////////////////////////////////////
+/*  Slicing F3 */
     slicing_bar = TwNewBar("Slicing");
     TwDefine(" Slicing iconified=true "); 
     TwDefine(" Slicing size='220 220' color='224 216 96' alpha=200 "); // change default tweak bar size and color
     TwDefine(" Slicing help='F3: show/hide Slicing bar' "); // change default tweak bar size and color
 
 	{
-	TwEnumVal		enSliceModeTw[] = { {A_AXIS, "a-axis"}, {B_AXIS, "b-axis"}, {C_AXIS, "c-axis"}};
+	TwEnumVal		enSliceModeTw[] = { 
+										{A_AXIS, "a-axis"}, 
+										{B_AXIS, "b-axis"}, 
+										{C_AXIS, "c-axis"}
+									  };
 	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 3);
-	TwAddVarCB(slicing_bar, "Slicing plane", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' help='Slising plane perpenticulat to the choosen axis' ");
+	TwAddVarCB(slicing_bar, "Slicing plane", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
 	}
-	TwAddVarCB(slicing_bar, "a layer min", TW_TYPE_INT32, CB_SetAlayerMin, CB_GetAlayerMin,  &A_layer_min, "step=1 help='Bottom layer of slicing along a-axis' ");
-	TwAddVarCB(slicing_bar, "a layer max", TW_TYPE_INT32, CB_SetAlayerMax, CB_GetAlayerMax,  &A_layer_max, "step=1 help='Top layer of slicing along a-axis' ");
+	//TwAddVarCB(slicing_bar, "a layer min", TW_TYPE_INT32, CB_SetAlayerMin, CB_GetAlayerMin,  &A_layer_min, "step=1 help='Bottom layer of slicing along a-axis' ");
+	//TwAddVarCB(slicing_bar, "a layer max", TW_TYPE_INT32, CB_SetAlayerMax, CB_GetAlayerMax,  &A_layer_max, "step=1 help='Top layer of slicing along a-axis' ");
 
-///////////////////////////////////////// Parameters&Controls F4 ///////////////////////////////////////////////////////
+/*  Hamiltonian parameters&controls F4 */
 	control_bar = TwNewBar("Parameters&Controls");
     TwDefine(" Parameters&Controls iconified=true "); 
     TwDefine(" Parameters&Controls size='220 510' color='224 96 216' alpha=200 "); // change default tweak bar size and color
@@ -1383,13 +1374,14 @@ void setupTweakBar()
 	TwSetParam(control_bar, "KudDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
 	TwAddVarRW(control_bar, "Ku", TW_TYPE_FLOAT, &Ku, 
 	"label='Ku' help='The value of uniaxial anisotropy' ");
-TwAddSeparator(control_bar, "sep0", NULL);
-
+	//////////////////////////////////////////
+	TwAddSeparator(control_bar, "sep0", NULL);
+    //////////////////////////////////////////
 	TwAddVarRW(control_bar, "Kcub", TW_TYPE_FLOAT, &Kc, 
 	"label='Kc' help='The value of cubic anisotropy' ");
-
-TwAddSeparator(control_bar, "sep1", NULL);
-
+    //////////////////////////////////////////
+    TwAddSeparator(control_bar, "sep1", NULL);
+    //////////////////////////////////////////
 	for(int s=0; s<ShellNumber; s++)
 	{
 	snprintf(shortBufer,50,"J%1i",s);
@@ -1397,9 +1389,9 @@ TwAddSeparator(control_bar, "sep1", NULL);
 	"help='Heisenberg exchange' ");
 	TwSetParam(control_bar, shortBufer, "label",  TW_PARAM_CSTRING , 1, shortBufer);
 	}
-
-TwAddSeparator(control_bar, "sep2", NULL);
-	
+	//////////////////////////////////////////
+	TwAddSeparator(control_bar, "sep2", NULL);
+	//////////////////////////////////////////	
 	for(int s=0; s<ShellNumber; s++)
 	{
 	snprintf(shortBufer,50,"B%1i",s);
@@ -1407,9 +1399,9 @@ TwAddSeparator(control_bar, "sep2", NULL);
 	"help='Bi-quadratic exchange' ");
 	TwSetParam(control_bar, shortBufer, "label",  TW_PARAM_CSTRING , 1, shortBufer);
 	}
-
-TwAddSeparator(control_bar, "sep3", NULL);
-
+	//////////////////////////////////////////
+	TwAddSeparator(control_bar, "sep3", NULL);
+	//////////////////////////////////////////
 	for(int s=0; s<ShellNumber; s++)
 	{
 	snprintf(shortBufer,50,"D%1i",s);
@@ -1417,19 +1409,19 @@ TwAddSeparator(control_bar, "sep3", NULL);
 	"help='Dzyaloshinskii-Moriya' ");
 	TwSetParam(control_bar, shortBufer, "label",  TW_PARAM_CSTRING , 1, shortBufer);
 	}
-
-TwAddSeparator(control_bar, "sep4", NULL);
+	//////////////////////////////////////////
+	TwAddSeparator(control_bar, "sep4", NULL);
+	//////////////////////////////////////////
 	TwAddVarRW(control_bar, "ST param.", TW_TYPE_FLOAT, &Cu, 
 	"help='Dzyaloshinskii-Moriya' ");
 	TwAddVarRW(control_bar, "CurrentDir", TW_TYPE_DIR3F, &VCu, 
 	"label='cur. dir.' opened=true help='The polarization direction of electric current' ");
 
-///////////////////////////////////////// Initial state F5 ///////////////////////////////////////////////////////
+/*  Initial state F5 */
 	initial_bar = TwNewBar("Initial_State");
 	TwDefine(" Initial_State iconified=true "); 
 	TwDefine(" Initial_State size='220 510' color='180 180 254'  alpha=200"); // change default tweak bar size and color
 	TwDefine(" Initial_State help='F5: show/hide Initial state bar' "); // change default tweak bar size and color
-
 	{
 	TwEnumVal		enIniStateTw[] = { 	{RND, 		"Random"		        }, 
 										{HOMO, 		"Homogeneous"	        }, 
@@ -1474,7 +1466,7 @@ TwAddSeparator(control_bar, "sep4", NULL);
 	TwAddVarRW(initial_bar, "Input file name:", TW_TYPE_CSSTRING(sizeof(inputfilename)), inputfilename, "");
 	TwAddButton(initial_bar, "Read from CSV", CB_ReadCSV, NULL, "label='read state from JSINI.csv' ");	
 
-///////////////////////////////////////// AC field F6 ///////////////////////////////////////////////////////
+/*  AC field F6 */
 	ac_field_bar = TwNewBar("AC_Field");
 	TwDefine(" AC_Field iconified=true "); 
 	TwDefine(" AC_Field size='300 510' color='180 100 140'  alpha=200"); // change default tweak bar size and color
@@ -1501,8 +1493,7 @@ TwAddSeparator(control_bar, "sep4", NULL);
 	TwAddVarRW(ac_field_bar, "AC field on/off", TW_TYPE_BOOL32, &AC_FIELD_ON, 
 	"keyIncr='f' label='AC/DC on/off' true='on' false='off' help='On/off ac field'");
 
-
-///////////////////////////////////////// Info bar F12 ///////////////////////////////////////////////////////
+/*  Info bar F12 */
 	info_bar = TwNewBar("Info");
 	TwDefine(" Info refresh=0.5 ");
 	TwDefine(" Info iconified = false movable = false alwaysbottom=true resizable=false fontstyle=fixed fontsize=2"); 
@@ -1540,8 +1531,7 @@ TwAddSeparator(control_bar, "sep4", NULL);
 }
 
 
-void
-MouseButton( int button, int state, int x, int y ) // called when the mouse button transitions down or up
+void MouseButton( int button, int state, int x, int y ) // called when the mouse button transitions down or up
 {
 	int b = 0;			// LEFT, MIDDLE, or RIGHT
 if( !TwEventMouseButtonGLUT(button, state, x, y) )  // send event to AntTweakBar
@@ -1588,8 +1578,7 @@ if( !TwEventMouseButtonGLUT(button, state, x, y) )  // send event to AntTweakBar
 }
 
 
-void 
-MouseMotion( int x, int y ) // called when the mouse moves while a button is down
+void MouseMotion( int x, int y ) // called when the mouse moves while a button is down
 {
 	int dx = x - Xmouse;		// change in mouse coords
 	int dy = y - Ymouse;
@@ -1623,74 +1612,69 @@ if( !TwEventMouseMotionGLUT(x, y) )  // send event to AntTweakBar
 }
 
 // the keyboard callback:
-void
-Keyboard( unsigned char c, int x, int y )
+void Keyboard( unsigned char c, int x, int y )
 {
 if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar 
   { // event has not been handled by AntTweakBar
     // your code here to handle the event	
-	if( false )
-		fprintf( stderr, "Keyboard: '%c' (0x%0x)\n", c, c );
+	// if( false ) fprintf( stderr, "Keyboard: '%c' (0x%0x)\n", c, c );
+
 		switch( c )
 		{
 			case '<':
 				switch(WhichSliceMode)
                 {case A_AXIS:
-					if (A_layer_min>1) A_layer_min-=1;
+					if (A_layer_min>1) {A_layer_min-=1; ChangeVectorMode(0);}
 				 break;
 				 case B_AXIS:
-				    if (B_layer_min>1) B_layer_min-=1;
+				    if (B_layer_min>1) {B_layer_min-=1; ChangeVectorMode(0);}
 				 break;
 				 case C_AXIS:
-				 	if (C_layer_min>1) C_layer_min-=1;
+				 	if (C_layer_min>1) {C_layer_min-=1; ChangeVectorMode(0);}
 				 break;			 
 				}
-				ChangeVectorMode(0);
 			break;
 
 			case '>':
 				switch(WhichSliceMode)
                 {case A_AXIS:
-					if (A_layer_min<A_layer_max) A_layer_min+=1;
+					if (A_layer_min<A_layer_max) {A_layer_min+=1; ChangeVectorMode(0);}
 				 break;
 				 case B_AXIS:
-				    if (B_layer_min<B_layer_max) B_layer_min+=1;
+				    if (B_layer_min<B_layer_max) {B_layer_min+=1; ChangeVectorMode(0);}
 				 break;
 				 case C_AXIS:
-				 	if (C_layer_min<C_layer_max) C_layer_min+=1;
+				 	if (C_layer_min<C_layer_max) {C_layer_min+=1; ChangeVectorMode(0);}
 				 break;			 
 				}
-				ChangeVectorMode (0);
 			break;
 
 			case ',':
 				switch(WhichSliceMode)
                 {case A_AXIS:
-					if (A_layer_max>A_layer_min) A_layer_max-=1;
+					if (A_layer_max>A_layer_min) {A_layer_max-=1; ChangeVectorMode (0);}
 				 break;
 				 case B_AXIS:
-				    if (B_layer_max>B_layer_min) B_layer_max-=1;
+				    if (B_layer_max>B_layer_min) {B_layer_max-=1; ChangeVectorMode (0);}
 				 break;
 				 case C_AXIS:
-				 	if (C_layer_max>C_layer_min) C_layer_max-=1;
+				 	if (C_layer_max>C_layer_min) {C_layer_max-=1; ChangeVectorMode (0);}
 				 break;			 
 				}
-				ChangeVectorMode (0);
 			break;
 
 			case '.':
 				switch(WhichSliceMode)
                 {case A_AXIS:
-					if (A_layer_max<ABC[0]) A_layer_max+=1;
+					if (A_layer_max<ABC[0]) {A_layer_max+=1; ChangeVectorMode (0);}
 				 break;
 				 case B_AXIS:
-				    if (B_layer_max<ABC[1]) B_layer_max+=1;
+				    if (B_layer_max<ABC[1]) {B_layer_max+=1; ChangeVectorMode (0);}
 				 break;
 				 case C_AXIS:
-				 	if (C_layer_max<ABC[2]) C_layer_max+=1;
+				 	if (C_layer_max<ABC[2]) {C_layer_max+=1; ChangeVectorMode (0);}
 				 break;			 
 				}
-				ChangeVectorMode (0);
 			break;
 
 			case 'q':
@@ -1723,10 +1707,9 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				Rot[1] += 0.25;
 				//TransXYZ[0]+=1;	
 				break;
-			case 'o':
-			case 'O':
-				
-				break;
+			// case 'o':
+			// case 'O':				
+			// 	break;
 
 			// case 'v':
 			// case 'V':
@@ -1772,9 +1755,7 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 	}
 }
 
-void
-KeyboardAdd( int key, int x, int y )
-{
+void KeyboardAdd( int key, int x, int y ){
 int isiconified;
 if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecialGLUT
     { // event has not been handled by AntTweakBar
@@ -1784,30 +1765,28 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 			case GLUT_KEY_UP:
 				switch (WhichSliceMode)
 				{case A_AXIS:
-					if (A_layer_max<ABC[0]) {A_layer_max+=1; A_layer_min+=1;}
+					if (A_layer_max < ABC[0]) {A_layer_max+=1; A_layer_min+=1; ChangeVectorMode(1);}
 				 break;
 				 case B_AXIS:
-				    if (B_layer_max<ABC[1]) {B_layer_max+=1; B_layer_min+=1;}
+				    if (B_layer_max < ABC[1]) {B_layer_max+=1; B_layer_min+=1; ChangeVectorMode(1);}
 				 break;
 				 case C_AXIS:
-				 	if (C_layer_max<ABC[2]) {C_layer_max+=1; C_layer_min+=1;}
+				 	if (C_layer_max < ABC[2]) {C_layer_max+=1; C_layer_min+=1; ChangeVectorMode(1);}
 				 break;			 
 				}
-				ChangeVectorMode(1);
 				break;
 			case GLUT_KEY_DOWN:
 				switch (WhichSliceMode)
 				{case A_AXIS:
-					if (A_layer_min>1) {A_layer_min-=1; A_layer_max-=1;}
+					if (A_layer_min>1) {A_layer_min-=1; A_layer_max-=1; ChangeVectorMode(1);}
 				 break;
 				 case B_AXIS:
-				    if (B_layer_min>1) {B_layer_min-=1; B_layer_max-=1;}
+				    if (B_layer_min>1) {B_layer_min-=1; B_layer_max-=1; ChangeVectorMode(1);}
 				 break;
 				 case C_AXIS:
-				 	if (C_layer_min>1) {C_layer_min-=1; C_layer_max-=1;}
+				 	if (C_layer_min>1) {C_layer_min-=1; C_layer_max-=1; ChangeVectorMode(1);} 
 				 break;
 				}
-				ChangeVectorMode(1);
 				break;
 			case  GLUT_KEY_F1:
 				TwGetParam(help_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
@@ -1871,129 +1850,98 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 	}
 }
 
-
-
-
-// glui buttons callback:
-void 
-Buttons( int id )
+void Buttons( int id )
 {
 	switch( id )
 	{
 		case XUP:
-
 			Xup( );
-			//glui_window->sync_live( );
 			glutSetWindow( GLUT_window );
 			glutPostRedisplay( );
 			break;
 
 		case YUP:
-
 			Yup( );
-			//glui_window->sync_live( );
 			glutSetWindow( GLUT_window );
 			glutPostRedisplay( );
 			break;
 
 		case ZUP:
-
 			Zup( );
-			//glui_window->sync_live( );
 			glutSetWindow( GLUT_window );
 			glutPostRedisplay( );
 			break;
 
 		case RESET:
-
 			Reset( );
-			//glui_window->sync_live( );
 			glutSetWindow( GLUT_window );
 			glutPostRedisplay( );
 			break;
 
 		case QUIT:
-
-			//glui_window->close( );					// gracefully close the glui window
 			glutSetWindow( GLUT_window );	//
 			glFinish( );					// gracefully close out the graphics
 			glutDestroyWindow( GLUT_window );// gracefully close the graphics window
-			//glutLeaveMainLoop();
 			exit( 0 );						// gracefully exit the program
 			break;
-
-		// case PLAY:
-		// 	if (Play==0)
-		// 	{
-		// 		Play=1;
-		// 		TwDefine(" Parameters&Controls/Run  label='STOP simulation' ");
-		// 		EnterCriticalSection(&culc_mutex);
-		// 			FLAG_CALC=DO_IT;
-		// 		LeaveCriticalSection(&culc_mutex);
-		// 	}else{
-		// 		Play=0; 
-		// 		TwDefine(" Parameters&Controls/Run  label='RUN simulation' ");
-		// 		EnterCriticalSection(&culc_mutex);
-		// 			FLAG_CALC=WAIT;
-		// 		LeaveCriticalSection(&culc_mutex);	
-		// 	}
-		// 	//glui_window->sync_live( );
-		// 	break;
 
 		default:
 			fprintf( stderr, "Don't know what to do with Button ID %d\n", id );
 	}
-
 }
 
-void
-ChangeInitialState ( int id )
+void ChangeInitialState ( int id )
 {
 	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, id );
+	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 	ChangeVectorMode ( 1 );
 }
 
-void
-ChangeVectorMode ( int id )
+void ChangeVectorMode( int id )
 {
 	switch ( id )
 	{
 		case 0: // change of mode e.g. from point to arrow
 		ReallocateArrayDrawing();
+		// printf("ElNumProto=%d\n",ElNumProto );
+		// printf("IdNumProto=%d\n",IdNumProto );
+		// printf("VCNumProto=%d\n",VCNumProto );
+		// printf("ElNum=%d\n",ElNum );
+		// printf("IdNum=%d\n",IdNum );
+		// printf("VCNum=%d\n",VCNum );
 		// Fill array for prototype (arrow or cane) array 
 		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
 		// Fill big array for indecies for all arrows, cans, cones or boxes 
 		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
 		case 1:	// change only the layer(s) for drawing
-		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, Sx, Sy, Sz, WhichVectorMode);
+		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, bSx, bSy, bSz, WhichVectorMode);
 		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
+		break;
 	}
 }
 
-
-void
-ChangeColorMap ( int id )
+void ChangeColorMap ( int id )
 {
 	switch (id)
 	{
 		case 0:
 		if(WhichColorScheme==RGB)
 		{
-		HueMap[0]=HueMapRGB[0]+ColorShift;;
-		HueMap[1]=HueMapRGB[1]+ColorShift;;
-		HueMap[2]=HueMapRGB[2]+ColorShift;;
-		HueMap[3]=HueMapRGB[3]+ColorShift;;
-		HueMap[4]=HueMapRGB[4]+ColorShift;;
-		HueMap[5]=HueMapRGB[5]+ColorShift;;
+		HueMap[0]=HueMapRGB[0]+ColorShift;
+		HueMap[1]=HueMapRGB[1]+ColorShift;
+		HueMap[2]=HueMapRGB[2]+ColorShift;
+		HueMap[3]=HueMapRGB[3]+ColorShift;
+		HueMap[4]=HueMapRGB[4]+ColorShift;
+		HueMap[5]=HueMapRGB[5]+ColorShift;
 		} 	
 		else
 		{
-		HueMap[0]=HueMapRYGB[0]+ColorShift;;
-		HueMap[1]=HueMapRYGB[1]+ColorShift;;
-		HueMap[2]=HueMapRYGB[2]+ColorShift;;
-		HueMap[3]=HueMapRYGB[3]+ColorShift;;
-		HueMap[4]=HueMapRYGB[4]+ColorShift;;
-		HueMap[5]=HueMapRYGB[5]+ColorShift;;
+		HueMap[0]=HueMapRYGB[0]+ColorShift;
+		HueMap[1]=HueMapRYGB[1]+ColorShift;
+		HueMap[2]=HueMapRYGB[2]+ColorShift;
+		HueMap[3]=HueMapRYGB[3]+ColorShift;
+		HueMap[4]=HueMapRYGB[4]+ColorShift;
+		HueMap[5]=HueMapRYGB[5]+ColorShift;
 		}
 		InitRGB(RHue, GHue, BHue, HueMap);
 		case 1:
@@ -2001,8 +1949,7 @@ ChangeColorMap ( int id )
 	}
 }
 
-void
-HSVtoRGB(float Vec[3], float RGB[3], int inV, int inH )
+void HSVtoRGB(float Vec[3], float RGB[3], int inV, int inH )
 {
 	int H = inH*359+(1-2*inH)*((int) atan2int (Vec[1]+0.01,Vec[0])); //it's fast atan function [int deg], see MATH.cpp
 
@@ -2021,8 +1968,7 @@ HSVtoRGB(float Vec[3], float RGB[3], int inV, int inH )
 	RGB[2] = BHue[H]*dV+minV;
 }
 
-void
-InitRGB(float* R, float* G, float* B, int *hueMap)
+void InitRGB(float* R, float* G, float* B, int *hueMap)
 {//It is a slow function  because of many "if" statements but we are not going to call it very often
 	int Red		= hueMap[0];
 	int Yellow	= hueMap[1];
@@ -2072,8 +2018,6 @@ InitRGB(float* R, float* G, float* B, int *hueMap)
 		}
 	} 
 }
-
-
 
 void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int mode)//faces = arrowFaces
 {
@@ -2325,12 +2269,11 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 	}	
 }
 
-void  
-UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
+void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 {	// VerN number of vertesiec components per one prototype arrow
 	int i,j;
-	int NOS_L=NOS_CL;
-	int NOB_L=NOB_CL;
+	int NOS_L=0;
+	int NOB_L=0;
 	switch( WhichSliceMode)
 	{
 		case A_AXIS:
@@ -2361,13 +2304,12 @@ UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 			j = n*Kinp; // shift in index array (for arrow and cone vertex num<index num!)
 			for (int k=0; k<Kinp; k++) Iout[j+k] = i+Iinp[k];		
 		}		
-	}
+	}		
 }
 
 
 
-void 
-UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp, 
+void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp, 
 							float * Vout, float * Nout, float * Cout, int Kout, 
 							float * Px, float * Py, float * Pz,
 							double * Sx, double * Sy, double * Sz, int mode)
@@ -2385,15 +2327,15 @@ UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	switch( WhichSliceMode)
 	{
 		case A_AXIS:
-			anini=(A_layer_min-1);
+			anini=A_layer_min-1;
 	        anfin=A_layer_max;
 		break;
 		case B_AXIS:
-			bnini=(B_layer_min-1);
+			bnini=B_layer_min-1;
 	        bnfin=B_layer_max;
 		break;
 		case C_AXIS:
-			cnini=(C_layer_min-1);
+			cnini=C_layer_min-1;
 	        cnfin=C_layer_max;
 		break;
 	}
@@ -2464,21 +2406,17 @@ UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	break;
 
 	case BOX1:
-		for (int an = anini; an<anfin; an++) 
-		{
-		for (int bn = bnini; bn<bnfin; bn++) 
-		{
-		for (int cn = cnini; cn<cnfin; cn++) 
-		{			
+		for (int an = anini; an<anfin; an++) {
+		for (int bn = bnini; bn<bnfin; bn++) {
+		for (int cn = cnini; cn<cnfin; cn++) {			
 			tmpV2[0] = 0;
 			tmpV2[1] = 0;
 			tmpV2[2] = 0;
 
 			n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
-			n = n*AtomsPerBlock;//index of the first spin in the block
 			for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 			{
-			    N = n + atom;
+			    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
  
 				tmpV2[0]+= Sx[N];
 				tmpV2[1]+= Sy[N];
@@ -2486,7 +2424,7 @@ UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 		    }
 		    (void)Unitf(tmpV2,tmpV2);
 		    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
-			n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+
 			j++;
 			for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
 			{
@@ -2624,13 +2562,13 @@ void UpdateSpinPositions(float abc[][3], int ABC[3], float BD[][3], int NBD, flo
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-void
-ReallocateArrayDrawing()
+void ReallocateArrayDrawing()
 {
 	free(vertexProto); free(normalProto); free(indicesProto);
 	free(vertices); free(normals); free(colors); free(indices);
-	int NOS_L=NOS_CL;
-	int NOB_L=NOB_CL;
+
+	int NOS_L=0;
+	int NOB_L=0;
 	switch( WhichSliceMode)
 	{
 		case A_AXIS:
@@ -2655,9 +2593,9 @@ ReallocateArrayDrawing()
 			IdNumProto = 3*ElNumProto; // number of indixes per arrow
 			VCNumProto = 3*(2*(1+arrowFaces)-2+4*arrowFaces+3*arrowFaces);
 			// Allocate memory for arrow prototype  
-			vertexProto  = (float  *)calloc(VCNumProto, sizeof( float  ));
-			normalProto  = (float  *)calloc(VCNumProto, sizeof( float  ));
-			indicesProto = (GLuint *)calloc(IdNumProto, sizeof( GLuint ));	
+			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
+			normalProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
+			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
 			ElNum = NOS_L * ElNumProto;
 			IdNum = NOS_L * IdNumProto;
 			VCNum = NOS_L * VCNumProto;
@@ -2669,10 +2607,10 @@ ReallocateArrayDrawing()
 			break;
 
 		case CONE1:		
-			// arrowFaces - number of arrow faces
-			ElNumProto = 2*arrowFaces-2; // number of triangles per arrow
-			IdNumProto = 3*ElNumProto; // number of indixes per arrow
-			VCNumProto = 3*((arrowFaces)+3*arrowFaces);// number of vertecies per arrow			
+			// arrowFaces - number of cone faces
+			ElNumProto = 2*arrowFaces-2; // number of triangles per cone
+			IdNumProto = 3*ElNumProto; // number of indixes per cone
+			VCNumProto = 3*((arrowFaces)+3*arrowFaces);// number of vertecies per cone			
 			// Allocate memory for arrow prototype  
 			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
 			normalProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
@@ -2688,22 +2626,21 @@ ReallocateArrayDrawing()
 			break;
 
 		case BOX1:		
-			// arrowFaces - number of arrow faces
 			ElNumProto = 2; // number of triangles per box
 			IdNumProto = 3*ElNumProto; // number of indixes per box
 			VCNumProto = 4*3;// number of vertecies per box			
 			// Allocate memory for box prototype  
-			vertexProto  = (float  *)calloc(VCNumProto, sizeof( float  ));
-			normalProto  = (float  *)calloc(VCNumProto, sizeof( float  ));
-			indicesProto = (GLuint *)calloc(IdNumProto, sizeof( GLuint ));	
+			vertexProto  = (float  *)malloc(VCNumProto* sizeof( float  ));
+			normalProto  = (float  *)malloc(VCNumProto* sizeof( float  ));
+			indicesProto = (GLuint *)malloc(IdNumProto* sizeof( GLuint ));	
 			ElNum = NOB_L * ElNumProto;
 			IdNum = NOB_L * IdNumProto;
 			VCNum = NOB_L * VCNumProto;	
 			// Allocate memory for all boxes (spins averaged over Block) 
-			vertices	= (float  *)calloc(VCNum, sizeof( float  ));
-			normals 	= (float  *)calloc(VCNum, sizeof( float  ));
-			colors 		= (float  *)calloc(VCNum, sizeof( float  ));
-			indices		= (GLuint *)calloc(IdNum, sizeof( GLuint ));	
+			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
+			normals 	= (float  *)malloc(VCNum * sizeof( float  ));
+			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
+			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
 			break;
 
 		case POINT:		
@@ -2717,10 +2654,10 @@ ReallocateArrayDrawing()
 			IdNum = NOS_L * IdNumProto;
 			VCNum = NOS_L * VCNumProto; // total number of all components of all vertices 
 			// Allocate memory for all points (spins) 
-			vertices	= (float  *)calloc(VCNum, sizeof( float  ));
+			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
 			normals 	= NULL;
-			colors 		= (float  *)calloc(VCNum, sizeof( float  ));
-			indices		= (GLuint *)calloc(IdNum, sizeof( GLuint ));	
+			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
+			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
 			break;
 
 		case CANE:	// is default vector mode
@@ -2740,11 +2677,12 @@ ReallocateArrayDrawing()
 			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
 			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));
 	}
+	printf("***********************\n" );
+	printf("Indeces=%d\n",IdNum );
+	printf("Vertices=%d\n",VCNum );
 }
 
-void 
-CreateNewVBO( )
-{
+void CreateNewVBO( ){
 	glGenBuffers(1, &vboIdV);
 	glGenBuffers(1, &vboIdN);
 	glGenBuffers(1, &vboIdC);
@@ -2771,7 +2709,7 @@ void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, floa
 				glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum * sizeof(float), col);
 
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-				glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
+				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*IdNum * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
 				glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum * sizeof(GLuint), ind);
 		break;
 		case POINT:
@@ -2802,10 +2740,9 @@ void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, floa
 	}
 }
 
-void 
-drawVBO(int VCNum, int mode)
+void drawVBO()
 {
-	switch (mode)
+	switch (WhichVectorMode)
 	{
 		case ARROW1:
 		case CONE1:
@@ -2819,7 +2756,7 @@ drawVBO(int VCNum, int mode)
 			glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
 
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI);
-			glDrawElements(GL_TRIANGLES, VCNum, GL_UNSIGNED_INT, (void*)(0));
+			glDrawElements(GL_TRIANGLES, IdNum, GL_UNSIGNED_INT, (void*)(0));
 
 			glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
 			glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
@@ -2843,7 +2780,7 @@ drawVBO(int VCNum, int mode)
 			glPointSize(10.f*Scale);
 			//Note, the range specifies the range of index values in the index region being rendered from.
 			//glDrawElements(GL_POINTS, iNum, GL_UNSIGNED_INT, (void*)(iStart*sizeof(GLuint)));
-			glDrawElements(GL_POINTS, VCNum/3, GL_UNSIGNED_INT, (void*)0);//draw whole VBO
+			glDrawElements(GL_POINTS, IdNum, GL_UNSIGNED_INT, (void*)0);//draw whole VBO
 
 			glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
 			glDisableClientState(GL_COLOR_ARRAY);		// disable normal arrays
@@ -2866,10 +2803,10 @@ drawVBO(int VCNum, int mode)
 			
 			glLineWidth(5.0f*Scale);
 			//glDrawElements(GL_LINES, iNum, GL_UNSIGNED_INT, (void*)(iStart*sizeof(GLuint)));// draw a stick VCNum
-			glDrawElements(GL_LINES, VCNum/3, GL_UNSIGNED_INT, (void*)0);// draw a stick VCNum
+			glDrawElements(GL_LINES, IdNum, GL_UNSIGNED_INT, (void*)0);// draw a stick VCNum
 			glPointSize(4.0f*Scale);
 			//glDrawElements(GL_POINTS, iNum, GL_UNSIGNED_INT, (void*)(iStart*sizeof(GLuint)));// draw a ball (point at the end of the stick)
-			glDrawElements(GL_POINTS, VCNum/3, GL_UNSIGNED_INT, (void*)0);// draw a ball (point at the end of the stick)
+			glDrawElements(GL_POINTS, IdNum, GL_UNSIGNED_INT, (void*)0);// draw a ball (point at the end of the stick)
 
 			glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
 			glDisableClientState(GL_COLOR_ARRAY);		// disable normal arrays
@@ -2887,7 +2824,7 @@ drawVBO(int VCNum, int mode)
 			
 			glPointSize(10.5f*Scale);
 			//glDrawElements(GL_POINTS, iNum/2, GL_UNSIGNED_INT, (void*)(iStart/2*sizeof(GLuint)));
-			glDrawElements(GL_POINTS, VCNum/3/2, GL_UNSIGNED_INT, (void*)0);// draw a ball (point at the end of the stick)
+			glDrawElements(GL_POINTS, IdNum/2, GL_UNSIGNED_INT, (void*)0);// draw a ball (point at the end of the stick)
 
 			glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
 			glDisableClientState(GL_COLOR_ARRAY);		// disable normal arrays

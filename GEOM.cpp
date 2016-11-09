@@ -22,13 +22,13 @@ float Block[2*3] =
     };
  */
 //Simple Cubic 1 [001]
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, 1.0f, 0.0f }, // b
-// 				{	0.0f, 0.0f, 1.0f }};// c
-// float			Block[][3] = { 
-// 				{0.5f, 0.5f, 0.5f},  
-// 				};
+float		abc[3][3] = {
+				{	1.0f, 0.0f, 0.0f }, // a
+				{	0.0f, 1.0f, 0.0f }, // b
+				{	0.0f, 0.0f, 1.0f }};// c
+float			Block[][3] = { 
+				{0.5f, 0.5f, 0.5f},  
+				};
 // Simple Cubic 2 [011]
 // float		abc[3][3] = {
 // 				{	1.0f, 0.0f, 0.0f }, // a
@@ -40,14 +40,14 @@ float Block[2*3] =
 // 				};	
 
 //Simple Cubic 3 [111]
-float		abc[3][3] = {
-				{	1.0f, 0.0f, 0.0f }, // a
-				{	0.0f, sqrt(2.f), 0.0f }, // b
-				{	0.0f, 0.0f, sqrt(2.f) }};// c				
-float		Block[][3] = {		
-				{0,		      0,	          0},	
-				{0,	sqrt(2.f)/2,	sqrt(2.f)/2}
-				};
+// float		abc[3][3] = {
+// 				{	1.0f, 0.0f, 0.0f }, // a
+// 				{	0.0f, sqrt(2.f), 0.0f }, // b
+// 				{	0.0f, 0.0f, sqrt(2.f) }};// c				
+// float		Block[][3] = {		
+// 				{0,		      0,	          0},	
+// 				{0,	sqrt(2.f)/2,	sqrt(2.f)/2}
+// 				};
 
 //FCC 2
 // float		abc[3][3] = {
@@ -116,8 +116,7 @@ float		Block[][3] = {
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			ABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 //int			ABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-int			ABC[3] = {5,5,5};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-//int			ABC[3] = {288,288,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
+int			ABC[3] = {20,30,40};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 int			Boundary[3] = {0, 0, 0};// boundary conditions along a, b, c translation vectors
 
 int			ShellNumber = 1;
