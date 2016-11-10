@@ -94,32 +94,32 @@ float		Block[][3] = {
 				};
 */
 //B20(Maria)
-/*float		abc[3][3] = {
-				{	1.0f, 0.0f, 0.0f }, // a
-				{	0.0f, 1.0f, 0.0f }, // b
-				{	0.0f, 0.0f, 1.0f }};// c
-//#define uB20		0.138f//MnSi
+// float		abc[3][3] = {
+// 				{	1.0f, 0.0f, 0.0f }, // a
+// 				{	0.0f, 1.0f, 0.0f }, // b
+// 				{	0.0f, 0.0f, 1.0f }};// c
+// //#define uB20		0.138f//MnSi
+// // float		Block[][3] = {		
+// // 				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
+// // 				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
+// // 				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
+// // 				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
+// // 				};
+// #define uB20		0.135f//FeGe
 // float		Block[][3] = {		
 // 				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
 // 				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
 // 				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
 // 				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
 // 				};
-#define uB20		0.135f//FeGe
-float		Block[][3] = {		
-				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
-				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
-				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
-				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
-				};*/
 
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			ABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 //int			ABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-int			ABC[3] = {20,30,40};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
+int			ABC[3] = {40,40,30};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 int			Boundary[3] = {0, 0, 0};// boundary conditions along a, b, c translation vectors
 
-int			ShellNumber = 1;
+int			ShellNumber = 4;
 int			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
 float*		RadiusOfShell = (float *)calloc(ShellNumber , sizeof(float));  
 int*		NeighborsPerAtom = (int *)calloc(AtomsPerBlock, sizeof(int));

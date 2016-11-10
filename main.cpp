@@ -151,7 +151,7 @@ float		Jij[]={		// Jij[shell]
 			1,	// first shell
 			0,	// second shell
 			0,	// third shell
-			-0.22,	// fourth shell
+			-0.23,	// fourth shell
 			0.0
 			};
 //bi-quadratic exchange

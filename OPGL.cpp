@@ -805,8 +805,8 @@ void setupOpenGL ()
 	glShadeModel (GL_SMOOTH); //set the shader to smooth shader GL_SMOOTH/GL_FLAT
 
 	glEnable(GL_COLOR_MATERIAL);
-	glCullFace(GL_FRONT_AND_BACK);//GL_FRONT
-	//glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);//GL_FRONT//GL_FRONT_AND_BACK
+	glEnable(GL_CULL_FACE);
 
 	glEnable(GL_POINT_SMOOTH);
 	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
@@ -2019,6 +2019,124 @@ void InitRGB(float* R, float* G, float* B, int *hueMap)
 	} 
 }
 
+
+void ReallocateArrayDrawing()
+{
+	free(vertexProto); free(normalProto); free(indicesProto);
+	free(vertices); free(normals); free(colors); free(indices);
+
+	int NOS_L=0;
+	int NOB_L=0;
+	switch( WhichSliceMode)
+	{
+		case A_AXIS:
+		NOS_L=NOS_AL * (1+A_layer_max - A_layer_min);
+		NOB_L=NOB_AL * (1+A_layer_max - A_layer_min);
+		break;
+		case B_AXIS:
+		NOS_L=NOS_BL * (1+B_layer_max - B_layer_min);
+		NOB_L=NOB_BL * (1+B_layer_max - B_layer_min);
+		break;
+		case C_AXIS:
+		NOS_L=NOS_CL * (1+C_layer_max - C_layer_min);
+		NOB_L=NOB_CL * (1+C_layer_max - C_layer_min);
+		break;
+	}
+
+	switch( WhichVectorMode )
+	{
+		case ARROW1:		
+			// arrowFaces - number of arrow faces
+			ElNumProto = 5*arrowFaces-4; // number of triangles per arrow
+			IdNumProto = 3*ElNumProto; // number of indixes per arrow
+			VCNumProto = 3*(2*(1+arrowFaces)-2+4*arrowFaces+3*arrowFaces);
+			// Allocate memory for arrow prototype  
+			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
+			normalProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
+			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
+			ElNum = NOS_L * ElNumProto;
+			IdNum = NOS_L * IdNumProto;
+			VCNum = NOS_L * VCNumProto;
+			// Allocate memory for all ARROW1 (spins) 
+			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
+			normals 	= (float  *)malloc(VCNum * sizeof( float  ));
+			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
+			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
+			break;
+
+		case CONE1:		
+			// arrowFaces - number of cone faces
+			ElNumProto = 2*arrowFaces-2; // number of triangles per cone
+			IdNumProto = 3*ElNumProto; // number of indixes per cone
+			VCNumProto = 3*((arrowFaces)+3*arrowFaces);// number of vertecies per cone			
+			// Allocate memory for arrow prototype  
+			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
+			normalProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
+			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
+			ElNum = NOS_L * ElNumProto;
+			IdNum = NOS_L * IdNumProto;
+			VCNum = NOS_L * VCNumProto;	
+			// Allocate memory for all CONES (spins) 
+			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
+			normals 	= (float  *)malloc(VCNum * sizeof( float  ));
+			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
+			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
+			break;
+
+		case BOX1:		
+			ElNumProto = 6*2; // number of triangles per box
+			IdNumProto = 3*ElNumProto; // number of indixes per box
+			VCNumProto = 6*4*3; // number of vertecies per box			
+			// Allocate memory for box prototype  
+			vertexProto  = (float  *)malloc(VCNumProto* sizeof( float  ));
+			normalProto  = (float  *)malloc(VCNumProto* sizeof( float  ));
+			indicesProto = (GLuint *)malloc(IdNumProto* sizeof( GLuint ));	
+			ElNum = NOB_L * ElNumProto;
+			IdNum = NOB_L * IdNumProto;
+			VCNum = NOB_L * VCNumProto;	
+			// Allocate memory for all boxes (spins averaged over Block) 
+			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
+			normals 	= (float  *)malloc(VCNum * sizeof( float  ));
+			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
+			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
+			break;
+
+		case POINT:		
+			// arrowFaces - number of arrow faces
+			IdNumProto = 1; // number of indixes per point
+			VCNumProto = 3; // number component of vertices per point
+			// Allocate memory for point prototype
+			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
+			normalProto  = NULL;
+			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
+			IdNum = NOS_L * IdNumProto;
+			VCNum = NOS_L * VCNumProto; // total number of all components of all vertices 
+			// Allocate memory for all points (spins) 
+			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
+			normals 	= NULL;
+			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
+			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
+			break;
+
+		case CANE:	// is default vector mode
+
+		default:
+			IdNumProto = 2; // number of indixes per cane
+			VCNumProto = 3*2; // number component of vertices per cane
+			// Allocate memory for cane prototype
+			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
+			normalProto  = NULL;
+			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
+			IdNum = NOS_L * IdNumProto;
+			VCNum = NOS_L * VCNumProto; // total number of all components of all vertices 
+			// Allocate memory for all CANES (spins) 
+			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
+			normals 	= NULL;
+			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
+			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));
+	}
+}
+
 void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int mode)//faces = arrowFaces
 {
 	int   i, j;
@@ -2229,34 +2347,74 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 
 	case BOX1:
 
-			i++; V[i] = tmp0[0] = v[0][0];		
-			i++; V[i] = tmp0[1] = v[0][0];		
-			i++; V[i] = tmp0[2] = v[0][0];		
+			Enorm2( v[0], v[1], v[2], tmp1);
+			Enorm2( v[0], v[4], v[1], tmp2);
+			Enorm2( v[0], v[2], v[4], tmp3);
 
-			i++; V[i] = tmp1[0] = v[1][0];
-			i++; V[i] = tmp1[1] = v[1][1];
-			i++; V[i] = tmp1[2] = v[1][2];	
+			V[++i] = v[0][0]; N[i] = tmp1[0]; V[i+12] = v[4][0]; N[i+12] = tmp1[0];
+			V[++i] = v[0][0]; N[i] = tmp1[1]; V[i+12] = v[4][1]; N[i+12] = tmp1[1];
+			V[++i] = v[0][0]; N[i] = tmp1[2]; V[i+12] = v[4][2]; N[i+12] = tmp1[2];
 
-			i++; V[i] = tmp2[0] = v[2][0];	
-			i++; V[i] = tmp2[1] = v[2][1];	
-			i++; V[i] = tmp2[2] = v[2][2];
+			V[++i] = v[1][0]; N[i] = tmp1[0]; V[i+12] = v[6][0]; N[i+12] = tmp1[0];
+			V[++i] = v[1][1]; N[i] = tmp1[1]; V[i+12] = v[6][1]; N[i+12] = tmp1[1];
+			V[++i] = v[1][2]; N[i] = tmp1[2]; V[i+12] = v[6][2]; N[i+12] = tmp1[2];
+
+			V[++i] = v[2][0]; N[i] = tmp1[0]; V[i+12] = v[5][0]; N[i+12] = tmp1[0];
+			V[++i] = v[2][1]; N[i] = tmp1[1]; V[i+12] = v[5][1]; N[i+12] = tmp1[1];
+			V[++i] = v[2][2]; N[i] = tmp1[2]; V[i+12] = v[5][2]; N[i+12] = tmp1[2];
 			
-			i++; V[i] = v[3][0];	
-			i++; V[i] = v[3][1];	
-			i++; V[i] = v[3][2];		
+			V[++i] = v[3][0]; N[i] = tmp1[0]; V[i+12] = v[7][0]; N[i+12] = tmp1[0];
+			V[++i] = v[3][1]; N[i] = tmp1[1]; V[i+12] = v[7][1]; N[i+12] = tmp1[1];
+			V[++i] = v[3][2]; N[i] = tmp1[2]; V[i+12] = v[7][2]; N[i+12] = tmp1[2];	
+            i+=12;
+			I[++j] = 0; I[++j] = 1; I[++j] = 2; // first  triangle bottom
+			I[++j] = 2; I[++j] = 1; I[++j] = 3; // second triangle bottom
+			I[++j] = 4; I[++j] = 5; I[++j] = 6; // third  triangle top
+			I[++j] = 6; I[++j] = 5; I[++j] = 7; // fourth triangle top
 
-			Enorm( tmp0, tmp1, tmp2, tmp3);
+            // right/left
+            V[++i] = v[0][0]; N[i] = tmp2[0]; V[i+12] = v[3][0]; N[i+12] = tmp2[0];
+            V[++i] = v[0][0]; N[i] = tmp2[1]; V[i+12] = v[3][1]; N[i+12] = tmp2[1];
+            V[++i] = v[0][0]; N[i] = tmp2[2]; V[i+12] = v[3][2]; N[i+12] = tmp2[2];
 
-			N[i-11] = N[i-8] = N[i-5] = N[i-2] = tmp3[0] ; // nx
-			N[i-10] = N[i-7] = N[i-4] = N[i-1] = tmp3[1] ; // ny
-			N[i- 9] = N[i-6] = N[i-3] = N[i-0] = tmp3[2] ; // nz
+            V[++i] = v[4][0]; N[i] = tmp2[0]; V[i+12] = v[7][0]; N[i+12] = tmp2[0];
+            V[++i] = v[4][1]; N[i] = tmp2[1]; V[i+12] = v[7][1]; N[i+12] = tmp2[1];
+            V[++i] = v[4][2]; N[i] = tmp2[2]; V[i+12] = v[7][2]; N[i+12] = tmp2[2];
 
-			j++; I[j] = 0; 
-			j++; I[j] = 1;
-			j++; I[j] = 2;
-			j++; I[j] = 2;
-			j++; I[j] = 1;
-			j++; I[j] = 3;
+            V[++i] = v[1][0]; N[i] = tmp2[0]; V[i+12] = v[2][0]; N[i+12] = tmp2[0];
+            V[++i] = v[1][1]; N[i] = tmp2[1]; V[i+12] = v[2][1]; N[i+12] = tmp2[1];
+            V[++i] = v[1][2]; N[i] = tmp2[2]; V[i+12] = v[2][2]; N[i+12] = tmp2[2];
+            
+            V[++i] = v[5][0]; N[i] = tmp2[0]; V[i+12] = v[6][0]; N[i+12] = tmp2[0];
+            V[++i] = v[5][1]; N[i] = tmp2[1]; V[i+12] = v[6][1]; N[i+12] = tmp2[1];
+            V[++i] = v[5][2]; N[i] = tmp2[2]; V[i+12] = v[6][2]; N[i+12] = tmp2[2];  
+            i+=12;
+			I[++j] = 8+0; I[++j] = 8+1; I[++j] = 8+2; // first  triangle 
+			I[++j] = 8+2; I[++j] = 8+1; I[++j] = 8+3; // second triangle 
+			I[++j] = 8+4; I[++j] = 8+5; I[++j] = 8+6; // third  triangle 
+			I[++j] = 8+6; I[++j] = 8+5; I[++j] = 8+7; // fourth triangle 
+
+            // front/back
+            V[++i] = v[0][0]; N[i] = tmp3[0]; V[i+12] = v[1][0]; N[i+12] = tmp3[0];
+            V[++i] = v[0][0]; N[i] = tmp3[1]; V[i+12] = v[1][1]; N[i+12] = tmp3[1];
+            V[++i] = v[0][0]; N[i] = tmp3[2]; V[i+12] = v[1][2]; N[i+12] = tmp3[2];
+
+            V[++i] = v[2][0]; N[i] = tmp3[0]; V[i+12] = v[5][0]; N[i+12] = tmp3[0];
+            V[++i] = v[2][1]; N[i] = tmp3[1]; V[i+12] = v[5][1]; N[i+12] = tmp3[1];
+            V[++i] = v[2][2]; N[i] = tmp3[2]; V[i+12] = v[5][2]; N[i+12] = tmp3[2];
+
+            V[++i] = v[4][0]; N[i] = tmp3[0]; V[i+12] = v[3][0]; N[i+12] = tmp3[0];
+            V[++i] = v[4][1]; N[i] = tmp3[0]; V[i+12] = v[3][1]; N[i+12] = tmp3[1];
+            V[++i] = v[4][2]; N[i] = tmp3[2]; V[i+12] = v[3][2]; N[i+12] = tmp3[2];
+            
+            V[++i] = v[6][0]; N[i] = tmp3[0]; V[i+12] = v[7][0]; N[i+12] = tmp3[0];
+            V[++i] = v[6][1]; N[i] = tmp3[1]; V[i+12] = v[7][1]; N[i+12] = tmp3[1];
+            V[++i] = v[6][2]; N[i] = tmp3[2]; V[i+12] = v[7][2]; N[i+12] = tmp3[2];  
+
+			I[++j] = 2*8+0; I[++j] = 2*8+1; I[++j] = 2*8+2; // first  triangle 
+			I[++j] = 2*8+2; I[++j] = 2*8+1; I[++j] = 2*8+3; // second triangle 
+			I[++j] = 2*8+4; I[++j] = 2*8+5; I[++j] = 2*8+6; // third  triangle 
+			I[++j] = 2*8+6; I[++j] = 2*8+5; I[++j] = 2*8+7; // fourth triangle 
 	break;
 
 	case POINT:
@@ -2279,6 +2437,7 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 			j++; I[j] = j; // 1	
 	}	
 }
+
 
 void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 {	// VerN number of vertesiec components per one prototype arrow
@@ -2572,126 +2731,6 @@ void UpdateSpinPositions(float abc[][3], int ABC[3], float BD[][3], int NBD, flo
 	}	
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-void ReallocateArrayDrawing()
-{
-	free(vertexProto); free(normalProto); free(indicesProto);
-	free(vertices); free(normals); free(colors); free(indices);
-
-	int NOS_L=0;
-	int NOB_L=0;
-	switch( WhichSliceMode)
-	{
-		case A_AXIS:
-		NOS_L=NOS_AL * (1+A_layer_max - A_layer_min);
-		NOB_L=NOB_AL * (1+A_layer_max - A_layer_min);
-		break;
-		case B_AXIS:
-		NOS_L=NOS_BL * (1+B_layer_max - B_layer_min);
-		NOB_L=NOB_BL * (1+B_layer_max - B_layer_min);
-		break;
-		case C_AXIS:
-		NOS_L=NOS_CL * (1+C_layer_max - C_layer_min);
-		NOB_L=NOB_CL * (1+C_layer_max - C_layer_min);
-		break;
-	}
-
-	switch( WhichVectorMode )
-	{
-		case ARROW1:		
-			// arrowFaces - number of arrow faces
-			ElNumProto = 5*arrowFaces-4; // number of triangles per arrow
-			IdNumProto = 3*ElNumProto; // number of indixes per arrow
-			VCNumProto = 3*(2*(1+arrowFaces)-2+4*arrowFaces+3*arrowFaces);
-			// Allocate memory for arrow prototype  
-			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
-			normalProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
-			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
-			ElNum = NOS_L * ElNumProto;
-			IdNum = NOS_L * IdNumProto;
-			VCNum = NOS_L * VCNumProto;
-			// Allocate memory for all ARROW1 (spins) 
-			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
-			normals 	= (float  *)malloc(VCNum * sizeof( float  ));
-			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
-			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
-			break;
-
-		case CONE1:		
-			// arrowFaces - number of cone faces
-			ElNumProto = 2*arrowFaces-2; // number of triangles per cone
-			IdNumProto = 3*ElNumProto; // number of indixes per cone
-			VCNumProto = 3*((arrowFaces)+3*arrowFaces);// number of vertecies per cone			
-			// Allocate memory for arrow prototype  
-			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
-			normalProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
-			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
-			ElNum = NOS_L * ElNumProto;
-			IdNum = NOS_L * IdNumProto;
-			VCNum = NOS_L * VCNumProto;	
-			// Allocate memory for all CONES (spins) 
-			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
-			normals 	= (float  *)malloc(VCNum * sizeof( float  ));
-			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
-			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
-			break;
-
-		case BOX1:		
-			ElNumProto = 2; // number of triangles per box
-			IdNumProto = 3*ElNumProto; // number of indixes per box
-			VCNumProto = 4*3;// number of vertecies per box			
-			// Allocate memory for box prototype  
-			vertexProto  = (float  *)malloc(VCNumProto* sizeof( float  ));
-			normalProto  = (float  *)malloc(VCNumProto* sizeof( float  ));
-			indicesProto = (GLuint *)malloc(IdNumProto* sizeof( GLuint ));	
-			ElNum = NOB_L * ElNumProto;
-			IdNum = NOB_L * IdNumProto;
-			VCNum = NOB_L * VCNumProto;	
-			// Allocate memory for all boxes (spins averaged over Block) 
-			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
-			normals 	= (float  *)malloc(VCNum * sizeof( float  ));
-			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
-			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
-			break;
-
-		case POINT:		
-			// arrowFaces - number of arrow faces
-			IdNumProto = 1; // number of indixes per point
-			VCNumProto = 3; // number component of vertices per point
-			// Allocate memory for point prototype
-			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
-			normalProto  = NULL;
-			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
-			IdNum = NOS_L * IdNumProto;
-			VCNum = NOS_L * VCNumProto; // total number of all components of all vertices 
-			// Allocate memory for all points (spins) 
-			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
-			normals 	= NULL;
-			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
-			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
-			break;
-
-		case CANE:	// is default vector mode
-
-		default:
-			IdNumProto = 2; // number of indixes per cane
-			VCNumProto = 3*2; // number component of vertices per cane
-			// Allocate memory for cane prototype
-			vertexProto  = (float  *)malloc(VCNumProto * sizeof( float  ));
-			normalProto  = NULL;
-			indicesProto = (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
-			IdNum = NOS_L * IdNumProto;
-			VCNum = NOS_L * VCNumProto; // total number of all components of all vertices 
-			// Allocate memory for all CANES (spins) 
-			vertices	= (float  *)malloc(VCNum * sizeof( float  ));
-			normals 	= NULL;
-			colors 		= (float  *)malloc(VCNum * sizeof( float  ));
-			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));
-	}
-	printf("***********************\n" );
-	printf("Indeces=%d\n",IdNum );
-	printf("Vertices=%d\n",VCNum );
-}
 
 void CreateNewVBO( ){
 	glGenBuffers(1, &vboIdV);

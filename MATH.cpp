@@ -90,7 +90,24 @@ Enorm( float v1[3], float v2[3], float v3[3], float vout[3] )
 	(void)Unitf( vout, vout);
 }
 
+void
+Enorm2( float * v1, float * v2, float * v3, float * vout)
+{// normal vector to the element based on three vertexes v1, v2, v3	
+	float tmp1[3];
+	float tmp2[3];
+	tmp1[0]=v2[0]-v1[0];
+	tmp1[1]=v2[1]-v1[1];
+	tmp1[2]=v2[2]-v1[2];
 
+	tmp2[0]=v3[0]-v1[0];
+	tmp2[1]=v3[1]-v1[1];
+	tmp2[2]=v3[2]-v1[2];
+	//Crossf( tmp1, tmp2, tmp3 );
+	vout[0] = (tmp1[1]*tmp2[2] - tmp1[2]*tmp2[1]);
+	vout[1] = (tmp1[2]*tmp2[0] - tmp1[0]*tmp2[2]);
+	vout[2] = (tmp1[0]*tmp2[1] - tmp1[1]*tmp2[0]);
+	(void)Unitf( vout, vout);
+}
 
 void
 RotateVector(float v1x, float v1y, float v1z, float v2x, float v2y, float v2z, float T, double vout[3])
