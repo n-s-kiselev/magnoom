@@ -2159,7 +2159,11 @@ void ReallocateArrayDrawing()
 	{
 		case A_AXIS:
 		NOS_L=NOS_AL * (1+A_layer_max - A_layer_min);
-		NOB_L=NOB_AL * (1+A_layer_max - A_layer_min);
+		if (A_layer_max - A_layer_min<2){
+			NOB_L=NOB_AL * (1+A_layer_max - A_layer_min);
+		}else{
+			NOB_L=2*NOB_AL+2*(A_layer_max - A_layer_min-1)*(ABC[1]-1+ABC[2]-1);
+		}
 		break;
 		case B_AXIS:
 		NOS_L=NOS_BL * (1+B_layer_max - B_layer_min);
@@ -2576,7 +2580,11 @@ void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 	{
 		case A_AXIS:
 		NOS_L=NOS_AL * (1+A_layer_max - A_layer_min);
-		NOB_L=NOB_AL * (1+A_layer_max - A_layer_min);
+		if (A_layer_max - A_layer_min<2){
+			NOB_L=NOB_AL * (1+A_layer_max - A_layer_min);
+		}else{
+			NOB_L=2*NOB_AL+2*(A_layer_max - A_layer_min-1)*(ABC[1]-1+ABC[2]-1);
+		}
 		break;
 		case B_AXIS:
 		NOS_L=NOS_BL * (1+B_layer_max - B_layer_min);
@@ -2706,40 +2714,42 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	case BOX1:
 		for (int an = anini; an<anfin; an++) {
 		for (int bn = bnini; bn<bnfin; bn++) {
-		for (int cn = cnini; cn<cnfin; cn++) {			
-			tmpV2[0] = 0;
-			tmpV2[1] = 0;
-			tmpV2[2] = 0;
+		for (int cn = cnini; cn<cnfin; cn++) {	
+			if (an == anini || an == anfin-1 || bn == bnini || bn == bnfin-1 || cn == cnini || cn == cnfin-1){	
+				tmpV2[0] = 0;
+				tmpV2[1] = 0;
+				tmpV2[2] = 0;
 
-			n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
-			for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
-			{
-			    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
- 
-				tmpV2[0]+= Sx[N];
-				tmpV2[1]+= Sy[N];
-				tmpV2[2]+= Sz[N];
-		    }
-		    (void)Unitf(tmpV2,tmpV2);
-		    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				{
+				    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
+	 
+					tmpV2[0]+= Sx[N];
+					tmpV2[1]+= Sy[N];
+					tmpV2[2]+= Sz[N];
+			    }
+			    (void)Unitf(tmpV2,tmpV2);
+			    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
 
-			j++;
-			for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
-			{
-				i = j*Kinp + 3*k;	// vertex index
+				j++;
+				for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
+				{
+					i = j*Kinp + 3*k;	// vertex index
 
-				Vout[i+0] = Vinp[3*k+0] + BPx[n];
-				Vout[i+1] = Vinp[3*k+1] + BPy[n];
-				Vout[i+2] = Vinp[3*k+2] + BPz[n];	
+					Vout[i+0] = Vinp[3*k+0] + BPx[n];
+					Vout[i+1] = Vinp[3*k+1] + BPy[n];
+					Vout[i+2] = Vinp[3*k+2] + BPz[n];	
 
-				Nout[i+0] = Ninp[3*k+0];
-				Nout[i+1] = Ninp[3*k+1];
-				Nout[i+2] = Ninp[3*k+2];
+					Nout[i+0] = Ninp[3*k+0];
+					Nout[i+1] = Ninp[3*k+1];
+					Nout[i+2] = Ninp[3*k+2];
 
-				Cout[i+0] = RGB[0];			
-				Cout[i+1] = RGB[1];			
-				Cout[i+2] = RGB[2];	
-			}		
+					Cout[i+0] = RGB[0];			
+					Cout[i+1] = RGB[1];			
+					Cout[i+2] = RGB[2];	
+				}	
+			}	
 		}
 		}
 		}
