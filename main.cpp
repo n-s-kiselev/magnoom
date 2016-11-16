@@ -7,6 +7,27 @@
 //  
 //  Compilation  : 
 //    Windows7   :  ???
+//
+// The standard gcc available on OS X through XCode and Clang doesn't support OpenMP. To install the Homebrew version of gcc with OpenMP support you need to install it with
+// install brew: ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+// brew doctor
+// sudo chown -R $(whoami):admin /usr/local
+//
+// brew install gcc --without-multilib
+// or as pointed out by @Mark Setchell
+
+// brew reinstall gcc --without-multilib
+// This will install it to the /usr/local/bin directory. Homebrew will install it as gcc-<version>so as not to clobber the gcc bundled with XCode. The current gcc version available from Homebrew will install as gcc-4.9. You can compile programs with OpenMP support using it via
+
+// gcc-4.9 -fopenmp hello.c
+// Alternatively you could put an alias in your .bashrcfile as
+
+// alias gcc='gcc-4.9'
+// and then compile using
+
+// gcc -fopenmp hello.c
+//
+//
 //    Mac OS X   :  
 //    Before you can use a dynamic library as a dependent library, 
 //    the library and its header files must be installed on your computer. 
@@ -19,6 +40,7 @@
 //    % sudo cp -r ~/Documents/Nick/AntTweakBar /usr/local/
 //    % g++ main.cpp -o magnoom -O3 -Wall -fno-strict-aliasing -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
 //    Note, in OS X: https://lukecyca.com/2008/glui-235-framework-for-mac-os-x.html
+//    DYLD_LIBRARY_PATH=DYLD_LIBRARY_PATH=/usr/local/opt/gcc/lib/gcc/6/    
 //
 //    Raspberry Pi3:
 //    pi@raspberrypi: sudo apt-get install libgl1-mesa-dev libgles2-mesa-dev libglew-dev:armhf libglewmx-dev:armhf libglib2.0-dev libglu1-mesa-dev

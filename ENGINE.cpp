@@ -6,6 +6,8 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 {
 	double tmp0;
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
+	//#pragma omp parallel num_threads(3)
+	//#pragma omp for
 	for (int i=0; i<N; i++)
 	{
 	//H-field (Zeeman energy):

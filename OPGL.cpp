@@ -97,8 +97,14 @@ int				A_layer_max = 1;	// which layer (along a tr. vect. ) to show max=ABC[0]
 int				B_layer_max = 1;	// which layer (along b tr. vect. ) to show max=ABC[1]
 int				C_layer_max = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
 
-typedef enum	{A_AXIS, B_AXIS, C_AXIS} enSliceMode; // which mode
+typedef enum	{A_AXIS, B_AXIS, C_AXIS/*, FILTER*/} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= A_AXIS;	// CANE by default 
+
+float theta_max=PI;
+float theta_min=0;
+
+float phi_max=2*PI;
+float phi_min=0;
 
 // Parameters for initial state 
 float			chSize = 71; // characteristic size of initial state in units of "a"
@@ -1131,6 +1137,43 @@ void TW_CALL CB_SetAlayerMin(const void *value, void *clientData )
 	}
 }
 
+void TW_CALL CB_GetThetaMax(void *value, void *clientData)
+{
+    (void)clientData; // unused
+    *(int *)value = theta_max; 
+}
+
+
+void TW_CALL CB_SetThetaMax(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+	int test= *( int *)value; // copy value to A_layer_min
+	if (test>theta_min ){
+        theta_max = test; // copy value to A_layer_min
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetThetaMin(void *value, void *clientData)
+{
+    (void)clientData; // unused
+    *(int *)value = theta_min; 
+}
+
+
+void TW_CALL CB_SetThetaMin(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+	int test= *( int *)value; // copy value to A_layer_min
+	if (test<theta_max ){
+        theta_min = test; // copy value to A_layer_min
+        ChangeVectorMode(0);
+	}
+}
+
+
+
+
 
 void TW_CALL CB_GetAlayerMin(void *value, void *clientData)
 {
@@ -1326,6 +1369,9 @@ void setupTweakBar()
 	}
 	//TwAddVarCB(slicing_bar, "a layer min", TW_TYPE_INT32, CB_SetAlayerMin, CB_GetAlayerMin,  &A_layer_min, "step=1 help='Bottom layer of slicing along a-axis' ");
 	//TwAddVarCB(slicing_bar, "a layer max", TW_TYPE_INT32, CB_SetAlayerMax, CB_GetAlayerMax,  &A_layer_max, "step=1 help='Top layer of slicing along a-axis' ");
+	TwAddVarCB(slicing_bar, "T_max", TW_TYPE_FLOAT, CB_SetThetaMax, CB_GetThetaMax, &theta_max, " label='Theta max' min=0 max=3.141592 help='max value for angle theta'");
+	TwAddVarCB(slicing_bar, "T_min", TW_TYPE_FLOAT, CB_SetThetaMin, CB_GetThetaMin, &theta_min, " label='Theta min' min=0 max=3.141592 help='min value for angle theta'");
+
 
 /*  Hamiltonian parameters&controls F4 */
 	control_bar = TwNewBar("Parameters&Controls");
