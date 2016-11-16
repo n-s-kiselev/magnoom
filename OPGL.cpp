@@ -1268,6 +1268,133 @@ void TW_CALL CB_ReadCSV( void *clientData )
 	ChangeVectorMode(1);
 }
 
+int ReadHeaderLine(FILE * fp, char * line){
+	char c;//single character 
+	int pos=0;
+	do{ c = (char)fgetc(fp);//get current char and move pointer to the next position
+    	if (c != EOF && c != '\n') { line[pos++] = c;}//if it's not the end of the file
+	}while(c != EOF && c != '\n');//if it's not the end of the file or end of the line
+	line[pos] = 0;//complite the readed line
+	if ((pos==0 || line[0]!='#') && c != EOF){
+		return ReadHeaderLine(fp, line);// recursive call for ReadHeaderLine if the current line is empty
+	} 
+	return pos-1;// the last simbol is the line end simbole
+}
+
+void ReadDataLine(FILE * fp, char * line){
+	char c;//single character 
+	int pos=0;
+	do{ c = (char)fgetc(fp);
+    	if (c != EOF && c != '\n') { line[pos++] = c;}
+	}while(c != EOF && c != '\n');
+	line[pos] = 0;
+}
+
+void TW_CALL CB_ReadOVF( void *clientData )
+{
+	char  line[256];//whole line of header should be not longer then 256 characters
+	int   lineLength=0;
+	int   valuedim;
+	int   xnodes;
+	int   ynodes;
+	int   znodes;
+    char  keyW1 [256];//key word 1
+    char  keyW2 [256];//key word 2
+    char  keyW3 [256];//key word 3
+    int   binType = 4;
+    FILE * FilePointer = fopen(inputfilename, "rb");
+	if(FilePointer!=NULL) {	
+		lineLength=ReadHeaderLine(FilePointer, line);//read and check the first nonempty line which starts with '#'
+		if (lineLength==-1) {// if there are no one line which starts with '#'
+			printf("%s has a wrong file format! \n", inputfilename);
+		}else{
+		    sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
+		    if(strncmp(keyW1, "OOMMF",5)!=0 || strncmp(keyW2, "OVF",  3)!=0 || strncmp(keyW3, "2.0",  3)!=0){
+		        //if the first line isn't "OOMMF OFV 2.0"
+		    	printf("%s has wrong header of wrong file format! \n", inputfilename);
+		    	lineLength=-1;
+		    }
+		}
+		//READING HEADER
+		if (lineLength!=-1){
+			do{
+				lineLength = ReadHeaderLine(FilePointer, line);
+				sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
+				//printf("%s %s %s\n", keyW1, keyW2, keyW3);
+				if (strncmp(keyW1, "valuedim:",9)==0) {
+					sscanf(keyW2, "%d", &valuedim );
+					printf("valuedim=%d\n", valuedim);					
+				}else if (strncmp(keyW1, "xnodes:",7)==0) {
+					sscanf(keyW2, "%d", &xnodes );
+					printf("xnodes=%d\n", xnodes);
+				}else if (strncmp(keyW1, "ynodes:",7)==0) {
+					sscanf(keyW2, "%d", &ynodes );
+					printf("ynodes=%d\n", ynodes);					
+				}else if (strncmp(keyW1, "znodes:",7)==0) {
+					sscanf(keyW2, "%d", &znodes );
+					printf("znodes=%d\n", znodes);					
+				} 
+			}while(!(strncmp(keyW1, "Begin:",6)==0 && strncmp(keyW2, "Data",4)==0) && lineLength != -1 );
+		}
+        //READING DATA
+		if (valuedim!=0 && xnodes!=0 && ynodes!=0 && znodes!=0){
+			sscanf(line, "#%*s %s %s %s", keyW1, keyW2, keyW3 );
+			if (strncmp(keyW2, "Text",4)==0){
+				//Text data format
+				printf("...reading data in text format: %s \n", inputfilename);
+				for (int k=0; k<znodes; k++){
+					for (int j=0; j<ynodes; j++){
+						for (int i=0; i<xnodes; i++){
+							int n = i + j*xnodes + k*xnodes*ynodes;
+							ReadDataLine(FilePointer, line);
+							sscanf(line, "%lf %lf %lf", &bSx[n],&bSy[n],&bSz[n]);
+						}
+					}
+				}
+			}else if (strncmp(keyW2, "Binary",6)==0){
+				if(strncmp(keyW3, "4",1)==0){
+					binType = 4;
+				}else if (strncmp(keyW3, "8",1)==0){
+					binType = 8;
+				}
+				//Binary data format
+				printf("...reading data in binary (%d) format: %s \n", binType, inputfilename);
+				if(!fread (&bSx[0],binType,1,FilePointer)) {
+				//printf("%f\n",nx[0]);
+					for (int k=0; k<znodes; k++){
+						for (int j=0; j<ynodes; j++){
+							for (int i=0; i<xnodes; i++){
+								int n = i + j*xnodes + k*xnodes*ynodes;
+								if(!fread (&bSx[n],binType,1,FilePointer)) break;
+								if(!fread (&bSy[n],binType,1,FilePointer)) break;
+								if(!fread (&bSz[n],binType,1,FilePointer)) break;
+							}
+						}
+					}
+				}
+			}else{
+				printf("Do not know what to do with \"%s\" data format in %s\n", keyW2, inputfilename);
+			}
+		}else{
+			printf("%s has wrong data format or dimentionality!\n", inputfilename);
+		}       
+		// when everything is done
+		fclose(FilePointer);
+        // test:
+		// for (int k=0; k<znodes; k++){
+		// 	for (int j=0; j<ynodes; j++){
+		// 		for (int i=0; i<xnodes; i++){
+		// 			int n = i + j*xnodes + k*xnodes*ynodes;
+		// 			printf("%d %f %f %f\n", n, bSx[n], bSy[n], bSz[n]);
+		// 		}
+		// 	}
+		// }
+	}else{printf("Cannot open file: %s \n", inputfilename);}
+	ChangeVectorMode(1);
+}
+
+
+
 void setupTweakBar()
 {
 /*  Global settings for the bar-menu  */
@@ -1508,9 +1635,10 @@ void setupTweakBar()
 	TwAddSeparator(initial_bar, "sep2", NULL);
 
 	TwAddVarRW(initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(outputfilename)), outputfilename, ""); 
-	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='save state as comma separated values' ");
+	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='write to *.csv file' ");
 	TwAddVarRW(initial_bar, "Input file name:", TW_TYPE_CSSTRING(sizeof(inputfilename)), inputfilename, "");
-	TwAddButton(initial_bar, "Read from CSV", CB_ReadCSV, NULL, "label='read state from JSINI.csv' ");	
+	TwAddButton(initial_bar, "Read from CSV", CB_ReadCSV, NULL, "label='read from *.csv file' ");
+	TwAddButton(initial_bar, "Read from OVF", CB_ReadOVF, NULL, "label='read from *.ovf file' ");		
 
 /*  AC field F6 */
 	ac_field_bar = TwNewBar("AC_Field");
