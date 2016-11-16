@@ -1339,20 +1339,22 @@ void TW_CALL CB_ReadOVF( void *clientData )
         //READING DATA
 		if (valuedim!=0 && xnodes!=0 && ynodes!=0 && znodes!=0){
 			sscanf(line, "#%*s %s %s %s", keyW1, keyW2, keyW3 );
-			int imax,jmax,kmax;
-			if (xnodes>ABC[0]) {imax = ABC[0];}else{imax = xnodes;}
-			if (ynodes>ABC[1]) {jmax = ABC[1];}else{jmax = ynodes;}
-			if (znodes>ABC[2]) {kmax = ABC[2];}else{kmax = znodes;}
+			//int imax,jmax,kmax;
+			//if (xnodes>ABC[0]) {imax = ABC[0];}else{imax = xnodes;}
+			//if (ynodes>ABC[1]) {jmax = ABC[1];}else{jmax = ynodes;}
+			//if (znodes>ABC[2]) {kmax = ABC[2];}else{kmax = znodes;}
 
 			if (strncmp(keyW2, "Text",4)==0){
 				//Text data format
 				printf("...reading data in text format: %s \n", inputfilename);
-				for (int k=0; k<kmax; k++){
-					for (int j=0; j<jmax; j++){
-						for (int i=0; i<imax; i++){
-							int n = i + j*xnodes + k*xnodes*ynodes;
+				for (int k=0; k<znodes; k++){
+					for (int j=0; j<ynodes; j++){
+						for (int i=0; i<xnodes; i++){
 							ReadDataLine(FilePointer, line);
-							sscanf(line, "%lf %lf %lf", &bSx[n],&bSy[n],&bSz[n]);
+							if (k<ABC[2] && j<ABC[1] && i<ABC[0]){
+								int n = i + j*ABC[0] + k*ABC[0]*ABC[1];
+								sscanf(line, "%lf %lf %lf", &bSx[n],&bSy[n],&bSz[n]);
+							}
 						}
 					}
 				}
