@@ -1339,6 +1339,10 @@ void TW_CALL CB_ReadOVF( void *clientData )
         //READING DATA
 		if (valuedim!=0 && xnodes!=0 && ynodes!=0 && znodes!=0){
 			sscanf(line, "#%*s %s %s %s", keyW1, keyW2, keyW3 );
+			if (xnodes>ABC[0]) xnodes = ABC[0];
+			if (ynodes>ABC[1]) ynodes = ABC[1];
+			if (znodes>ABC[2]) znodes = ABC[2];
+
 			if (strncmp(keyW2, "Text",4)==0){
 				//Text data format
 				printf("...reading data in text format: %s \n", inputfilename);
