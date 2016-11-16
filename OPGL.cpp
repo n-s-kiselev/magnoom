@@ -1294,7 +1294,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 {
 	char  line[256];//whole line of header should be not longer then 256 characters
 	int   lineLength=0;
-	int   valuedim;
+	int   valuedim=3;
 	int   xnodes;
 	int   ynodes;
 	int   znodes;
@@ -2213,11 +2213,19 @@ void ReallocateArrayDrawing()
 		break;
 		case B_AXIS:
 		NOS_L=NOS_BL * (1+B_layer_max - B_layer_min);
-		NOB_L=NOB_BL * (1+B_layer_max - B_layer_min);
+		if (B_layer_max - B_layer_min<2){
+			NOB_L=NOB_BL * (1+B_layer_max - B_layer_min);
+		}else{
+			NOB_L=2*NOB_BL + 2*(B_layer_max - B_layer_min-1)*(ABC[0]-1+ABC[2]-1);
+		}
 		break;
 		case C_AXIS:
 		NOS_L=NOS_CL * (1+C_layer_max - C_layer_min);
-		NOB_L=NOB_CL * (1+C_layer_max - C_layer_min);
+		if (C_layer_max - C_layer_min<2){
+			NOB_L=NOB_CL * (1+C_layer_max - C_layer_min);
+		}else{
+			NOB_L=2*NOB_CL + 2*(C_layer_max - C_layer_min-1)*(ABC[0]-1+ABC[1]-1);
+		}
 		break;
 	}
 
@@ -2634,11 +2642,19 @@ void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 		break;
 		case B_AXIS:
 		NOS_L=NOS_BL * (1+B_layer_max - B_layer_min);
-		NOB_L=NOB_BL * (1+B_layer_max - B_layer_min);
+		if (B_layer_max - B_layer_min<2){
+			NOB_L=NOB_BL * (1+B_layer_max - B_layer_min);
+		}else{
+			NOB_L=2*NOB_BL + 2*(B_layer_max - B_layer_min-1)*(ABC[0]-1+ABC[2]-1);
+		}
 		break;
 		case C_AXIS:
 		NOS_L=NOS_CL * (1+C_layer_max - C_layer_min);
-		NOB_L=NOB_CL * (1+C_layer_max - C_layer_min);
+		if (C_layer_max - C_layer_min<2){
+			NOB_L=NOB_CL * (1+C_layer_max - C_layer_min);
+		}else{
+			NOB_L=2*NOB_CL + 2*(C_layer_max - C_layer_min-1)*(ABC[0]-1+ABC[1]-1);
+		}
 		break;
 	}
 
