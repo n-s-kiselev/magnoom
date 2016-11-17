@@ -2239,6 +2239,8 @@ void ReallocateArrayDrawing()
 		case FILTER:
 		NOS_L=2*NOS_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2)*AtomsPerBlock;
 		NOB_L=2*NOB_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2);
+		// NOS_L=1000;
+		// NOB_L=1000;
 		break;
 	}
 
@@ -2672,6 +2674,8 @@ void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 		case FILTER:
 		NOS_L=2*NOS_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2)*AtomsPerBlock;
 		NOB_L=2*NOB_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2);
+		// NOS_L=1000;
+		// NOB_L=1000;
 		break;
 	}
 
@@ -2731,6 +2735,11 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	case CONE1:
 		if (WhichSliceMode==FILTER)
 			{
+			for (i=0;i<VCNum/3;i++){
+				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
+				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
+			}
 			for (int an = 0; an<ABC[0]; an++) 
 			{
 			for (int bn = 0; bn<ABC[1]; bn++) 
@@ -2792,12 +2801,6 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				}
 			}
 			}
-			}
-			IdNum=j*Kinp;
-			for (i=i+1;i<Kout/Kinp;i++){
-				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
-				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
-				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
 			}
 		}else{//IF SLICING MODE = A-AXIS, B-AXIS, C-AXIS 
 			for (int an = anini; an<anfin; an++) 
@@ -2865,6 +2868,11 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	case BOX1:
 		if (WhichSliceMode==FILTER)
 		{
+			for (i=0;i<VCNum/3;i++){
+				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
+				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
+			}
 			for (int an = 0; an<ABC[0]; an++) {
 			for (int bn = 0; bn<ABC[1]; bn++) {
 			for (int cn = 0; cn<ABC[2]; cn++) {	
@@ -2907,12 +2915,12 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			}
 			}
 			}
-			IdNum=j*Kinp;
-			for (i=i+1;i<Kout/Kinp;i++){
-				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
-				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
-				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
-			}
+			//IdNum=j*Kinp;
+			// for (i=i+1;i<Kout/Kinp;i++){
+			// 	Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+			// 	Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
+			// 	Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
+			// }
 		}else{
 			for (int an = anini; an<anfin; an++) {
 			for (int bn = bnini; bn<bnfin; bn++) {
@@ -2961,6 +2969,10 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	case POINT:
 		if (WhichSliceMode==FILTER)
 		{
+			for (i=0;i<VCNum/3;i++){
+				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
+			}
 			for (int an = 0; an<ABC[0]; an++) // n runs over spins 
 			{
 			for (int bn = 0; bn<ABC[1]; bn++) // n runs over spins 
@@ -2988,12 +3000,6 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				}	
 			}
 			}
-			}
-			IdNum=j*Kinp;
-			for (i=i+1;i<Kout/Kinp;i++){
-				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
-				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
-				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
 			}
 		}else{
 			for (int an = anini; an<anfin; an++) // n runs over spins 
@@ -3029,6 +3035,10 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	default:
 		if (WhichSliceMode==FILTER)
 		{
+			for (i=0;i<VCNum/3;i++){
+				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
+			}
 			for (int an = 0; an<ABC[0]; an++) // an runs over slice along A_AXIS
 			{
 			for (int bn = 0; bn<ABC[1]; bn++) // bn runs over slice along B_AXIS
@@ -3071,12 +3081,6 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				}
 			}
 			}
-			}
-			IdNum=j*Kinp;
-			for (i=i+1;i<Kout/Kinp;i++){
-				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
-				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
-				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
 			}
 		}else{
 			for (int an = anini; an<anfin; an++) // an runs over slice along A_AXIS
