@@ -379,7 +379,7 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 
 	GetBox(abc, ABC, Box);
 	UpdateSpinPositions(abc, ABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0 );
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 10 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
 //  Set OpenGL context initial state.

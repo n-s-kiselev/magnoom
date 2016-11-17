@@ -109,7 +109,7 @@ float phi_max=2*PI;
 float phi_min=0;
 
 // Parameters for initial state 
-float			chSize = 71; // characteristic size of initial state in units of "a"
+float			chSize = 6; // characteristic size of initial state in units of "a"
 float			chDir[3] = {0,1,0}; // characteristic size of initial state in units of "a"
 GLuint 			iStart;
 GLuint 			iNum;
@@ -2092,12 +2092,6 @@ void ChangeVectorMode( int id )
 	{
 		case 0: // change of mode e.g. from point to arrow
 		ReallocateArrayDrawing();
-		// printf("ElNumProto=%d\n",ElNumProto );
-		// printf("IdNumProto=%d\n",IdNumProto );
-		// printf("VCNumProto=%d\n",VCNumProto );
-		// printf("ElNum=%d\n",ElNum );
-		// printf("IdNum=%d\n",IdNum );
-		// printf("VCNum=%d\n",VCNum );
 		// Fill array for prototype (arrow or cane) array 
 		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode); 
 		// Fill big array for indecies for all arrows, cans, cones or boxes 
