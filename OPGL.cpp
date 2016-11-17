@@ -97,11 +97,13 @@ int				A_layer_max = 1;	// which layer (along a tr. vect. ) to show max=ABC[0]
 int				B_layer_max = 1;	// which layer (along b tr. vect. ) to show max=ABC[1]
 int				C_layer_max = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
 
-typedef enum	{A_AXIS, B_AXIS, C_AXIS/*, FILTER*/} enSliceMode; // which mode
+typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= A_AXIS;	// CANE by default 
 
-float theta_max=PI;
-float theta_min=0;
+float theta_max=PI/2+0.1; 
+float Sz_min=cos(theta_max);
+float theta_min=PI/2-0.1;    
+float Sz_max=cos(theta_min);
 
 float phi_max=2*PI;
 float phi_min=0;
@@ -1127,29 +1129,20 @@ void TW_CALL CB_GetSliceMode(void *value, void *clientData)
 }
 
 
-void TW_CALL CB_SetAlayerMin(const void *value, void *clientData )
-{
-	(void)clientData; // unused
-	int test= *( int *)value; // copy value to A_layer_min
-	if (test>=1 && test<=A_layer_max){
-        A_layer_min = test; // copy value to A_layer_min
-        ChangeVectorMode(0);
-	}
-}
-
 void TW_CALL CB_GetThetaMax(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(int *)value = theta_max; 
+    *(float *)value = theta_max; 
 }
 
 
 void TW_CALL CB_SetThetaMax(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-	int test= *( int *)value; // copy value to A_layer_min
-	if (test>theta_min ){
-        theta_max = test; // copy value to A_layer_min
+	float test= *( float *)value; 
+	if (test>=theta_min ){
+        theta_max = test;
+        Sz_min=cos(theta_max);
         ChangeVectorMode(0);
 	}
 }
@@ -1157,47 +1150,54 @@ void TW_CALL CB_SetThetaMax(const void *value, void *clientData )
 void TW_CALL CB_GetThetaMin(void *value, void *clientData)
 {
     (void)clientData; // unused
-    *(int *)value = theta_min; 
+    *(float *)value = theta_min; 
 }
 
 
 void TW_CALL CB_SetThetaMin(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-	int test= *( int *)value; // copy value to A_layer_min
-	if (test<theta_max ){
-        theta_min = test; // copy value to A_layer_min
+	float test= *( float *)value; 
+	if (test<=theta_max ){
+        theta_min = test; 
+        Sz_max=cos(theta_min);
         ChangeVectorMode(0);
 	}
 }
 
+// void TW_CALL CB_SetAlayerMin(const void *value, void *clientData )
+// {
+// 	(void)clientData; // unused
+// 	int test= *( int *)value; // copy value to A_layer_min
+// 	if (test>=1 && test<=A_layer_max){
+//         A_layer_min = test; // copy value to A_layer_min
+//         ChangeVectorMode(0);
+// 	}
+// }
+
+// void TW_CALL CB_GetAlayerMin(void *value, void *clientData)
+// {
+//     (void)clientData; // unused
+//     *(int *)value = A_layer_min; // just copy A_layer_min to value
+// }
 
 
+// void TW_CALL CB_SetAlayerMax(const void *value, void *clientData )
+// {
+// 	(void)clientData; // unused
+// 	int test= *( int *)value; // copy value to A_layer_min
+// 	if (test<=ABC[0] && test>=A_layer_min){
+//         A_layer_max = test; // copy value to A_layer_min
+//         ChangeVectorMode(0);
+// 	}
+// }
 
 
-void TW_CALL CB_GetAlayerMin(void *value, void *clientData)
-{
-    (void)clientData; // unused
-    *(int *)value = A_layer_min; // just copy A_layer_min to value
-}
-
-
-void TW_CALL CB_SetAlayerMax(const void *value, void *clientData )
-{
-	(void)clientData; // unused
-	int test= *( int *)value; // copy value to A_layer_min
-	if (test<=ABC[0] && test>=A_layer_min){
-        A_layer_max = test; // copy value to A_layer_min
-        ChangeVectorMode(0);
-	}
-}
-
-
-void TW_CALL CB_GetAlayerMax(void *value, void *clientData)
-{
-    (void)clientData; // unused
-    *(int *)value = A_layer_max; // just copy A_layer_min to value
-}
+// void TW_CALL CB_GetAlayerMax(void *value, void *clientData)
+// {
+//     (void)clientData; // unused
+//     *(int *)value = A_layer_max; // just copy A_layer_min to value
+// }
 
 
 void TW_CALL CB_ResetIterations( void *clientData )
@@ -1502,15 +1502,16 @@ void setupTweakBar()
 	TwEnumVal		enSliceModeTw[] = { 
 										{A_AXIS, "a-axis"}, 
 										{B_AXIS, "b-axis"}, 
-										{C_AXIS, "c-axis"}
+										{C_AXIS, "c-axis"},
+										{FILTER, "filter"}
 									  };
-	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 3);
-	TwAddVarCB(slicing_bar, "Slicing plane", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
+	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
+	TwAddVarCB(slicing_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
 	}
 	//TwAddVarCB(slicing_bar, "a layer min", TW_TYPE_INT32, CB_SetAlayerMin, CB_GetAlayerMin,  &A_layer_min, "step=1 help='Bottom layer of slicing along a-axis' ");
 	//TwAddVarCB(slicing_bar, "a layer max", TW_TYPE_INT32, CB_SetAlayerMax, CB_GetAlayerMax,  &A_layer_max, "step=1 help='Top layer of slicing along a-axis' ");
-	TwAddVarCB(slicing_bar, "T_max", TW_TYPE_FLOAT, CB_SetThetaMax, CB_GetThetaMax, &theta_max, " label='Theta max' min=0 max=3.141592 help='max value for angle theta'");
-	TwAddVarCB(slicing_bar, "T_min", TW_TYPE_FLOAT, CB_SetThetaMin, CB_GetThetaMin, &theta_min, " label='Theta min' min=0 max=3.141592 help='min value for angle theta'");
+	TwAddVarCB(slicing_bar, "T_max", TW_TYPE_FLOAT, CB_SetThetaMax, CB_GetThetaMax, &theta_max, " label='Theta max' min=0 max=3.141592 step=0.01 help='max value for angle theta'");
+	TwAddVarCB(slicing_bar, "T_min", TW_TYPE_FLOAT, CB_SetThetaMin, CB_GetThetaMin, &theta_min, " label='Theta min' min=0 max=3.141592 step=0.01 help='min value for angle theta'");
 
 
 /*  Hamiltonian parameters&controls F4 */
@@ -1639,19 +1640,20 @@ void setupTweakBar()
 	TwAddVarRW(initial_bar, "Degrees", TW_TYPE_FLOAT,  &RotateAllSpins, 
 	" min=-360 max=360 step=1 help='Rotate all spins about characteristic direction' ");
 	TwAddButton(initial_bar, "Rotate spins", CB_RotateAllSpins, NULL, "label='rotate all spins' ");
-	TwAddSeparator(initial_bar, "sep02", NULL);
 
 	TwAddSeparator(initial_bar, "sep1", NULL);
 	TwAddButton(initial_bar, "Invert X", CB_InvertX, NULL, "label='invert n_x component' ");
 	TwAddButton(initial_bar, "Invert Y", CB_InvertY, NULL, "label='invert n_y component' ");
 	TwAddButton(initial_bar, "Invert Z", CB_InvertZ, NULL, "label='invert n_z component' ");
-	TwAddSeparator(initial_bar, "sep2", NULL);
 
-	TwAddVarRW(initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(outputfilename)), outputfilename, ""); 
-	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='write to *.csv file' ");
+	TwAddSeparator(initial_bar, "sep02", NULL);
 	TwAddVarRW(initial_bar, "Input file name:", TW_TYPE_CSSTRING(sizeof(inputfilename)), inputfilename, "");
 	TwAddButton(initial_bar, "Read from CSV", CB_ReadCSV, NULL, "label='read from *.csv file' ");
-	TwAddButton(initial_bar, "Read from OVF", CB_ReadOVF, NULL, "label='read from *.ovf file' ");		
+	TwAddButton(initial_bar, "Read from OVF", CB_ReadOVF, NULL, "label='read from *.ovf file' ");
+
+	TwAddSeparator(initial_bar, "sep2", NULL);
+	TwAddVarRW(initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(outputfilename)), outputfilename, ""); 
+	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='write to *.csv file' ");		
 
 /*  AC field F6 */
 	ac_field_bar = TwNewBar("AC_Field");
@@ -2240,6 +2242,10 @@ void ReallocateArrayDrawing()
 			NOB_L=2*NOB_CL + 2*(C_layer_max - C_layer_min-1)*(ABC[0]-1+ABC[1]-1);
 		}
 		break;
+		case FILTER:
+		NOS_L=2*NOS_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2)*AtomsPerBlock;
+		NOB_L=2*NOB_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2);
+		break;
 	}
 
 	switch( WhichVectorMode )
@@ -2669,6 +2675,10 @@ void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 			NOB_L=2*NOB_CL + 2*(C_layer_max - C_layer_min-1)*(ABC[0]-1+ABC[1]-1);
 		}
 		break;
+		case FILTER:
+		NOS_L=2*NOS_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2)*AtomsPerBlock;
+		NOB_L=2*NOB_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2);
+		break;
 	}
 
 	if (WhichVectorMode==BOX1){
@@ -2725,65 +2735,131 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	{
 	case ARROW1:
 	case CONE1:
-		for (int an = anini; an<anfin; an++) 
-		{
-		for (int bn = bnini; bn<bnfin; bn++) 
-		{
-		for (int cn = cnini; cn<cnfin; cn++) 
-		{
-			n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
-			n = n*AtomsPerBlock;//index of the first spin in the block
-			for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+		if (WhichSliceMode==FILTER)
 			{
-			    N = n + atom;
-				//slow version is commented but easy to read: 
-				tmpV2[0] = Sx[N];
-				tmpV2[1] = Sy[N];
-				tmpV2[2] = Sz[N];
-		        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
-				j++;
-				for (int k=0; k<Kinp/3; k++) // k runs over vertices of the arrow/cone 
+			for (int an = 0; an<ABC[0]; an++) 
+			{
+			for (int bn = 0; bn<ABC[1]; bn++) 
+			{
+			for (int cn = 0; cn<ABC[2]; cn++) 
+			{
+				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = n*AtomsPerBlock;//index of the first spin in the block
+				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
-					i = j*Kinp + 3*k;	// vertex index
+				    N = n + atom;
 					//slow version is commented but easy to read: 
-					// tmpV1[0] = Vinp[3*k+0];
-					// tmpV1[1] = Vinp[3*k+1];
-					// tmpV1[2] = Vinp[3*k+2];
-					// NewBasisCartesian(tmpV1, tmpV2, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
-					// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
-					// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
-					// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
-					U = Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f); 
-					
-					A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])/U; 
+					tmpV2[0] = Sx[N];
+					tmpV2[1] = Sy[N];
+					tmpV2[2] = Sz[N];
+					if ( (Sz[N]>=Sz_min && Sz[N]<=Sz_max) && j<Kout/Kinp-1)
+					{
+				        HSVtoRGB(tmpV2, RGB, InvertValue, InvertHue);
+						j++;
+						for (int k=0; k<Kinp/3; k++) // k runs over vertices of the arrow/cone 
+						{
+							i = j*Kinp + 3*k;	// vertex index
+							//slow version is commented but easy to read: 
+							// tmpV1[0] = Vinp[3*k+0];
+							// tmpV1[1] = Vinp[3*k+1];
+							// tmpV1[2] = Vinp[3*k+2];
+							// NewBasisCartesian(tmpV1, tmpV2, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
+							// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
+							// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
+							// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
+							U = Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f); 
+							
+							A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])/U; 
 
-					Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
-					Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
-					Vout[i+2] =( Vinp[3*k+2]*Sz[N] - (Sx[N]*Vinp[3*k+0]+Sy[N]*Vinp[3*k+1])	)*Scale + Pz[N];	
+							Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
+							Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
+							Vout[i+2] =( Vinp[3*k+2]*Sz[N] - (Sx[N]*Vinp[3*k+0]+Sy[N]*Vinp[3*k+1])	)*Scale + Pz[N];	
 
-					//slow version is commented but easy to read:
-					// tmpV1[0] = Ninp[3*k+0];
-					// tmpV1[1] = Ninp[3*k+1];
-					// tmpV1[2] = Ninp[3*k+2];
-					//NewBasisCartesian(tmpV1, tmpV2, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
-					// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
-					// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
-					// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
+							//slow version is commented but easy to read:
+							// tmpV1[0] = Ninp[3*k+0];
+							// tmpV1[1] = Ninp[3*k+1];
+							// tmpV1[2] = Ninp[3*k+2];
+							//NewBasisCartesian(tmpV1, tmpV2, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
+							// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
+							// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
+							// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-					A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])/U; 
+							A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])/U; 
 
-					Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
-					Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
-					Nout[i+2] = Ninp[3*k+2]*Sz[N] - (Sx[N]*Ninp[3*k+0]+Sy[N]*Ninp[3*k+1]);
+							Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
+							Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
+							Nout[i+2] = Ninp[3*k+2]*Sz[N] - (Sx[N]*Ninp[3*k+0]+Sy[N]*Ninp[3*k+1]);
 
-					Cout[i+0] = RGB[0];			// x-component of vertex normal
-					Cout[i+1] = RGB[1];			// y-component of vertex normal
-					Cout[i+2] = RGB[2];			// z-component of vertex normal
+							Cout[i+0] = RGB[0];			// x-component of vertex normal
+							Cout[i+1] = RGB[1];			// y-component of vertex normal
+							Cout[i+2] = RGB[2];			// z-component of vertex normal
+						}
+					}//if
 				}
 			}
-		}
-		}
-		}
+			}
+			}
+		}else{//IF SLICING MODE = A-AXIS, B-AXIS, C-AXIS 
+			for (int an = anini; an<anfin; an++) 
+			{
+			for (int bn = bnini; bn<bnfin; bn++) 
+			{
+			for (int cn = cnini; cn<cnfin; cn++) 
+			{
+				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = n*AtomsPerBlock;//index of the first spin in the block
+				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				{
+				    N = n + atom;
+					//slow version is commented but easy to read: 
+					tmpV2[0] = Sx[N];
+					tmpV2[1] = Sy[N];
+					tmpV2[2] = Sz[N];
+			        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+					j++;
+					for (int k=0; k<Kinp/3; k++) // k runs over vertices of the arrow/cone 
+					{
+						i = j*Kinp + 3*k;	// vertex index
+						//slow version is commented but easy to read: 
+						// tmpV1[0] = Vinp[3*k+0];
+						// tmpV1[1] = Vinp[3*k+1];
+						// tmpV1[2] = Vinp[3*k+2];
+						// NewBasisCartesian(tmpV1, tmpV2, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
+						// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
+						// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
+						// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
+						U = Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f); 
+						
+						A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])/U; 
+
+						Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
+						Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
+						Vout[i+2] =( Vinp[3*k+2]*Sz[N] - (Sx[N]*Vinp[3*k+0]+Sy[N]*Vinp[3*k+1])	)*Scale + Pz[N];	
+
+						//slow version is commented but easy to read:
+						// tmpV1[0] = Ninp[3*k+0];
+						// tmpV1[1] = Ninp[3*k+1];
+						// tmpV1[2] = Ninp[3*k+2];
+						//NewBasisCartesian(tmpV1, tmpV2, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
+						// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
+						// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
+						// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
+
+						A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])/U; 
+
+						Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
+						Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
+						Nout[i+2] = Ninp[3*k+2]*Sz[N] - (Sx[N]*Ninp[3*k+0]+Sy[N]*Ninp[3*k+1]);
+
+						Cout[i+0] = RGB[0];			// x-component of vertex normal
+						Cout[i+1] = RGB[1];			// y-component of vertex normal
+						Cout[i+2] = RGB[2];			// z-component of vertex normal
+					}
+				}
+			}
+			}
+			}
+		}//if
 	break;
 
 	case BOX1:
