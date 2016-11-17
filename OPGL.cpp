@@ -100,6 +100,7 @@ int				C_layer_max = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
 typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= A_AXIS;	// CANE by default 
 
+int   N_filter=0;
 float theta_max=PI/2+0.1; 
 float Sz_min=cos(theta_max);
 float theta_min=PI/2-0.1;    
@@ -1820,7 +1821,9 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				 break;
 				 case C_AXIS:
 				 	if (C_layer_min>1) {C_layer_min-=1; ChangeVectorMode(0);}
-				 break;			 
+				 break;	
+				 default:
+				 break;		 
 				}
 			break;
 
@@ -1834,7 +1837,9 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				 break;
 				 case C_AXIS:
 				 	if (C_layer_min<C_layer_max) {C_layer_min+=1; ChangeVectorMode(0);}
-				 break;			 
+				 break;	
+				 default:
+				 break;		 
 				}
 			break;
 
@@ -1848,6 +1853,8 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				 break;
 				 case C_AXIS:
 				 	if (C_layer_max>C_layer_min) {C_layer_max-=1; ChangeVectorMode (0);}
+				 break;
+				 default:
 				 break;			 
 				}
 			break;
@@ -1862,7 +1869,9 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				 break;
 				 case C_AXIS:
 				 	if (C_layer_max<ABC[2]) {C_layer_max+=1; ChangeVectorMode (0);}
-				 break;			 
+				 break;	
+				 default:
+				 break;		 
 				}
 			break;
 
@@ -1961,7 +1970,9 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 				 break;
 				 case C_AXIS:
 				 	if (C_layer_max < ABC[2]) {C_layer_max+=1; C_layer_min+=1; ChangeVectorMode(1);}
-				 break;			 
+				 break;	
+				 default:
+				 break;		 
 				}
 				break;
 			case GLUT_KEY_DOWN:
@@ -1974,6 +1985,8 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 				 break;
 				 case C_AXIS:
 				 	if (C_layer_min>1) {C_layer_min-=1; C_layer_max-=1; ChangeVectorMode(1);} 
+				 break;
+				 default:
 				 break;
 				}
 				break;
@@ -2237,10 +2250,8 @@ void ReallocateArrayDrawing()
 		}
 		break;
 		case FILTER:
-		NOS_L=2*NOS_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2)*AtomsPerBlock;
-		NOB_L=2*NOB_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2);
-		// NOS_L=1000;
-		// NOB_L=1000;
+		NOS_L=NOS;
+		NOB_L=NOS/AtomsPerBlock;
 		break;
 	}
 
@@ -2672,10 +2683,8 @@ void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 		}
 		break;
 		case FILTER:
-		NOS_L=2*NOS_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2)*AtomsPerBlock;
-		NOB_L=2*NOB_CL + 2*(ABC[0]+ABC[1]-2)*(ABC[2]-2);
-		// NOS_L=1000;
-		// NOB_L=1000;
+		NOS_L=NOS;
+		NOB_L=NOS/AtomsPerBlock;
 		break;
 	}
 
@@ -2727,6 +2736,8 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			cnini=C_layer_min-1;
 	        cnfin=C_layer_max;
 		break;
+		default:
+		break;
 	}
 	j=-1;
 	switch (WhichVectorMode)
@@ -2735,11 +2746,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	case CONE1:
 		if (WhichSliceMode==FILTER)
 			{
-			for (i=0;i<VCNum/3;i++){
-				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
-				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
-				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
-			}
+			N_filter=0;
 			for (int an = 0; an<ABC[0]; an++) 
 			{
 			for (int bn = 0; bn<ABC[1]; bn++) 
@@ -2755,8 +2762,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					tmpV2[0] = Sx[N];
 					tmpV2[1] = Sy[N];
 					tmpV2[2] = Sz[N];
-					if ( (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) && j<Kout/Kinp-1)
+					if (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max)
 					{
+						N_filter++;
 				        HSVtoRGB(tmpV2, RGB, InvertValue, InvertHue);
 						j++;
 						for (int k=0; k<Kinp/3; k++) // k runs over vertices of the arrow/cone 
@@ -2868,11 +2876,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	case BOX1:
 		if (WhichSliceMode==FILTER)
 		{
-			for (i=0;i<VCNum/3;i++){
-				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
-				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
-				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
-			}
+			N_filter=0;
 			for (int an = 0; an<ABC[0]; an++) {
 			for (int bn = 0; bn<ABC[1]; bn++) {
 			for (int cn = 0; cn<ABC[2]; cn++) {	
@@ -2889,8 +2893,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					tmpV2[1]+= Sy[N];
 					tmpV2[2]+= Sz[N];
 			    }
-			    if ( (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) && j<Kout/Kinp-1)
+			    if (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max)
 				{
+					N_filter++;
 				    (void)Unitf(tmpV2,tmpV2);
 				    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
 
@@ -2969,10 +2974,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	case POINT:
 		if (WhichSliceMode==FILTER)
 		{
-			for (i=0;i<VCNum/3;i++){
-				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
-				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
-			}
+			N_filter=0;
 			for (int an = 0; an<ABC[0]; an++) // n runs over spins 
 			{
 			for (int bn = 0; bn<ABC[1]; bn++) // n runs over spins 
@@ -2986,7 +2988,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					tmpV2[0] = Sx[n+atom];
 					tmpV2[1] = Sy[n+atom];
 					tmpV2[2] = Sz[n+atom];
-					if ( (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) && j<Kout/Kinp-1){
+					if (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max)
+					{
+						N_filter++;
 				        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
 				        j++;
 						i = j*Kinp;			// index of first cane vertex 
@@ -3035,10 +3039,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	default:
 		if (WhichSliceMode==FILTER)
 		{
-			for (i=0;i<VCNum/3;i++){
-				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
-				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
-			}
+			N_filter=0;
 			for (int an = 0; an<ABC[0]; an++) // an runs over slice along A_AXIS
 			{
 			for (int bn = 0; bn<ABC[1]; bn++) // bn runs over slice along B_AXIS
@@ -3052,7 +3053,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					tmpV2[0] = Sx[n+atom];
 					tmpV2[1] = Sy[n+atom];
 					tmpV2[2] = Sz[n+atom];
-					if ( (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) && j<Kout/Kinp-1){
+					if (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) 
+					{
+						N_filter++;
 				        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
 				        j++;
 						//i = (n-nini)*Kinp;							// index of ferst cane vertex 
@@ -3176,6 +3179,10 @@ void CreateNewVBO( ){
 
 void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
 {	//ver, nor, col and ind pointer to arrays of vertxcies components, norlamls, colors and indecies 
+	if (WhichSliceMode==FILTER){
+			IdNum = N_filter * IdNumProto;
+			VCNum = N_filter * VCNumProto;
+	}
 	switch (WhichVectorMode)
 	{
 		case ARROW1:
