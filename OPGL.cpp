@@ -2099,9 +2099,9 @@ void ChangeVectorMode( int id )
 		// printf("IdNum=%d\n",IdNum );
 		// printf("VCNum=%d\n",VCNum );
 		// Fill array for prototype (arrow or cane) array 
-		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode); 
 		// Fill big array for indecies for all arrows, cans, cones or boxes 
-		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
+		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto);
 		case 1:	// change only the layer(s) for drawing
 		UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, bSx, bSy, bSz, WhichVectorMode);
 		UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI,vertices, normals, colors, indices);
@@ -2752,7 +2752,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					tmpV2[0] = Sx[N];
 					tmpV2[1] = Sy[N];
 					tmpV2[2] = Sz[N];
-					if ( (Sz[N]>=Sz_min && Sz[N]<=Sz_max) && j<Kout/Kinp-1)
+					if ( (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) && j<Kout/Kinp-1)
 					{
 				        HSVtoRGB(tmpV2, RGB, InvertValue, InvertHue);
 						j++;
@@ -2798,6 +2798,12 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				}
 			}
 			}
+			}
+			IdNum=j*Kinp;
+			for (i=i+1;i<Kout/Kinp;i++){
+				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
+				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
 			}
 		}else{//IF SLICING MODE = A-AXIS, B-AXIS, C-AXIS 
 			for (int an = anini; an<anfin; an++) 
@@ -2863,10 +2869,11 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	break;
 
 	case BOX1:
-		for (int an = anini; an<anfin; an++) {
-		for (int bn = bnini; bn<bnfin; bn++) {
-		for (int cn = cnini; cn<cnfin; cn++) {	
-			if (an == anini || an == anfin-1 || bn == bnini || bn == bnfin-1 || cn == cnini || cn == cnfin-1){	
+		if (WhichSliceMode==FILTER)
+		{
+			for (int an = 0; an<ABC[0]; an++) {
+			for (int bn = 0; bn<ABC[1]; bn++) {
+			for (int cn = 0; cn<ABC[2]; cn++) {	
 				tmpV2[0] = 0;
 				tmpV2[1] = 0;
 				tmpV2[2] = 0;
@@ -2880,104 +2887,245 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					tmpV2[1]+= Sy[N];
 					tmpV2[2]+= Sz[N];
 			    }
-			    (void)Unitf(tmpV2,tmpV2);
-			    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
-
-				j++;
-				for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
+			    if ( (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) && j<Kout/Kinp-1)
 				{
-					i = j*Kinp + 3*k;	// vertex index
+				    (void)Unitf(tmpV2,tmpV2);
+				    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
 
-					Vout[i+0] = Vinp[3*k+0] + BPx[n];
-					Vout[i+1] = Vinp[3*k+1] + BPy[n];
-					Vout[i+2] = Vinp[3*k+2] + BPz[n];	
+					j++;
+					for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
+					{
+						i = j*Kinp + 3*k;	// vertex index
 
-					Nout[i+0] = Ninp[3*k+0];
-					Nout[i+1] = Ninp[3*k+1];
-					Nout[i+2] = Ninp[3*k+2];
+						Vout[i+0] = Vinp[3*k+0] + BPx[n];
+						Vout[i+1] = Vinp[3*k+1] + BPy[n];
+						Vout[i+2] = Vinp[3*k+2] + BPz[n];	
 
-					Cout[i+0] = RGB[0];			
-					Cout[i+1] = RGB[1];			
-					Cout[i+2] = RGB[2];	
+						Nout[i+0] = Ninp[3*k+0];
+						Nout[i+1] = Ninp[3*k+1];
+						Nout[i+2] = Ninp[3*k+2];
+
+						Cout[i+0] = RGB[0];			
+						Cout[i+1] = RGB[1];			
+						Cout[i+2] = RGB[2];	
+					}
+				}//if	
+			}
+			}
+			}
+			IdNum=j*Kinp;
+			for (i=i+1;i<Kout/Kinp;i++){
+				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
+				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
+			}
+		}else{
+			for (int an = anini; an<anfin; an++) {
+			for (int bn = bnini; bn<bnfin; bn++) {
+			for (int cn = cnini; cn<cnfin; cn++) {	
+				if (an == anini || an == anfin-1 || bn == bnini || bn == bnfin-1 || cn == cnini || cn == cnfin-1){	
+					tmpV2[0] = 0;
+					tmpV2[1] = 0;
+					tmpV2[2] = 0;
+
+					n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+					for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+					{
+					    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
+		 
+						tmpV2[0]+= Sx[N];
+						tmpV2[1]+= Sy[N];
+						tmpV2[2]+= Sz[N];
+				    }
+				    (void)Unitf(tmpV2,tmpV2);
+				    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+
+					j++;
+					for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
+					{
+						i = j*Kinp + 3*k;	// vertex index
+
+						Vout[i+0] = Vinp[3*k+0] + BPx[n];
+						Vout[i+1] = Vinp[3*k+1] + BPy[n];
+						Vout[i+2] = Vinp[3*k+2] + BPz[n];	
+
+						Nout[i+0] = Ninp[3*k+0];
+						Nout[i+1] = Ninp[3*k+1];
+						Nout[i+2] = Ninp[3*k+2];
+
+						Cout[i+0] = RGB[0];			
+						Cout[i+1] = RGB[1];			
+						Cout[i+2] = RGB[2];	
+					}	
 				}	
+			}
+			}
 			}	
-		}
-		}
 		}
 	break;
 
 	case POINT:
-		for (int an = anini; an<anfin; an++) // n runs over spins 
+		if (WhichSliceMode==FILTER)
 		{
-		for (int bn = bnini; bn<bnfin; bn++) // n runs over spins 
-		{
-		for (int cn = cnini; cn<cnfin; cn++) // n runs over spins 
-		{
-			n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
-			n = n*AtomsPerBlock;//index of the first spin in the block
-			for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+			for (int an = 0; an<ABC[0]; an++) // n runs over spins 
 			{
-				tmpV2[0] = Sx[n+atom];
-				tmpV2[1] = Sy[n+atom];
-				tmpV2[2] = Sz[n+atom];
-		        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
-		        j++;
-				i = j*Kinp;			// index of first cane vertex 
-				Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
-				Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
-				Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
-				Cout[i+0] = RGB[0];	// x-component of vertex normal
-				Cout[i+1] = RGB[1];	// y-component of vertex normal
-				Cout[i+2] = RGB[2];	// z-component of vertex normal
-			}	
+			for (int bn = 0; bn<ABC[1]; bn++) // n runs over spins 
+			{
+			for (int cn = 0; cn<ABC[2]; cn++) // n runs over spins 
+			{
+				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = n*AtomsPerBlock;//index of the first spin in the block
+				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				{
+					tmpV2[0] = Sx[n+atom];
+					tmpV2[1] = Sy[n+atom];
+					tmpV2[2] = Sz[n+atom];
+					if ( (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) && j<Kout/Kinp-1){
+				        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+				        j++;
+						i = j*Kinp;			// index of first cane vertex 
+						Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
+						Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
+						Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
+						Cout[i+0] = RGB[0];	// x-component of vertex normal
+						Cout[i+1] = RGB[1];	// y-component of vertex normal
+						Cout[i+2] = RGB[2];	// z-component of vertex normal
+				    }
+				}	
+			}
+			}
+			}
+			IdNum=j*Kinp;
+			for (i=i+1;i<Kout/Kinp;i++){
+				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
+				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
+			}
+		}else{
+			for (int an = anini; an<anfin; an++) // n runs over spins 
+			{
+			for (int bn = bnini; bn<bnfin; bn++) // n runs over spins 
+			{
+			for (int cn = cnini; cn<cnfin; cn++) // n runs over spins 
+			{
+				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = n*AtomsPerBlock;//index of the first spin in the block
+				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				{
+					tmpV2[0] = Sx[n+atom];
+					tmpV2[1] = Sy[n+atom];
+					tmpV2[2] = Sz[n+atom];
+			        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+			        j++;
+					i = j*Kinp;			// index of first cane vertex 
+					Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
+					Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
+					Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
+					Cout[i+0] = RGB[0];	// x-component of vertex normal
+					Cout[i+1] = RGB[1];	// y-component of vertex normal
+					Cout[i+2] = RGB[2];	// z-component of vertex normal
+				}	
+			}
+			}
+			}
 		}
-		}
-		}
-
 	break;
 
 	case CANE:
 	default:
-		for (int an = anini; an<anfin; an++) // an runs over slice along A_AXIS
+		if (WhichSliceMode==FILTER)
 		{
-		for (int bn = bnini; bn<bnfin; bn++) // bn runs over slice along B_AXIS
-		{
-		for (int cn = cnini; cn<cnfin; cn++) // cn runs over slice along C_AXIS
-		{
-			n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
-			n = n*AtomsPerBlock;//index of the first spin in the block
-			for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+			for (int an = 0; an<ABC[0]; an++) // an runs over slice along A_AXIS
 			{
-				tmpV2[0] = Sx[n+atom];
-				tmpV2[1] = Sy[n+atom];
-				tmpV2[2] = Sz[n+atom];
-		        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
-		        j++;
-				//i = (n-nini)*Kinp;							// index of ferst cane vertex 
-				i = j*Kinp;
-				Vout[i+0] = tmpV2[0]*(1-Pivot)*Scale + Px[n+atom];	// new x-component of vertex + translation
-				Vout[i+1] = tmpV2[1]*(1-Pivot)*Scale + Py[n+atom];	// new y-component of vertex + translation
-				Vout[i+2] = tmpV2[2]*(1-Pivot)*Scale + Pz[n+atom];	// new z-component of vertex + translation
-				//i = n*Kinp/3*4;		// colors contains 4 floats
-				Cout[i+0] = RGB[0];					// x-component of vertex normal
-				Cout[i+1] = RGB[1];					// y-component of vertex normal
-				Cout[i+2] = RGB[2];					// z-component of vertex normal
-				//Cout[i+3] = 1.f;
-				//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
-				//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
-				i = j*Kinp+ 3*1;
-				Vout[i+0] = -tmpV2[0]*(Pivot)*Scale + Px[n+atom];		// new x-component of vertex + translation
-				Vout[i+1] = -tmpV2[1]*(Pivot)*Scale + Py[n+atom];		// new y-component of vertex + translation
-				Vout[i+2] = -tmpV2[2]*(Pivot)*Scale + Pz[n+atom];		// new z-component of vertex + translation
-				//i = n*Kinp/3*4+4;			// colors contains 4 floats
-				Cout[i+0] = RGB[0];					// x-component of vertex normal
-				Cout[i+1] = RGB[1];					// y-component of vertex normal
-				Cout[i+2] = RGB[2];					// z-component of vertex normal
-				//Cout[i+3] = 1.f;
-				//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
+			for (int bn = 0; bn<ABC[1]; bn++) // bn runs over slice along B_AXIS
+			{
+			for (int cn = cnini; cn<ABC[2]; cn++) // cn runs over slice along C_AXIS
+			{
+				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = n*AtomsPerBlock;//index of the first spin in the block
+				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				{
+					tmpV2[0] = Sx[n+atom];
+					tmpV2[1] = Sy[n+atom];
+					tmpV2[2] = Sz[n+atom];
+					if ( (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) && j<Kout/Kinp-1){
+				        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+				        j++;
+						//i = (n-nini)*Kinp;							// index of ferst cane vertex 
+						i = j*Kinp;
+						Vout[i+0] = tmpV2[0]*(1-Pivot)*Scale + Px[n+atom];	// new x-component of vertex + translation
+						Vout[i+1] = tmpV2[1]*(1-Pivot)*Scale + Py[n+atom];	// new y-component of vertex + translation
+						Vout[i+2] = tmpV2[2]*(1-Pivot)*Scale + Pz[n+atom];	// new z-component of vertex + translation
+						//i = n*Kinp/3*4;		// colors contains 4 floats
+						Cout[i+0] = RGB[0];					// x-component of vertex normal
+						Cout[i+1] = RGB[1];					// y-component of vertex normal
+						Cout[i+2] = RGB[2];					// z-component of vertex normal
+						//Cout[i+3] = 1.f;
+						//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
+						//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
+						i = j*Kinp+ 3*1;
+						Vout[i+0] = -tmpV2[0]*(Pivot)*Scale + Px[n+atom];		// new x-component of vertex + translation
+						Vout[i+1] = -tmpV2[1]*(Pivot)*Scale + Py[n+atom];		// new y-component of vertex + translation
+						Vout[i+2] = -tmpV2[2]*(Pivot)*Scale + Pz[n+atom];		// new z-component of vertex + translation
+						//i = n*Kinp/3*4+4;			// colors contains 4 floats
+						Cout[i+0] = RGB[0];					// x-component of vertex normal
+						Cout[i+1] = RGB[1];					// y-component of vertex normal
+						Cout[i+2] = RGB[2];					// z-component of vertex normal
+						//Cout[i+3] = 1.f;
+						//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
+					}
+				}
 			}
-		}
-		}
+			}
+			}
+			IdNum=j*Kinp;
+			for (i=i+1;i<Kout/Kinp;i++){
+				Vout[i+0] = Vout[i+1] = Vout[i+2] = 0;
+				Nout[i+0] = Nout[i+1] = Nout[i+2] = 0;
+				Cout[i+0] = Cout[i+1] = Cout[i+2] = 0;
+			}
+		}else{
+			for (int an = anini; an<anfin; an++) // an runs over slice along A_AXIS
+			{
+			for (int bn = bnini; bn<bnfin; bn++) // bn runs over slice along B_AXIS
+			{
+			for (int cn = cnini; cn<cnfin; cn++) // cn runs over slice along C_AXIS
+			{
+				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = n*AtomsPerBlock;//index of the first spin in the block
+				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				{
+					tmpV2[0] = Sx[n+atom];
+					tmpV2[1] = Sy[n+atom];
+					tmpV2[2] = Sz[n+atom];
+			        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+			        j++;
+					//i = (n-nini)*Kinp;							// index of ferst cane vertex 
+					i = j*Kinp;
+					Vout[i+0] = tmpV2[0]*(1-Pivot)*Scale + Px[n+atom];	// new x-component of vertex + translation
+					Vout[i+1] = tmpV2[1]*(1-Pivot)*Scale + Py[n+atom];	// new y-component of vertex + translation
+					Vout[i+2] = tmpV2[2]*(1-Pivot)*Scale + Pz[n+atom];	// new z-component of vertex + translation
+					//i = n*Kinp/3*4;		// colors contains 4 floats
+					Cout[i+0] = RGB[0];					// x-component of vertex normal
+					Cout[i+1] = RGB[1];					// y-component of vertex normal
+					Cout[i+2] = RGB[2];					// z-component of vertex normal
+					//Cout[i+3] = 1.f;
+					//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
+					//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
+					i = j*Kinp+ 3*1;
+					Vout[i+0] = -tmpV2[0]*(Pivot)*Scale + Px[n+atom];		// new x-component of vertex + translation
+					Vout[i+1] = -tmpV2[1]*(Pivot)*Scale + Py[n+atom];		// new y-component of vertex + translation
+					Vout[i+2] = -tmpV2[2]*(Pivot)*Scale + Pz[n+atom];		// new z-component of vertex + translation
+					//i = n*Kinp/3*4+4;			// colors contains 4 floats
+					Cout[i+0] = RGB[0];					// x-component of vertex normal
+					Cout[i+1] = RGB[1];					// y-component of vertex normal
+					Cout[i+2] = RGB[2];					// z-component of vertex normal
+					//Cout[i+3] = 1.f;
+					//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
+				}
+			}
+			}
+			}
 		}
 	}
 }
@@ -3048,7 +3196,7 @@ void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, floa
 				glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum * sizeof(float), col);
 
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*IdNum * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
+				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 1*IdNum * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);//***?1<->2?
 				glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum * sizeof(GLuint), ind);
 		break;
 		case POINT:
