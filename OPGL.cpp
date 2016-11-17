@@ -1354,6 +1354,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 							if (k<ABC[2] && j<ABC[1] && i<ABC[0]){
 								int n = i + j*ABC[0] + k*ABC[0]*ABC[1];
 								sscanf(line, "%lf %lf %lf", &bSx[n],&bSy[n],&bSz[n]);
+								Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
 							}
 						}
 					}
@@ -1371,10 +1372,14 @@ void TW_CALL CB_ReadOVF( void *clientData )
 					for (int k=0; k<znodes; k++){
 						for (int j=0; j<ynodes; j++){
 							for (int i=0; i<xnodes; i++){
+								if (k<ABC[2] && j<ABC[1] && i<ABC[0]){
 								int n = i + j*xnodes + k*xnodes*ynodes;
 								if(!fread (&bSx[n],binType,1,FilePointer)) break;
 								if(!fread (&bSy[n],binType,1,FilePointer)) break;
 								if(!fread (&bSz[n],binType,1,FilePointer)) break;
+								Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
+								}
+								
 							}
 						}
 					}
@@ -1386,6 +1391,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 			printf("%s has wrong data format or dimentionality!\n", inputfilename);
 		}       
 		// when everything is done
+		printf("Done!");
 		fclose(FilePointer);
         // test:
 		// for (int k=0; k<znodes; k++){
