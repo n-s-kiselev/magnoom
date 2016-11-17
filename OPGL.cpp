@@ -22,7 +22,7 @@ GLfloat			material_ambient[]  = {0.8, 0.8, 0.8, 1.0};
 GLfloat			material_diffuse[]  = {0.2, 0.2, 0.2, 1.0};
 GLfloat			material_specular[] = {0.0, 0.0, 0.0, 1.0};
 
-float			PerspSet[4]		= {60.0, asp_rat, 0.1, 5000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
+float			PerspSet[4]		= {60.0, asp_rat, 0.01, 50000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
 
 typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projections
 enProjections	WhichProjection = PERSP; // PERSP by default 	
@@ -84,8 +84,11 @@ int				InvertValue=0; //n_z=+1 (white), -1 (black). For InvertHue=1 vice versa
 // non-constant global variables:
 int				ActiveButton;	// current mous button that is down
 int				Xmouse, Ymouse;	// mouse values
-float			Rot[3];	// rotation angles in degrees
-float			TransXYZ[3];	// set by glui translation widgets
+float			Rot[3]={0,0,0};	// rotation angles in degrees
+float			TransXYZ[3]={0,0,0};	// set by glui translation widgets
+const int       NumCamPosSave=5;
+int             CurrentCameraPositionBank=0;
+float           CameraPosition[NumCamPosSave][7];// array which contains camera positions 
 float			Scale = 1.f;	// scaling factors for arrows [0.1-2] 
 float			Pivot = 0.55f;
 
@@ -220,12 +223,6 @@ void Resize( int window_width, int window_height) // called when user resizes th
 	glViewport(0, 0, window_width, window_height);
 	    // Send the new window size to AntTweakBar
     TwWindowSize(window_width, window_height);
-}
-
-void Reset( )
-{
-	Rot[0] = Rot[1] = Rot[2] = TransXYZ[0] = TransXYZ[1] = TransXYZ[2] = 0.;
-	PerspSet[0] =60.f;
 }
 
 void Xup( )
@@ -772,6 +769,16 @@ void setupOpenGL ()
 	glewInit();
 	#endif
 
+	for (int i=0;i<NumCamPosSave;i++){
+		CameraPosition[i][0]=0;
+		CameraPosition[i][1]=0;
+		CameraPosition[i][2]=0;
+		CameraPosition[i][3]=0;
+		CameraPosition[i][4]=0;
+		CameraPosition[i][5]=0;
+		CameraPosition[i][6]=PerspSet[0];
+	}
+
     // initialize element of the drawing scene which remain unchanged e.g. coordinate basis, domain boundary etc.
 	InitLists(abc, ABC);
 	InitRGB(RHue, GHue, BHue, HueMapRGB);
@@ -807,7 +814,6 @@ void setupOpenGL ()
     //   required because the GLUT key event functions do not report key modifiers states.
     TwGLUTModifiersFunc(glutGetModifiers);
 	setupTweakBar();
-
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -949,6 +955,27 @@ void TW_CALL CB_GetPivot(void *value, void *clientData)
     *(float *)value = Pivot; // just copy Pivot to value
 }
 
+void TW_CALL CB_SaveCameraPosition ( void *clientData )
+{
+	CameraPosition[CurrentCameraPositionBank][0]=Rot[0];
+	CameraPosition[CurrentCameraPositionBank][1]=Rot[1];
+	CameraPosition[CurrentCameraPositionBank][2]=Rot[2];
+	CameraPosition[CurrentCameraPositionBank][3]=TransXYZ[0];
+	CameraPosition[CurrentCameraPositionBank][4]=TransXYZ[1];
+	CameraPosition[CurrentCameraPositionBank][5]=TransXYZ[2];
+	CameraPosition[CurrentCameraPositionBank][6]=PerspSet[0];
+}
+
+void TW_CALL CB_GetCameraPosition ( void *clientData )
+{
+	Rot[0]=CameraPosition[CurrentCameraPositionBank][0];
+	Rot[1]=CameraPosition[CurrentCameraPositionBank][1];
+	Rot[2]=CameraPosition[CurrentCameraPositionBank][2];
+	TransXYZ[0]=CameraPosition[CurrentCameraPositionBank][3];
+	TransXYZ[1]=CameraPosition[CurrentCameraPositionBank][4];
+	TransXYZ[2]=CameraPosition[CurrentCameraPositionBank][5];
+	PerspSet[0]=CameraPosition[CurrentCameraPositionBank][6];
+}
 
 void TW_CALL CB_SetColorShift(const void *value, void *clientData )
 {
@@ -1481,6 +1508,12 @@ void setupTweakBar()
 	TwAddVarRW(view_bar, "RotZ", TW_TYPE_FLOAT, &Rot[2], 
 	" label='turn around z' min=-360 max=360 help='rotate camera around Z-axis' group='Camera control'");
 
+	TwAddVarRW(view_bar, "CamBank", TW_TYPE_INT32, &CurrentCameraPositionBank, 
+	" label='Current camera' min=0 max=4 group='Camera read/write'");
+	TwAddButton(view_bar, "Read Camera", CB_GetCameraPosition, NULL, "label='read camera pos.' ");
+	TwAddButton(view_bar, "Write Camera", CB_SaveCameraPosition, NULL, "label='save camera pos.' ");
+
+
 	TwAddVarCB(view_bar, "ColSh", TW_TYPE_INT32, CB_SetColorShift, CB_GetColorShift, &ColorShift, 
 	" label='Rotate hue' min=0 max=360 help='rotate color hue in xy-plane' group='HSV color map'");
 	TwAddVarCB(view_bar, "InvHue", TW_TYPE_BOOL32, CB_SetInvHue, CB_GetInvHue, &InvertHue, 
@@ -1905,27 +1938,6 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				Rot[1] += 0.25;
 				//TransXYZ[0]+=1;	
 				break;
-			// case 'o':
-			// case 'O':				
-			// 	break;
-
-			// case 'v':
-			// case 'V':
-			// 	WhichVectorMode=ARROW1;
-			// 	ChangeVectorMode(0);
-			// break;
-
-			// case 'c':
-			// case 'C':
-			// 	WhichVectorMode=CONE1;
-			// 	ChangeVectorMode(0);
-			// break;
-
-			// case 'b':
-			// case 'B':
-			// 	WhichVectorMode=CANE;
-			// 	ChangeVectorMode(0);
-			// break;
 
 			case 'x':
 			case 'X':
@@ -2070,12 +2082,6 @@ void Buttons( int id )
 
 		case ZUP:
 			Zup( );
-			glutSetWindow( GLUT_window );
-			glutPostRedisplay( );
-			break;
-
-		case RESET:
-			Reset( );
 			glutSetWindow( GLUT_window );
 			glutPostRedisplay( );
 			break;
