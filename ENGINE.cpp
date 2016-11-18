@@ -5,7 +5,7 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 					double* heffx, double* heffy, double* heffz, int N)
 {
 	double tmp0;
-	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
+	//single spin interactions (or potentila terms): Zeeman and Anisotropy:
 	//#pragma omp parallel num_threads(3)
 	//#pragma omp for
 	for (int i=0; i<N; i++)
@@ -37,7 +37,7 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 	int bc_b; // boundary condition along "b"
 	int bc_c; // boundary condition along "c"
 	int bc_f=1; // boundary condition factor 
-	for (int ni=0; ni<numNeighbors; ni++)
+	for (int ni=0; ni<numNeighbors; ni++)//over the whole pairs 
 	{
 		Ip= aidxBlock[ni];//index I^prime of spin in the block
 		I = nidxBlock[ni];//index I of neghbor spin in the block

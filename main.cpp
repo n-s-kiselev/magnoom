@@ -234,7 +234,8 @@ int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 
 #include "MATH.cpp"/*All mathematical fuctions*/
 #include "GEOM.cpp"/*All functions salculating size and neighbors*/
-#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/
+//#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/
+#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
 #include "OPGL.cpp"/*VISUAL THREAD: All Visualization Functions*/
 #include "INITSTATE.cpp"/*Set of functions for initial states*/
 
@@ -379,7 +380,7 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 
 	GetBox(abc, ABC, Box);
 	UpdateSpinPositions(abc, ABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 10 );
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
 //  Set OpenGL context initial state.

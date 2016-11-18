@@ -5,27 +5,6 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 					double* heffx, double* heffy, double* heffz, int N)
 {
 	double tmp0;
-	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
-	//#pragma omp parallel num_threads(3)
-	//#pragma omp for
-	for (int i=N; i<N+1; i++)
-	{
-	//H-field (Zeeman energy):
-	heffx[i] = Hfield*VHfield[0]+AC_FIELD_ON*HacTime*VHac[0];
-	heffy[i] = Hfield*VHfield[1]+AC_FIELD_ON*HacTime*VHac[1];
-	heffz[i] = Hfield*VHfield[2]+AC_FIELD_ON*HacTime*VHac[2];
-	//uniaxial anisotropy:
-	tmp0 = sx[i]*vku[0] + sy[i]*vku[1] + sz[i]*vku[2];
-	heffx[i]+= 2 * ku * vku[0] * tmp0;
-	heffy[i]+= 2 * ku * vku[1] * tmp0;
-	heffz[i]+= 2 * ku * vku[2] * tmp0;
-	//cubic anisotropy:
-	heffx[i]+= 4 * kc * sx[i]*sx[i]*sx[i];
-	heffy[i]+= 4 * kc * sy[i]*sy[i]*sy[i];
-	heffz[i]+= 4 * kc * sz[i]*sz[i]*sz[i];	
-	}
-
-	// pairwise spin interactions
 	int Ip, I, J, K, L;
 	int S;
 	float Je, Bq, dx, dy, dz, DM;
@@ -33,11 +12,41 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 	int na1, Na = ABC[0];
 	int nb1, Nb = ABC[1];
 	int nc1, Nc = ABC[2];
+	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=0; nb<Nb; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=0; na<Na; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					//H-field (Zeeman energy):
+					heffx[i] = Hfield*VHfield[0]+AC_FIELD_ON*HacTime*VHac[0];
+					heffy[i] = Hfield*VHfield[1]+AC_FIELD_ON*HacTime*VHac[1];
+					heffz[i] = Hfield*VHfield[2]+AC_FIELD_ON*HacTime*VHac[2];
+					//uniaxial anisotropy:
+					tmp0 = sx[i]*vku[0] + sy[i]*vku[1] + sz[i]*vku[2];
+					heffx[i]+= 2 * ku * vku[0] * tmp0;
+					heffy[i]+= 2 * ku * vku[1] * tmp0;
+					heffz[i]+= 2 * ku * vku[2] * tmp0;
+					//cubic anisotropy:
+					heffx[i]+= 4 * kc * sx[i]*sx[i]*sx[i];
+					heffy[i]+= 4 * kc * sy[i]*sy[i]*sy[i];
+					heffz[i]+= 4 * kc * sz[i]*sz[i]*sz[i];			
+				}
+			}
+		}
+	}
+	// pairwise spin interactions
 	int bc_a; // boundary condition along "a"
 	int bc_b; // boundary condition along "b"
 	int bc_c; // boundary condition along "c"
 	int bc_f=1; // boundary condition factor 
-	for (int ni=0; ni<numNeighbors; ni++)
+	for (int ni=0; ni<numNeighbors; ni++)//over the whole pairs 
 	{
 		Ip= aidxBlock[ni];//index I^prime of spin in the block
 		I = nidxBlock[ni];//index I of neghbor spin in the block
@@ -342,111 +351,133 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	Cx = VCu[0] * Cu;
 	Cy = VCu[1] * Cu;
 	Cz = VCu[2] * Cu;
-	for (int i=0;i<nos;i++)
-	{
 	GetEffectiveField( 	inx, iny, inz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, i );
-	}
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS );
 	//prediction step of midpoint solver:
-	for (int i=0;i<nos;i++)
+	int na1, Na = ABC[0];
+	int nb1, Nb = ABC[1];
+	int nc1, Nc = ABC[2];
+	int i;
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
-		nx = inx[i];	ny = iny[i];	nz = inz[i];
-		Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
-		Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
+		for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=0; nb<Nb; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=0; na<Na; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
-		// deterministic terms of Landau–Lifshitz equation:
-		Ax = 0.5f * h * ( - Hx - alpha * (ny * Hz - nz * Hy) );
-		Ay = 0.5f * h * ( - Hy - alpha * (nz * Hx - nx * Hz) );
-		Az = 0.5f * h * ( - Hz - alpha * (nx * Hy - ny * Hx) );
+					// deterministic terms of Landau–Lifshitz equation:
+					Ax = 0.5f * h * ( - Hx - alpha * (ny * Hz - nz * Hy) );
+					Ay = 0.5f * h * ( - Hy - alpha * (nz * Hx - nx * Hz) );
+					Az = 0.5f * h * ( - Hz - alpha * (nx * Hy - ny * Hx) );
 
-		// Spin-torque term
-		Ax = Ax + 0.5f * h * ( - alpha * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
-		Ay = Ay + 0.5f * h * ( - alpha * Cy + (nz * Cx - nx * Cz) );
-		Az = Az + 0.5f * h * ( - alpha * Cz + (nx * Cy - ny * Cx) );
+					// Spin-torque term
+					Ax = Ax + 0.5f * h * ( - alpha * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+					Ay = Ay + 0.5f * h * ( - alpha * Cy + (nz * Cx - nx * Cz) );
+					Az = Az + 0.5f * h * ( - alpha * Cz + (nx * Cy - ny * Cx) );
 
-		// stochastic terms of Landau–Lifshitz equation:
-		Ax = Ax + 0.5f * rh * D * ( - Rx - alpha * (ny * Rz - nz * Ry) );
-		Ay = Ay + 0.5f * rh * D * ( - Ry - alpha * (nz * Rx - nx * Rz) );
-		Az = Az + 0.5f * rh * D * ( - Rz - alpha * (nx * Ry - ny * Rx) );
+					// stochastic terms of Landau–Lifshitz equation:
+					Ax = Ax + 0.5f * rh * D * ( - Rx - alpha * (ny * Rz - nz * Ry) );
+					Ay = Ay + 0.5f * rh * D * ( - Ry - alpha * (nz * Rx - nx * Rz) );
+					Az = Az + 0.5f * rh * D * ( - Rz - alpha * (nx * Ry - ny * Rx) );
 
-		ax = nx + ny * Az - nz * Ay;
-		ay = ny + nz * Ax - nx * Az;
-		az = nz + nx * Ay - ny * Ax;
+					ax = nx + ny * Az - nz * Ay;
+					ay = ny + nz * Ax - nx * Az;
+					az = nz + nx * Ay - ny * Ax;
 
-		// detMi  = 1.0f/(1.0f + Ax * Ax + Ay * Ay + Az * Az);
-		// tnx[i] = (ax*(1+Ax*Ax)+ay*(Ax*Ay+Az)+az*(Ax*Az-Ay))*detMi
-		// tny[i] = (ax*(Ay*Ax-Az)+ay*(1+Ay*Ay)+az*(Ay*Az+Ax))*detMi
-		// tnz[i] = (ax*(Az*Ax+Ay)+ay*(Az*Ay-Ax)+az*(1+Az*Az))*detMi
-		// tnx[i] = ( tnx[i] + nx ) / 2;
-		// tny[i] = ( tnx[i] + nx ) / 2;
-		// tnz[i] = ( tnx[i] + nx ) / 2;
+					// detMi  = 1.0f/(1.0f + Ax * Ax + Ay * Ay + Az * Az);
+					// tnx[i] = (ax*(1+Ax*Ax)+ay*(Ax*Ay+Az)+az*(Ax*Az-Ay))*detMi
+					// tny[i] = (ax*(Ay*Ax-Az)+ay*(1+Ay*Ay)+az*(Ay*Az+Ax))*detMi
+					// tnz[i] = (ax*(Az*Ax+Ay)+ay*(Az*Ay-Ax)+az*(1+Az*Az))*detMi
+					// tnx[i] = ( tnx[i] + nx ) / 2;
+					// tny[i] = ( tnx[i] + nx ) / 2;
+					// tnz[i] = ( tnx[i] + nx ) / 2;
 
-		// let's do it in a a bit more efficient way by using Hx, Hy, Hz, Rx, Ry and Rz as temporal variables:
-		Hx = Ax * Ax;
-		Hy = Ay * Ay;
-		Hz = Az * Az;
-		Rx = Ay * Az;
-		Ry = Ax * Az;
-		Rz = Ax * Ay;
-		
-		detMi = 1.0f/(1.0f + Hx + Hy + Hz);
-		
-		nx = nx + ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;
-		ny = ny + ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
-		nz = nz + ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
+					// let's do it in a a bit more efficient way by using Hx, Hy, Hz, Rx, Ry and Rz as temporal variables:
+					Hx = Ax * Ax;
+					Hy = Ay * Ay;
+					Hz = Az * Az;
+					Rx = Ay * Az;
+					Ry = Ax * Az;
+					Rz = Ax * Ay;
+					
+					detMi = 1.0f/(1.0f + Hx + Hy + Hz);
+					
+					nx = nx + ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;
+					ny = ny + ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
+					nz = nz + ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
 
-		tnx[i] = nx * 0.5f;
-		tny[i] = ny * 0.5f;
-		tnz[i] = nz * 0.5f;
+					tnx[i] = nx * 0.5f;
+					tny[i] = ny * 0.5f;
+					tnz[i] = nz * 0.5f;
+				}
+			}
+		}
 	}
 
-	for (int i=0;i<nos;i++)
-	{
-	GetEffectiveField( 	inx, iny, inz, 
+	GetEffectiveField( 	tnx, tny, tnz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, i );
-	}
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS );
 
 	//final step of midpoint solver:
-	for (int i=0;i<nos;i++)
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
-			nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
-			Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
-			Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
-			// deterministic terms of Landau–Lifshitz equation:
-			Ax = 0.5 * h * ( - Hx - alpha * (ny * Hz - nz * Hy) );
-			Ay = 0.5 * h * ( - Hy - alpha * (nz * Hx - nx * Hz) );
-			Az = 0.5 * h * ( - Hz - alpha * (nx * Hy - ny * Hx) );
-			// Spin-torque term
-			Ax = Ax + 0.5f * h * ( - alpha * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
-			Ay = Ay + 0.5f * h * ( - alpha * Cy + (nz * Cx - nx * Cz) );
-			Az = Az + 0.5f * h * ( - alpha * Cz + (nx * Cy - ny * Cx) );
-			// stochastic terms of Landau–Lifshitz equation:
-			Ax = Ax + 0.5 * rh * D * ( - Rx - alpha * (ny * Rz - nz * Ry) );
-			Ay = Ay + 0.5 * rh * D * ( - Ry - alpha * (nz * Rx - nx * Rz) );
-			Az = Az + 0.5 * rh * D * ( - Rz - alpha * (nx * Ry - ny * Rx) );
+			nc1 = Na * Nb * nc;
+			for (int nb=0; nb<Nb; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=0; na<Na; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
+					// deterministic terms of Landau–Lifshitz equation:
+					Ax = 0.5 * h * ( - Hx - alpha * (ny * Hz - nz * Hy) );
+					Ay = 0.5 * h * ( - Hy - alpha * (nz * Hx - nx * Hz) );
+					Az = 0.5 * h * ( - Hz - alpha * (nx * Hy - ny * Hx) );
+					// Spin-torque term
+					Ax = Ax + 0.5f * h * ( - alpha * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+					Ay = Ay + 0.5f * h * ( - alpha * Cy + (nz * Cx - nx * Cz) );
+					Az = Az + 0.5f * h * ( - alpha * Cz + (nx * Cy - ny * Cx) );
+					// stochastic terms of Landau–Lifshitz equation:
+					Ax = Ax + 0.5 * rh * D * ( - Rx - alpha * (ny * Rz - nz * Ry) );
+					Ay = Ay + 0.5 * rh * D * ( - Ry - alpha * (nz * Rx - nx * Rz) );
+					Az = Az + 0.5 * rh * D * ( - Rz - alpha * (nx * Ry - ny * Rx) );
 
-			nx = inx[i];	ny = iny[i];	nz = inz[i];	//<-- pay attention to this line!
+					nx = inx[i];	ny = iny[i];	nz = inz[i];	//<-- pay attention to this line!
 
-			ax = nx + ny * Az - nz * Ay;
-			ay = ny + nz * Ax - nx * Az;
-			az = nz + nx * Ay - ny * Ax;
+					ax = nx + ny * Az - nz * Ay;
+					ay = ny + nz * Ax - nx * Az;
+					az = nz + nx * Ay - ny * Ax;
 
-			Hx = Ax * Ax;
-			Hy = Ay * Ay;
-			Hz = Az * Az;
-			Rx = Ay * Az;
-			Ry = Ax * Az;
-			Rz = Ax * Ay;
-			
-			detMi = 1.0f/(1.0f + Hx + Hy + Hz);
-			
-			inx[i] = ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;// <-- back to the array of spins new values
-			iny[i] = ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
-			inz[i] = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
-		
-		}	
+					Hx = Ax * Ax;
+					Hy = Ay * Ay;
+					Hz = Az * Az;
+					Rx = Ay * Az;
+					Ry = Ax * Az;
+					Rz = Ax * Ay;
+					
+					detMi = 1.0f/(1.0f + Hx + Hy + Hz);
+					
+					inx[i] = ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;// <-- back to the array of spins new values
+					iny[i] = ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
+					inz[i] = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
+				
+				}
+			}
+		}
+	}	
 
 	if (ITERATION%100!=0) 
 	{
@@ -481,12 +512,12 @@ float GetACfield()
 void *
 CALC_THREAD(void *void_ptr)
 {
-	for (int i=0;i<NOS;i++)
-	{
-	Heffx[i] = 0;
-	Heffy[i] = 0;
-	Heffz[i] = 10;		
-	}
+	char	shortBufer[80];
+ 	outFile = fopen ("sxsysz.csv","w");
+	if (outFile!=NULL) {fputs ("iter,sx,sy,sz,e_tot,\n",outFile);}
+
+	float Etotal;
+	double m[3];
 	while(true)
 	{
 		while(FLAG_CALC != DO_IT){ 
@@ -517,7 +548,18 @@ CALC_THREAD(void *void_ptr)
 			LeaveCriticalSection(&show_mutex);	
 		}
 
-		
+		if (Record!=0 && ITERATION%rec_iteration == 0){
+			Etotal = GetTotalEnergyMoment(Sx, Sy, Sz, Heffx, Heffy, Heffz, Etot, m, NOS);
+			// Etotal = GetTotalEnergy( 	Sx, Sy, Sz, 
+			// 				NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+			// 	 			Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
+			  if (outFile!=NULL)
+			  {
+				snprintf(shortBufer,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,m[0]/NOS,m[1]/NOS,m[2]/NOS,Etotal);
+			    fputs (shortBufer,outFile);  		
+			  }
+			//printf("%d \t %f \t %f \t %f \n",  ITERATION, Mtot[0],Mtot[1],Mtot[2] );
+		}
 		ITERATION++;
 }
 fclose (outFile);
