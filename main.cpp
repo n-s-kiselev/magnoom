@@ -234,7 +234,7 @@ int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 
 #include "MATH.cpp"/*All mathematical fuctions*/
 #include "GEOM.cpp"/*All functions salculating size and neighbors*/
-#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
+#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/
 #include "OPGL.cpp"/*VISUAL THREAD: All Visualization Functions*/
 #include "INITSTATE.cpp"/*Set of functions for initial states*/
 

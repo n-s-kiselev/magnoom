@@ -116,10 +116,10 @@ float		Block[][3] = {
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			ABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 //int			ABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-int			ABC[3] = {50,40,30};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
+int			ABC[3] = {100,100,100};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
 int			Boundary[3] = {0, 0, 0};// boundary conditions along a, b, c translation vectors
 
-int			ShellNumber = 4;
+int			ShellNumber = 1;
 int			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
 float*		RadiusOfShell = (float *)calloc(ShellNumber , sizeof(float));  
 int*		NeighborsPerAtom = (int *)calloc(AtomsPerBlock, sizeof(int));
