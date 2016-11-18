@@ -77,6 +77,7 @@
 #include <stdio.h> //I like printf( )!
 #include <ctype.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <time.h>
 // struct timespec tw = {0,100000000};// delay for 0 s and 10^8 ns =0.1s
 
@@ -90,9 +91,18 @@
 	#define LeaveCriticalSection(mutex_ptr) pthread_mutex_unlock(mutex_ptr)
 #endif
 
-enum	mutex_flags_values {READY,DO_IT,WAIT,TAKE_DATA};
-int		FLAG_CALC=WAIT;
-int		FLAG_SHOW=READY;
+enum engine_mutex_flags{DO_IT,WAIT};
+enum calc_thread_mutex_flags{INPROGRES,DONE};
+enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
+
+int		ENGINE_MUTEX=WAIT;
+int		DATA_TRANSFER_MUTEX=WAIT_DATA;
+int     CALC_MUTEX1=DONE;
+
+#define THREADS_NUMBER 2 
+sem_t sem[THREADS_NUMBER];
+
+
 int 	Record=0;// record <sx>, <sy>, <sz> into fole sxsysz.csv
 int     AC_FIELD_ON=0;//ON/OFF AC field signal.
 #define PI      3.14159265359 
@@ -254,11 +264,9 @@ return NULL;
 int 
 main (int argc, char **argv)
 {
-// int b=1;
-// printf("b=%d\n",b);
-// printf("1-b*((200-  2)/100 mod 2= %d\n",1-b*(200-2)/100%2);
-// printf("1-b*((200+  3)/100 mod 2= %d\n",1-b*(200+3)/100%2);
-// printf("1-b*((200+103)/100 mod 2= %d\n",1-b*(200+103)/100%2);
+for (int i=0; i<THREADS_NUMBER; i++){
+	sem_init(&sem[i], 0, 0);
+}
 
 ////////////////////////////////////////////////
 srand ( time(NULL) );//init random number seed//
@@ -361,15 +369,21 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	InitCriticalSection(&culc_mutex);
 	InitCriticalSection(&show_mutex);
 
-	//pthread_t INFO_THREAD_idx;
-	pthread_t CALC_THREAD_idx;
+	// pthread_t INFO_THREAD_idx;
+	// pthread_create(&INFO_THREAD_idx, NULL, CALC_THREAD, NULL);
+	pthread_t thread_id[THREADS_NUMBER];
+	int thread_args[THREADS_NUMBER];
 
 /* create the second thread which executes CALC_THREAD(&x) */
-	if(pthread_create(&CALC_THREAD_idx, NULL, CALC_THREAD, NULL)) 
-	{
-		fprintf(stderr, "Error in creating CALC_THREAD thread\n");
-		return 1;
+
+	for (int i=0; i<THREADS_NUMBER; i++){
+		thread_args[i] = i;
+		
+		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, &thread_args[i]) ) {
+			fprintf(stderr, "Error in creating CALC_THREAD thread\n"); return 1;
+		}		
 	}
+
 /* create the third thread which executes INFO_THREAD(&x) */
 	// if(pthread_create(&INFO_THREAD_idx, NULL, INFO_THREAD, NULL)) 
 	// {

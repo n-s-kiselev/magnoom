@@ -483,7 +483,7 @@ CALC_THREAD(void *void_ptr)
 	double m[3];
 	while(true)
 	{
-		while(FLAG_CALC != DO_IT){ 
+		while(ENGINE_MUTEX != DO_IT){ 
 			usleep(10);
 			//nanosleep (&tw, NULL);
 		}
@@ -496,7 +496,7 @@ CALC_THREAD(void *void_ptr)
 			//SimpleMinimizer( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature);
 		}
 
-		if (FLAG_SHOW==READY)
+		if (DATA_TRANSFER_MUTEX==WAIT_DATA)
 		{
 			for (int i=0;i<NOS;i++)
 			{
@@ -506,7 +506,7 @@ CALC_THREAD(void *void_ptr)
 			}
 
 			EnterCriticalSection(&show_mutex);
-				FLAG_SHOW=TAKE_DATA;
+				DATA_TRANSFER_MUTEX=TAKE_DATA;
 				currentIteration=ITERATION;
 			LeaveCriticalSection(&show_mutex);	
 		}

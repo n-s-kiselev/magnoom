@@ -840,7 +840,7 @@ void idle ()
 
 	if(timeInterval > 40)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
 	{
-		if( FLAG_SHOW==TAKE_DATA )
+		if( DATA_TRANSFER_MUTEX==TAKE_DATA )
 		{
 			if (DataTransfer==1)
 			{
@@ -867,7 +867,7 @@ void idle ()
 				previousIteration = currentIteration;
 			}
 			EnterCriticalSection( &show_mutex);
-				FLAG_SHOW = READY; // meaning that OpenGL is ready to take new data from engine
+				DATA_TRANSFER_MUTEX = WAIT_DATA; // meaning that OpenGL is waiting for new data from engine
 			LeaveCriticalSection( &show_mutex);
 		} 
 
@@ -884,13 +884,13 @@ void TW_CALL CB_Run( void *clientData )
 		Play=1;
 		TwDefine(" Parameters&Controls/Run  label='STOP simulation' ");
 		EnterCriticalSection(&culc_mutex);
-			FLAG_CALC=DO_IT;
+			ENGINE_MUTEX=DO_IT;
 		LeaveCriticalSection(&culc_mutex);
 	}else{
 		Play=0; 
 		TwDefine(" Parameters&Controls/Run  label='RUN simulation' ");
 		EnterCriticalSection(&culc_mutex);
-			FLAG_CALC=WAIT;
+			ENGINE_MUTEX=WAIT;
 		LeaveCriticalSection(&culc_mutex);	
 	}
 }

@@ -2,7 +2,7 @@ void
 GetEffectiveField(	double* sx, double* sy, double* sz, 
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
-					double* heffx, double* heffy, double* heffz, int N)
+					double* heffx, double* heffy, double* heffz, int N, int nc0, int nc1)
 {
 	double tmp0;
 	int Ip, I, J, K, L;
@@ -15,7 +15,8 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
-		for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		for (int nc=nc0; nc<nc1; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
 			for (int nb=0; nb<Nb; nb++)
@@ -61,7 +62,8 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 		dx= VDMx[ni];
 		dy= VDMy[ni];
 		dz= VDMz[ni];
-		for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		for (int nc=nc0; nc<nc1; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
 			for (int nb=0; nb<Nb; nb++)
@@ -313,7 +315,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature)
+				float temperature, int nc0, int nc1)
 // The semi-implicit midpoint (SIB) solver for the LLG-equations:
 // J.H. Mentink et al, J. Phys.: Condens. Matter, 22, 176001 (2010).
 // The method consists of two steps: prediction step and final step, see Eq.(18).
@@ -353,7 +355,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	Cz = VCu[2] * Cu;
 	GetEffectiveField( 	inx, iny, inz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS );
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, nc0, nc1);
 	//prediction step of midpoint solver:
 	int na1, Na = ABC[0];
 	int nb1, Nb = ABC[1];
@@ -361,7 +363,8 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	int i;
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
-		for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		for (int nc=nc0; nc<nc1; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
 			for (int nb=0; nb<Nb; nb++)
@@ -425,12 +428,13 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 
 	GetEffectiveField( 	tnx, tny, tnz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS );
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, nc0, nc1);
 
 	//final step of midpoint solver:
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
-		for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		for (int nc=nc0; nc<nc1; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
 			for (int nb=0; nb<Nb; nb++)
@@ -478,17 +482,6 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 			}
 		}
 	}	
-
-	if (ITERATION%100!=0) 
-	{
-		for (int i=0;i<nos;i++)
-		{
-		detMi = 1.f/sqrt(inx[i]*inx[i]+iny[i]*iny[i]+inz[i]*inz[i]);
-		inx[i] = inx[i] * detMi;
-		iny[i] = iny[i] * detMi;
-		inz[i] = inz[i] * detMi;		
-		}
-	}
 }
 
 void
@@ -509,58 +502,41 @@ float GetACfield()
 }
 
 /* this function is run by the distinct thread */
-void *
-CALC_THREAD(void *void_ptr)
+void *CALC_THREAD(void *void_ptr)
 {
-	char	shortBufer[80];
- 	outFile = fopen ("sxsysz.csv","w");
-	if (outFile!=NULL) {fputs ("iter,sx,sy,sz,e_tot,\n",outFile);}
+	int *argPtr = void_ptr;
+    int threadindex = *argPtr;
 
-	float Etotal;
-	double m[3];
 	while(true)
 	{
-		while(FLAG_CALC != DO_IT){ 
+		while(ENGINE_MUTEX != DO_IT){ 
 			usleep(10);
 			//nanosleep (&tw, NULL);
 		}
 		HacTime = GetACfield();
-		if (damping<10){
-			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature);
+		if (threadindex==0){
+			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,0,50);
 		}else{
 			//here should be energy minimization function
-			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, 100, t_step, Temperature);
-			//SimpleMinimizer( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature);
+			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, 100, t_step, Temperature,50,100);
+			ITERATION++;
 		}
 
-		if (FLAG_SHOW==READY)
-		{
-			for (int i=0;i<NOS;i++)
-			{
-				bSx[i]=Sx[i];
-				bSy[i]=Sy[i];
-				bSz[i]=Sz[i];
-			}
+		// if (DATA_TRANSFER_MUTEX==WAIT_DATA)
+		// {
+		// 	for (int i=0;i<NOS;i++)
+		// 	{
+		// 		bSx[i]=Sx[i];
+		// 		bSy[i]=Sy[i];
+		// 		bSz[i]=Sz[i];
+		// 	}
 
-			EnterCriticalSection(&show_mutex);
-				FLAG_SHOW=TAKE_DATA;
-				currentIteration=ITERATION;
-			LeaveCriticalSection(&show_mutex);	
-		}
+		// 	EnterCriticalSection(&show_mutex);
+		// 		DATA_TRANSFER_MUTEX=TAKE_DATA;
+		// 		currentIteration=ITERATION;
+		// 	LeaveCriticalSection(&show_mutex);	
+		// }
 
-		if (Record!=0 && ITERATION%rec_iteration == 0){
-			Etotal = GetTotalEnergyMoment(Sx, Sy, Sz, Heffx, Heffy, Heffz, Etot, m, NOS);
-			// Etotal = GetTotalEnergy( 	Sx, Sy, Sz, 
-			// 				NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-			// 	 			Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
-			  if (outFile!=NULL)
-			  {
-				snprintf(shortBufer,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,m[0]/NOS,m[1]/NOS,m[2]/NOS,Etotal);
-			    fputs (shortBufer,outFile);  		
-			  }
-			//printf("%d \t %f \t %f \t %f \n",  ITERATION, Mtot[0],Mtot[1],Mtot[2] );
-		}
-		ITERATION++;
 }
 fclose (outFile);
 /* the function must return something - NULL will do */
