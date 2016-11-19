@@ -244,8 +244,8 @@ int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 
 #include "MATH.cpp"/*All mathematical fuctions*/
 #include "GEOM.cpp"/*All functions salculating size and neighbors*/
-//#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/
-#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
+#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/
+//#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
 #include "OPGL.cpp"/*VISUAL THREAD: All Visualization Functions*/
 #include "INITSTATE.cpp"/*Set of functions for initial states*/
 
@@ -379,7 +379,7 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	for (int i=0; i<THREADS_NUMBER; i++){
 		thread_args[i] = i;
 		
-		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, &thread_args[i]) ) {
+		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, (void *)&thread_args[i]) ) {
 			fprintf(stderr, "Error in creating CALC_THREAD thread\n"); return 1;
 		}		
 	}

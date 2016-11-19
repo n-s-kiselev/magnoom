@@ -2,7 +2,7 @@ void
 GetEffectiveField(	double* sx, double* sy, double* sz, 
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
-					double* heffx, double* heffy, double* heffz, int N, int nc0, int nc1)
+					double* heffx, double* heffy, double* heffz, int N, int ncini, int ncfin)
 {
 	double tmp0;
 	int Ip, I, J, K, L;
@@ -16,7 +16,7 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
-		for (int nc=nc0; nc<nc1; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
 			for (int nb=0; nb<Nb; nb++)
@@ -63,7 +63,7 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 		dy= VDMy[ni];
 		dz= VDMz[ni];
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
-		for (int nc=nc0; nc<nc1; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
 			for (int nb=0; nb<Nb; nb++)
@@ -315,7 +315,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature, int nc0, int nc1)
+				float temperature, int ncini, int ncfin)
 // The semi-implicit midpoint (SIB) solver for the LLG-equations:
 // J.H. Mentink et al, J. Phys.: Condens. Matter, 22, 176001 (2010).
 // The method consists of two steps: prediction step and final step, see Eq.(18).
@@ -355,7 +355,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	Cz = VCu[2] * Cu;
 	GetEffectiveField( 	inx, iny, inz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, nc0, nc1);
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, ncini, ncfin);
 	//prediction step of midpoint solver:
 	int na1, Na = ABC[0];
 	int nb1, Nb = ABC[1];
@@ -364,7 +364,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
-		for (int nc=nc0; nc<nc1; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
 			for (int nb=0; nb<Nb; nb++)
@@ -428,13 +428,13 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 
 	GetEffectiveField( 	tnx, tny, tnz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, nc0, nc1);
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, ncini, ncfin);
 
 	//final step of midpoint solver:
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
-		for (int nc=nc0; nc<nc1; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
 			for (int nb=0; nb<Nb; nb++)
@@ -477,6 +477,9 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					inx[i] = ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;// <-- back to the array of spins new values
 					iny[i] = ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
 					inz[i] = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
+					bSx[i]=inx[i];
+					bSy[i]=iny[i];
+					bSz[i]=inz[i];
 				
 				}
 			}
@@ -504,8 +507,10 @@ float GetACfield()
 /* this function is run by the distinct thread */
 void *CALC_THREAD(void *void_ptr)
 {
-	int *argPtr = void_ptr;
-    int threadindex = *argPtr;
+
+    int threadindex = *((int *) void_ptr);
+    //printf("threadindex =%d\n", threadindex );
+
 
 	while(true)
 	{
@@ -518,24 +523,24 @@ void *CALC_THREAD(void *void_ptr)
 			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,0,50);
 		}else{
 			//here should be energy minimization function
-			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, 100, t_step, Temperature,50,100);
+			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,50,100);
 			ITERATION++;
 		}
 
-		// if (DATA_TRANSFER_MUTEX==WAIT_DATA)
-		// {
-		// 	for (int i=0;i<NOS;i++)
-		// 	{
-		// 		bSx[i]=Sx[i];
-		// 		bSy[i]=Sy[i];
-		// 		bSz[i]=Sz[i];
-		// 	}
+		if (DATA_TRANSFER_MUTEX==WAIT_DATA)
+		{
+			// for (int i=0;i<NOS;i++)
+			// {
+			// 	bSx[i]=Sx[i];
+			// 	bSy[i]=Sy[i];
+			// 	bSz[i]=Sz[i];
+			// }
 
-		// 	EnterCriticalSection(&show_mutex);
-		// 		DATA_TRANSFER_MUTEX=TAKE_DATA;
-		// 		currentIteration=ITERATION;
-		// 	LeaveCriticalSection(&show_mutex);	
-		// }
+			EnterCriticalSection(&show_mutex);
+				DATA_TRANSFER_MUTEX=TAKE_DATA;
+				currentIteration=ITERATION;
+			LeaveCriticalSection(&show_mutex);	
+		}
 
 }
 fclose (outFile);
