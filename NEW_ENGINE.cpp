@@ -507,10 +507,52 @@ float GetACfield()
 /* this function is run by the distinct thread */
 void *CALC_THREAD(void *void_ptr)
 {
-
     int threadindex = *((int *) void_ptr);
     //printf("threadindex =%d\n", threadindex );
+    int dNa = (int)ABC[0]/THREADS_NUMBER;
+    int dNb = (int)ABC[0]/THREADS_NUMBER;
+    int dNc = (int)ABC[0]/THREADS_NUMBER;
 
+    if (ABC[0]>ABC[1]&&ABC[0]>ABC[2]){      //a-axis is the longest side of the box
+    	naini = dNa*threadindex; 
+    	if (dNa*threadindex<ABC[0]){
+    		nafin = dNa*threadindex;
+    	}else{
+    		nafin = ABC[0];
+    	}
+    	nbini = 0; nbfin = ABC[1];
+    	ncini = 0; ncfin = ABC[2];
+    }else if (ABC[2]>ABC[0]&&ABC[2]<ABC[1]){//c-axis is the longest side of the box
+    	ncini = dNa*threadindex; 
+    	if (dNc*threadindex<ABC[2]){
+    		ncfin = dNc*threadindex;
+    	}else{
+    		ncfin = ABC[2];
+    	}
+    	naini = 0; nafin = ABC[0];	
+    	nbini = 0; nbfin = ABC[1];
+    }else if (ABC[1]>ABC[0]&&ABC[1]<ABC[2]){//b-axis is the longest side of the box
+    	nbini = dNb*threadindex; 
+    	if (dNb*threadindex<ABC[1]){
+    		nbfin = dNb*threadindex;
+    	}else{
+    		nbfin = ABC[1];
+    	}
+    	naini = 0; nafin = ABC[0];	
+    	ncini = 0; ncfin = ABC[2];    	
+    }
+
+
+
+switch(threadindex)
+{
+	case 0:
+
+	break;
+	default:
+
+	break;
+}
 
 	while(true)
 	{
@@ -521,11 +563,11 @@ void *CALC_THREAD(void *void_ptr)
 		HacTime = GetACfield();
 		if (threadindex==0){
 			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,0,50);
-		printf("0000000000000000\n");
+		// printf("0000000000000000\n");
 		}else{
 			//here should be energy minimization function
 			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,50,100);
-			printf("11111111111111111\n");
+			// printf("11111111111111111\n");
 			ITERATION++;
 		}
 
