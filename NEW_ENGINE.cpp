@@ -521,9 +521,11 @@ void *CALC_THREAD(void *void_ptr)
 		HacTime = GetACfield();
 		if (threadindex==0){
 			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,0,50);
+		printf("0000000000000000\n");
 		}else{
 			//here should be energy minimization function
 			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,50,100);
+			printf("11111111111111111\n");
 			ITERATION++;
 		}
 
