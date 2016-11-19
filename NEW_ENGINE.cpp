@@ -2,7 +2,10 @@ void
 GetEffectiveField(	double* sx, double* sy, double* sz, 
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
-					double* heffx, double* heffy, double* heffz, int N, int ncini, int ncfin)
+					double* heffx, double* heffy, double* heffz, int N, 
+					int naini, 	int nafin,
+					int nbini, 	int nbfin,
+					int ncini, 	int ncfin)
 {
 	double tmp0;
 	int Ip, I, J, K, L;
@@ -19,10 +22,10 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
-			for (int nb=0; nb<Nb; nb++)
+			for (int nb=nbini; nb<nbfin; nb++)
 			{
 				nb1 = Na * nb;
-				for (int na=0; na<Na; na++)
+				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					//H-field (Zeeman energy):
@@ -66,10 +69,10 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
-			for (int nb=0; nb<Nb; nb++)
+			for (int nb=nbini; nb<nbfin; nb++)
 			{
 				bc_b = 1 - (1-Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
-				for (int na=0; na<Na; na++)
+				for (int na=naini; na<nafin; na++)
 				{
 					bc_a = 1 - (1-Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
 					bc_f = bc_a*bc_b*bc_c;
@@ -315,7 +318,10 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature, int ncini, int ncfin)
+				float temperature, 						
+				int naini, 	int nafin,
+				int nbini, 	int nbfin,
+				int ncini, 	int ncfin)
 // The semi-implicit midpoint (SIB) solver for the LLG-equations:
 // J.H. Mentink et al, J. Phys.: Condens. Matter, 22, 176001 (2010).
 // The method consists of two steps: prediction step and final step, see Eq.(18).
@@ -355,7 +361,8 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	Cz = VCu[2] * Cu;
 	GetEffectiveField( 	inx, iny, inz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, ncini, ncfin);
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
 	int na1, Na = ABC[0];
 	int nb1, Nb = ABC[1];
@@ -367,10 +374,10 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
-			for (int nb=0; nb<Nb; nb++)
+			for (int nb=nbini; nb<nbfin; nb++)
 			{
 				nb1 = Na * nb;
-				for (int na=0; na<Na; na++)
+				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = inx[i];	ny = iny[i];	nz = inz[i];
@@ -428,7 +435,8 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 
 	GetEffectiveField( 	tnx, tny, tnz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, ncini, ncfin);
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, 
+						naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//final step of midpoint solver:
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
@@ -437,10 +445,10 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
-			for (int nb=0; nb<Nb; nb++)
+			for (int nb=nbini; nb<nbfin; nb++)
 			{
 				nb1 = Na * nb;
-				for (int na=0; na<Na; na++)
+				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
@@ -477,9 +485,9 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					inx[i] = ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;// <-- back to the array of spins new values
 					iny[i] = ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
 					inz[i] = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
-					bSx[i]=inx[i];
-					bSy[i]=iny[i];
-					bSz[i]=inz[i];
+					// bSx[i]=inx[i];
+					// bSy[i]=iny[i];
+					// bSz[i]=inz[i];
 				
 				}
 			}
@@ -509,14 +517,20 @@ void *CALC_THREAD(void *void_ptr)
 {
     int threadindex = *((int *) void_ptr);
     //printf("threadindex =%d\n", threadindex );
-    int dNa = (int)ABC[0]/THREADS_NUMBER;
-    int dNb = (int)ABC[0]/THREADS_NUMBER;
-    int dNc = (int)ABC[0]/THREADS_NUMBER;
+    int dNa = (int)ABC[0]/THREADS_NUMBER+1;
+    int dNb = (int)ABC[0]/THREADS_NUMBER+1;
+    int dNc = (int)ABC[0]/THREADS_NUMBER+1;
+    int naini=0;
+    int nafin=0;
+    int nbini=0; 
+    int nbfin=0;
+    int ncini=0;
+    int ncfin=0;
 
-    if (ABC[0]>ABC[1]&&ABC[0]>ABC[2]){      //a-axis is the longest side of the box
+    if (ABC[0]>=ABC[1]&&ABC[0]>=ABC[2]){      //a-axis is the longest side of the box
     	naini = dNa*threadindex; 
-    	if (dNa*threadindex<ABC[0]){
-    		nafin = dNa*threadindex;
+    	if (dNa*(threadindex+1)<ABC[0]){
+    		nafin = dNa*(threadindex+1);
     	}else{
     		nafin = ABC[0];
     	}
@@ -524,8 +538,8 @@ void *CALC_THREAD(void *void_ptr)
     	ncini = 0; ncfin = ABC[2];
     }else if (ABC[2]>ABC[0]&&ABC[2]<ABC[1]){//c-axis is the longest side of the box
     	ncini = dNa*threadindex; 
-    	if (dNc*threadindex<ABC[2]){
-    		ncfin = dNc*threadindex;
+    	if (dNc*(threadindex+1)<ABC[2]){
+    		ncfin = dNc*(threadindex+1);
     	}else{
     		ncfin = ABC[2];
     	}
@@ -533,26 +547,19 @@ void *CALC_THREAD(void *void_ptr)
     	nbini = 0; nbfin = ABC[1];
     }else if (ABC[1]>ABC[0]&&ABC[1]<ABC[2]){//b-axis is the longest side of the box
     	nbini = dNb*threadindex; 
-    	if (dNb*threadindex<ABC[1]){
-    		nbfin = dNb*threadindex;
+    	if (dNb*(threadindex+1)<ABC[1]){
+    		nbfin = dNb*(threadindex+1);
     	}else{
     		nbfin = ABC[1];
     	}
     	naini = 0; nafin = ABC[0];	
     	ncini = 0; ncfin = ABC[2];    	
     }
+    printf("thread[%d]\n",threadindex );
+    printf("naini = %d, nafin = %d\n",naini, nafin);
+    printf("nbini = %d, nbfin = %d\n",nbini, nbfin);
+    printf("ncini = %d, ncfin = %d\n",ncini, ncfin);
 
-
-
-switch(threadindex)
-{
-	case 0:
-
-	break;
-	default:
-
-	break;
-}
 
 	while(true)
 	{
@@ -561,29 +568,31 @@ switch(threadindex)
 			//nanosleep (&tw, NULL);
 		}
 		HacTime = GetACfield();
-		if (threadindex==0){
-			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,0,50);
-		// printf("0000000000000000\n");
-		}else{
-			//here should be energy minimization function
-			StochasticLLG( Sx, Sy, Sz, tSx, tSy, tSz, Heffx, Heffy, Heffz, RNx, RNy, RNz, NOS, damping, t_step, Temperature,50,100);
-			// printf("11111111111111111\n");
+		StochasticLLG( 	Sx, 	Sy, 	Sz, 
+						tSx,	tSy, 	tSz, 
+						Heffx, 	Heffy, 	Heffz, 
+						RNx, 	RNy, 	RNz, 
+						NOS, 	damping,t_step, 
+						Temperature,
+						naini, 	nafin,
+						nbini, 	nbfin,
+						ncini, 	ncfin);
+		//printf("Tread[%d]\n",threadindex );
+		if (threadindex==THREADS_NUMBER-1){ 
 			ITERATION++;
-		}
-
-		if (DATA_TRANSFER_MUTEX==WAIT_DATA)
-		{
-			// for (int i=0;i<NOS;i++)
-			// {
-			// 	bSx[i]=Sx[i];
-			// 	bSy[i]=Sy[i];
-			// 	bSz[i]=Sz[i];
-			// }
-
-			EnterCriticalSection(&show_mutex);
-				DATA_TRANSFER_MUTEX=TAKE_DATA;
-				currentIteration=ITERATION;
-			LeaveCriticalSection(&show_mutex);	
+			if (DATA_TRANSFER_MUTEX==WAIT_DATA)
+			{
+				for (int i=0;i<NOS;i++)
+				{
+					bSx[i]=Sx[i];
+					bSy[i]=Sy[i];
+					bSz[i]=Sz[i];
+				}
+				EnterCriticalSection(&show_mutex);
+					DATA_TRANSFER_MUTEX=TAKE_DATA;
+					currentIteration=ITERATION;
+				LeaveCriticalSection(&show_mutex);	
+			}
 		}
 
 }

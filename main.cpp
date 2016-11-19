@@ -102,7 +102,6 @@ int     CALC_MUTEX1=DONE;
 #define THREADS_NUMBER 2 
 sem_t sem[THREADS_NUMBER];
 
-
 int 	Record=0;// record <sx>, <sy>, <sz> into fole sxsysz.csv
 int     AC_FIELD_ON=0;//ON/OFF AC field signal.
 #define PI      3.14159265359 
@@ -278,13 +277,13 @@ srand ( time(NULL) );//init random number seed//
 	GetShells(abc, Block, AtomsPerBlock, ShellNumber, RadiusOfShell);
 			for(int i=0;i<ShellNumber;i++) printf("R[%d]=%f\n",i,RadiusOfShell[i] );
 	NeighborPairs = GetNeighborsNumber(abc, Block, AtomsPerBlock, ShellNumber, RadiusOfShell, NeighborsPerAtom);
-//Allocate arrays for neighbours map
-AIdxBlock = (int *)calloc(NeighborPairs, sizeof(int));// index of the atom within the block
-NIdxBlock = (int *)calloc(NeighborPairs, sizeof(int));// index of the neighbour within the block
-NIdxGridA = (int *)calloc(NeighborPairs, sizeof(int));// index of the neighbour within the block
-NIdxGridB = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. a
-NIdxGridC = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. b
-SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corresponding to this pair
+	//Allocate arrays for neighbours map
+	AIdxBlock = (int *)calloc(NeighborPairs, sizeof(int));// index of the atom within the block
+	NIdxBlock = (int *)calloc(NeighborPairs, sizeof(int));// index of the neighbour within the block
+	NIdxGridA = (int *)calloc(NeighborPairs, sizeof(int));// index of the neighbour within the block
+	NIdxGridB = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. a
+	NIdxGridC = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. b
+	SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corresponding to this pair
 
 	CreateMapOfNeighbors( abc, Block, AtomsPerBlock, ShellNumber, RadiusOfShell, 
 						AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx);
