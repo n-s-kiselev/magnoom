@@ -364,9 +364,9 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
-	int na1, Na = ABC[0];
+	int 	 Na = ABC[0];
 	int nb1, Nb = ABC[1];
-	int nc1, Nc = ABC[2];
+	int nc1;
 	int i;
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
@@ -517,9 +517,21 @@ void *CALC_THREAD(void *void_ptr)
 {
     int threadindex = *((int *) void_ptr);
     //printf("threadindex =%d\n", threadindex );
-    int dNa = (int)ABC[0]/THREADS_NUMBER+1;
-    int dNb = (int)ABC[0]/THREADS_NUMBER+1;
-    int dNc = (int)ABC[0]/THREADS_NUMBER+1;
+    int dNa=0;
+    int dNb=0;
+    int dNc=0;
+    if (ABC[0]%THREADS_NUMBER==0){
+    		dNa = ABC[0]/THREADS_NUMBER;
+    }else{	dNa = (int)ABC[0]/THREADS_NUMBER+1;}
+
+    if (ABC[1]%THREADS_NUMBER==0){
+    		dNb = ABC[1]/THREADS_NUMBER;
+    }else{	dNb = (int)ABC[1]/THREADS_NUMBER+1;}
+
+    if (ABC[2]%THREADS_NUMBER==0){
+    		dNc = ABC[2]/THREADS_NUMBER;
+    }else{	dNc = (int)ABC[2]/THREADS_NUMBER+1;}
+
     int naini=0;
     int nafin=0;
     int nbini=0; 
@@ -555,10 +567,10 @@ void *CALC_THREAD(void *void_ptr)
     	naini = 0; nafin = ABC[0];	
     	ncini = 0; ncfin = ABC[2];    	
     }
-    printf("thread[%d]\n",threadindex );
-    printf("naini = %d, nafin = %d\n",naini, nafin);
-    printf("nbini = %d, nbfin = %d\n",nbini, nbfin);
-    printf("ncini = %d, ncfin = %d\n",ncini, ncfin);
+    // printf("thread[%d]\n",threadindex );
+    // printf("naini = %d, nafin = %d\n",naini, nafin);
+    // printf("nbini = %d, nbfin = %d\n",nbini, nbfin);
+    // printf("ncini = %d, ncfin = %d\n",ncini, ncfin);
 
 
 	while(true)
@@ -578,12 +590,11 @@ void *CALC_THREAD(void *void_ptr)
 						nbini, 	nbfin,
 						ncini, 	ncfin);
 		//printf("Tread[%d]\n",threadindex );
-		if (threadindex==THREADS_NUMBER-1){ 
+		if (threadindex==0){ 
+			//first calculation thread
 			ITERATION++;
-			if (DATA_TRANSFER_MUTEX==WAIT_DATA)
-			{
-				for (int i=0;i<NOS;i++)
-				{
+			if (DATA_TRANSFER_MUTEX==WAIT_DATA){
+				for (int i=0;i<NOS;i++){
 					bSx[i]=Sx[i];
 					bSy[i]=Sy[i];
 					bSz[i]=Sz[i];
@@ -592,7 +603,24 @@ void *CALC_THREAD(void *void_ptr)
 					DATA_TRANSFER_MUTEX=TAKE_DATA;
 					currentIteration=ITERATION;
 				LeaveCriticalSection(&show_mutex);	
-			}
+			}		
+			//first thread opens the first (in) door in the next (second) thread
+			sem_post(sem_in[threadindex+1]);
+			// first (in)door will be open from the last thread (first sem_post)
+			sem_wait(sem_in[threadindex]);
+			// now it opens the second (out) door in the next (second) thread
+			sem_post(sem_out[threadindex+1]);
+			// second (out)door will be open from the last thread (second sem_post)
+			sem_wait(sem_out[threadindex]);
+		}else{
+			//all other calculation threads
+			sem_wait(sem_in[threadindex]);
+			// first button which open the first door in the next (second) thread
+			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
+			// second door will be open from the last thread (second button)
+			sem_wait(sem_out[threadindex]);
+			// second button which open the second door in the next (second) thread
+			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
 		}
 
 }
