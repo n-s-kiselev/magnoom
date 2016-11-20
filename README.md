@@ -1,3 +1,4 @@
+![Alt text](https://github.com/n-s-kiselev/magnoom/blob/master/MagnoomWiki/GUI.png)
 #Magnoom
 
 Advanced software for Atomistic Spin Dynamics allowing in real-time visualization and control of the model parameters
