@@ -75,8 +75,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h> //I like printf( )!
-#include <ctype.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <time.h>
 // struct timespec tw = {0,100000000};// delay for 0 s and 10^8 ns =0.1s
 
@@ -90,9 +90,18 @@
 	#define LeaveCriticalSection(mutex_ptr) pthread_mutex_unlock(mutex_ptr)
 #endif
 
-enum	mutex_flags_values {READY,DO_IT,WAIT,TAKE_DATA};
-int		FLAG_CALC=WAIT;
-int		FLAG_SHOW=READY;
+enum engine_mutex_flags{DO_IT,WAIT};
+enum calc_thread_mutex_flags{INPROGRES,DONE};
+enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
+
+int		ENGINE_MUTEX=WAIT;
+int		DATA_TRANSFER_MUTEX=WAIT_DATA;
+int     CALC_MUTEX1=DONE;
+
+#define THREADS_NUMBER 3 
+sem_t *sem_in[THREADS_NUMBER];
+sem_t *sem_out[THREADS_NUMBER];
+
 int 	Record=0;// record <sx>, <sy>, <sz> into fole sxsysz.csv
 int     AC_FIELD_ON=0;//ON/OFF AC field signal.
 #define PI      3.14159265359 
@@ -234,10 +243,11 @@ int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 
 #include "MATH.cpp"/*All mathematical fuctions*/
 #include "GEOM.cpp"/*All functions salculating size and neighbors*/
-#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
+#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/
+//#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
 #include "OPGL.cpp"/*VISUAL THREAD: All Visualization Functions*/
 #include "INITSTATE.cpp"/*Set of functions for initial states*/
-
+#include <fcntl.h> /* For O_CREAT and other O_**** constants */
 /* this function is run by the second thread */
 void *INFO_THREAD(void *void_ptr)
 {
@@ -247,21 +257,31 @@ void *INFO_THREAD(void *void_ptr)
 return NULL;
 }
 
+
 /*************************************************************************/
 /*                        Program Main Thread                            */
 /*************************************************************************/
 int 
 main (int argc, char **argv)
 {
-// int b=1;
-// printf("b=%d\n",b);
-// printf("1-b*((200-  2)/100 mod 2= %d\n",1-b*(200-2)/100%2);
-// printf("1-b*((200+  3)/100 mod 2= %d\n",1-b*(200+3)/100%2);
-// printf("1-b*((200+103)/100 mod 2= %d\n",1-b*(200+103)/100%2);
+    // sem_wait(semaphore);
+    // sem_post(semaphore);
 
-////////////////////////////////////////////////
-srand ( time(NULL) );//init random number seed//
-////////////////////////////////////////////////
+	for (int i=0; i<THREADS_NUMBER; i++){
+		char name[10]; 
+		snprintf(name,10,"inDoor%d\n",i);
+		//printf("%s\n",name);
+		if ( (sem_in[i] = sem_open(name, O_CREAT, 0644, 0)) == SEM_FAILED ) perror("sem_open");
+		snprintf(name,10,"outDoor%d\n",i);
+		//printf("%s\n",name); 
+		if ( (sem_out[i] = sem_open(name, O_CREAT, 0644, 0)) == SEM_FAILED ) perror("sem_open");
+		//int value;		
+		//sem_getvalue(sem_in[i], &value); //Function not implemented on Mac OS X!!!
+	}   
+
+	////////////////////////////////////////////////
+	srand ( time(NULL) );//init random number seed//
+	////////////////////////////////////////////////
 	RHue = (float *)calloc(360, sizeof(float));
 	GHue = (float *)calloc(360, sizeof(float));
 	BHue = (float *)calloc(360, sizeof(float));
@@ -269,13 +289,13 @@ srand ( time(NULL) );//init random number seed//
 	GetShells(abc, Block, AtomsPerBlock, ShellNumber, RadiusOfShell);
 			for(int i=0;i<ShellNumber;i++) printf("R[%d]=%f\n",i,RadiusOfShell[i] );
 	NeighborPairs = GetNeighborsNumber(abc, Block, AtomsPerBlock, ShellNumber, RadiusOfShell, NeighborsPerAtom);
-//Allocate arrays for neighbours map
-AIdxBlock = (int *)calloc(NeighborPairs, sizeof(int));// index of the atom within the block
-NIdxBlock = (int *)calloc(NeighborPairs, sizeof(int));// index of the neighbour within the block
-NIdxGridA = (int *)calloc(NeighborPairs, sizeof(int));// index of the neighbour within the block
-NIdxGridB = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. a
-NIdxGridC = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. b
-SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corresponding to this pair
+	//Allocate arrays for neighbours map
+	AIdxBlock = (int *)calloc(NeighborPairs, sizeof(int));// index of the atom within the block
+	NIdxBlock = (int *)calloc(NeighborPairs, sizeof(int));// index of the neighbour within the block
+	NIdxGridA = (int *)calloc(NeighborPairs, sizeof(int));// index of the neighbour within the block
+	NIdxGridB = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. a
+	NIdxGridC = (int *)calloc(NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. b
+	SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corresponding to this pair
 
 	CreateMapOfNeighbors( abc, Block, AtomsPerBlock, ShellNumber, RadiusOfShell, 
 						AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx);
@@ -360,15 +380,21 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	InitCriticalSection(&culc_mutex);
 	InitCriticalSection(&show_mutex);
 
-	//pthread_t INFO_THREAD_idx;
-	pthread_t CALC_THREAD_idx;
+	// pthread_t INFO_THREAD_idx;
+	// pthread_create(&INFO_THREAD_idx, NULL, CALC_THREAD, NULL);
+	pthread_t thread_id[THREADS_NUMBER];
+	int thread_args[THREADS_NUMBER];
 
 /* create the second thread which executes CALC_THREAD(&x) */
-	if(pthread_create(&CALC_THREAD_idx, NULL, CALC_THREAD, NULL)) 
-	{
-		fprintf(stderr, "Error in creating CALC_THREAD thread\n");
-		return 1;
+
+	for (int i=0; i<THREADS_NUMBER; i++){
+		thread_args[i] = i;
+		
+		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, (void *)&thread_args[i]) ) {
+			fprintf(stderr, "Error in creating CALC_THREAD thread\n"); return 1;
+		}		
 	}
+
 /* create the third thread which executes INFO_THREAD(&x) */
 	// if(pthread_create(&INFO_THREAD_idx, NULL, INFO_THREAD, NULL)) 
 	// {
@@ -379,7 +405,7 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 
 	GetBox(abc, ABC, Box);
 	UpdateSpinPositions(abc, ABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 10 );
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
 //  Set OpenGL context initial state.
@@ -423,5 +449,17 @@ SIdx      = (int *)calloc(NeighborPairs, sizeof(int));// index of the shell corr
 	free(vertexProto);
 	free(normalProto);
 	free(indicesProto);
+
+	for (int i=0; i<THREADS_NUMBER; i++){
+		if (sem_close(sem_in[i]) == -1) {
+		    perror("sem_close");
+		    exit(EXIT_FAILURE);
+		}
+		if (sem_close(sem_out[i]) == -1) {
+		    perror("sem_close");
+		    exit(EXIT_FAILURE);
+		}
+	}
+
 	return 0;    
 }
