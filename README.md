@@ -22,7 +22,7 @@ Advanced software for Atomistic Spin Dynamics allowing in real-time visualizatio
 ###Dependencies:
   * gcc >=4.8.1 (possibly can be compiled also with earlier versions of gcc)
   * OpenGL >= 2.1 (On Ubuntu and MacOS check your version of OpenGL with `glxinfo | grep "OpenGL version"`
-  * [AntTweakBar](http://anttweakbar.sourceforge.net/) C/C++ library allowing graphical user interface into applications based on OpenGL
+  * [AntTweakBar](http://anttweakbar.sourceforge.net/) C/C++ library allowing graphical user interface in OpenGL applications 
 
 ###Building from source:
   * install a C compiler
