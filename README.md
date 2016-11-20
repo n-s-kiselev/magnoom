@@ -9,9 +9,14 @@ Advanced software for Atomistic Spin Dynamics allowing in real-time visualizatio
 ###Main features:
   * platform independent code writen in C/C++
   * efficiently CPU parallelized, multithreading code
-  * GUI entirely based on OpenGL 
-  * real time control of the parameters
   * minimal dependencies on external libraries
+  * real time control of the parameters
+  * GUI entirely based on OpenGL 
+  * advanced visualisation tools:
+    - slicing 
+    - filters
+  * reading vector field from OVF ([OOMMF](http://math.nist.gov/oommf/) and [MuMax3](http://mumax.github.io/)) files 
+  
 
 
 ###Dependencies:
