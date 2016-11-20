@@ -247,6 +247,7 @@ int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 //#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
 #include "OPGL.cpp"/*VISUAL THREAD: All Visualization Functions*/
 #include "INITSTATE.cpp"/*Set of functions for initial states*/
+
 #include <fcntl.h> /* For O_CREAT and other O_**** constants */
 /* this function is run by the second thread */
 void *INFO_THREAD(void *void_ptr)
@@ -264,9 +265,6 @@ return NULL;
 int 
 main (int argc, char **argv)
 {
-    // sem_wait(semaphore);
-    // sem_post(semaphore);
-
 	for (int i=0; i<THREADS_NUMBER; i++){
 		char name[10]; 
 		snprintf(name,10,"inDoor%d\n",i);

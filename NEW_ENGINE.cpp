@@ -548,7 +548,7 @@ void *CALC_THREAD(void *void_ptr)
     	}
     	nbini = 0; nbfin = ABC[1];
     	ncini = 0; ncfin = ABC[2];
-    }else if (ABC[2]>ABC[0]&&ABC[2]<ABC[1]){//c-axis is the longest side of the box
+    }else if (ABC[2]>=ABC[0]&&ABC[2]>=ABC[1]){//c-axis is the longest side of the box
     	ncini = dNa*threadindex; 
     	if (dNc*(threadindex+1)<ABC[2]){
     		ncfin = dNc*(threadindex+1);
@@ -557,7 +557,7 @@ void *CALC_THREAD(void *void_ptr)
     	}
     	naini = 0; nafin = ABC[0];	
     	nbini = 0; nbfin = ABC[1];
-    }else if (ABC[1]>ABC[0]&&ABC[1]<ABC[2]){//b-axis is the longest side of the box
+    }else if (ABC[1]>=ABC[0]&&ABC[1]>=ABC[2]){//b-axis is the longest side of the box
     	nbini = dNb*threadindex; 
     	if (dNb*(threadindex+1)<ABC[1]){
     		nbfin = dNb*(threadindex+1);
@@ -590,7 +590,7 @@ void *CALC_THREAD(void *void_ptr)
 						nbini, 	nbfin,
 						ncini, 	ncfin);
 		//printf("Tread[%d]\n",threadindex );
-		if (threadindex==0){ 
+		if (threadindex==THREADS_NUMBER-1){ 
 			//first calculation thread
 			ITERATION++;
 			if (DATA_TRANSFER_MUTEX==WAIT_DATA){
