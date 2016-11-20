@@ -15,7 +15,7 @@ Advanced software for Atomistic Spin Dynamics allowing in real-time visualizatio
   * advanced visualisation tools:
     - slicing 
     - filters
-  * reading vector field from OVF ([OOMMF](http://math.nist.gov/oommf/) and [MuMax3](http://mumax.github.io/)) files 
+  * reading vector field from [OVF files](http://math.nist.gov/oommf/doc/userguide11b2/userguide/vectorfieldformat.html) ([OOMMF](http://math.nist.gov/oommf/) and [MuMax3](http://mumax.github.io/))  
   
 
 
