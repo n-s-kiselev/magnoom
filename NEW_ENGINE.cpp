@@ -605,11 +605,11 @@ void *CALC_THREAD(void *void_ptr)
 				LeaveCriticalSection(&show_mutex);	
 			}		
 			//first thread opens the first (in) door in the next (second) thread
-			sem_post(sem_in[threadindex+1]);
+			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
 			sem_wait(sem_in[threadindex]);
 			// now it opens the second (out) door in the next (second) thread
-			sem_post(sem_out[threadindex+1]);
+			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(sem_out[threadindex]);
 		}else{

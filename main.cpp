@@ -99,7 +99,7 @@ int		ENGINE_MUTEX=WAIT;
 int		DATA_TRANSFER_MUTEX=WAIT_DATA;
 int     CALC_MUTEX1=DONE;
 
-#define THREADS_NUMBER 4 
+#define THREADS_NUMBER 3 
 sem_t *sem_in[THREADS_NUMBER];
 sem_t *sem_out[THREADS_NUMBER];
 
