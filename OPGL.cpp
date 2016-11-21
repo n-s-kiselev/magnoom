@@ -1330,6 +1330,8 @@ void TW_CALL CB_ReadOVF( void *clientData )
     char  keyW2 [256];//key word 2
     char  keyW3 [256];//key word 3
     int   binType = 4;
+	float temp4_x, temp4_y, temp4_z;
+	double temp8_x, temp8_y, temp8_z;
     FILE * FilePointer = fopen(inputfilename, "rb");
 	if(FilePointer!=NULL) {	
 		lineLength=ReadHeaderLine(FilePointer, line);//read and check the first nonempty line which starts with '#'
@@ -1371,7 +1373,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 			//if (xnodes>ABC[0]) {imax = ABC[0];}else{imax = xnodes;}
 			//if (ynodes>ABC[1]) {jmax = ABC[1];}else{jmax = ynodes;}
 			//if (znodes>ABC[2]) {kmax = ABC[2];}else{kmax = znodes;}
-
+			int n;
 			if (strncmp(keyW2, "Text",4)==0){
 				//Text data format
 				printf("...reading data in text format: %s \n", inputfilename);
@@ -1380,7 +1382,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 						for (int i=0; i<xnodes; i++){
 							ReadDataLine(FilePointer, line);
 							if (k<ABC[2] && j<ABC[1] && i<ABC[0]){
-								int n = i + j*ABC[0] + k*ABC[0]*ABC[1];
+								n = i + j*ABC[0] + k*ABC[0]*ABC[1];
 								sscanf(line, "%lf %lf %lf", &bSx[n],&bSy[n],&bSz[n]);
 								Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
 							}
@@ -1395,23 +1397,48 @@ void TW_CALL CB_ReadOVF( void *clientData )
 				}
 				//Binary data format
 				printf("...reading data in binary (%d) format: %s \n", binType, inputfilename);
-				if(!fread (&bSx[0],binType,1,FilePointer)) {
-				//printf("%f\n",nx[0]);
+				// fread (&bSx[0],binType,1,FilePointer);
+				// //printf("%f\n",nx[0]);
+				// for (int k=0; k<znodes; k++){
+				// 	for (int j=0; j<ynodes; j++){
+				// 		for (int i=0; i<xnodes; i++){
+				// 			int n = i + j*xnodes + k*xnodes*ynodes;
+				// 			fread (&bSx[n],binType,1,FilePointer);
+				// 			fread (&bSy[n],binType,1,FilePointer);
+				// 			fread (&bSz[n],binType,1,FilePointer);
+				// 			Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
+				// 		}
+				// 	}
+				// }
+				if(fread(&bSx[0],binType,1,FilePointer)) {
+				//printf("%f \n",bSx[0]);	
+
 					for (int k=0; k<znodes; k++){
 						for (int j=0; j<ynodes; j++){
 							for (int i=0; i<xnodes; i++){
 								if (k<ABC[2] && j<ABC[1] && i<ABC[0]){
-								int n = i + j*xnodes + k*xnodes*ynodes;
-								if(!fread (&bSx[n],binType,1,FilePointer)) break;
-								if(!fread (&bSy[n],binType,1,FilePointer)) break;
-								if(!fread (&bSz[n],binType,1,FilePointer)) break;
-								Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
-								}
-								
+									n = i + j*xnodes + k*xnodes*ynodes;
+									//printf("n=%d\n", n);
+									if (binType==4){
+										if(!fread(&temp4_x,binType,1,FilePointer)) break;
+										if(!fread(&temp4_y,binType,1,FilePointer)) break;
+										if(!fread(&temp4_z,binType,1,FilePointer)) break;
+										Sx[n]=bSx[n]=(double)temp4_x; 
+										Sy[n]=bSy[n]=(double)temp4_y;
+										Sz[n]=bSz[n]=(double)temp4_z;
+									}else{
+										if(!fread(&temp8_x,binType,1,FilePointer)) break;
+										if(!fread(&temp8_y,binType,1,FilePointer)) break;
+										if(!fread(&temp8_z,binType,1,FilePointer)) break;
+										Sx[n]=bSx[n]=temp8_x; 
+										Sy[n]=bSy[n]=temp8_y;
+										Sz[n]=bSz[n]=temp8_z;
+									}
+								}	
 							}
 						}
 					}
-				}
+				}else{printf("problem\n");}
 			}else{
 				printf("Do not know what to do with \"%s\" data format in %s\n", keyW2, inputfilename);
 			}
@@ -1419,7 +1446,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 			printf("%s has wrong data format or dimentionality!\n", inputfilename);
 		}       
 		// when everything is done
-		printf("Done!");
+		printf("Done!\n");
 		fclose(FilePointer);
         // test:
 		// for (int k=0; k<znodes; k++){
