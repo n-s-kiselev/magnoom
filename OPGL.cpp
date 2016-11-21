@@ -838,7 +838,7 @@ void idle ()
 	currentTime = glutGet(GLUT_ELAPSED_TIME);
 	timeInterval = currentTime - previousTime;
 
-	if(timeInterval > 40)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
+	if(timeInterval > 40 && Play==1)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
 	{
 		if( DATA_TRANSFER_MUTEX==TAKE_DATA )
 		{
