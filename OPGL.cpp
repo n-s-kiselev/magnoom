@@ -1240,15 +1240,15 @@ FILE * pFile;
   pFile = fopen (outputfilename,"w");
   if (pFile!=NULL)
   {
-  	if (save_slice==0){
-	  	fputs ("px,py,pz,nx,ny,nz,\n",pFile);
-	  	for (int i=0;i<NOS;i++)
-	  	{
-		snprintf(shortBufer,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",Px[i],Py[i],Pz[i],bSx[i],bSy[i],bSz[i]);
-	    fputs (shortBufer,pFile);  		
-	  	}
-	    fclose (pFile);
-	}else{
+  	
+	 //  	fputs ("px,py,pz,nx,ny,nz,\n",pFile);
+	 //  	for (int i=0;i<NOS;i++)
+	 //  	{
+		// snprintf(shortBufer,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",Px[i],Py[i],Pz[i],bSx[i],bSy[i],bSz[i]);
+	 //    fputs (shortBufer,pFile);  		
+	 //  	}
+	 //    fclose (pFile);
+
 		int an,bn,cn,atom,n,N;
 		int anini=0;
 		int anfin=ABC[0];
@@ -1256,22 +1256,25 @@ FILE * pFile;
 		int bnfin=ABC[1];
 		int cnini=0;
 		int cnfin=ABC[2];
-		switch( WhichSliceMode){
-			case A_AXIS:
-				anini=A_layer_min-1;
-		        anfin=A_layer_max;
-			break;
-			case B_AXIS:
-				bnini=B_layer_min-1;
-		        bnfin=B_layer_max;
-			break;
-			case C_AXIS:
-				cnini=C_layer_min-1;
-		        cnfin=C_layer_max;
-			break;
-			default:
-			break;
+		if (save_slice==1){
+			switch( WhichSliceMode){
+				case A_AXIS:
+					anini=A_layer_min-1;
+			        anfin=A_layer_max;
+				break;
+				case B_AXIS:
+					bnini=B_layer_min-1;
+			        bnfin=B_layer_max;
+				break;
+				case C_AXIS:
+					cnini=C_layer_min-1;
+			        cnfin=C_layer_max;
+				break;
+				default:
+				break;
+			}
 		}
+
 		if (WhichAverageMode==ALONG_0){
 		  	fputs ("px,py,pz,nx,ny,nz,\n",pFile);
 		  	for (an = anini; an<anfin; an++) {
@@ -1380,7 +1383,6 @@ FILE * pFile;
 			}
 		    fclose (pFile);
 		}
-	}
   }
 }
 
