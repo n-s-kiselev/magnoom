@@ -22,13 +22,13 @@ float Block[2*3] =
     };
  */
 //Simple Cubic 1 [001]
-float		abc[3][3] = {
-				{	1.0f, 0.0f, 0.0f }, // a
-				{	0.0f, 1.0f, 0.0f }, // b
-				{	0.0f, 0.0f, 1.0f }};// c
-float			Block[][3] = { 
-				{0.5f, 0.5f, 0.5f},  
-				};
+// float		abc[3][3] = {
+// 				{	1.0f, 0.0f, 0.0f }, // a
+// 				{	0.0f, 1.0f, 0.0f }, // b
+// 				{	0.0f, 0.0f, 1.0f }};// c
+// float			Block[][3] = { 
+// 				{0.5f, 0.5f, 0.5f},  
+// 				};
 // Simple Cubic 2 [011]
 // float		abc[3][3] = {
 // 				{	1.0f, 0.0f, 0.0f }, // a
@@ -94,24 +94,24 @@ float		Block[][3] = {
 				};
 */
 //B20(Maria)
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, 1.0f, 0.0f }, // b
-// 				{	0.0f, 0.0f, 1.0f }};// c
-// //#define uB20		0.138f//MnSi
-// // float		Block[][3] = {		
-// // 				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
-// // 				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
-// // 				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
-// // 				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
-// // 				};
-// #define uB20		0.135f//FeGe
+float		abc[3][3] = {
+				{	1.0f, 0.0f, 0.0f }, // a
+				{	0.0f, 1.0f, 0.0f }, // b
+				{	0.0f, 0.0f, 1.0f }};// c
+//#define uB20		0.138f//MnSi
 // float		Block[][3] = {		
 // 				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
 // 				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
 // 				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
 // 				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
 // 				};
+#define uB20		0.135f//FeGe
+float		Block[][3] = {		
+				{       0.0f,        0.0f,        0.0f},//r1= u, u, u	
+				{       0.5f, 0.5f-2*uB20,     -2*uB20},//r2= 0.5+u, 0.5-u,-u
+				{    -2*uB20,        0.5f, 0.5f-2*uB20},//r3= -u, 0.5+u, 0.5 -u	
+				{0.5f-2*uB20,     -2*uB20,        0.5f} //r4=0.5-u, -u, 0.5+u
+				};
 
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			ABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
