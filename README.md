@@ -1,7 +1,7 @@
 ![Alt text](https://github.com/n-s-kiselev/magnoom/blob/master/MagnoomWiki/TitleImage.png)
 #Magnoom
 
-Advanced software for Atomistic Spin Dynamics 
+Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://github.com/n-s-kiselev/magnoom/wiki) )
 
 ###Developers:
   1. [Nikolai S. Kiselev](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Kiselev_N.html?nn=758466)
