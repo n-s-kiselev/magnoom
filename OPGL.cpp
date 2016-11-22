@@ -1826,7 +1826,7 @@ void setupTweakBar()
 	TwAddVarRW(initial_bar, "chDir", TW_TYPE_DIR3F,  &chDir, 
 	" help='direction of modulations e.g. k-vector of the spin spiral.' ");
 
-	TwAddButton(initial_bar, "Set initial", CB_SetInitial, NULL, "key=INSERT label='insert initial state' ");
+	TwAddButton(initial_bar, "Set initial", CB_SetInitial, NULL, "key=I label='insert initial state' ");
 
 	TwAddSeparator(initial_bar, "sep01", NULL);
 	TwAddVarRW(initial_bar, "Degrees", TW_TYPE_FLOAT,  &RotateAllSpins, 
