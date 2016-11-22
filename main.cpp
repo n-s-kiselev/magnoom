@@ -91,12 +91,10 @@
 #endif
 
 enum engine_mutex_flags{DO_IT,WAIT};
-enum calc_thread_mutex_flags{INPROGRES,DONE};
 enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 
 int		ENGINE_MUTEX=WAIT;
 int		DATA_TRANSFER_MUTEX=WAIT_DATA;
-int     CALC_MUTEX1=DONE;
 
 #define THREADS_NUMBER 3 
 sem_t *sem_in[THREADS_NUMBER];
@@ -195,7 +193,7 @@ float		Bij[]={		// Bij[shell]
 			};
 //Dzyaloshinskii-Moriya Interaction
 float		Dij[]={	// Dij[shell] abs value for DMI vector 
-			0.5,//0.0369138485,	// first shell
+			0.0,//0.0369138485,	// first shell
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
