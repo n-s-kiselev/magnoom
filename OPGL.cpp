@@ -1417,22 +1417,29 @@ void TW_CALL CB_ReadOVF( void *clientData )
 						for (int j=0; j<ynodes; j++){
 							for (int i=0; i<xnodes; i++){
 								if (k<ABC[2] && j<ABC[1] && i<ABC[0]){
-									n = i + j*xnodes + k*xnodes*ynodes;
+									n = i + j*xnodes + k*xnodes*ynodes; //index of the block!
 									//printf("n=%d\n", n);
 									if (binType==4){
 										if(!fread(&temp4_x,binType,1,FilePointer)) break;
 										if(!fread(&temp4_y,binType,1,FilePointer)) break;
 										if(!fread(&temp4_z,binType,1,FilePointer)) break;
-										Sx[n]=bSx[n]=(double)temp4_x; 
-										Sy[n]=bSy[n]=(double)temp4_y;
-										Sz[n]=bSz[n]=(double)temp4_z;
+										for (int t=0; t<AtomsPerBlock; t++){
+											int I=n*AtomsPerBlock+t;
+											Sx[I]=bSx[I]=(double)temp4_x; 
+											Sy[I]=bSy[I]=(double)temp4_y;
+											Sz[I]=bSz[I]=(double)temp4_z;		
+										}
+
 									}else{
 										if(!fread(&temp8_x,binType,1,FilePointer)) break;
 										if(!fread(&temp8_y,binType,1,FilePointer)) break;
 										if(!fread(&temp8_z,binType,1,FilePointer)) break;
-										Sx[n]=bSx[n]=temp8_x; 
-										Sy[n]=bSy[n]=temp8_y;
-										Sz[n]=bSz[n]=temp8_z;
+										for (int t=0; t<AtomsPerBlock; t++){
+											int I=n*AtomsPerBlock+t;
+											Sx[I]=bSx[I]=temp8_x; 
+											Sy[I]=bSy[I]=temp8_y;
+											Sz[I]=bSz[I]=temp8_z;		
+										}
 									}
 								}	
 							}
