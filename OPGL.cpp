@@ -378,7 +378,7 @@ Parallelepiped( float abc[][3], float tr[3], float scale1, float scale2, float s
 void
 InitLists(float abc[][3], int ABC[3])
 {
-	float d=0.06f;
+	float d=0.16f;
 	float Tr[3] = {	
 					-(abc[0][0]*ABC[0]+abc[1][0]*ABC[1]+abc[2][0]*ABC[2])/2.f,
 					-(abc[0][1]*ABC[0]+abc[1][1]*ABC[1]+abc[2][1]*ABC[2])/2.f,
@@ -1429,7 +1429,6 @@ void TW_CALL CB_ReadOVF( void *clientData )
 											Sy[I]=bSy[I]=(double)temp4_y;
 											Sz[I]=bSz[I]=(double)temp4_z;		
 										}
-
 									}else{
 										if(!fread(&temp8_x,binType,1,FilePointer)) break;
 										if(!fread(&temp8_y,binType,1,FilePointer)) break;
@@ -1455,15 +1454,6 @@ void TW_CALL CB_ReadOVF( void *clientData )
 		// when everything is done
 		printf("Done!\n");
 		fclose(FilePointer);
-        // test:
-		// for (int k=0; k<znodes; k++){
-		// 	for (int j=0; j<ynodes; j++){
-		// 		for (int i=0; i<xnodes; i++){
-		// 			int n = i + j*xnodes + k*xnodes*ynodes;
-		// 			printf("%d %f %f %f\n", n, bSx[n], bSy[n], bSz[n]);
-		// 		}
-		// 	}
-		// }
 	}else{printf("Cannot open file: %s \n", inputfilename);}
 	ChangeVectorMode(1);
 }
