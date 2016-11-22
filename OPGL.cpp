@@ -1240,13 +1240,147 @@ FILE * pFile;
   pFile = fopen (outputfilename,"w");
   if (pFile!=NULL)
   {
-  	fputs ("px,py,pz,nx,ny,nz,\n",pFile);
-  	for (int i=0;i<NOS;i++)
-  	{
-	snprintf(shortBufer,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",Px[i],Py[i],Pz[i],Sx[i],Sy[i],Sz[i]);
-    fputs (shortBufer,pFile);  		
-  	}
-    fclose (pFile);
+  	if (save_slice==0){
+	  	fputs ("px,py,pz,nx,ny,nz,\n",pFile);
+	  	for (int i=0;i<NOS;i++)
+	  	{
+		snprintf(shortBufer,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",Px[i],Py[i],Pz[i],bSx[i],bSy[i],bSz[i]);
+	    fputs (shortBufer,pFile);  		
+	  	}
+	    fclose (pFile);
+	}else{
+		int an,bn,cn,atom,n,N;
+		int anini=0;
+		int anfin=ABC[0];
+		int bnini=0;
+		int bnfin=ABC[1];
+		int cnini=0;
+		int cnfin=ABC[2];
+		switch( WhichSliceMode){
+			case A_AXIS:
+				anini=A_layer_min-1;
+		        anfin=A_layer_max;
+			break;
+			case B_AXIS:
+				bnini=B_layer_min-1;
+		        bnfin=B_layer_max;
+			break;
+			case C_AXIS:
+				cnini=C_layer_min-1;
+		        cnfin=C_layer_max;
+			break;
+			default:
+			break;
+		}
+		if (WhichAverageMode==ALONG_0){
+		  	fputs ("px,py,pz,nx,ny,nz,\n",pFile);
+		  	for (an = anini; an<anfin; an++) {
+				for (bn = bnini; bn<bnfin; bn++) {
+					for (cn = cnini; cn<cnfin; cn++) {
+						n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+						n = n*AtomsPerBlock;//index of the first spin in the block
+						for (atom=0; atom<AtomsPerBlock; atom++){
+						    N = n + atom;
+							snprintf(shortBufer,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",Px[N],Py[N],Pz[N],bSx[N],bSy[N],bSz[N]);
+							fputs (shortBufer,pFile); 
+						}
+					}
+				}
+			}
+		    fclose (pFile);
+		}else{// WhichAverageMode==ALONG_A or ALONG_B or ALONG_C
+			double tSpin[3];
+			float tPositin[3]; 
+			fputs ("px,py,pz,<nx>,<ny>,<nz>,|<n>|\n",pFile);
+			if (WhichAverageMode==ALONG_C){
+				for (bn = bnini; bn<bnfin; bn++){
+					for (an = anini; an<anfin; an++){
+						tSpin[0]=0;
+						tSpin[1]=0;
+						tSpin[2]=0;
+						tPositin[0]=abc[0][0]*0.5+abc[1][0]*0.5+abc[2][0]*0.5;
+						tPositin[1]=abc[0][1]*0.5+abc[1][1]*0.5+abc[2][1]*0.5;
+						tPositin[2]=abc[0][2]*0.5+abc[1][2]*0.5+abc[2][2]*0.5;
+						for (cn = cnini; cn<cnfin; cn++){
+							n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+							n = n*AtomsPerBlock;//index of the first spin in the block
+							for (atom=0; atom<AtomsPerBlock; atom++){
+							    N = n + atom;
+							    tSpin[0]+=bSx[N];
+							    tSpin[1]+=bSy[N];
+							    tSpin[2]+=bSz[N];
+							}
+						}
+						tPositin[0]+=abc[0][0]*an+abc[1][0]*bn;
+						tPositin[1]+=abc[0][1]*an+abc[1][1]*bn;
+						tPositin[2]+=abc[0][2]*an+abc[1][2]*bn;
+						double modulus=sqrt(tSpin[0]*tSpin[0] + tSpin[1]*tSpin[1] + tSpin[2]*tSpin[2]);
+						int cN = cnfin - cnini;
+						snprintf(shortBufer,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/cN,tSpin[1]/cN,tSpin[2]/cN,modulus/cN);
+						fputs (shortBufer,pFile);
+					}
+				}
+			}else if(WhichAverageMode==ALONG_B){
+				for (an = anini; an<anfin; an++){
+					for (cn = cnini; cn<cnfin; cn++){
+						tSpin[0]=0;
+						tSpin[1]=0;
+						tSpin[2]=0;
+						tPositin[0]=abc[0][0]*0.5+abc[1][0]*0.5+abc[2][0]*0.5;
+						tPositin[1]=abc[0][1]*0.5+abc[1][1]*0.5+abc[2][1]*0.5;
+						tPositin[2]=abc[0][2]*0.5+abc[1][2]*0.5+abc[2][2]*0.5;
+						for (bn = bnini; bn<bnfin; bn++){
+							n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+							n = n*AtomsPerBlock;//index of the first spin in the block
+							for (atom=0; atom<AtomsPerBlock; atom++){
+							    N = n + atom;
+							    tSpin[0]+=bSx[N];
+							    tSpin[1]+=bSy[N];
+							    tSpin[2]+=bSz[N];
+							}
+						}
+						tPositin[0]+=abc[0][0]*an+abc[2][0]*cn;
+						tPositin[1]+=abc[0][1]*an+abc[2][1]*cn;
+						tPositin[2]+=abc[0][2]*an+abc[2][2]*cn;
+						double modulus=sqrt(tSpin[0]*tSpin[0] + tSpin[1]*tSpin[1] + tSpin[2]*tSpin[2]);
+						int bN = bnfin - bnini;
+						snprintf(shortBufer,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/bN,tSpin[1]/bN,tSpin[2]/bN,modulus/bN);
+						fputs (shortBufer,pFile);
+					}
+				}
+			}else if(WhichAverageMode==ALONG_A){
+				for (cn = cnini; cn<cnfin; cn++){
+					for (bn = bnini; bn<bnfin; bn++){
+						tSpin[0]=0;
+						tSpin[1]=0;
+						tSpin[2]=0;
+						tPositin[0]=abc[0][0]*0.5+abc[1][0]*0.5+abc[2][0]*0.5;
+						tPositin[1]=abc[0][1]*0.5+abc[1][1]*0.5+abc[2][1]*0.5;
+						tPositin[2]=abc[0][2]*0.5+abc[1][2]*0.5+abc[2][2]*0.5;
+						for (an = anini; an<anfin; an++){
+							n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+							n = n*AtomsPerBlock;//index of the first spin in the block
+							for (atom=0; atom<AtomsPerBlock; atom++){
+							    N = n + atom;
+							    tSpin[0]+=bSx[N];
+							    tSpin[1]+=bSy[N];
+							    tSpin[2]+=bSz[N];
+							}
+						}
+						tPositin[0]+=abc[2][0]*cn+abc[1][0]*bn;
+						tPositin[1]+=abc[2][1]*cn+abc[1][1]*bn;
+						tPositin[2]+=abc[2][2]*cn+abc[1][2]*bn;
+						double modulus=sqrt(tSpin[0]*tSpin[0] + tSpin[1]*tSpin[1] + tSpin[2]*tSpin[2]);
+						int aN = anfin - anini;
+						snprintf(shortBufer,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/aN,tSpin[1]/aN,tSpin[2]/aN,modulus/aN);
+						fputs (shortBufer,pFile);
+					}
+				}
+			printf("averaged over c-->%s done!\n",outputfilename);
+			}
+		    fclose (pFile);
+		}
+	}
   }
 }
 
@@ -1710,6 +1844,17 @@ void setupTweakBar()
 	TwAddButton(initial_bar, "Read from OVF", CB_ReadOVF, NULL, "label='read from *.ovf file' ");
 
 	TwAddSeparator(initial_bar, "sep2", NULL);
+	TwAddVarRW(initial_bar, "Save slice", TW_TYPE_BOOL32, &save_slice, " label='Save slice' help='Save current slice only' ");
+	{
+	TwEnumVal		enAverage_mode[] = {{ALONG_A, 	"Along a-axis"	}, 
+										{ALONG_B, 	"Along b-axis"	}, 
+										{ALONG_C, 	"Along c-axis"	}, 
+										{ALONG_0, 	"No avearge  "	}
+									};
+
+	TwType			TV_TYPE_AVERAGE_MODE = TwDefineEnum("Average mode", enAverage_mode, 4);
+	TwAddVarRW(initial_bar, "Choose average mode", TV_TYPE_AVERAGE_MODE, &WhichAverageMode, "help='Choose type of average mode'");}
+
 	TwAddVarRW(initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(outputfilename)), outputfilename, ""); 
 	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='write to *.csv file' ");		
 

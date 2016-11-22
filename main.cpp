@@ -215,9 +215,12 @@ float		Hac=0.0;
 float		Period_dc=100;
 float		Omega_dc=TPI/Period_dc;
 float		HacTime=0.0;//time (iteration) dependent value of ac field
-typedef enum	{SIN_FIELD, GAUSSIAN_FIELD} enACField; // which mode
+enum	    enACField{SIN_FIELD, GAUSSIAN_FIELD} ; // which mode
 enACField		WhichACField = SIN_FIELD;	// RND by default 
 
+enum 		Average_mode{ALONG_A,ALONG_B, ALONG_C, ALONG_0};
+int 		WhichAverageMode = ALONG_0;//ALONG_0 means do no average.
+int 		save_slice=0;
 //Current polarization direction
 float		VCu[]={ 0.0 , 0.0, 1.0 };
 //Spin-torque parameter ~ density of ingected current
@@ -240,6 +243,8 @@ int				currentIteration=0;
 float			FPS, IPS;
 FILE*			outFile;//sxsysz output file
 int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
+
+
 
 #include "MATH.cpp"/*All mathematical fuctions*/
 #include "GEOM.cpp"/*All functions salculating size and neighbors*/
