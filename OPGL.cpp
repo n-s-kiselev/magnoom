@@ -92,6 +92,8 @@ float           CameraPosition[NumCamPosSave][7];// array which contains camera 
 float			Scale = 1.f;	// scaling factors for arrows [0.1-2] 
 float			Pivot = 0.55f;
 
+float			Scale_H = 1000.f;	// scaling factors for arrows [0.1-2] 
+
 // Slicing parameters
 int				A_layer_min = 1;	// which layer (along a tr. vect. ) to show max=ABC[0]
 int				B_layer_min = 1;	// which layer (along b tr. vect. ) to show max=ABC[1]
@@ -101,7 +103,7 @@ int				B_layer_max = 1;	// which layer (along b tr. vect. ) to show max=ABC[1]
 int				C_layer_max = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
 
 typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
-enSliceMode	    WhichSliceMode	= A_AXIS;	// CANE by default 
+enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
 int   N_filter=0;
 float theta_max=PI/2+0.1; 
@@ -172,17 +174,17 @@ GLfloat*	colors_H	= NULL; // array of colors
 GLuint*		indices_H	= NULL; // array of indices for tatal vector field
 
 int			arrowFaces	= 6; // number of arrow faces, default number
-int			arrowFaces_H= 20; // number of arrow faces for applied field vector
+int			arrowFaces_H= 6; // number of arrow faces for applied field vector
 
 GLuint		vboIdV;   // ID of VBO for vertex arrays
 GLuint		vboIdN;   // ID of VBO for normal arrays
 GLuint		vboIdC;   // ID of VBO for color arrays
 GLuint		iboIdI;   // ID of IBO for index arrays
 
-GLuint		H_vboIdV;   // ID of VBO for vertex arrays
-GLuint		H_vboIdN;   // ID of VBO for normal arrays
-GLuint		H_vboIdC;   // ID of VBO for color arrays
-GLuint		H_iboIdI;   // ID of IBO for index arrays
+GLuint		vboIdV_H;   // ID of VBO for vertex arrays
+GLuint		vboIdN_H;   // ID of VBO for normal arrays
+GLuint		vboIdC_H;   // ID of VBO for color arrays
+GLuint		iboIdI_H;   // ID of IBO for index arrays
 
 int			ElNumProto;   // number of triangles per arrow
 int			IdNumProto;   // number of indixes per arrow
@@ -191,6 +193,10 @@ int			VCNumProto;   // number of Vertex and normals Component per arrow
 int			ElNum; // total number of triangles for the whole vector field = ElNumProto * Number of spins
 int			IdNum; // total number of indixes for the whole vector field = IdNumProto * Number of spins
 int			VCNum; // total number of component of vertices for whole vector field = VCNumProto * Number of spins
+
+int			ElNum_H; 
+int			IdNum_H; 
+int			VCNum_H;
 
 int			Play=0;
 
@@ -210,17 +216,20 @@ void			HSVtoRGB(float[3], float [3] , int, int);
 void			InitRGB(float* , float* , float* , int*);
 // VBO array preparing functions
 void			ReallocateArrayDrawing();
-void			UpdatePrototypeVerNorInd(float *, float *, GLuint * , int, int);
+void			UpdatePrototypeVerNorInd(float*,float*,GLuint*,int,int,int);
 void			CreateNewVBO();
-void			UpdateVBO(	GLuint * , GLuint * , GLuint * , GLuint * , float * , float * , float * , GLuint * );
+void			UpdateVBO(GLuint * , GLuint * , GLuint * , GLuint * , float * , float * , float * , GLuint * );
+void			UpdateVBO_H(GLuint * , GLuint * , GLuint * , GLuint * , float * , float * , float * , GLuint * );
 void			UpdateSpinComponents(float * , float * , float * , int);
 void			UpdateSpinPositions(float[][3], int[3], float[][3], int, float[3][3], float*, float*, float*);
 void			InitSpinComponents(float * , float * , float * , double * , double * , double * , int N);
 void			UpdateIndices(GLuint * , int, GLuint *, int, int);
 void			UpdateVerticesNormalsColors(float *, float *, int, float *, float *, float *, int, float * , float * , float *, double * , double * , double *, int);
+void 			UpdateVerticesNormalsColors_H(float *, float *, int Kinp, float *, float *, float *, float, float, float, float, float, float);
 // drawing functions
 void			GetBox(float[][3], int[3], float[4][3]);
 void			drawVBO();
+void			drawVBO_H();
 void			idle();
 void			setupTweakBar();
 // return the number of seconds since the start of the program:
@@ -751,6 +760,7 @@ void Display (void)
 	glRotatef( (GLfloat)Rot[2], 0., 0., 1. ); //@Z
 
 	drawVBO(); // Draw VBO for spins
+	drawVBO_H(); // Draw VBO for vector representing the firld direction 
 	
 	// possibly draw the box and periodic boundary condition :
 	if( BoxOn != 0 ) 
@@ -915,7 +925,7 @@ void TW_CALL CB_SetScale(const void *value, void *clientData )
 	(void)clientData; // unused
     Scale = *( float *)value; // copy value to Scale
 // if(WhichVectorMode==ARROW1||WhichVectorMode==CONE1) 
-//    {UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);}
+//    {UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode,0);}
 	ChangeVectorMode (0);
 }
 
@@ -1083,6 +1093,72 @@ void TW_CALL CB_GetInvVal(void *value, void *clientData)
 {
     (void)clientData; // unused
     *(int *)value = InvertValue; // just copy InvertValue to value
+}
+
+
+void TW_CALL CB_SetHfield(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+    Hf = *( float *)value; // copy value to InvertValue
+    if (Hf>0.5*Jij[0]) Hf=0.5*Jij[0];
+	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
+	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
+}
+
+void TW_CALL CB_GetHfield(void *value, void *clientData)
+{
+    (void)clientData; // unused
+    *(float *)value = Hf; // just copy InvertValue to value
+}
+
+// void TW_CALL SetCallback(const void *value, void *clientData)
+// { 
+//     myVariable = *(const MyVariableType *)value;  // for instance
+// }
+
+void TW_CALL CB_SetHfieldDirX(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+    VHf[0] = *(float*)value;
+    (void)Unitf( VHf, VHf);
+	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
+	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
+}
+
+void TW_CALL CB_GetHfieldDirX(void *value, void *clientData)
+{
+    (void)clientData; 
+    *(float*)value = VHf[0]; 
+}
+
+void TW_CALL CB_SetHfieldDirY(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+    VHf[1] = *(float*)value;
+    (void)Unitf( VHf, VHf);
+	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
+	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
+}
+
+void TW_CALL CB_GetHfieldDirY(void *value, void *clientData)
+{
+    (void)clientData; 
+    *(float*)value = VHf[1]; 
+}
+
+void TW_CALL CB_SetHfieldDirZ(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+    VHf[2] = *(float*)value;
+    (void)Unitf( VHf, VHf);
+	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
+	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
+}
+
+void TW_CALL CB_GetHfieldDirZ(void *value, void *clientData)
+{
+    (void)clientData; 
+    *(float*)value = VHf[2]; 
 }
 
 void TW_CALL CB_SetACPeriod(const void *value, void *clientData )
@@ -1753,14 +1829,21 @@ void setupTweakBar()
 	TwAddVarRW(control_bar, "temperature", TW_TYPE_FLOAT, &Temperature, 
 	"label='k_b*T' min=0 max=100 step=0.01 group='LLG' ");
 
-	TwAddVarRW(control_bar, "FieldDir", TW_TYPE_DIR3F, &VHf, 
-	"label='Field direction' opened=true help='Change the direction of applied field' ");
-	temp_color[0] = 55;
-	temp_color[1] = 55;
-	temp_color[2] = 155;
-	TwSetParam(control_bar, "FieldDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
-	TwAddVarRW(control_bar, "Field", TW_TYPE_FLOAT, &Hf, 
-	"label='Field' help='The value of uniaxial anisotropy' ");
+	TwAddVarCB(control_bar, "FieldDirX", TW_TYPE_FLOAT, CB_SetHfieldDirX, CB_GetHfieldDirX, &VHf[0], "label='Field X'  help='Change the direction of applied field' ");
+	TwAddVarCB(control_bar, "FieldDirY", TW_TYPE_FLOAT, CB_SetHfieldDirY, CB_GetHfieldDirY, &VHf[1], "label='Field Y'  help='Change the direction of applied field' ");
+	TwAddVarCB(control_bar, "FieldDirZ", TW_TYPE_FLOAT, CB_SetHfieldDirZ, CB_GetHfieldDirZ, &VHf[2], "label='Field Z'  help='Change the direction of applied field' ");
+	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldDir, CB_GetHfieldDir, VHf, 
+	// "label='Field direction' opened=true help='Change the direction of applied field' ");
+	// temp_color[0] = 55;
+	// temp_color[1] = 55;
+	// temp_color[2] = 155;
+	// TwSetParam(control_bar, "FieldDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
+	// // TwAddVarRW(control_bar, "Field", TW_TYPE_FLOAT, &Hf, 
+	// // "label='Field' help='The value of uniaxial anisotropy' ");
+	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
+	"label='Field'  min=0 step=0.0001 help='The value of uniaxial anisotropy' ");
+
+
 
 	TwAddVarRW(control_bar, "KudDir", TW_TYPE_DIR3F, &VKu, 
 	"label='Ku' opened=true help='The direction of uniaxial anisotropy' ");
@@ -1770,6 +1853,7 @@ void setupTweakBar()
 	TwSetParam(control_bar, "KudDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
 	TwAddVarRW(control_bar, "Ku", TW_TYPE_FLOAT, &Ku, 
 	"label='Ku' help='The value of uniaxial anisotropy' ");
+
 	//////////////////////////////////////////
 	TwAddSeparator(control_bar, "sep0", NULL);
     //////////////////////////////////////////
@@ -2298,7 +2382,7 @@ void ChangeVectorMode( int id )
 		case 0: // change of mode e.g. from point to arrow
 		ReallocateArrayDrawing();
 		// Fill array for prototype (arrow or cane) array 
-		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode); 
+		UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode,0); 
 		// Fill big array for indecies for all arrows, cans, cones or boxes 
 		UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto);
 		case 1:	// change only the layer(s) for drawing
@@ -2546,21 +2630,21 @@ void ReallocateArrayDrawing_H()
 	free(vertexProto_H); free(normalProto_H); free(indicesProto_H);	
 	free(vertices_H); free(normals_H); free(colors_H); free(indices_H);			
 	// arrowFaces - number of arrow faces
-	int ElNumProto = 5*arrowFaces-4; // number of triangles per arrow
-	int IdNumProto = 3*ElNumProto; // number of indixes per arrow
-	int VCNumProto = 3*(2*(1+arrowFaces)-2+4*arrowFaces+3*arrowFaces);
+	ElNum_H = 5*arrowFaces_H-4; // number of triangles per arrow
+	IdNum_H = 3*ElNum_H; // number of indixes per arrow
+	VCNum_H = 3*(2*(1+arrowFaces_H)-2+4*arrowFaces_H+3*arrowFaces_H);
 	// Allocate memory for arrow prototype  
-	vertexProto_H  	= (float  *)malloc(VCNumProto * sizeof( float  ));
-	normalProto_H  	= (float  *)malloc(VCNumProto * sizeof( float  ));
-	indicesProto_H 	= (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
+	vertexProto_H  	= (float  *)malloc(VCNum_H * sizeof( float  ));
+	normalProto_H  	= (float  *)malloc(VCNum_H * sizeof( float  ));
+	indicesProto_H 	= (GLuint *)malloc(VCNum_H * sizeof( GLuint ));	
 	// Allocate memory for all ARROW1 (spins) 
-	vertices_H		= (float  *)malloc(VCNumProto * sizeof( float  ));
-	normals_H 		= (float  *)malloc(VCNumProto * sizeof( float  ));
-	colors_H 		= (float  *)malloc(VCNumProto * sizeof( float  ));
-	indices_H		= (GLuint *)malloc(IdNumProto * sizeof( GLuint ));				
+	vertices_H		= (float  *)malloc(VCNum_H * sizeof( float  ));
+	normals_H 		= (float  *)malloc(VCNum_H * sizeof( float  ));
+	colors_H 		= (float  *)malloc(VCNum_H * sizeof( float  ));
+	indices_H		= (GLuint *)malloc(VCNum_H * sizeof( GLuint ));				
 }
 
-void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int mode)//faces = arrowFaces
+void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int mode, int style)//faces = arrowFaces
 {
 	int   i, j;
 	float H = 1.00f;	// total length
@@ -2582,6 +2666,13 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 						abc[2][1]+abc[0][1]+abc[1][1],
 							abc[2][2]+abc[0][2]+abc[1][2]},
 				};
+	if (style==1)
+	{
+		R = H*0.1f;	// big radius
+		r = H*0.03f;	// small radius 
+		h = H*0.65f;	// H - head
+	}
+
 
 	//float h=H-H/GoldenRatio;	//H - head
 	//float R=h/GoldenRatio;	//big radius
@@ -2827,7 +2918,7 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
             V[++i] = v[2][2]; N[i] = tmp3[2]; V[i+12] = v[5][2]; N[i+12] = tmp3[2];
 
             V[++i] = v[4][0]; N[i] = tmp3[0]; V[i+12] = v[3][0]; N[i+12] = tmp3[0];
-            V[++i] = v[4][1]; N[i] = tmp3[0]; V[i+12] = v[3][1]; N[i+12] = tmp3[1];
+            V[++i] = v[4][1]; N[i] = tmp3[1]; V[i+12] = v[3][1]; N[i+12] = tmp3[1];
             V[++i] = v[4][2]; N[i] = tmp3[2]; V[i+12] = v[3][2]; N[i+12] = tmp3[2];
             
             V[++i] = v[6][0]; N[i] = tmp3[0]; V[i+12] = v[7][0]; N[i+12] = tmp3[0];
@@ -3343,19 +3434,19 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 }
 
 void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp, 
-							float * Vout, float * Nout, float * Cout, int Kout, 
+							float * Vout, float * Nout, float * Cout,
 							float Px, float Py, float Pz,
-							double Sx, double Sy, double Sz)
+							float Sx, float Sy, float Sz)
 {
 	int i;
-	double U,A;
+	float U,A;
 	for (int k=0; k<Kinp/3; k++){// k runs over vertices 
-		i = Kinp + 3*k;	// vertex index
+		i = 3*k;	// vertex index
 		U = Sx*Sx + Sy*Sy+(1e-37f); 		
 		A = (-Sy*Vinp[3*k+0] + Sx*Vinp[3*k+1])*(1. - Sz)/U; 
-		Vout[i+0] =(-Sy*A + Vinp[3*k+0]*Sz + Sx*Vinp[3*k+2]			)*Scale + Px;
-		Vout[i+1] =( Sx*A + Vinp[3*k+1]*Sz + Sy*Vinp[3*k+2]			)*Scale + Py;
-		Vout[i+2] =( Vinp[3*k+2]*Sz - (Sx*Vinp[3*k+0]+Sy*Vinp[3*k+1])	)*Scale + Pz;	
+		Vout[i+0] = (-Sy*A + Vinp[3*k+0]*Sz + Sx*Vinp[3*k+2]			)*Hf*Scale_H + Px;
+		Vout[i+1] = ( Sx*A + Vinp[3*k+1]*Sz + Sy*Vinp[3*k+2]			)*Hf*Scale_H + Py;
+		Vout[i+2] = ( Vinp[3*k+2]*Sz - (Sx*Vinp[3*k+0]+Sy*Vinp[3*k+1])	)*Hf*Scale_H + Pz;	
 
 		A = (-Sy*Ninp[3*k+0] + Sx*Ninp[3*k+1])*(1. - Sz)/U; 
 
@@ -3363,13 +3454,13 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 		Nout[i+1] = Sx*A + Ninp[3*k+1]*Sz + Sy*Ninp[3*k+2];
 		Nout[i+2] = Ninp[3*k+2]*Sz - (Sx*Ninp[3*k+0]+Sy*Ninp[3*k+1]);
 		if (WhichColor == BLACK){
-			Cout[i+0] = 1;			// x-component of vertex normal
-			Cout[i+1] = 1;			// y-component of vertex normal
-			Cout[i+2] = 1;			// z-component of vertex normal
+			Cout[i+0] = 0.9;			// x-component of vertex normal
+			Cout[i+1] = 0.9;			// y-component of vertex normal
+			Cout[i+2] = 0.9;			// z-component of vertex normal
 		}else{
-			Cout[i+0] = 0;			// x-component of vertex normal
-			Cout[i+1] = 0;			// y-component of vertex normal
-			Cout[i+2] = 0;			// z-component of vertex normal			
+			Cout[i+0] = 0.1;			// x-component of vertex normal
+			Cout[i+1] = 0.1;			// y-component of vertex normal
+			Cout[i+2] = 0.1;			// z-component of vertex normal			
 		}
 	}
 }
@@ -3417,6 +3508,14 @@ void CreateNewVBO( ){
 	glGenBuffers(1, &vboIdC);
 	glGenBuffers(1, &iboIdI);
 }
+
+void CreateNewVBO_H( ){
+	glGenBuffers(1, &vboIdV_H );
+	glGenBuffers(1, &vboIdN_H);
+	glGenBuffers(1, &vboIdC_H);
+	glGenBuffers(1, &iboIdI_H);
+}
+
 
 void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
 {	//ver, nor, col and ind pointer to arrays of vertxcies components, norlamls, colors and indecies 
@@ -3471,6 +3570,25 @@ void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, floa
 				glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum * sizeof(GLuint), 0, GL_DYNAMIC_DRAW);
 				glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum * sizeof(GLuint), ind);
 	}
+}
+
+void UpdateVBO_H(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
+{	//ver, nor, col and ind pointer to arrays of vertxcies components, norlamls, colors and indecies 
+	glBindBuffer(GL_ARRAY_BUFFER, *V);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_H* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_H* sizeof(float), ver); 
+
+	glBindBuffer(GL_ARRAY_BUFFER, *N);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_H* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_H* sizeof(float), nor);
+
+	glBindBuffer(GL_ARRAY_BUFFER, *C);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_H* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_H* sizeof(float), col);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum_H* sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);//***?1<->2?
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_H* sizeof(GLuint), ind);
 }
 
 void drawVBO()
@@ -3568,4 +3686,23 @@ void drawVBO()
 	}
 }
 
+void drawVBO_H()
+{
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdC_H);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdN_H);		glNormalPointer(GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdV_H);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
 
+	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
+	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
+	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_H);
+	glDrawElements(GL_TRIANGLES, IdNum_H, GL_UNSIGNED_INT, (void*)(0));
+
+	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
+	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
+	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
+
+	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+}

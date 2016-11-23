@@ -85,9 +85,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	case 1: //ferro up
 		for (int n=0; n<NOS; n++)
 		{	
-			Sx[n] = 0.f;
-			Sy[n] = 0.f;
-			Sz[n] = 1.f;	
+			Sx[n] = chDir[0];
+			Sy[n] = chDir[1];
+			Sz[n] = chDir[2];	
 		}	
 	break;
 

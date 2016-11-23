@@ -206,6 +206,7 @@ float		Ku = 0.0;//uniaxial anisotropy constant
 float		Kc = 0;//cubic anisotropy constant 
 //DC applied H-field:
 float		VHf[]={ 0.0 , 0.0, 1.0 };
+// float*      VHf=(float *)calloc(3, sizeof(float));
 float		Hf=0.00;
 //AC applied H-field:
 float		VHac[]={ 0.0 , 0.0, 1.0 };
@@ -283,6 +284,11 @@ main (int argc, char **argv)
 	////////////////////////////////////////////////
 	srand ( time(NULL) );//init random number seed//
 	////////////////////////////////////////////////
+
+	// VHf[0]=0;
+	// VHf[1]=0;
+	// VHf[2]=1;
+
 	RHue = (float *)calloc(360, sizeof(float));
 	GHue = (float *)calloc(360, sizeof(float));
 	BHue = (float *)calloc(360, sizeof(float));
@@ -414,18 +420,19 @@ main (int argc, char **argv)
     //  Allocate memory for vetices, normals, colors and indicies array used in drawing subrutines
 	ReallocateArrayDrawing();
 	// Fill array for prototype (arrow or cane) array 
-	UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
+	UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode,0);
 	// Fill big array for indecies for all arrows, cans, cones or boxes 
 	UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
 	UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, bSx, bSy, bSz, WhichVectorMode);
 	CreateNewVBO();
 	UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI, vertices, normals, colors, indices);
 
+
 	ReallocateArrayDrawing_H();
-    UpdatePrototypeVerNorInd(vertices_H, normals_H, indices_H, arrowFaces_H, ARROW1);
-    UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, sizeof(vertexProto_H)/sizeof(float), 
-							vertices_H, normals_H, colors_H, sizeof(vertices_H)/sizeof(float), 
-							0, 0, 0, VHf[0], VHf[1], VHf[2]);
+    UpdatePrototypeVerNorInd(vertexProto_H, normalProto_H, indices_H, arrowFaces_H, ARROW1,1);
+    UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
+    CreateNewVBO_H();
+    UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 //  Start GLUT event processing loop
 	glutMainLoop();
 
@@ -448,13 +455,13 @@ main (int argc, char **argv)
 	free(Px);    free(Py);    free(Pz); 
 	free(BPx);   free(BPy);   free(BPz); 
 	free(RHue);  free(GHue);  free(BHue);
-	free(vertices);
-	free(normals);
-	free(colors);
-	free(indices);
-	free(vertexProto);
-	free(normalProto);
-	free(indicesProto);
+	free(vertices);			free(vertices_H);
+	free(normals);			free(normals_H);
+	free(colors);			free(colors_H);
+	free(indices);			free(indices_H);
+	free(vertexProto);		free(vertexProto_H);
+	free(normalProto);		free(normalProto_H);
+	free(indicesProto);		free(indicesProto_H);
 
 	for (int i=0; i<THREADS_NUMBER; i++){
 		if (sem_close(sem_in[i]) == -1) {
