@@ -409,18 +409,23 @@ main (int argc, char **argv)
 	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
-//  Set OpenGL context initial state.
+    //  Set OpenGL context initial state.
 	setupOpenGL();
-//  Allocate memory for vetices, normals, colors and indicies array used in drawing subrutines
+    //  Allocate memory for vetices, normals, colors and indicies array used in drawing subrutines
 	ReallocateArrayDrawing();
 	// Fill array for prototype (arrow or cane) array 
 	UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode);
 	// Fill big array for indecies for all arrows, cans, cones or boxes 
 	UpdateIndices(indicesProto , IdNumProto, indices, IdNum, VCNumProto); 
 	UpdateVerticesNormalsColors(vertexProto, normalProto, VCNumProto, vertices, normals, colors, VCNum, Px, Py, Pz, bSx, bSy, bSz, WhichVectorMode);
-	CreateNewVBO( );
+	CreateNewVBO();
 	UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI, vertices, normals, colors, indices);
 
+	ReallocateArrayDrawing_H();
+    UpdatePrototypeVerNorInd(vertices_H, normals_H, indices_H, arrowFaces_H, ARROW1);
+    UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, sizeof(vertexProto_H)/sizeof(float), 
+							vertices_H, normals_H, colors_H, sizeof(vertices_H)/sizeof(float), 
+							0, 0, 0, VHf[0], VHf[1], VHf[2]);
 //  Start GLUT event processing loop
 	glutMainLoop();
 

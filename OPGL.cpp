@@ -157,17 +157,32 @@ GLfloat*	vertexProto   = NULL; // array of vertexes for prototipe arrow or cane
 GLfloat*	normalProto   = NULL; // array of normals for prototipe arrow (not used in vector "cane mode")
 GLuint*		indicesProto  = NULL; // array of indices for prototipe arrow or cane
 
+GLfloat*	vertexProto_H = NULL; // array of vertexes for prototipe arrow or cane
+GLfloat*	normalProto_H = NULL; // array of normals for prototipe arrow (not used in vector "cane mode")
+GLuint*		indicesProto_H= NULL; // array of indices for prototipe arrow or cane
+
 GLfloat*	vertices	= NULL; // array of vertexes for tatal vector field 
 GLfloat*	normals		= NULL; // array of normals for tatal vector field
 GLfloat*	colors		= NULL; // array of colors 
 GLuint*		indices		= NULL; // array of indices for tatal vector field
 
+GLfloat*	vertices_H	= NULL; // array of vertexes for tatal vector field 
+GLfloat*	normals_H	= NULL; // array of normals for tatal vector field
+GLfloat*	colors_H	= NULL; // array of colors 
+GLuint*		indices_H	= NULL; // array of indices for tatal vector field
+
 int			arrowFaces	= 6; // number of arrow faces, default number
+int			arrowFaces_H= 20; // number of arrow faces for applied field vector
 
 GLuint		vboIdV;   // ID of VBO for vertex arrays
 GLuint		vboIdN;   // ID of VBO for normal arrays
 GLuint		vboIdC;   // ID of VBO for color arrays
 GLuint		iboIdI;   // ID of IBO for index arrays
+
+GLuint		H_vboIdV;   // ID of VBO for vertex arrays
+GLuint		H_vboIdN;   // ID of VBO for normal arrays
+GLuint		H_vboIdC;   // ID of VBO for color arrays
+GLuint		H_iboIdI;   // ID of IBO for index arrays
 
 int			ElNumProto;   // number of triangles per arrow
 int			IdNumProto;   // number of indixes per arrow
@@ -2526,6 +2541,25 @@ void ReallocateArrayDrawing()
 	}
 }
 
+void ReallocateArrayDrawing_H()
+{
+	free(vertexProto_H); free(normalProto_H); free(indicesProto_H);	
+	free(vertices_H); free(normals_H); free(colors_H); free(indices_H);			
+	// arrowFaces - number of arrow faces
+	int ElNumProto = 5*arrowFaces-4; // number of triangles per arrow
+	int IdNumProto = 3*ElNumProto; // number of indixes per arrow
+	int VCNumProto = 3*(2*(1+arrowFaces)-2+4*arrowFaces+3*arrowFaces);
+	// Allocate memory for arrow prototype  
+	vertexProto_H  	= (float  *)malloc(VCNumProto * sizeof( float  ));
+	normalProto_H  	= (float  *)malloc(VCNumProto * sizeof( float  ));
+	indicesProto_H 	= (GLuint *)malloc(IdNumProto * sizeof( GLuint ));	
+	// Allocate memory for all ARROW1 (spins) 
+	vertices_H		= (float  *)malloc(VCNumProto * sizeof( float  ));
+	normals_H 		= (float  *)malloc(VCNumProto * sizeof( float  ));
+	colors_H 		= (float  *)malloc(VCNumProto * sizeof( float  ));
+	indices_H		= (GLuint *)malloc(IdNumProto * sizeof( GLuint ));				
+}
+
 void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int mode)//faces = arrowFaces
 {
 	int   i, j;
@@ -3308,7 +3342,37 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	}
 }
 
+void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp, 
+							float * Vout, float * Nout, float * Cout, int Kout, 
+							float Px, float Py, float Pz,
+							double Sx, double Sy, double Sz)
+{
+	int i;
+	double U,A;
+	for (int k=0; k<Kinp/3; k++){// k runs over vertices 
+		i = Kinp + 3*k;	// vertex index
+		U = Sx*Sx + Sy*Sy+(1e-37f); 		
+		A = (-Sy*Vinp[3*k+0] + Sx*Vinp[3*k+1])*(1. - Sz)/U; 
+		Vout[i+0] =(-Sy*A + Vinp[3*k+0]*Sz + Sx*Vinp[3*k+2]			)*Scale + Px;
+		Vout[i+1] =( Sx*A + Vinp[3*k+1]*Sz + Sy*Vinp[3*k+2]			)*Scale + Py;
+		Vout[i+2] =( Vinp[3*k+2]*Sz - (Sx*Vinp[3*k+0]+Sy*Vinp[3*k+1])	)*Scale + Pz;	
 
+		A = (-Sy*Ninp[3*k+0] + Sx*Ninp[3*k+1])*(1. - Sz)/U; 
+
+		Nout[i+0] =-Sy*A + Ninp[3*k+0]*Sz + Sx*Ninp[3*k+2];
+		Nout[i+1] = Sx*A + Ninp[3*k+1]*Sz + Sy*Ninp[3*k+2];
+		Nout[i+2] = Ninp[3*k+2]*Sz - (Sx*Ninp[3*k+0]+Sy*Ninp[3*k+1]);
+		if (WhichColor == BLACK){
+			Cout[i+0] = 1;			// x-component of vertex normal
+			Cout[i+1] = 1;			// y-component of vertex normal
+			Cout[i+2] = 1;			// z-component of vertex normal
+		}else{
+			Cout[i+0] = 0;			// x-component of vertex normal
+			Cout[i+1] = 0;			// y-component of vertex normal
+			Cout[i+2] = 0;			// z-component of vertex normal			
+		}
+	}
+}
 
 void UpdateSpinPositions(float abc[][3], int ABC[3], float BD[][3], int NBD, float box[][3], float * Px, float * Py, float * Pz)
 {
