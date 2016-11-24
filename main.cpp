@@ -206,6 +206,8 @@ float		Ku = 0.0;//uniaxial anisotropy constant
 float		Kc = 0;//cubic anisotropy constant 
 //DC applied H-field:
 float		VHf[]={ 0.0 , 0.0, -1.0 };
+float 		VHtheta=0;
+float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
 float		Hf=0.10;
 //AC applied H-field:
@@ -427,7 +429,9 @@ main (int argc, char **argv)
 	CreateNewVBO();
 	UpdateVBO(&vboIdV, &vboIdN, &vboIdC, &iboIdI, vertices, normals, colors, indices);
 
-
+    VHf[0]=sin(PI*VHtheta/180)*cos(PI*VHphi/180);
+	VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
+	VHf[2]=cos(PI*VHtheta/180);
 	ReallocateArrayDrawing_H();
     UpdatePrototypeVerNorInd(vertexProto_H, normalProto_H, indices_H, arrowFaces_H, ARROW1,1);
     UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);

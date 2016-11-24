@@ -1116,50 +1116,40 @@ void TW_CALL CB_GetHfield(void *value, void *clientData)
 //     myVariable = *(const MyVariableType *)value;  // for instance
 // }
 
-void TW_CALL CB_SetHfieldDirX(const void *value, void *clientData )
+void TW_CALL CB_SetHfieldTheta(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    VHf[0] = *(float*)value;
-    (void)Unitf( VHf, VHf);
+    VHtheta = *(float*)value;
+    VHf[0]=sin(PI*VHtheta/180)*cos(PI*VHphi/180);
+	VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
+	VHf[2]=cos(PI*VHtheta/180);
 	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
 	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 }
 
-void TW_CALL CB_GetHfieldDirX(void *value, void *clientData)
+void TW_CALL CB_GetHfieldTheta(void *value, void *clientData)
 {
     (void)clientData; 
-    *(float*)value = VHf[0]; 
+    *(float*)value = VHtheta; 
 }
 
-void TW_CALL CB_SetHfieldDirY(const void *value, void *clientData )
+void TW_CALL CB_SetHfieldPhi(const void *value, void *clientData )
 {
 	(void)clientData; // unused
-    VHf[1] = *(float*)value;
-    (void)Unitf( VHf, VHf);
+    VHphi = *(float*)value;
+    VHf[0]=sin(PI*VHtheta/180)*cos(PI*VHphi/180);
+	VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
+	VHf[2]=cos(PI*VHtheta/180);
 	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
 	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 }
 
-void TW_CALL CB_GetHfieldDirY(void *value, void *clientData)
+void TW_CALL CB_GetHfieldPhi(void *value, void *clientData)
 {
     (void)clientData; 
-    *(float*)value = VHf[1]; 
+    *(float*)value = VHphi; 
 }
 
-void TW_CALL CB_SetHfieldDirZ(const void *value, void *clientData )
-{
-	(void)clientData; // unused
-    VHf[2] = *(float*)value;
-    (void)Unitf( VHf, VHf);
-	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
-	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
-}
-
-void TW_CALL CB_GetHfieldDirZ(void *value, void *clientData)
-{
-    (void)clientData; 
-    *(float*)value = VHf[2]; 
-}
 
 void TW_CALL CB_SetACPeriod(const void *value, void *clientData )
 {
@@ -1829,9 +1819,8 @@ void setupTweakBar()
 	TwAddVarRW(control_bar, "temperature", TW_TYPE_FLOAT, &Temperature, 
 	"label='k_b*T' min=0 max=100 step=0.01 group='LLG' ");
 
-	TwAddVarCB(control_bar, "FieldDirX", TW_TYPE_FLOAT, CB_SetHfieldDirX, CB_GetHfieldDirX, &VHf[0], "label='Field X'  help='Change the direction of applied field' ");
-	TwAddVarCB(control_bar, "FieldDirY", TW_TYPE_FLOAT, CB_SetHfieldDirY, CB_GetHfieldDirY, &VHf[1], "label='Field Y'  help='Change the direction of applied field' ");
-	TwAddVarCB(control_bar, "FieldDirZ", TW_TYPE_FLOAT, CB_SetHfieldDirZ, CB_GetHfieldDirZ, &VHf[2], "label='Field Z'  help='Change the direction of applied field' ");
+	TwAddVarCB(control_bar, "FieldTheta", TW_TYPE_FLOAT, CB_SetHfieldTheta, CB_GetHfieldTheta, &VHtheta, "label='H theta'  step=1 help='Change the direction of applied field' ");
+	TwAddVarCB(control_bar, "FieldPhi", TW_TYPE_FLOAT, CB_SetHfieldPhi, CB_GetHfieldPhi, &VHphi, "label='H phi' step=1  help='Change the direction of applied field' ");
 	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldDir, CB_GetHfieldDir, VHf, 
 	// "label='Field direction' opened=true help='Change the direction of applied field' ");
 	// temp_color[0] = 55;
@@ -2673,7 +2662,6 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 		h = H*0.65f;	// H - head
 	}
 
-
 	//float h=H-H/GoldenRatio;	//H - head
 	//float R=h/GoldenRatio;	//big radius
 	//float r=R-R/GoldenRatio;	//small radius 
@@ -3130,43 +3118,60 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					tmpV2[2] = Sz[N];
 			        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
 					j++;
+					if (tmpV2[2]==-1){
+					for (int k=0; k<Kinp/3; k++){// k runs over vertices 
+							i = j*Kinp + 3*k;
+							Vout[i+0] = (-Vinp[3*k+0])*Scale + Px[N];
+							Vout[i+1] = ( Vinp[3*k+1])*Scale + Py[N];
+							Vout[i+2] = (-Vinp[3*k+2])*Scale + Pz[N];	
+
+							Nout[i+0] = -Ninp[3*k+0];
+							Nout[i+1] =  Ninp[3*k+1];
+							Nout[i+2] = -Ninp[3*k+2];
+
+							Cout[i+0] = RGB[0];			// x-component of vertex normal
+							Cout[i+1] = RGB[1];			// y-component of vertex normal
+							Cout[i+2] = RGB[2];			// z-component of vertex normal
+						}
+					}else{
 					for (int k=0; k<Kinp/3; k++) // k runs over vertices of the arrow/cone 
-					{
-						i = j*Kinp + 3*k;	// vertex index
-						//slow version is commented but easy to read: 
-						// tmpV1[0] = Vinp[3*k+0];
-						// tmpV1[1] = Vinp[3*k+1];
-						// tmpV1[2] = Vinp[3*k+2];
-						// NewBasisCartesian(tmpV1, tmpV2, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
-						// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
-						// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
-						// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
-						U = 1.0f/(Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f)); 
-						
-						A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])*U; 
+						{
+							i = j*Kinp + 3*k;	// vertex index
+							//slow version is commented but easy to read: 
+							// tmpV1[0] = Vinp[3*k+0];
+							// tmpV1[1] = Vinp[3*k+1];
+							// tmpV1[2] = Vinp[3*k+2];
+							// NewBasisCartesian(tmpV1, tmpV2, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
+							// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
+							// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
+							// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
+							U = 1.0f/(Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f)); 
+							
+							A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])*U; 
 
-						Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
-						Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
-						Vout[i+2] =( Vinp[3*k+2]*Sz[N] - (Sx[N]*Vinp[3*k+0]+Sy[N]*Vinp[3*k+1])	)*Scale + Pz[N];	
+							Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
+							Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
+							Vout[i+2] =( Vinp[3*k+2]*Sz[N] - (Sx[N]*Vinp[3*k+0]+Sy[N]*Vinp[3*k+1])	)*Scale + Pz[N];	
 
-						//slow version is commented but easy to read:
-						// tmpV1[0] = Ninp[3*k+0];
-						// tmpV1[1] = Ninp[3*k+1];
-						// tmpV1[2] = Ninp[3*k+2];
-						//NewBasisCartesian(tmpV1, tmpV2, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
-						// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
-						// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
-						// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
+							//slow version is commented but easy to read:
+							// tmpV1[0] = Ninp[3*k+0];
+							// tmpV1[1] = Ninp[3*k+1];
+							// tmpV1[2] = Ninp[3*k+2];
+							//NewBasisCartesian(tmpV1, tmpV2, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
+							// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
+							// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
+							// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-						A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])*U; 
+							A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])*U; 
 
-						Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
-						Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
-						Nout[i+2] = Ninp[3*k+2]*Sz[N] - (Sx[N]*Ninp[3*k+0]+Sy[N]*Ninp[3*k+1]);
+							Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
+							Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
+							Nout[i+2] = Ninp[3*k+2]*Sz[N] - (Sx[N]*Ninp[3*k+0]+Sy[N]*Ninp[3*k+1]);
 
-						Cout[i+0] = RGB[0];			// x-component of vertex normal
-						Cout[i+1] = RGB[1];			// y-component of vertex normal
-						Cout[i+2] = RGB[2];			// z-component of vertex normal
+							Cout[i+0] = RGB[0];			// x-component of vertex normal
+							Cout[i+1] = RGB[1];			// y-component of vertex normal
+							Cout[i+2] = RGB[2];			// z-component of vertex normal
+						}
 					}
 				}
 			}
@@ -3440,26 +3445,51 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 {
 	int i;
 	float U,A;
-	for (int k=0; k<Kinp/3; k++){// k runs over vertices 
-		i = 3*k;	// vertex index
-		U = 1.0f/(Sx*Sx + Sy*Sy+(1e-37f)); 		
-		A = (-Sy*Vinp[3*k+0] + Sx*Vinp[3*k+1])*(1. - Sz)*U; 
-		Vout[i+0] = (-Sy*A + Vinp[3*k+0]*Sz + Sx*Vinp[3*k+2]			)*Hf*Scale_H + Px;
-		Vout[i+1] = ( Sx*A + Vinp[3*k+1]*Sz + Sy*Vinp[3*k+2]			)*Hf*Scale_H + Py;
-		Vout[i+2] = ( Vinp[3*k+2]*Sz - (Sx*Vinp[3*k+0]+Sy*Vinp[3*k+1])	)*Hf*Scale_H + Pz;	
+	if (Sz==-1){
+		for (int k=0; k<Kinp/3; k++){// k runs over vertices 
+			i = 3*k;	// vertex index
+			U = 1.0f/(Sx*Sx + Sy*Sy+(1e-37f)); 		
+			A = (-Sy*Vinp[3*k+0] + Sx*Vinp[3*k+1])*(1. - Sz)*U; 
+			Vout[i+0] = (-Vinp[i+0])*Hf*Scale_H + Px;
+			Vout[i+1] = ( Vinp[i+1])*Hf*Scale_H + Py;
+			Vout[i+2] = (-Vinp[i+2])*Hf*Scale_H + Pz;	
 
-		A = (-Sy*Ninp[3*k+0] + Sx*Ninp[3*k+1])*(1. - Sz)*U; 		
-		Nout[i+0] =-Sy*A + Ninp[3*k+0]*Sz + Sx*Ninp[3*k+2];
-		Nout[i+1] = Sx*A + Ninp[3*k+1]*Sz + Sy*Ninp[3*k+2];
-		Nout[i+2] = Ninp[3*k+2]*Sz - (Sx*Ninp[3*k+0]+Sy*Ninp[3*k+1]);
-		if (WhichColor == BLACK){
-			Cout[i+0] = 0.9;			// x-component of vertex normal
-			Cout[i+1] = 0.9;			// y-component of vertex normal
-			Cout[i+2] = 0.9;			// z-component of vertex normal
-		}else{
-			Cout[i+0] = 0.1;			// x-component of vertex normal
-			Cout[i+1] = 0.1;			// y-component of vertex normal
-			Cout[i+2] = 0.1;			// z-component of vertex normal			
+			A = (-Sy*Ninp[3*k+0] + Sx*Ninp[3*k+1])*(1. - Sz)*U; 		
+			Nout[i+0] = -Ninp[i+0];
+			Nout[i+1] =  Ninp[i+1];
+			Nout[i+2] = -Ninp[i+2];
+			if (WhichColor == BLACK){
+				Cout[i+0] = 0.9;			// x-component of vertex normal
+				Cout[i+1] = 0.9;			// y-component of vertex normal
+				Cout[i+2] = 0.9;			// z-component of vertex normal
+			}else{
+				Cout[i+0] = 0.3;			// x-component of vertex normal
+				Cout[i+1] = 0.3;			// y-component of vertex normal
+				Cout[i+2] = 0.3;			// z-component of vertex normal			
+			}
+		}
+	}else{	
+		for (int k=0; k<Kinp/3; k++){// k runs over vertices 
+			i = 3*k;	// vertex index
+			U = 1.0f/(Sx*Sx + Sy*Sy+(1e-37f)); 		
+			A = (-Sy*Vinp[3*k+0] + Sx*Vinp[3*k+1])*(1. - Sz)*U; 
+			Vout[i+0] = (-Sy*A + Vinp[3*k+0]*Sz + Sx*Vinp[3*k+2]			)*Hf*Scale_H + Px;
+			Vout[i+1] = ( Sx*A + Vinp[3*k+1]*Sz + Sy*Vinp[3*k+2]			)*Hf*Scale_H + Py;
+			Vout[i+2] = ( Vinp[3*k+2]*Sz - (Sx*Vinp[3*k+0]+Sy*Vinp[3*k+1])	)*Hf*Scale_H + Pz;	
+
+			A = (-Sy*Ninp[3*k+0] + Sx*Ninp[3*k+1])*(1. - Sz)*U; 		
+			Nout[i+0] =-Sy*A + Ninp[3*k+0]*Sz + Sx*Ninp[3*k+2];
+			Nout[i+1] = Sx*A + Ninp[3*k+1]*Sz + Sy*Ninp[3*k+2];
+			Nout[i+2] = Ninp[3*k+2]*Sz - (Sx*Ninp[3*k+0]+Sy*Ninp[3*k+1]);
+			if (WhichColor == BLACK){
+				Cout[i+0] = 0.9;			// x-component of vertex normal
+				Cout[i+1] = 0.9;			// y-component of vertex normal
+				Cout[i+2] = 0.9;			// z-component of vertex normal
+			}else{
+				Cout[i+0] = 0.3;			// x-component of vertex normal
+				Cout[i+1] = 0.3;			// y-component of vertex normal
+				Cout[i+2] = 0.3;			// z-component of vertex normal			
+			}
 		}
 	}
 }
@@ -3594,9 +3624,10 @@ void drawVBO()
 {
 	switch (WhichVectorMode)
 	{
+		case BOX1:
+			glDisable(GL_LIGHTING);
 		case ARROW1:
 		case CONE1:
-		case BOX1:
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdC);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdN);		glNormalPointer(GL_FLOAT, 0, (void*)0);
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdV);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
@@ -3614,7 +3645,7 @@ void drawVBO()
 
 			glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
-
+			glEnable(GL_LIGHTING);
 		break;
 
 		case POINT:
