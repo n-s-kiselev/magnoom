@@ -205,9 +205,9 @@ float		VKu[]={	0.0 , 0.0, 1.0 }; // uniaxial anisotropy vector
 float		Ku = 0.0;//uniaxial anisotropy constant
 float		Kc = 0;//cubic anisotropy constant 
 //DC applied H-field:
-float		VHf[]={ 0.0 , 0.0, 1.0 };
+float		VHf[]={ 0.0 , 0.0, -1.0 };
 // float*      VHf=(float *)calloc(3, sizeof(float));
-float		Hf=0.00;
+float		Hf=0.10;
 //AC applied H-field:
 float		VHac[]={ 0.0 , 0.0, 1.0 };
 float		Hac=0.0;

@@ -92,7 +92,7 @@ float           CameraPosition[NumCamPosSave][7];// array which contains camera 
 float			Scale = 1.f;	// scaling factors for arrows [0.1-2] 
 float			Pivot = 0.55f;
 
-float			Scale_H = 1000.f;	// scaling factors for arrows [0.1-2] 
+float			Scale_H = (ABC[0]+ABC[1]+ABC[2]);	// scaling factors for arrows [0.1-2] 
 
 // Slicing parameters
 int				A_layer_min = 1;	// which layer (along a tr. vect. ) to show max=ABC[0]
@@ -115,7 +115,7 @@ float phi_max=2*PI;
 float phi_min=0;
 
 // Parameters for initial state 
-float			chSize = 6; // characteristic size of initial state in units of "a"
+float			chSize = 10; // characteristic size of initial state in units of "a"
 float			chDir[3] = {0,1,0}; // characteristic size of initial state in units of "a"
 GLuint 			iStart;
 GLuint 			iNum;
@@ -174,7 +174,7 @@ GLfloat*	colors_H	= NULL; // array of colors
 GLuint*		indices_H	= NULL; // array of indices for tatal vector field
 
 int			arrowFaces	= 6; // number of arrow faces, default number
-int			arrowFaces_H= 6; // number of arrow faces for applied field vector
+int			arrowFaces_H= 30; // number of arrow faces for applied field vector
 
 GLuint		vboIdV;   // ID of VBO for vertex arrays
 GLuint		vboIdN;   // ID of VBO for normal arrays
@@ -3080,9 +3080,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 							// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
 							// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
 							// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
-							U = Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f); 
+							U = 1.0f/(Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f)); 
 							
-							A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])/U; 
+							A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])*U; 
 
 							Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
 							Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
@@ -3097,7 +3097,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 							// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
 							// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-							A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])/U; 
+							A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])*U; 
 
 							Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
 							Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
@@ -3141,9 +3141,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
 						// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
 						// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
-						U = Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f); 
+						U = 1.0f/(Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f)); 
 						
-						A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])/U; 
+						A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])*U; 
 
 						Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
 						Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
@@ -3158,7 +3158,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
 						// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-						A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])/U; 
+						A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])*U; 
 
 						Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
 						Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
@@ -3442,14 +3442,13 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 	float U,A;
 	for (int k=0; k<Kinp/3; k++){// k runs over vertices 
 		i = 3*k;	// vertex index
-		U = Sx*Sx + Sy*Sy+(1e-37f); 		
-		A = (-Sy*Vinp[3*k+0] + Sx*Vinp[3*k+1])*(1. - Sz)/U; 
+		U = 1.0f/(Sx*Sx + Sy*Sy+(1e-37f)); 		
+		A = (-Sy*Vinp[3*k+0] + Sx*Vinp[3*k+1])*(1. - Sz)*U; 
 		Vout[i+0] = (-Sy*A + Vinp[3*k+0]*Sz + Sx*Vinp[3*k+2]			)*Hf*Scale_H + Px;
 		Vout[i+1] = ( Sx*A + Vinp[3*k+1]*Sz + Sy*Vinp[3*k+2]			)*Hf*Scale_H + Py;
 		Vout[i+2] = ( Vinp[3*k+2]*Sz - (Sx*Vinp[3*k+0]+Sy*Vinp[3*k+1])	)*Hf*Scale_H + Pz;	
 
-		A = (-Sy*Ninp[3*k+0] + Sx*Ninp[3*k+1])*(1. - Sz)/U; 
-
+		A = (-Sy*Ninp[3*k+0] + Sx*Ninp[3*k+1])*(1. - Sz)*U; 		
 		Nout[i+0] =-Sy*A + Ninp[3*k+0]*Sz + Sx*Ninp[3*k+2];
 		Nout[i+1] = Sx*A + Ninp[3*k+1]*Sz + Sy*Ninp[3*k+2];
 		Nout[i+2] = Ninp[3*k+2]*Sz - (Sx*Ninp[3*k+0]+Sy*Ninp[3*k+1]);
