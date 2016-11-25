@@ -1803,7 +1803,7 @@ void setupTweakBar()
 	TwAddButton(control_bar, "Clean the record", CB_CleanSxSySzFile, NULL, "label= 'Clean the record' help='clean the output file with <sx>, <sy>, <sz>' ");
 	TwAddButton(control_bar, "Reset iterations", CB_ResetIterations, NULL, "label='Reset iterations' ");
 
-	TwAddSeparator(control_bar, "sep", NULL);
+	TwAddSeparator(control_bar, "sep-3", NULL);
 
 	TwAddVarRW(control_bar, "BCinA", TW_TYPE_BOOL32, &Boundary[0], 
 	"label='along a' group='Boundary conditions' true='periodic' false='open' help='set boundary conditions along translation vector 'a' '");
@@ -1819,6 +1819,7 @@ void setupTweakBar()
 	TwAddVarRW(control_bar, "temperature", TW_TYPE_FLOAT, &Temperature, 
 	"label='k_b*T' min=0 max=100 step=0.01 group='LLG' ");
 
+    TwAddSeparator(control_bar, "sep-2", NULL);
 	TwAddVarCB(control_bar, "FieldTheta", TW_TYPE_FLOAT, CB_SetHfieldTheta, CB_GetHfieldTheta, &VHtheta, "label='H theta'  step=1 help='Change the direction of applied field' ");
 	TwAddVarCB(control_bar, "FieldPhi", TW_TYPE_FLOAT, CB_SetHfieldPhi, CB_GetHfieldPhi, &VHphi, "label='H phi' step=1  help='Change the direction of applied field' ");
 	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldDir, CB_GetHfieldDir, VHf, 
@@ -1831,7 +1832,7 @@ void setupTweakBar()
 	// // "label='Field' help='The value of uniaxial anisotropy' ");
 	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
 	"label='Field'  min=0 step=0.0001 help='The value of uniaxial anisotropy' ");
-
+    TwAddSeparator(control_bar, "sep-1", NULL);
 
 
 	TwAddVarRW(control_bar, "KudDir", TW_TYPE_DIR3F, &VKu, 
@@ -1982,7 +1983,7 @@ void setupTweakBar()
 	TwDefine(" Info help='F12: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
 	TwDefine(" Info help='F12: show/hide info-bar' "); // change default tweak bar size and color
-	TwDefine(" Info position = '1 30' size ='170 400' valueswidth=120"); // change default tweak bar size and color
+	TwDefine(" Info position = '1 30' size ='200 400' valueswidth=120"); // change default tweak bar size and color
 	TwAddVarRO(info_bar, "R/S", TW_TYPE_BOOL32,  &Play, "true='RUNING' false='STOPED' ");
 	TwAddVarRO(info_bar, "Rec.", TW_TYPE_BOOL32,  &Record, "true='On' false='Off' ");
 	TwAddVarRO(info_bar, "ACF", TW_TYPE_BOOL32,  &AC_FIELD_ON, "true='On' false='Off' help='AC filed on/off'");
@@ -2010,6 +2011,7 @@ void setupTweakBar()
 	TwAddVarRO(info_bar, "m_y", TW_TYPE_DOUBLE, &mtot[1], " help='y-component of average moment per spin' ");
 	TwAddVarRO(info_bar, "m_z", TW_TYPE_DOUBLE, &mtot[2], " help='z-component of average moment per spin' ");
 	TwAddSeparator(info_bar, "sep3", NULL);
+	TwAddVarRO(info_bar, "max_torque", TW_TYPE_DOUBLE, &MAX_TORQUE, " help='maximum torque acting on the spin' ");
 }
 
 

@@ -318,7 +318,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature, 						
+				float temperature, 	int thread,					
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
@@ -485,10 +485,17 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					inx[i] = ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;// <-- back to the array of spins new values
 					iny[i] = ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
 					inz[i] = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
+
+					//find max torque
+					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
+					Hx = Heffx[i]-detMi*inx[i];
+					Hy = Heffy[i]-detMi*iny[i];	
+					Hz = Heffz[i]-detMi*inz[i];
+					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
+					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;
 					// bSx[i]=inx[i];
 					// bSy[i]=iny[i];
 					// bSz[i]=inz[i];
-				
 				}
 			}
 		}
@@ -585,7 +592,7 @@ void *CALC_THREAD(void *void_ptr)
 						Heffx, 	Heffy, 	Heffz, 
 						RNx, 	RNy, 	RNz, 
 						NOS, 	damping,t_step, 
-						Temperature,
+						Temperature, threadindex,
 						naini, 	nafin,
 						nbini, 	nbfin,
 						ncini, 	ncfin);
@@ -613,6 +620,11 @@ void *CALC_THREAD(void *void_ptr)
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(sem_out[threadindex]);
 		}else{
+			MAX_TORQUE=0;
+			for (int i=0;i<THREADS_NUMBER;i++){
+				if (Max_torque[i] > MAX_TORQUE) MAX_TORQUE = Max_torque[i];
+				Max_torque[i] = 0;
+			}
 			//all other calculation threads
 			sem_wait(sem_in[threadindex]);
 			// first button which open the first door in the next (second) thread

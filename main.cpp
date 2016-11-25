@@ -150,7 +150,8 @@ double		totalEnergyFerro;
 double		perSpEnergyMinusFerro;
 double 		Mtot[3]; // Total magnetic moment
 double 		mtot[3]; // Total magnetic moment
-
+double 		Max_torque[THREADS_NUMBER];
+double 		MAX_TORQUE=0;
 //Color scheme variables
 int			HueMapRGB[6]={0,60,120,180,240,300};// initial (equidistant RGB) hue map for the color sphere
 int			HueMapRYGB[6]={0,90,180,225,270,315};// initial (equidistant RYGB) hue map for the color sphere
@@ -281,6 +282,7 @@ main (int argc, char **argv)
 		if ( (sem_out[i] = sem_open(name, O_CREAT, 0644, 0)) == SEM_FAILED ) perror("sem_open");
 		//int value;		
 		//sem_getvalue(sem_in[i], &value); //Function not implemented on Mac OS X!!!
+		Max_torque[i]=0;
 	}   
 
 	////////////////////////////////////////////////
