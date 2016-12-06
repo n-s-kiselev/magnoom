@@ -149,7 +149,7 @@ float angle = 0.8f;
 // Light parameter
 float g_LightMultiplier = 1.0f;
 float g_LightDirection[] = { 0.0f, 0.0f, -1.0f };
-
+int   Light_On=0;
 
 
 
@@ -1732,6 +1732,9 @@ void setupTweakBar()
 	temp_color[1] = 230;
 	temp_color[2] = 255;
 	TwSetParam(view_bar, "LightDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
+
+	TwAddVarRW(view_bar, "Light_On_Off", TW_TYPE_BOOL32, &Light_On, 
+	" label='Light On/Off' help='Reflectins' group='Light'");
 
 	TwAddVarRW(view_bar, "CamAng", TW_TYPE_FLOAT, &PerspSet[0], 
 	" label='camera angle' min=1 max=120 help='camera angle' group='Camera control'");
@@ -3627,9 +3630,13 @@ void drawVBO()
 	switch (WhichVectorMode)
 	{
 		case BOX1:
-			glDisable(GL_LIGHTING);
 		case ARROW1:
 		case CONE1:
+			if (Light_On) {
+				glEnable(GL_LIGHTING);
+			}else{
+				glDisable(GL_LIGHTING);
+			}
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdC);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdN);		glNormalPointer(GL_FLOAT, 0, (void*)0);
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdV);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
