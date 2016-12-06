@@ -149,7 +149,7 @@ float angle = 0.8f;
 // Light parameter
 float g_LightMultiplier = 1.0f;
 float g_LightDirection[] = { 0.0f, 0.0f, -1.0f };
-int   Light_On=0;
+int   Light_On=1;
 
 
 
@@ -3008,7 +3008,8 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 							double * Sx, double * Sy, double * Sz, int mode)
 {
 	//float tmpV1[3], tmpV2[3], tmpV3[3], RGB[3], U, A;
-	float tmpV2[3], RGB[3], U, A;
+	float S[3], RGB[3], U, A;
+	float vlength;
 	int i,j,n,N;
 	int anini=0;
 	int anfin=ABC[0];
@@ -3054,13 +3055,14 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				{
 				    N = n + atom;
 					//slow version is commented but easy to read: 
-					tmpV2[0] = Sx[N];
-					tmpV2[1] = Sy[N];
-					tmpV2[2] = Sz[N];
-					if (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max)
+					S[0] = Sx[N];
+					S[1] = Sy[N];
+					S[2] = Sz[N];
+					vlength = Unitf(S,S);
+					if (S[2]>=Sz_min && S[2]<=Sz_max)
 					{
 						N_filter++;
-				        HSVtoRGB(tmpV2, RGB, InvertValue, InvertHue);
+				        HSVtoRGB(S, RGB, InvertValue, InvertHue);
 						j++;
 						for (int k=0; k<Kinp/3; k++) // k runs over vertices of the arrow/cone 
 						{
@@ -3069,32 +3071,32 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 							// tmpV1[0] = Vinp[3*k+0];
 							// tmpV1[1] = Vinp[3*k+1];
 							// tmpV1[2] = Vinp[3*k+2];
-							// NewBasisCartesian(tmpV1, tmpV2, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
+							// NewBasisCartesian(tmpV1, S, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
 							// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
 							// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
 							// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
-							U = 1.0f/(Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f)); 
+							U = 1.0f/(S[0]*S[0]+S[1]*S[1]+(1e-37f)); 
 							
-							A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])*U; 
+							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-							Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
-							Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
-							Vout[i+2] =( Vinp[3*k+2]*Sz[N] - (Sx[N]*Vinp[3*k+0]+Sy[N]*Vinp[3*k+1])	)*Scale + Pz[N];	
+							Vout[i+0] =(-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			)*Scale*vlength + Px[N];
+							Vout[i+1] =( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			)*Scale*vlength + Py[N];
+							Vout[i+2] =( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1])	)*Scale*vlength + Pz[N];	
 
 							//slow version is commented but easy to read:
 							// tmpV1[0] = Ninp[3*k+0];
 							// tmpV1[1] = Ninp[3*k+1];
 							// tmpV1[2] = Ninp[3*k+2];
-							//NewBasisCartesian(tmpV1, tmpV2, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
+							//NewBasisCartesian(tmpV1, S, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
 							// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
 							// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
 							// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-							A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])*U; 
+							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-							Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
-							Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
-							Nout[i+2] = Ninp[3*k+2]*Sz[N] - (Sx[N]*Ninp[3*k+0]+Sy[N]*Ninp[3*k+1]);
+							Nout[i+0] =-S[1]*A + Ninp[3*k+0]*S[2] + S[0]*Ninp[3*k+2];
+							Nout[i+1] = S[0]*A + Ninp[3*k+1]*S[2] + S[1]*Ninp[3*k+2];
+							Nout[i+2] = Ninp[3*k+2]*S[2] - (S[0]*Ninp[3*k+0]+S[1]*Ninp[3*k+1]);
 
 							Cout[i+0] = RGB[0];			// x-component of vertex normal
 							Cout[i+1] = RGB[1];			// y-component of vertex normal
@@ -3118,17 +3120,18 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				{
 				    N = n + atom;
 					//slow version is commented but easy to read: 
-					tmpV2[0] = Sx[N];
-					tmpV2[1] = Sy[N];
-					tmpV2[2] = Sz[N];
-			        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+					S[0] = Sx[N];
+					S[1] = Sy[N];
+					S[2] = Sz[N];
+					vlength = Unitf(S,S);
+			        HSVtoRGB( S, RGB, InvertValue, InvertHue);
 					j++;
-					if (tmpV2[2]==-1){
+					if (S[2]==-1){
 					for (int k=0; k<Kinp/3; k++){// k runs over vertices 
 							i = j*Kinp + 3*k;
-							Vout[i+0] = (-Vinp[3*k+0])*Scale + Px[N];
-							Vout[i+1] = ( Vinp[3*k+1])*Scale + Py[N];
-							Vout[i+2] = (-Vinp[3*k+2])*Scale + Pz[N];	
+							Vout[i+0] = (-Vinp[3*k+0])*Scale*vlength + Px[N];
+							Vout[i+1] = ( Vinp[3*k+1])*Scale*vlength + Py[N];
+							Vout[i+2] = (-Vinp[3*k+2])*Scale*vlength + Pz[N];	
 
 							Nout[i+0] = -Ninp[3*k+0];
 							Nout[i+1] =  Ninp[3*k+1];
@@ -3146,32 +3149,32 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 							// tmpV1[0] = Vinp[3*k+0];
 							// tmpV1[1] = Vinp[3*k+1];
 							// tmpV1[2] = Vinp[3*k+2];
-							// NewBasisCartesian(tmpV1, tmpV2, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
+							// NewBasisCartesian(tmpV1, S, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
 							// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
 							// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
 							// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
-							U = 1.0f/(Sx[N]*Sx[N]+Sy[N]*Sy[N]+(1e-37f)); 
+							U = 1.0f/(S[0]*S[0]+S[1]*S[1]+(1e-37f)); 
 							
-							A = (-Sy[N]*Vinp[3*k+0] + Sx[N]*Vinp[3*k+1])*(1. - Sz[N])*U; 
+							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-							Vout[i+0] =(-Sy[N]*A + Vinp[3*k+0]*Sz[N] + Sx[N]*Vinp[3*k+2]			)*Scale + Px[N];
-							Vout[i+1] =( Sx[N]*A + Vinp[3*k+1]*Sz[N] + Sy[N]*Vinp[3*k+2]			)*Scale + Py[N];
-							Vout[i+2] =( Vinp[3*k+2]*Sz[N] - (Sx[N]*Vinp[3*k+0]+Sy[N]*Vinp[3*k+1])	)*Scale + Pz[N];	
+							Vout[i+0] =(-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			)*Scale*vlength + Px[N];
+							Vout[i+1] =( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			)*Scale*vlength + Py[N];
+							Vout[i+2] =( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1])	)*Scale*vlength + Pz[N];
 
 							//slow version is commented but easy to read:
 							// tmpV1[0] = Ninp[3*k+0];
 							// tmpV1[1] = Ninp[3*k+1];
 							// tmpV1[2] = Ninp[3*k+2];
-							//NewBasisCartesian(tmpV1, tmpV2, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
+							//NewBasisCartesian(tmpV1, S, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
 							// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
 							// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
 							// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-							A = (-Sy[n]*Ninp[3*k+0] + Sx[n]*Ninp[3*k+1])*(1. - Sz[n])*U; 
+							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U;
 
-							Nout[i+0] =-Sy[N]*A + Ninp[3*k+0]*Sz[N] + Sx[N]*Ninp[3*k+2];
-							Nout[i+1] = Sx[N]*A + Ninp[3*k+1]*Sz[N] + Sy[N]*Ninp[3*k+2];
-							Nout[i+2] = Ninp[3*k+2]*Sz[N] - (Sx[N]*Ninp[3*k+0]+Sy[N]*Ninp[3*k+1]);
+							Nout[i+0] =-S[1]*A + Ninp[3*k+0]*S[2] + S[0]*Ninp[3*k+2];
+							Nout[i+1] = S[0]*A + Ninp[3*k+1]*S[2] + S[1]*Ninp[3*k+2];
+							Nout[i+2] = Ninp[3*k+2]*S[2] - (S[0]*Ninp[3*k+0]+S[1]*Ninp[3*k+1]);
 
 							Cout[i+0] = RGB[0];			// x-component of vertex normal
 							Cout[i+1] = RGB[1];			// y-component of vertex normal
@@ -3192,24 +3195,24 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			for (int an = 0; an<ABC[0]; an++) {
 			for (int bn = 0; bn<ABC[1]; bn++) {
 			for (int cn = 0; cn<ABC[2]; cn++) {	
-				tmpV2[0] = 0;
-				tmpV2[1] = 0;
-				tmpV2[2] = 0;
+				S[0] = 0;
+				S[1] = 0;
+				S[2] = 0;
 
 				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
 				    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
 	 
-					tmpV2[0]+= Sx[N];
-					tmpV2[1]+= Sy[N];
-					tmpV2[2]+= Sz[N];
+					S[0]+= Sx[N];
+					S[1]+= Sy[N];
+					S[2]+= Sz[N];
 			    }
-			    if (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max)
+			    if (S[2]>=Sz_min && S[2]<=Sz_max)
 				{
 					N_filter++;
-				    (void)Unitf(tmpV2,tmpV2);
-				    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+				    (void)Unitf(S,S);
+				    HSVtoRGB( S, RGB, InvertValue, InvertHue);
 
 					j++;
 					for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
@@ -3243,21 +3246,21 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			for (int bn = bnini; bn<bnfin; bn++) {
 			for (int cn = cnini; cn<cnfin; cn++) {	
 				if (an == anini || an == anfin-1 || bn == bnini || bn == bnfin-1 || cn == cnini || cn == cnfin-1){	
-					tmpV2[0] = 0;
-					tmpV2[1] = 0;
-					tmpV2[2] = 0;
+					S[0] = 0;
+					S[1] = 0;
+					S[2] = 0;
 
 					n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
 					for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
 					    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
 		 
-						tmpV2[0]+= Sx[N];
-						tmpV2[1]+= Sy[N];
-						tmpV2[2]+= Sz[N];
+						S[0]+= Sx[N];
+						S[1]+= Sy[N];
+						S[2]+= Sz[N];
 				    }
-				    (void)Unitf(tmpV2,tmpV2);
-				    HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+				    (void)Unitf(S,S);
+				    HSVtoRGB( S, RGB, InvertValue, InvertHue);
 
 					j++;
 					for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
@@ -3297,13 +3300,14 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
-					tmpV2[0] = Sx[n+atom];
-					tmpV2[1] = Sy[n+atom];
-					tmpV2[2] = Sz[n+atom];
-					if (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max)
+					S[0] = Sx[n+atom];
+					S[1] = Sy[n+atom];
+					S[2] = Sz[n+atom];
+					vlength = Unitf(S,S);
+					if (S[2]>=Sz_min && S[2]<=Sz_max)
 					{
 						N_filter++;
-				        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+				        HSVtoRGB( S, RGB, InvertValue, InvertHue);
 				        j++;
 						i = j*Kinp;			// index of first cane vertex 
 						Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
@@ -3328,10 +3332,11 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
-					tmpV2[0] = Sx[n+atom];
-					tmpV2[1] = Sy[n+atom];
-					tmpV2[2] = Sz[n+atom];
-			        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+					S[0] = Sx[n+atom];
+					S[1] = Sy[n+atom];
+					S[2] = Sz[n+atom];
+					vlength = Unitf(S,S);
+			        HSVtoRGB( S, RGB, InvertValue, InvertHue);
 			        j++;
 					i = j*Kinp;			// index of first cane vertex 
 					Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
@@ -3362,19 +3367,20 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
-					tmpV2[0] = Sx[n+atom];
-					tmpV2[1] = Sy[n+atom];
-					tmpV2[2] = Sz[n+atom];
-					if (tmpV2[2]>=Sz_min && tmpV2[2]<=Sz_max) 
+					S[0] = Sx[n+atom];
+					S[1] = Sy[n+atom];
+					S[2] = Sz[n+atom];
+					vlength = Unitf(S,S);
+					if (S[2]>=Sz_min && S[2]<=Sz_max) 
 					{
 						N_filter++;
-				        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+				        HSVtoRGB( S, RGB, InvertValue, InvertHue);
 				        j++;
 						//i = (n-nini)*Kinp;							// index of ferst cane vertex 
 						i = j*Kinp;
-						Vout[i+0] = tmpV2[0]*(1-Pivot)*Scale + Px[n+atom];	// new x-component of vertex + translation
-						Vout[i+1] = tmpV2[1]*(1-Pivot)*Scale + Py[n+atom];	// new y-component of vertex + translation
-						Vout[i+2] = tmpV2[2]*(1-Pivot)*Scale + Pz[n+atom];	// new z-component of vertex + translation
+						Vout[i+0] = S[0]*(1-Pivot)*Scale*vlength + Px[n+atom];	// new x-component of vertex + translation
+						Vout[i+1] = S[1]*(1-Pivot)*Scale*vlength + Py[n+atom];	// new y-component of vertex + translation
+						Vout[i+2] = S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom];	// new z-component of vertex + translation
 						//i = n*Kinp/3*4;		// colors contains 4 floats
 						Cout[i+0] = RGB[0];					// x-component of vertex normal
 						Cout[i+1] = RGB[1];					// y-component of vertex normal
@@ -3383,9 +3389,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 						//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
 						i = j*Kinp+ 3*1;
-						Vout[i+0] = -tmpV2[0]*(Pivot)*Scale + Px[n+atom];		// new x-component of vertex + translation
-						Vout[i+1] = -tmpV2[1]*(Pivot)*Scale + Py[n+atom];		// new y-component of vertex + translation
-						Vout[i+2] = -tmpV2[2]*(Pivot)*Scale + Pz[n+atom];		// new z-component of vertex + translation
+						Vout[i+0] = -S[0]*(Pivot)*Scale*vlength + Px[n+atom];		// new x-component of vertex + translation
+						Vout[i+1] = -S[1]*(Pivot)*Scale*vlength + Py[n+atom];		// new y-component of vertex + translation
+						Vout[i+2] = -S[2]*(Pivot)*Scale*vlength + Pz[n+atom];		// new z-component of vertex + translation
 						//i = n*Kinp/3*4+4;			// colors contains 4 floats
 						Cout[i+0] = RGB[0];					// x-component of vertex normal
 						Cout[i+1] = RGB[1];					// y-component of vertex normal
@@ -3408,16 +3414,17 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
-					tmpV2[0] = Sx[n+atom];
-					tmpV2[1] = Sy[n+atom];
-					tmpV2[2] = Sz[n+atom];
-			        HSVtoRGB( tmpV2, RGB, InvertValue, InvertHue);
+					S[0] = Sx[n+atom];
+					S[1] = Sy[n+atom];
+					S[2] = Sz[n+atom];
+					vlength = Unitf(S,S);
+			        HSVtoRGB( S, RGB, InvertValue, InvertHue);
 			        j++;
 					//i = (n-nini)*Kinp;							// index of ferst cane vertex 
 					i = j*Kinp;
-					Vout[i+0] = tmpV2[0]*(1-Pivot)*Scale + Px[n+atom];	// new x-component of vertex + translation
-					Vout[i+1] = tmpV2[1]*(1-Pivot)*Scale + Py[n+atom];	// new y-component of vertex + translation
-					Vout[i+2] = tmpV2[2]*(1-Pivot)*Scale + Pz[n+atom];	// new z-component of vertex + translation
+					Vout[i+0] = S[0]*(1-Pivot)*Scale*vlength + Px[n+atom];	// new x-component of vertex + translation
+					Vout[i+1] = S[1]*(1-Pivot)*Scale*vlength + Py[n+atom];	// new y-component of vertex + translation
+					Vout[i+2] = S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom];	// new z-component of vertex + translation
 					//i = n*Kinp/3*4;		// colors contains 4 floats
 					Cout[i+0] = RGB[0];					// x-component of vertex normal
 					Cout[i+1] = RGB[1];					// y-component of vertex normal
@@ -3426,9 +3433,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 					//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
 					i = j*Kinp+ 3*1;
-					Vout[i+0] = -tmpV2[0]*(Pivot)*Scale + Px[n+atom];		// new x-component of vertex + translation
-					Vout[i+1] = -tmpV2[1]*(Pivot)*Scale + Py[n+atom];		// new y-component of vertex + translation
-					Vout[i+2] = -tmpV2[2]*(Pivot)*Scale + Pz[n+atom];		// new z-component of vertex + translation
+					Vout[i+0] = -S[0]*(Pivot)*Scale*vlength + Px[n+atom];		// new x-component of vertex + translation
+					Vout[i+1] = -S[1]*(Pivot)*Scale*vlength + Py[n+atom];		// new y-component of vertex + translation
+					Vout[i+2] = -S[2]*(Pivot)*Scale*vlength + Pz[n+atom];		// new z-component of vertex + translation
 					//i = n*Kinp/3*4+4;			// colors contains 4 floats
 					Cout[i+0] = RGB[0];					// x-component of vertex normal
 					Cout[i+1] = RGB[1];					// y-component of vertex normal
