@@ -148,7 +148,7 @@ float angle = 0.8f;
 // float g_MatDiffuse[] = { 1.0f, 1.0f, 0.0f, 1.0f };
 // Light parameter
 float g_LightMultiplier = 1.0f;
-float g_LightDirection[] = { 0.0f, 0.0f, -1.0f };
+float g_LightDirection[] = { -0.2f, 1.0f, 0.0f };
 int   Light_On=1;
 
 
@@ -1100,7 +1100,7 @@ void TW_CALL CB_SetHfield(const void *value, void *clientData )
 {
 	(void)clientData; // unused
     Hf = *( float *)value; // copy value to InvertValue
-    if (Hf>0.5*Jij[0]) Hf=0.5*Jij[0];
+    if (Hf>1.1*abs(Jij[0])) Hf=1.1*abs(Jij[0]);
 	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
 	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 }
@@ -2184,13 +2184,13 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 
 			case 'w':
 			case 'W':
-				Rot[0] += 0.25;
-				//TransXYZ[1]+=1;
+				//Rot[0] += 0.25;
+				TransXYZ[2]-=0.5;
 				break;
 			case 's':
 			case 'S':
-				Rot[0] -= 0.25;
-				//TransXYZ[1]-=1;
+				//Rot[0] -= 0.25;
+				TransXYZ[2]+=0.5;
 				break;
 			case 'a':
 			case 'A':
