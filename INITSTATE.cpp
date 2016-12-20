@@ -48,8 +48,8 @@ void CreatBobber(float * px, float * py, float * pz, double * sx, double * sy, d
 			{
 			T=PI*(R-r)/R;//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
 			F= 1*(-atan2(rx,ry));//<--chiral (bloch) skyrmion |Q|=1
-			Sx[n] = sin(T)*cos(F);
-			Sy[n] = sin(T)*sin(F);
+			Sx[n] = -sin(T)*cos(F);
+			Sy[n] = -sin(T)*sin(F);
 			Sz[n] = cos(T);	
 			}
 		}	

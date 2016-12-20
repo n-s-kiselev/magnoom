@@ -94,8 +94,8 @@ float		abc[3][3] = {
 				{	0.0f, 0.0f, 1.0f }};// c
 
 float		Block[][3] = {		
-				{0.5,	0.5,	0.5}
-				};	
+				{   0.5,		   0.5,	    0.5}	
+				};
 // #define uB20		0.138f
 // float		Block[][3] = {		
 // 				{   0.,		   0.,	    0.},	
@@ -125,28 +125,28 @@ float		Block[][3] = {
 // 				};
 
 //number of translations for the basic domain along a,b, and c verctors respectively 
-//int			ABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-//int			ABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-int			ABC[3] = {50,50,30};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-//int			ABC[3] = {71,41,40};//Grid dimensionality along translation vectors a, b, c; ABC[i]>0 
-int			Boundary[3] = {0, 0, 0};// boundary conditions along a, b, c translation vectors
+//int			uABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
+//int			uABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
+//int			uABC[3] = {128,128*3,64};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
+int			uABC[3] = {50,50,1};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
+int			Boundary[3] = {1, 0, 0};// boundary conditions along a, b, c translation vectors
 
 int			ShellNumber = 1;
 int			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
 float*		RadiusOfShell = (float *)calloc(ShellNumber , sizeof(float));  
 int*		NeighborsPerAtom = (int *)calloc(AtomsPerBlock, sizeof(int));
 // total number of neighbour pairs per whole map of neighbours
-int			NOS=AtomsPerBlock*ABC[0]*ABC[1]*ABC[2]; // number of spins
-int			NOS_AL=AtomsPerBlock*ABC[1]*ABC[2]; // number of spins per A layer
-int			NOS_BL=AtomsPerBlock*ABC[0]*ABC[2]; // number of spins per B layer
-int			NOS_CL=AtomsPerBlock*ABC[0]*ABC[1]; // number of spins per C layer
+int			NOS=AtomsPerBlock*uABC[0]*uABC[1]*uABC[2]; // number of spins
+int			NOS_AL=AtomsPerBlock*uABC[1]*uABC[2]; // number of spins per A layer
+int			NOS_BL=AtomsPerBlock*uABC[0]*uABC[2]; // number of spins per B layer
+int			NOS_CL=AtomsPerBlock*uABC[0]*uABC[1]; // number of spins per C layer
 
 double 		iNOS = 1.0/NOS;
 
-int			NOB=ABC[0]*ABC[1]*ABC[2]; // number of Blocks
-int			NOB_AL=ABC[1]*ABC[2]; // number of spins per A layer
-int			NOB_BL=ABC[0]*ABC[2]; // number of spins per B layer
-int			NOB_CL=ABC[0]*ABC[1]; // number of spins per C layer
+int			NOB=uABC[0]*uABC[1]*uABC[2]; // number of Blocks
+int			NOB_AL=uABC[1]*uABC[2]; // number of spins per A layer
+int			NOB_BL=uABC[0]*uABC[2]; // number of spins per B layer
+int			NOB_CL=uABC[0]*uABC[1]; // number of spins per C layer
 
 void	
 GetShells(float abc[][3], float block[][3], int atomsPerBlock, int ShellNum, float * R)

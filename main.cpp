@@ -55,6 +55,16 @@
 //			LD_LIBRARY_PATH=~/Desktop/JSpinx4/include/
 //*****************************************************************************
 
+//	Windows 32bit + MSVC
+// 	$ "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\vcvars32.bat"
+//	$ cl main.cpp /O2
+
+//	Windows 64bit + MSVC
+// 	$ "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\amd64\vcvars64.bat"
+//	$ cl main.cpp /O2
+
+
+
 #ifdef __APPLE__
     #include "TargetConditionals.h"
     #ifdef TARGET_OS_MAC
@@ -62,33 +72,52 @@
         #include <GLUT/glut.h>
         #include <OpenGL/OpenGL.h>
     #endif
-#elif defined _WIN32 || defined _WIN64
-    #include <GL\glut.h>
 #else
+	#if defined(_WIN32)
+		#pragma comment(lib, "glew32.lib")
+		#pragma comment(lib, "freeglut.lib")
+	#endif
 	#include <GL/glew.h>
 	#include <GL/freeglut.h>
 #endif
 
 #include <AntTweakBar.h>
-#include <unistd.h>
+
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h> //I like printf( )!
-#include <pthread.h>
-#include <semaphore.h>
 #include <time.h>
 // struct timespec tw = {0,100000000};// delay for 0 s and 10^8 ns =0.1s
 
-
-#ifdef _WIN32
-	CRITICAL_SECTION culc_mutex, show_mutex;
+#if defined(_WIN32)
+	#include <windows.h>
+	#include <process.h>
+	#define uint32_t  unsigned long int
+	#define usleep(t)  Sleep( (DWORD)((t)*0.001f) )
+	#define snprintf _snprintf			
+	#define SEM_VALUE_MAX 32767
+	#define SEM_FAILED NULL
+	#define pthread_t HANDLE
+	#define semaphore_ref HANDLE
+	#define pthread_mutex_t CRITICAL_SECTION
+	#define sem_open(name, flag, mode, value) CreateSemaphore(NULL,value,SEM_VALUE_MAX,name)
+	#define sem_post(sem) ReleaseSemaphore(sem,1,NULL)
+	#define sem_wait(sem) WaitForSingleObject(sem,(DWORD)10000)
+	#define sem_trywait(sem) WaitForSingleObject(sem,0)
+	#define sem_close(sem) CloseHandle(sem)
+	#define pthread_create(th_ref, attr_ref, name, arg_ref) ((  ( *(th_ref) = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)(*(name)), arg_ref, 0, NULL) ) == NULL ? -1 : 0  ))
+	#define pthread_mutex_init(mutex_ptr,num) InitializeCriticalSection(mutex_ptr)
+	#define pthread_mutex_lock(mutex_ptr) EnterCriticalSection(mutex_ptr)
+	#define pthread_mutex_unlock(mutex_ptr) LeaveCriticalSection(mutex_ptr)
 #else
-	pthread_mutex_t  culc_mutex, show_mutex;
-	#define InitCriticalSection(mutex_ptr) pthread_mutex_init(mutex_ptr,0)
-	#define EnterCriticalSection(mutex_ptr) pthread_mutex_lock(mutex_ptr)
-	#define LeaveCriticalSection(mutex_ptr) pthread_mutex_unlock(mutex_ptr)
+	#include <unistd.h>
+	#include <pthread.h>
+	#include <semaphore.h>		
+	#define semaphore_ref sem_t*
 #endif
+
+pthread_mutex_t  culc_mutex, show_mutex;
 
 enum engine_mutex_flags{DO_IT,WAIT};
 enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
@@ -97,8 +126,26 @@ int		ENGINE_MUTEX=WAIT;
 int		DATA_TRANSFER_MUTEX=WAIT_DATA;
 
 #define THREADS_NUMBER 3 
-sem_t *sem_in[THREADS_NUMBER];
-sem_t *sem_out[THREADS_NUMBER];
+//semaphore_ref	sem_in[THREADS_NUMBER];
+//semaphore_ref	sem_out[THREADS_NUMBER];
+
+semaphore_ref	sem_A1;
+semaphore_ref   sem_A2;
+
+void SyncAllThreads()
+	{
+	if ( sem_trywait(sem_A1)==0 )
+		{
+		sem_wait(sem_A2);
+		} else
+		{
+		for (int i=0;i<(THREADS_NUMBER-1);++i)
+			{sem_post(sem_A1);}
+		for (int i=0;i<(THREADS_NUMBER-1);++i)
+			{sem_post(sem_A2);}
+		}
+	};
+
 
 int 	Record=0;// record <sx>, <sy>, <sz> into fole sxsysz.csv
 int     AC_FIELD_ON=0;//ON/OFF AC field signal.
@@ -194,7 +241,7 @@ float		Bij[]={		// Bij[shell]
 			};
 //Dzyaloshinskii-Moriya Interaction
 float		Dij[]={	// Dij[shell] abs value for DMI vector 
-			1.0/5.0,//0.0369138485,	// first shell
+			1/5.0,//0.0369138485,	// first shell
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
@@ -206,11 +253,11 @@ float		VKu[]={	0.0 , 0.0, 1.0 }; // uniaxial anisotropy vector
 float		Ku = 0.0;//uniaxial anisotropy constant
 float		Kc = 0;//cubic anisotropy constant 
 //DC applied H-field:
-float		VHf[]={ 0.0 , 0.0, -1.0 };
+float		VHf[]={ 0.0 , 0.0, 1.0 };
 float 		VHtheta=0;
 float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
-float		Hf=0.03;
+float		Hf=0.030;
 //AC applied H-field:
 float		VHac[]={ 0.0 , 0.0, 1.0 };
 float		Hac=0.0;
@@ -272,6 +319,7 @@ return NULL;
 int 
 main (int argc, char **argv)
 {
+	/*
 	for (int i=0; i<THREADS_NUMBER; i++){
 		char name[10]; 
 		snprintf(name,10,"inDoor%d\n",i);
@@ -283,7 +331,11 @@ main (int argc, char **argv)
 		//int value;		
 		//sem_getvalue(sem_in[i], &value); //Function not implemented on Mac OS X!!!
 		Max_torque[i]=0;
-	}   
+	} 
+*/
+	char sem_name[]="A";
+	if ( (sem_A1 = sem_open(sem_name, O_CREAT, 0644, (THREADS_NUMBER - 1))) == SEM_FAILED ) {perror("sem_open");}
+	if ( (sem_A2 = sem_open(sem_name, O_CREAT, 0644, 0)) == SEM_FAILED ) {perror("sem_open");}
 
 	////////////////////////////////////////////////
 	srand ( time(NULL) );//init random number seed//
@@ -388,8 +440,8 @@ main (int argc, char **argv)
 //	For 100x100x100x10^6 spins total allocated memory is about 6*12 = 72 Mega Byte
 //  in total possibly may reach up to 100 Mb
 
-	InitCriticalSection(&culc_mutex);
-	InitCriticalSection(&show_mutex);
+	pthread_mutex_init(&culc_mutex,0);
+	pthread_mutex_init(&show_mutex,0);
 
 	// pthread_t INFO_THREAD_idx;
 	// pthread_create(&INFO_THREAD_idx, NULL, CALC_THREAD, NULL);
@@ -414,8 +466,8 @@ main (int argc, char **argv)
 	// }
 
 
-	GetBox(abc, ABC, Box);
-	UpdateSpinPositions(abc, ABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
+	GetBox(abc, uABC, Box);
+	UpdateSpinPositions(abc, uABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
 	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
@@ -469,6 +521,7 @@ main (int argc, char **argv)
 	free(normalProto);		free(normalProto_H);
 	free(indicesProto);		free(indicesProto_H);
 
+/*
 	for (int i=0; i<THREADS_NUMBER; i++){
 		if (sem_close(sem_in[i]) == -1) {
 		    perror("sem_close");
@@ -478,7 +531,8 @@ main (int argc, char **argv)
 		    perror("sem_close");
 		    exit(EXIT_FAILURE);
 		}
-	}
 
+	}
+		*/
 	return 0;    
 }

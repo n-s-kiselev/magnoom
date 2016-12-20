@@ -12,9 +12,9 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 	int S;
 	float Je, Bq, dx, dy, dz, DM;
 	int i,j;
-	int na1, Na = ABC[0];
-	int nb1, Nb = ABC[1];
-	int nc1, Nc = ABC[2];
+	int na1, Na = uABC[0];
+	int nb1, Nb = uABC[1];
+	int nc1, Nc = uABC[2];
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
@@ -155,9 +155,9 @@ GetTotalEnergyFerro(double sx, double sy, double sz,
 	int S;
 	double Je, Bq, dx, dy, dz, DM;
 	int i,j;
-	int na1, Na = ABC[0];
-	int nb1, Nb = ABC[1];
-	int nc1, Nc = ABC[2];
+	int na1, Na = uABC[0];
+	int nb1, Nb = uABC[1];
+	int nc1, Nc = uABC[2];
 	int bc_a; // boundary condition along "a"
 	int bc_b; // boundary condition along "b"
 	int bc_c; // boundary condition along "c"
@@ -239,9 +239,9 @@ GetTotalEnergy(	double* sx, double* sy, double* sz,
 	int S;
 	float Je, Bq, dx, dy, dz, DM;
 	int i,j;
-	int na1, Na = ABC[0];
-	int nb1, Nb = ABC[1];
-	int nc1, Nc = ABC[2];
+	int na1, Na = uABC[0];
+	int nb1, Nb = uABC[1];
+	int nc1, Nc = uABC[2];
 	int bc_a; // boundary condition along "a"
 	int bc_b; // boundary condition along "b"
 	int bc_c; // boundary condition along "c"
@@ -364,8 +364,8 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
-	int 	 Na = ABC[0];
-	int nb1, Nb = ABC[1];
+	int 	 Na = uABC[0];
+	int nb1, Nb = uABC[1];
 	int nc1;
 	int i;
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
@@ -527,17 +527,17 @@ void *CALC_THREAD(void *void_ptr)
     int dNa=0;
     int dNb=0;
     int dNc=0;
-    if (ABC[0]%THREADS_NUMBER==0){
-    		dNa = ABC[0]/THREADS_NUMBER;
-    }else{	dNa = (int)ABC[0]/THREADS_NUMBER+1;}
+    if (uABC[0]%THREADS_NUMBER==0){
+    		dNa = uABC[0]/THREADS_NUMBER;
+    }else{	dNa = (int)uABC[0]/THREADS_NUMBER+1;}
 
-    if (ABC[1]%THREADS_NUMBER==0){
-    		dNb = ABC[1]/THREADS_NUMBER;
-    }else{	dNb = (int)ABC[1]/THREADS_NUMBER+1;}
+    if (uABC[1]%THREADS_NUMBER==0){
+    		dNb = uABC[1]/THREADS_NUMBER;
+    }else{	dNb = (int)uABC[1]/THREADS_NUMBER+1;}
 
-    if (ABC[2]%THREADS_NUMBER==0){
-    		dNc = ABC[2]/THREADS_NUMBER;
-    }else{	dNc = (int)ABC[2]/THREADS_NUMBER+1;}
+    if (uABC[2]%THREADS_NUMBER==0){
+    		dNc = uABC[2]/THREADS_NUMBER;
+    }else{	dNc = (int)uABC[2]/THREADS_NUMBER+1;}
 
     int naini=0;
     int nafin=0;
@@ -546,33 +546,33 @@ void *CALC_THREAD(void *void_ptr)
     int ncini=0;
     int ncfin=0;
 
-    if (ABC[0]>=ABC[1]&&ABC[0]>=ABC[2]){      //a-axis is the longest side of the box
+    if (uABC[0]>=uABC[1]&&uABC[0]>=uABC[2]){      //a-axis is the longest side of the box
     	naini = dNa*threadindex; 
-    	if (dNa*(threadindex+1)<ABC[0]){
+    	if (dNa*(threadindex+1)<uABC[0]){
     		nafin = dNa*(threadindex+1);
     	}else{
-    		nafin = ABC[0];
+    		nafin = uABC[0];
     	}
-    	nbini = 0; nbfin = ABC[1];
-    	ncini = 0; ncfin = ABC[2];
-    }else if (ABC[2]>=ABC[0]&&ABC[2]>=ABC[1]){//c-axis is the longest side of the box
+    	nbini = 0; nbfin = uABC[1];
+    	ncini = 0; ncfin = uABC[2];
+    }else if (uABC[2]>=uABC[0]&&uABC[2]>=uABC[1]){//c-axis is the longest side of the box
     	ncini = dNa*threadindex; 
-    	if (dNc*(threadindex+1)<ABC[2]){
+    	if (dNc*(threadindex+1)<uABC[2]){
     		ncfin = dNc*(threadindex+1);
     	}else{
-    		ncfin = ABC[2];
+    		ncfin = uABC[2];
     	}
-    	naini = 0; nafin = ABC[0];	
-    	nbini = 0; nbfin = ABC[1];
-    }else if (ABC[1]>=ABC[0]&&ABC[1]>=ABC[2]){//b-axis is the longest side of the box
+    	naini = 0; nafin = uABC[0];	
+    	nbini = 0; nbfin = uABC[1];
+    }else if (uABC[1]>=uABC[0]&&uABC[1]>=uABC[2]){//b-axis is the longest side of the box
     	nbini = dNb*threadindex; 
-    	if (dNb*(threadindex+1)<ABC[1]){
+    	if (dNb*(threadindex+1)<uABC[1]){
     		nbfin = dNb*(threadindex+1);
     	}else{
-    		nbfin = ABC[1];
+    		nbfin = uABC[1];
     	}
-    	naini = 0; nafin = ABC[0];	
-    	ncini = 0; ncfin = ABC[2];    	
+    	naini = 0; nafin = uABC[0];	
+    	ncini = 0; ncfin = uABC[2];    	
     }
     // printf("thread[%d]\n",threadindex );
     // printf("naini = %d, nafin = %d\n",naini, nafin);
@@ -606,11 +606,14 @@ void *CALC_THREAD(void *void_ptr)
 					bSy[i]=Sy[i];
 					bSz[i]=Sz[i];
 				}
-				EnterCriticalSection(&show_mutex);
+				pthread_mutex_lock(&show_mutex);
 					DATA_TRANSFER_MUTEX=TAKE_DATA;
 					currentIteration=ITERATION;
-				LeaveCriticalSection(&show_mutex);	
-			}		
+				pthread_mutex_unlock(&show_mutex);	
+			}
+
+			SyncAllThreads();
+			/*
 			//first thread opens the first (in) door in the next (second) thread
 			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
@@ -619,12 +622,16 @@ void *CALC_THREAD(void *void_ptr)
 			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(sem_out[threadindex]);
+*/
 		}else{
 			MAX_TORQUE=0;
 			for (int i=0;i<THREADS_NUMBER;i++){
 				if (Max_torque[i] > MAX_TORQUE) MAX_TORQUE = Max_torque[i];
 				Max_torque[i] = 0;
 			}
+
+			SyncAllThreads();
+			/*
 			//all other calculation threads
 			sem_wait(sem_in[threadindex]);
 			// first button which open the first door in the next (second) thread
@@ -633,6 +640,7 @@ void *CALC_THREAD(void *void_ptr)
 			sem_wait(sem_out[threadindex]);
 			// second button which open the second door in the next (second) thread
 			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
+			*/
 		}
 
 }

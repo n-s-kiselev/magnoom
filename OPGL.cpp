@@ -63,7 +63,7 @@ const GLfloat 	Colors[ ][3] =
 typedef enum	{ARROW1 
 				,CONE1 
 				,CANE
-				,POINT 
+				,uPOINT 
 				,BOX1
 				} enVectorMode; // which mode
 enVectorMode	WhichVectorMode	= BOX1;	// CANE by default 
@@ -92,23 +92,23 @@ float           CameraPosition[NumCamPosSave][7];// array which contains camera 
 float			Scale = 1.f;	// scaling factors for arrows [0.1-2] 
 float			Pivot = 0.55f;
 
-float			Scale_H = (ABC[0]+ABC[1]+ABC[2]);	// scaling factors for arrows [0.1-2] 
+float			Scale_H = (float)(uABC[0]+uABC[1]+uABC[2]);	// scaling factors for arrows [0.1-2] 
 
 // Slicing parameters
-int				A_layer_min = 1;	// which layer (along a tr. vect. ) to show max=ABC[0]
-int				B_layer_min = 1;	// which layer (along b tr. vect. ) to show max=ABC[1]
-int				C_layer_min = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
-int				A_layer_max = 1;	// which layer (along a tr. vect. ) to show max=ABC[0]
-int				B_layer_max = 1;	// which layer (along b tr. vect. ) to show max=ABC[1]
-int				C_layer_max = 1;	// which layer (along c tr. vect. ) to show max=ABC[2]
+int				A_layer_min = 1;	// which layer (along a tr. vect. ) to show max=uABC[0]
+int				B_layer_min = 1;	// which layer (along b tr. vect. ) to show max=uABC[1]
+int				C_layer_min = 1;	// which layer (along c tr. vect. ) to show max=uABC[2]
+int				A_layer_max = 1;	// which layer (along a tr. vect. ) to show max=uABC[0]
+int				B_layer_max = 1;	// which layer (along b tr. vect. ) to show max=uABC[1]
+int				C_layer_max = 1;	// which layer (along c tr. vect. ) to show max=uABC[2]
 
 typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
 int   N_filter=0;
-float theta_max=PI/2+0.15; 
+float theta_max=PI/2+0.13; 
 float Sz_min=cos(theta_max);
-float theta_min=PI/2-0.15;    
+float theta_min=PI/2-0.13;    
 float Sz_max=cos(theta_min);
 
 float phi_max=2*PI;
@@ -173,7 +173,7 @@ GLfloat*	normals_H	= NULL; // array of normals for tatal vector field
 GLfloat*	colors_H	= NULL; // array of colors 
 GLuint*		indices_H	= NULL; // array of indices for tatal vector field
 
-int			arrowFaces	= 16; // number of arrow faces, default number
+int			arrowFaces	= 6; // number of arrow faces, default number
 int			arrowFaces_H= 30; // number of arrow faces for applied field vector
 
 GLuint		vboIdV;   // ID of VBO for vertex arrays
@@ -304,21 +304,21 @@ DoStrokeString( float x, float y, float z, float ht, char const *s )
 	glPopMatrix( );
 }
 
-void GetBox(float abc[][3], int ABC[3], float box[3][3])
+void GetBox(float abc[][3], int uABC[3], float box[3][3])
 {
 	//origine of the box is (0,0,0)
 	//three vectors, b[1]+b[2]+b[2] define main diagonal of the box:
-	box[0][0] = (ABC[0])*abc[0][0];
-	box[0][1] = (ABC[0])*abc[0][1];
-	box[0][2] = (ABC[0])*abc[0][2];
+	box[0][0] = (uABC[0])*abc[0][0];
+	box[0][1] = (uABC[0])*abc[0][1];
+	box[0][2] = (uABC[0])*abc[0][2];
 
-	box[1][0] = (ABC[1])*abc[1][0];
-	box[1][1] = (ABC[1])*abc[1][1];
-	box[1][2] = (ABC[1])*abc[1][2];
+	box[1][0] = (uABC[1])*abc[1][0];
+	box[1][1] = (uABC[1])*abc[1][1];
+	box[1][2] = (uABC[1])*abc[1][2];
 
-	box[2][0] = (ABC[2])*abc[2][0];
-	box[2][1] = (ABC[2])*abc[2][1];
-	box[2][2] = (ABC[2])*abc[2][2];
+	box[2][0] = (uABC[2])*abc[2][0];
+	box[2][1] = (uABC[2])*abc[2][1];
+	box[2][2] = (uABC[2])*abc[2][2];
 }
 
 void
@@ -400,21 +400,21 @@ Parallelepiped( float abc[][3], float tr[3], float scale1, float scale2, float s
 }
 
 void
-InitLists(float abc[][3], int ABC[3])
+InitLists(float abc[][3], int uABC[3])
 {
 	float d=0.16f;
 	float Tr[3] = {	
-					-(abc[0][0]*ABC[0]+abc[1][0]*ABC[1]+abc[2][0]*ABC[2])/2.f,
-					-(abc[0][1]*ABC[0]+abc[1][1]*ABC[1]+abc[2][1]*ABC[2])/2.f,
-					-(abc[0][2]*ABC[0]+abc[1][2]*ABC[1]+abc[2][2]*ABC[2])/2.f
+					-(abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2])/2.f,
+					-(abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2])/2.f,
+					-(abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2])/2.f
 				  };
 	Tr[0]-= d/2;
 	Tr[1]-= d/2;
 	Tr[2]-= d/2;
 	float tr[3] = {0., 0., 0.};
-	float length1 = ABC[0]*sqrt(abc[0][0]*abc[0][0]+abc[0][1]*abc[0][1]+abc[0][2]*abc[0][2]);
-	float length2 = ABC[1]*sqrt(abc[1][0]*abc[1][0]+abc[1][1]*abc[1][1]+abc[1][2]*abc[1][2]);
-	float length3 = ABC[2]*sqrt(abc[2][0]*abc[2][0]+abc[2][1]*abc[2][1]+abc[2][2]*abc[2][2]);
+	float length1 = uABC[0]*sqrt(abc[0][0]*abc[0][0]+abc[0][1]*abc[0][1]+abc[0][2]*abc[0][2]);
+	float length2 = uABC[1]*sqrt(abc[1][0]*abc[1][0]+abc[1][1]*abc[1][1]+abc[1][2]*abc[1][2]);
+	float length3 = uABC[2]*sqrt(abc[2][0]*abc[2][0]+abc[2][1]*abc[2][1]+abc[2][2]*abc[2][2]);
 	// create the box:
 	BoxList = glGenLists( 1 );
 	glNewList( BoxList, GL_COMPILE );
@@ -425,43 +425,43 @@ InitLists(float abc[][3], int ABC[3])
 			Parallelepiped( abc, tr, d, length2, d);//(0,0,0)-->(0,1,0)
 			Parallelepiped( abc, tr, d, d, length3);//(0,0,0)-->(0,0,1)
 
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]; 
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]; 
-			tr[2]=Tr[2]+abc[1][2]*ABC[1];
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]; 
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]; 
+			tr[2]=Tr[2]+abc[1][2]*uABC[1];
 			Parallelepiped( abc, tr, length1, d, d);//(0,1,0)-->(1,1,0)
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]; 
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]; 
-			tr[2]=Tr[2]+abc[2][2]*ABC[2];
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]; 
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]; 
+			tr[2]=Tr[2]+abc[2][2]*uABC[2];
 			Parallelepiped( abc, tr, length1, d, d);//(0,0,1)-->(0,1,1)
-			tr[0]+=abc[1][0]*ABC[1]; 
-			tr[1]+=abc[1][1]*ABC[1]; 
-			tr[2]+=abc[1][2]*ABC[1];
+			tr[0]+=abc[1][0]*uABC[1]; 
+			tr[1]+=abc[1][1]*uABC[1]; 
+			tr[2]+=abc[1][2]*uABC[1];
 			Parallelepiped( abc, tr, length1, d, d);//(1,0,1)-->(1,1,1)
 
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]; 
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]; 
-			tr[2]=Tr[2]+abc[0][2]*ABC[0];
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]; 
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]; 
+			tr[2]=Tr[2]+abc[0][2]*uABC[0];
 			Parallelepiped( abc, tr, d, length2, d);//(1,0,0)-->(1,1,0)
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]; 
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]; 
-			tr[2]=Tr[2]+abc[2][2]*ABC[2];
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]; 
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]; 
+			tr[2]=Tr[2]+abc[2][2]*uABC[2];
 			Parallelepiped( abc, tr, d, length2, d);//(0,0,1)-->(0,1,1)
-			tr[0]+=abc[0][0]*ABC[0]; 
-			tr[1]+=abc[0][1]*ABC[0]; 
-			tr[2]+=abc[0][2]*ABC[0];
+			tr[0]+=abc[0][0]*uABC[0]; 
+			tr[1]+=abc[0][1]*uABC[0]; 
+			tr[2]+=abc[0][2]*uABC[0];
 			Parallelepiped( abc, tr, d, length2, d);//(0,1,1)-->(1,1,1)
 
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]; 
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]; 
-			tr[2]=Tr[2]+abc[0][2]*ABC[0];
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]; 
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]; 
+			tr[2]=Tr[2]+abc[0][2]*uABC[0];
 			Parallelepiped( abc, tr, d, d, length3);//(1,0,0)-->(1,0,1)
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]; 
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]; 
-			tr[2]=Tr[2]+abc[1][2]*ABC[1];
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]; 
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]; 
+			tr[2]=Tr[2]+abc[1][2]*uABC[1];
 			Parallelepiped( abc, tr, d, d, length3);//(0,1,0)-->(0,1,1)
-			tr[0]+=abc[0][0]*ABC[0]; 
-			tr[1]+=abc[0][1]*ABC[0]; 
-			tr[2]+=abc[0][2]*ABC[0];
+			tr[0]+=abc[0][0]*uABC[0]; 
+			tr[1]+=abc[0][1]*uABC[0]; 
+			tr[2]+=abc[0][2]*uABC[0];
 			Parallelepiped( abc, tr, d, d, length3+d);//(1,1,0)-->(1,1,1)
 		glEnd( );//GL_TRIANGLES
 	glEndList( );
@@ -471,13 +471,13 @@ InitLists(float abc[][3], int ABC[3])
 	glNewList( BoundaryListA, GL_COMPILE );
 		glBegin( GL_TRIANGLES );
 			glColor3f(0.7,0.7,0.7);
-			tr[0]=Tr[0]+abc[0][0]*(ABC[0]+6*d); 
-			tr[1]=Tr[1]+abc[0][1]*(ABC[0]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*(ABC[0]+6*d);
+			tr[0]=Tr[0]+abc[0][0]*(uABC[0]+6*d); 
+			tr[1]=Tr[1]+abc[0][1]*(uABC[0]+6*d);
+			tr[2]=Tr[2]+abc[0][2]*(uABC[0]+6*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[0][0]*(ABC[0]+16*d); 
-			tr[1]=Tr[1]+abc[0][1]*(ABC[0]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*(ABC[0]+16*d);
+			tr[0]=Tr[0]+abc[0][0]*(uABC[0]+16*d); 
+			tr[1]=Tr[1]+abc[0][1]*(uABC[0]+16*d);
+			tr[2]=Tr[2]+abc[0][2]*(uABC[0]+16*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
 			tr[0]=Tr[0]+abc[0][0]*(-10*d); 
 			tr[1]=Tr[1]+abc[0][1]*(-10*d);
@@ -488,55 +488,55 @@ InitLists(float abc[][3], int ABC[3])
 			tr[2]=Tr[2]+abc[0][2]*(-20*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
 
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[0][0]*(ABC[0]+6*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[0][1]*(ABC[0]+6*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[0][2]*(ABC[0]+6*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(uABC[0]+6*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(uABC[0]+6*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(uABC[0]+6*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[0][0]*(ABC[0]+16*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[0][1]*(ABC[0]+16*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[0][2]*(ABC[0]+16*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(uABC[0]+16*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(uABC[0]+16*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(uABC[0]+16*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[0][0]*(-10*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[0][1]*(-10*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[0][2]*(-10*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(-10*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(-10*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(-10*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[0][0]*(-20*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[0][1]*(-20*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[0][2]*(-20*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(-20*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(-20*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(-20*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
 
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]+abc[0][0]*(ABC[0]+6*d);
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]+abc[0][1]*(ABC[0]+6*d);
-			tr[2]=Tr[2]+abc[2][2]*ABC[2]+abc[0][2]*(ABC[0]+6*d);
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+6*d);
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+6*d);
+			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+6*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]+abc[0][0]*(ABC[0]+16*d);
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]+abc[0][1]*(ABC[0]+16*d);
-			tr[2]=Tr[2]+abc[2][2]*ABC[2]+abc[0][2]*(ABC[0]+16*d);
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+16*d);
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+16*d);
+			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+16*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]+abc[0][0]*(-10*d);
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]+abc[0][1]*(-10*d);
-			tr[2]=Tr[2]+abc[2][2]*ABC[2]+abc[0][2]*(-10*d);
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(-10*d);
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(-10*d);
+			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(-10*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]+abc[0][0]*(-20*d);
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]+abc[0][1]*(-20*d);
-			tr[2]=Tr[2]+abc[2][2]*ABC[2]+abc[0][2]*(-20*d);
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(-20*d);
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(-20*d);
+			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(-20*d);
 			Parallelepiped( abc, tr, 5*d, d, d);		
 
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[2][0]*ABC[2]+abc[0][0]*(ABC[0]+6*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[2][1]*ABC[2]+abc[0][1]*(ABC[0]+6*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[2][2]*ABC[2]+abc[0][2]*(ABC[0]+6*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+6*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+6*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+6*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[2][0]*ABC[2]+abc[0][0]*(ABC[0]+16*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[2][1]*ABC[2]+abc[0][1]*(ABC[0]+16*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[2][2]*ABC[2]+abc[0][2]*(ABC[0]+16*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+16*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+16*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+16*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[2][0]*ABC[2]+abc[0][0]*(-10*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[2][1]*ABC[2]+abc[0][1]*(-10*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[2][2]*ABC[2]+abc[0][2]*(-10*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(-10*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(-10*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(-10*d);
 			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[2][0]*ABC[2]+abc[0][0]*(-20*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[2][1]*ABC[2]+abc[0][1]*(-20*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[2][2]*ABC[2]+abc[0][2]*(-20*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(-20*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(-20*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(-20*d);
 			Parallelepiped( abc, tr, 5*d, d, d);	
 		glEnd( );//GL_TRIANGLES
 	glEndList( );
@@ -545,13 +545,13 @@ InitLists(float abc[][3], int ABC[3])
 	glNewList( BoundaryListB, GL_COMPILE );
 		glBegin( GL_TRIANGLES );
 			glColor3f(0.7,0.7,0.7);
-			tr[0]=Tr[0]+abc[1][0]*(ABC[1]+6*d); 
-			tr[1]=Tr[1]+abc[1][1]*(ABC[1]+6*d);
-			tr[2]=Tr[2]+abc[1][2]*(ABC[1]+6*d);
+			tr[0]=Tr[0]+abc[1][0]*(uABC[1]+6*d); 
+			tr[1]=Tr[1]+abc[1][1]*(uABC[1]+6*d);
+			tr[2]=Tr[2]+abc[1][2]*(uABC[1]+6*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[1][0]*(ABC[1]+16*d); 
-			tr[1]=Tr[1]+abc[1][1]*(ABC[1]+16*d);
-			tr[2]=Tr[2]+abc[1][2]*(ABC[1]+16*d);
+			tr[0]=Tr[0]+abc[1][0]*(uABC[1]+16*d); 
+			tr[1]=Tr[1]+abc[1][1]*(uABC[1]+16*d);
+			tr[2]=Tr[2]+abc[1][2]*(uABC[1]+16*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
 			tr[0]=Tr[0]+abc[1][0]*(-10*d); 
 			tr[1]=Tr[1]+abc[1][1]*(-10*d);
@@ -562,55 +562,55 @@ InitLists(float abc[][3], int ABC[3])
 			tr[2]=Tr[2]+abc[1][2]*(-20*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
 
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[1][0]*(ABC[1]+6*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[1][1]*(ABC[1]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[1][2]*(ABC[1]+6*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*(uABC[1]+6*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*(uABC[1]+6*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*(uABC[1]+6*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[1][0]*(ABC[1]+16*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[1][1]*(ABC[1]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[1][2]*(ABC[1]+16*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*(uABC[1]+16*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*(uABC[1]+16*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*(uABC[1]+16*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[1][0]*(-10*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[1][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[1][2]*(-10*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*(-10*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*(-10*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*(-10*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[1][0]*(-20*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[1][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[1][2]*(-20*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*(-20*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*(-20*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*(-20*d);
 			Parallelepiped( abc, tr, d, 5*d, d);		
 
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]+abc[1][0]*(ABC[1]+6*d);
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]+abc[1][1]*(ABC[1]+6*d);
-			tr[2]=Tr[2]+abc[2][2]*ABC[2]+abc[1][2]*(ABC[1]+6*d);
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[1][0]*(uABC[1]+6*d);
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[1][1]*(uABC[1]+6*d);
+			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[1][2]*(uABC[1]+6*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]+abc[1][0]*(ABC[1]+16*d);
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]+abc[1][1]*(ABC[1]+16*d);
-			tr[2]=Tr[2]+abc[2][2]*ABC[2]+abc[1][2]*(ABC[1]+16*d);
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[1][0]*(uABC[1]+16*d);
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[1][1]*(uABC[1]+16*d);
+			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[1][2]*(uABC[1]+16*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]+abc[1][0]*(-10*d);
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]+abc[1][1]*(-10*d);
-			tr[2]=Tr[2]+abc[2][2]*ABC[2]+abc[1][2]*(-10*d);
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[1][0]*(-10*d);
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[1][1]*(-10*d);
+			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[1][2]*(-10*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[2][0]*ABC[2]+abc[1][0]*(-20*d);
-			tr[1]=Tr[1]+abc[2][1]*ABC[2]+abc[1][1]*(-20*d);
-			tr[2]=Tr[2]+abc[2][2]*ABC[2]+abc[1][2]*(-20*d);
+			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[1][0]*(-20*d);
+			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[1][1]*(-20*d);
+			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[1][2]*(-20*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
 
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[2][0]*ABC[2]+abc[1][0]*(ABC[1]+6*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[2][1]*ABC[2]+abc[1][1]*(ABC[1]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[2][2]*ABC[2]+abc[1][2]*(ABC[1]+6*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*uABC[2]+abc[1][0]*(uABC[1]+6*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*uABC[2]+abc[1][1]*(uABC[1]+6*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*uABC[2]+abc[1][2]*(uABC[1]+6*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[2][0]*ABC[2]+abc[1][0]*(ABC[1]+16*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[2][1]*ABC[2]+abc[1][1]*(ABC[1]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[2][2]*ABC[2]+abc[1][2]*(ABC[1]+16*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*uABC[2]+abc[1][0]*(uABC[1]+16*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*uABC[2]+abc[1][1]*(uABC[1]+16*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*uABC[2]+abc[1][2]*(uABC[1]+16*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[2][0]*ABC[2]+abc[1][0]*(-10*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[2][1]*ABC[2]+abc[1][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[2][2]*ABC[2]+abc[1][2]*(-10*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*uABC[2]+abc[1][0]*(-10*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*uABC[2]+abc[1][1]*(-10*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*uABC[2]+abc[1][2]*(-10*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[2][0]*ABC[2]+abc[1][0]*(-20*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[2][1]*ABC[2]+abc[1][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[2][2]*ABC[2]+abc[1][2]*(-20*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*uABC[2]+abc[1][0]*(-20*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*uABC[2]+abc[1][1]*(-20*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*uABC[2]+abc[1][2]*(-20*d);
 			Parallelepiped( abc, tr, d, 5*d, d);
 		glEnd( );//GL_TRIANGLES
 	glEndList( );
@@ -619,13 +619,13 @@ InitLists(float abc[][3], int ABC[3])
 	glNewList( BoundaryListC, GL_COMPILE );
 		glBegin( GL_TRIANGLES );
 			glColor3f(0.7,0.7,0.7);
-			tr[0]=Tr[0]+abc[2][0]*(ABC[2]+6*d); 
-			tr[1]=Tr[1]+abc[2][1]*(ABC[2]+6*d);
-			tr[2]=Tr[2]+abc[2][2]*(ABC[2]+6*d);
+			tr[0]=Tr[0]+abc[2][0]*(uABC[2]+6*d); 
+			tr[1]=Tr[1]+abc[2][1]*(uABC[2]+6*d);
+			tr[2]=Tr[2]+abc[2][2]*(uABC[2]+6*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[2][0]*(ABC[2]+16*d); 
-			tr[1]=Tr[1]+abc[2][1]*(ABC[2]+16*d);
-			tr[2]=Tr[2]+abc[2][2]*(ABC[2]+16*d);
+			tr[0]=Tr[0]+abc[2][0]*(uABC[2]+16*d); 
+			tr[1]=Tr[1]+abc[2][1]*(uABC[2]+16*d);
+			tr[2]=Tr[2]+abc[2][2]*(uABC[2]+16*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
 			tr[0]=Tr[0]+abc[2][0]*(-10*d); 
 			tr[1]=Tr[1]+abc[2][1]*(-10*d);
@@ -636,55 +636,55 @@ InitLists(float abc[][3], int ABC[3])
 			tr[2]=Tr[2]+abc[2][2]*(-20*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
 
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[2][0]*(ABC[2]+6*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[2][1]*(ABC[2]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[2][2]*(ABC[2]+6*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*(uABC[2]+6*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*(uABC[2]+6*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*(uABC[2]+6*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[2][0]*(ABC[2]+16*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[2][1]*(ABC[2]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[2][2]*(ABC[2]+16*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*(uABC[2]+16*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*(uABC[2]+16*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*(uABC[2]+16*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[2][0]*(-10*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[2][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[2][2]*(-10*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*(-10*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*(-10*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*(-10*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[2][0]*(-20*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[2][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[2][2]*(-20*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*(-20*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*(-20*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*(-20*d);
 			Parallelepiped( abc, tr, d, d, 5*d);		
 
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[2][0]*(ABC[2]+6*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[2][1]*(ABC[2]+6*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[2][2]*(ABC[2]+6*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*(uABC[2]+6*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*(uABC[2]+6*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*(uABC[2]+6*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[2][0]*(ABC[2]+16*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[2][1]*(ABC[2]+16*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[2][2]*(ABC[2]+16*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*(uABC[2]+16*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*(uABC[2]+16*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*(uABC[2]+16*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[2][0]*(-10*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[2][1]*(-10*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[2][2]*(-10*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*(-10*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*(-10*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*(-10*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[1][0]*ABC[1]+abc[2][0]*(-20*d);
-			tr[1]=Tr[1]+abc[1][1]*ABC[1]+abc[2][1]*(-20*d);
-			tr[2]=Tr[2]+abc[1][2]*ABC[1]+abc[2][2]*(-20*d);
+			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*(-20*d);
+			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*(-20*d);
+			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*(-20*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
 
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[1][0]*ABC[1]+abc[2][0]*(ABC[2]+6*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[1][1]*ABC[1]+abc[2][1]*(ABC[2]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[1][2]*ABC[1]+abc[2][2]*(ABC[2]+6*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*(uABC[2]+6*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*(uABC[2]+6*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*(uABC[2]+6*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[1][0]*ABC[1]+abc[2][0]*(ABC[2]+16*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[1][1]*ABC[1]+abc[2][1]*(ABC[2]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[1][2]*ABC[1]+abc[2][2]*(ABC[2]+16*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*(uABC[2]+16*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*(uABC[2]+16*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*(uABC[2]+16*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[1][0]*ABC[1]+abc[2][0]*(-10*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[1][1]*ABC[1]+abc[2][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[1][2]*ABC[1]+abc[2][2]*(-10*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*(-10*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*(-10*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*(-10*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*ABC[0]+abc[1][0]*ABC[1]+abc[2][0]*(-20*d);
-			tr[1]=Tr[1]+abc[0][1]*ABC[0]+abc[1][1]*ABC[1]+abc[2][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*ABC[0]+abc[1][2]*ABC[1]+abc[2][2]*(-20*d);
+			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*(-20*d);
+			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*(-20*d);
+			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*(-20*d);
 			Parallelepiped( abc, tr, d, d, 5*d);
 		glEnd( );//GL_TRIANGLES
 	glEndList( );
@@ -790,7 +790,7 @@ void setupOpenGL ()
 	glutInitWindowPosition (0, 0);
     glutInitDisplayMode( GLUT_RGB|GLUT_DOUBLE|GLUT_DEPTH|GLUT_MULTISAMPLE|GLUT_ALPHA);
 	GLUT_window = glutCreateWindow (WINDOWTITLE);
-	#ifndef __APPLE__
+	#if !defined(__APPLE__)
 	glewInit();
 	#endif
 
@@ -805,7 +805,7 @@ void setupOpenGL ()
 	}
 
     // initialize element of the drawing scene which remain unchanged e.g. coordinate basis, domain boundary etc.
-	InitLists(abc, ABC);
+	InitLists(abc, uABC);
 	InitRGB(RHue, GHue, BHue, HueMapRGB);
 	// Set the GLUT callback functions
 	glutDisplayFunc( Display );// DisplayFunc -- redraws the OpenGl main window
@@ -891,9 +891,9 @@ void idle ()
 				IPS = (currentIteration - previousIteration)/ (timeInterval * 0.002f);;
 				previousIteration = currentIteration;
 			}
-			EnterCriticalSection( &show_mutex);
+			pthread_mutex_lock( &show_mutex);
 				DATA_TRANSFER_MUTEX = WAIT_DATA; // meaning that OpenGL is waiting for new data from engine
-			LeaveCriticalSection( &show_mutex);
+			pthread_mutex_unlock( &show_mutex);
 		} 
 
 		glutSetWindow (GLUT_window);
@@ -908,15 +908,15 @@ void TW_CALL CB_Run( void *clientData )
 	{
 		Play=1;
 		TwDefine(" Parameters&Controls/Run  label='STOP simulation' ");
-		EnterCriticalSection(&culc_mutex);
+		pthread_mutex_lock(&culc_mutex);
 			ENGINE_MUTEX=DO_IT;
-		LeaveCriticalSection(&culc_mutex);
+		pthread_mutex_unlock(&culc_mutex);
 	}else{
 		Play=0; 
 		TwDefine(" Parameters&Controls/Run  label='RUN simulation' ");
-		EnterCriticalSection(&culc_mutex);
+		pthread_mutex_lock(&culc_mutex);
 			ENGINE_MUTEX=WAIT;
-		LeaveCriticalSection(&culc_mutex);	
+		pthread_mutex_unlock(&culc_mutex);	
 	}
 }
 
@@ -1100,7 +1100,7 @@ void TW_CALL CB_SetHfield(const void *value, void *clientData )
 {
 	(void)clientData; // unused
     Hf = *( float *)value; // copy value to InvertValue
-    if (Hf>1.1*abs(Jij[0])) Hf=1.1*abs(Jij[0]);
+    if (Hf>1.1*fabs(Jij[0])) Hf=1.1*fabs(Jij[0]);
 	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
 	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 }
@@ -1295,7 +1295,7 @@ void TW_CALL CB_SetThetaMin(const void *value, void *clientData )
 // {
 // 	(void)clientData; // unused
 // 	int test= *( int *)value; // copy value to A_layer_min
-// 	if (test<=ABC[0] && test>=A_layer_min){
+// 	if (test<=uABC[0] && test>=A_layer_min){
 //         A_layer_max = test; // copy value to A_layer_min
 //         ChangeVectorMode(0);
 // 	}
@@ -1332,11 +1332,11 @@ FILE * pFile;
 
 		int an,bn,cn,atom,n,N;
 		int anini=0;
-		int anfin=ABC[0];
+		int anfin=uABC[0];
 		int bnini=0;
-		int bnfin=ABC[1];
+		int bnfin=uABC[1];
 		int cnini=0;
-		int cnfin=ABC[2];
+		int cnfin=uABC[2];
 		if (save_slice==1){
 			switch( WhichSliceMode){
 				case A_AXIS:
@@ -1357,11 +1357,12 @@ FILE * pFile;
 		}
 
 		if (WhichAverageMode==ALONG_0){
+			printf("Write to csv-file!\n");
 		  	fputs ("px,py,pz,nx,ny,nz,\n",pFile);
-		  	for (an = anini; an<anfin; an++) {
+		  	for (cn = cnini; cn<cnfin; cn++) {
 				for (bn = bnini; bn<bnfin; bn++) {
-					for (cn = cnini; cn<cnfin; cn++) {
-						n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+					for (an = anini; an<anfin; an++) {
+						n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 						n = n*AtomsPerBlock;//index of the first spin in the block
 						for (atom=0; atom<AtomsPerBlock; atom++){
 						    N = n + atom;
@@ -1386,7 +1387,7 @@ FILE * pFile;
 						tPositin[1]=abc[0][1]*0.5+abc[1][1]*0.5+abc[2][1]*0.5;
 						tPositin[2]=abc[0][2]*0.5+abc[1][2]*0.5+abc[2][2]*0.5;
 						for (cn = cnini; cn<cnfin; cn++){
-							n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+							n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 							n = n*AtomsPerBlock;//index of the first spin in the block
 							for (atom=0; atom<AtomsPerBlock; atom++){
 							    N = n + atom;
@@ -1414,7 +1415,7 @@ FILE * pFile;
 						tPositin[1]=abc[0][1]*0.5+abc[1][1]*0.5+abc[2][1]*0.5;
 						tPositin[2]=abc[0][2]*0.5+abc[1][2]*0.5+abc[2][2]*0.5;
 						for (bn = bnini; bn<bnfin; bn++){
-							n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+							n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 							n = n*AtomsPerBlock;//index of the first spin in the block
 							for (atom=0; atom<AtomsPerBlock; atom++){
 							    N = n + atom;
@@ -1442,7 +1443,7 @@ FILE * pFile;
 						tPositin[1]=abc[0][1]*0.5+abc[1][1]*0.5+abc[2][1]*0.5;
 						tPositin[2]=abc[0][2]*0.5+abc[1][2]*0.5+abc[2][2]*0.5;
 						for (an = anini; an<anfin; an++){
-							n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+							n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 							n = n*AtomsPerBlock;//index of the first spin in the block
 							for (atom=0; atom<AtomsPerBlock; atom++){
 							    N = n + atom;
@@ -1587,9 +1588,9 @@ void TW_CALL CB_ReadOVF( void *clientData )
 		if (valuedim!=0 && xnodes!=0 && ynodes!=0 && znodes!=0){
 			sscanf(line, "#%*s %s %s %s", keyW1, keyW2, keyW3 );
 			//int imax,jmax,kmax;
-			//if (xnodes>ABC[0]) {imax = ABC[0];}else{imax = xnodes;}
-			//if (ynodes>ABC[1]) {jmax = ABC[1];}else{jmax = ynodes;}
-			//if (znodes>ABC[2]) {kmax = ABC[2];}else{kmax = znodes;}
+			//if (xnodes>uABC[0]) {imax = uABC[0];}else{imax = xnodes;}
+			//if (ynodes>uABC[1]) {jmax = uABC[1];}else{jmax = ynodes;}
+			//if (znodes>uABC[2]) {kmax = uABC[2];}else{kmax = znodes;}
 			int n;
 			if (strncmp(keyW2, "Text",4)==0){
 				//Text data format
@@ -1598,8 +1599,8 @@ void TW_CALL CB_ReadOVF( void *clientData )
 					for (int j=0; j<ynodes; j++){
 						for (int i=0; i<xnodes; i++){
 							ReadDataLine(FilePointer, line);
-							if (k<ABC[2] && j<ABC[1] && i<ABC[0]){
-								n = i + j*ABC[0] + k*ABC[0]*ABC[1];
+							if (k<uABC[2] && j<uABC[1] && i<uABC[0]){
+								n = i + j*uABC[0] + k*uABC[0]*uABC[1];
 								sscanf(line, "%lf %lf %lf", &bSx[n],&bSy[n],&bSz[n]);
 								Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
 							}
@@ -1633,7 +1634,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 					for (int k=0; k<znodes; k++){
 						for (int j=0; j<ynodes; j++){
 							for (int i=0; i<xnodes; i++){
-								if (k<ABC[2] && j<ABC[1] && i<ABC[0]){
+								if (k<uABC[2] && j<uABC[1] && i<uABC[0]){
 									n = i + j*xnodes + k*xnodes*ynodes; //index of the block!
 									//printf("n=%d\n", n);
 									if (binType==4){
@@ -1710,7 +1711,7 @@ void setupTweakBar()
 	TwEnumVal		enVectorModeTw[] = {{ARROW1, "Arrows"} 
 										,{CONE1,   "Cones"} 
 										,{CANE,    "Canes"} 
-										,{POINT,  "Points"}
+										,{uPOINT,  "Points"}
 										,{BOX1,    "Boxes"}
 									};
 	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Type_of_vectors", enVectorModeTw, 5);
@@ -1798,7 +1799,7 @@ void setupTweakBar()
     TwDefine(" Parameters&Controls size='220 510' color='224 96 216' alpha=200 "); // change default tweak bar size and color
     TwDefine(" Parameters&Controls help='F4: show/hide Control bar' "); // change default tweak bar size and color
 
-	TwAddButton(control_bar, "Run", CB_Run, NULL, "key=SPACE label='RUN simulation' ");
+	TwAddButton(control_bar, "Run", CB_Run, NULL, "key='r' label='RUN simulation' ");
 	TwAddVarRW(control_bar, "Record", TW_TYPE_BOOL32, &Record, 
 	"keyIncr='r' label='Recording' true='Rec.' false='Pause' help='Recording <sx>, <sy>, <sz> in each iteration'");
 	TwAddVarRW(control_bar, "Rec_Iteration", TW_TYPE_INT32, &rec_iteration, 
@@ -2159,13 +2160,13 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 			case '.':
 				switch(WhichSliceMode)
                 {case A_AXIS:
-					if (A_layer_max<ABC[0]) {A_layer_max+=1; ChangeVectorMode (0);}
+					if (A_layer_max<uABC[0]) {A_layer_max+=1; ChangeVectorMode (0);}
 				 break;
 				 case B_AXIS:
-				    if (B_layer_max<ABC[1]) {B_layer_max+=1; ChangeVectorMode (0);}
+				    if (B_layer_max<uABC[1]) {B_layer_max+=1; ChangeVectorMode (0);}
 				 break;
 				 case C_AXIS:
-				 	if (C_layer_max<ABC[2]) {C_layer_max+=1; ChangeVectorMode (0);}
+				 	if (C_layer_max<uABC[2]) {C_layer_max+=1; ChangeVectorMode (0);}
 				 break;	
 				 default:
 				 break;		 
@@ -2239,13 +2240,13 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 			case GLUT_KEY_UP:
 				switch (WhichSliceMode)
 				{case A_AXIS:
-					if (A_layer_max < ABC[0]) {A_layer_max+=1; A_layer_min+=1; ChangeVectorMode(1);}
+					if (A_layer_max < uABC[0]) {A_layer_max+=1; A_layer_min+=1; ChangeVectorMode(1);}
 				 break;
 				 case B_AXIS:
-				    if (B_layer_max < ABC[1]) {B_layer_max+=1; B_layer_min+=1; ChangeVectorMode(1);}
+				    if (B_layer_max < uABC[1]) {B_layer_max+=1; B_layer_min+=1; ChangeVectorMode(1);}
 				 break;
 				 case C_AXIS:
-				 	if (C_layer_max < ABC[2]) {C_layer_max+=1; C_layer_min+=1; ChangeVectorMode(1);}
+				 	if (C_layer_max < uABC[2]) {C_layer_max+=1; C_layer_min+=1; ChangeVectorMode(1);}
 				 break;	
 				 default:
 				 break;		 
@@ -2500,7 +2501,7 @@ void ReallocateArrayDrawing()
 		if (A_layer_max - A_layer_min<2){
 			NOB_L=NOB_AL * (1+A_layer_max - A_layer_min);
 		}else{
-			NOB_L=2*NOB_AL+2*(A_layer_max - A_layer_min-1)*(ABC[1]-1+ABC[2]-1);
+			NOB_L=2*NOB_AL+2*(A_layer_max - A_layer_min-1)*(uABC[1]-1+uABC[2]-1);
 		}
 		break;
 		case B_AXIS:
@@ -2508,7 +2509,7 @@ void ReallocateArrayDrawing()
 		if (B_layer_max - B_layer_min<2){
 			NOB_L=NOB_BL * (1+B_layer_max - B_layer_min);
 		}else{
-			NOB_L=2*NOB_BL + 2*(B_layer_max - B_layer_min-1)*(ABC[0]-1+ABC[2]-1);
+			NOB_L=2*NOB_BL + 2*(B_layer_max - B_layer_min-1)*(uABC[0]-1+uABC[2]-1);
 		}
 		break;
 		case C_AXIS:
@@ -2516,7 +2517,7 @@ void ReallocateArrayDrawing()
 		if (C_layer_max - C_layer_min<2){
 			NOB_L=NOB_CL * (1+C_layer_max - C_layer_min);
 		}else{
-			NOB_L=2*NOB_CL + 2*(C_layer_max - C_layer_min-1)*(ABC[0]-1+ABC[1]-1);
+			NOB_L=2*NOB_CL + 2*(C_layer_max - C_layer_min-1)*(uABC[0]-1+uABC[1]-1);
 		}
 		break;
 		case FILTER:
@@ -2583,7 +2584,7 @@ void ReallocateArrayDrawing()
 			indices		= (GLuint *)malloc(IdNum * sizeof( GLuint ));	
 			break;
 
-		case POINT:		
+		case uPOINT:		
 			// arrowFaces - number of arrow faces
 			IdNumProto = 1; // number of indixes per point
 			VCNumProto = 3; // number component of vertices per point
@@ -2924,7 +2925,7 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 			I[++j] = 2*8+6; I[++j] = 2*8+5; I[++j] = 2*8+7; // fourth triangle 
 	break;
 
-	case POINT:
+	case uPOINT:
 			i++; V[i] = 0.f;		
 			i++; V[i] = 0.f;		
 			i++; V[i] = 0.f;
@@ -2958,7 +2959,7 @@ void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 		if (A_layer_max - A_layer_min<2){
 			NOB_L=NOB_AL * (1+A_layer_max - A_layer_min);
 		}else{
-			NOB_L=2*NOB_AL+2*(A_layer_max - A_layer_min-1)*(ABC[1]-1+ABC[2]-1);
+			NOB_L=2*NOB_AL+2*(A_layer_max - A_layer_min-1)*(uABC[1]-1+uABC[2]-1);
 		}
 		break;
 		case B_AXIS:
@@ -2966,7 +2967,7 @@ void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 		if (B_layer_max - B_layer_min<2){
 			NOB_L=NOB_BL * (1+B_layer_max - B_layer_min);
 		}else{
-			NOB_L=2*NOB_BL + 2*(B_layer_max - B_layer_min-1)*(ABC[0]-1+ABC[2]-1);
+			NOB_L=2*NOB_BL + 2*(B_layer_max - B_layer_min-1)*(uABC[0]-1+uABC[2]-1);
 		}
 		break;
 		case C_AXIS:
@@ -2974,7 +2975,7 @@ void UpdateIndices(GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
 		if (C_layer_max - C_layer_min<2){
 			NOB_L=NOB_CL * (1+C_layer_max - C_layer_min);
 		}else{
-			NOB_L=2*NOB_CL + 2*(C_layer_max - C_layer_min-1)*(ABC[0]-1+ABC[1]-1);
+			NOB_L=2*NOB_CL + 2*(C_layer_max - C_layer_min-1)*(uABC[0]-1+uABC[1]-1);
 		}
 		break;
 		case FILTER:
@@ -3012,11 +3013,11 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	float vlength;
 	int i,j,n,N;
 	int anini=0;
-	int anfin=ABC[0];
+	int anfin=uABC[0];
 	int bnini=0;
-	int bnfin=ABC[1];
+	int bnfin=uABC[1];
 	int cnini=0;
-	int cnfin=ABC[2];
+	int cnfin=uABC[2];
 
 	switch( WhichSliceMode)
 	{
@@ -3043,13 +3044,13 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 		if (WhichSliceMode==FILTER)
 			{
 			N_filter=0;
-			for (int an = 0; an<ABC[0]; an++) 
+			for (int an = 0; an<uABC[0]; an++) 
 			{
-			for (int bn = 0; bn<ABC[1]; bn++) 
+			for (int bn = 0; bn<uABC[1]; bn++) 
 			{
-			for (int cn = 0; cn<ABC[2]; cn++) 
+			for (int cn = 0; cn<uABC[2]; cn++) 
 			{
-				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
@@ -3114,7 +3115,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			{
 			for (int cn = cnini; cn<cnfin; cn++) 
 			{
-				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
@@ -3192,14 +3193,14 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 		if (WhichSliceMode==FILTER)
 		{
 			N_filter=0;
-			for (int an = 0; an<ABC[0]; an++) {
-			for (int bn = 0; bn<ABC[1]; bn++) {
-			for (int cn = 0; cn<ABC[2]; cn++) {	
+			for (int an = 0; an<uABC[0]; an++) {
+			for (int bn = 0; bn<uABC[1]; bn++) {
+			for (int cn = 0; cn<uABC[2]; cn++) {	
 				S[0] = 0;
 				S[1] = 0;
 				S[2] = 0;
 
-				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
 				    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
@@ -3250,7 +3251,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					S[1] = 0;
 					S[2] = 0;
 
-					n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+					n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 					for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
 					    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
@@ -3286,17 +3287,17 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 		}
 	break;
 
-	case POINT:
+	case uPOINT:
 		if (WhichSliceMode==FILTER)
 		{
 			N_filter=0;
-			for (int an = 0; an<ABC[0]; an++) // n runs over spins 
+			for (int an = 0; an<uABC[0]; an++) // n runs over spins 
 			{
-			for (int bn = 0; bn<ABC[1]; bn++) // n runs over spins 
+			for (int bn = 0; bn<uABC[1]; bn++) // n runs over spins 
 			{
-			for (int cn = 0; cn<ABC[2]; cn++) // n runs over spins 
+			for (int cn = 0; cn<uABC[2]; cn++) // n runs over spins 
 			{
-				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
@@ -3328,7 +3329,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			{
 			for (int cn = cnini; cn<cnfin; cn++) // n runs over spins 
 			{
-				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
@@ -3357,13 +3358,13 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 		if (WhichSliceMode==FILTER)
 		{
 			N_filter=0;
-			for (int an = 0; an<ABC[0]; an++) // an runs over slice along A_AXIS
+			for (int an = 0; an<uABC[0]; an++) // an runs over slice along A_AXIS
 			{
-			for (int bn = 0; bn<ABC[1]; bn++) // bn runs over slice along B_AXIS
+			for (int bn = 0; bn<uABC[1]; bn++) // bn runs over slice along B_AXIS
 			{
-			for (int cn = cnini; cn<ABC[2]; cn++) // cn runs over slice along C_AXIS
+			for (int cn = cnini; cn<uABC[2]; cn++) // cn runs over slice along C_AXIS
 			{
-				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
@@ -3410,7 +3411,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			{
 			for (int cn = cnini; cn<cnfin; cn++) // cn runs over slice along C_AXIS
 			{
-				n = an+bn*ABC[0]+cn*ABC[0]*ABC[1];// index of the block
+				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				n = n*AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
@@ -3506,7 +3507,7 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 	}
 }
 
-void UpdateSpinPositions(float abc[][3], int ABC[3], float BD[][3], int NBD, float box[][3], float * Px, float * Py, float * Pz)
+void UpdateSpinPositions(float abc[][3], int uABC[3], float BD[][3], int NBD, float box[][3], float * Px, float * Py, float * Pz)
 {
 	float Tr[3] = {	
 					(box[0][0]+box[1][0]+box[2][0])/2.f,
@@ -3520,11 +3521,11 @@ void UpdateSpinPositions(float abc[][3], int ABC[3], float BD[][3], int NBD, flo
 	// 			  };
 	int si=-1; // spin index
 	int bi=-1; // block index
-	for( int L=0;L<ABC[2];L++)// translation of basic domain along vector 'c' L times
+	for( int L=0;L<uABC[2];L++)// translation of basic domain along vector 'c' L times
 	{
-		for(int K=0;K<ABC[1];K++)// translation of basic domain along vector 'b' K times
+		for(int K=0;K<uABC[1];K++)// translation of basic domain along vector 'b' K times
 		{
-			for(int J=0;J<ABC[0];J++) // translation of basic domain along vector 'a' J times
+			for(int J=0;J<uABC[0];J++) // translation of basic domain along vector 'a' J times
 			{	
 				for(int I=0; I < NBD; I++) // runs over atoms in basic domain 
 				{	
@@ -3585,7 +3586,7 @@ void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, floa
 				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 1*IdNum * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);//***?1<->2?
 				glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum * sizeof(GLuint), ind);
 		break;
-		case POINT:
+		case uPOINT:
 				glBindBuffer(GL_ARRAY_BUFFER, *V);
 				glBufferData(GL_ARRAY_BUFFER, VCNum * sizeof(float), 0, GL_DYNAMIC_DRAW);
 				glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum * sizeof(float), ver); 
@@ -3664,7 +3665,7 @@ void drawVBO()
 			glEnable(GL_LIGHTING);
 		break;
 
-		case POINT:
+		case uPOINT:
 		    glDisable(GL_LIGHTING);
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdC);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdV);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
