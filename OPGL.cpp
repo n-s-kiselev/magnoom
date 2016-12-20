@@ -106,17 +106,17 @@ typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
 int   N_filter=0;
-float theta_max=PI/2+0.1; 
+float theta_max=PI/2+0.15; 
 float Sz_min=cos(theta_max);
-float theta_min=PI/2-0.1;    
+float theta_min=PI/2-0.15;    
 float Sz_max=cos(theta_min);
 
 float phi_max=2*PI;
 float phi_min=0;
 
 // Parameters for initial state 
-float			chSize = 10; // characteristic size of initial state in units of "a"
-float			chDir[3] = {0,1,0}; // characteristic size of initial state in units of "a"
+float			chSize = 15; // characteristic size of initial state in units of "a"
+float			chDir[3] = {0,0,1}; // characteristic size of initial state in units of "a"
 GLuint 			iStart;
 GLuint 			iNum;
 
@@ -173,7 +173,7 @@ GLfloat*	normals_H	= NULL; // array of normals for tatal vector field
 GLfloat*	colors_H	= NULL; // array of colors 
 GLuint*		indices_H	= NULL; // array of indices for tatal vector field
 
-int			arrowFaces	= 6; // number of arrow faces, default number
+int			arrowFaces	= 16; // number of arrow faces, default number
 int			arrowFaces_H= 30; // number of arrow faces for applied field vector
 
 GLuint		vboIdV;   // ID of VBO for vertex arrays
