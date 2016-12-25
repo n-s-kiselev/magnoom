@@ -612,8 +612,8 @@ void *CALC_THREAD(void *void_ptr)
 				pthread_mutex_unlock(&show_mutex);	
 			}
 
-			SyncAllThreads();
-			/*
+			//SyncAllThreads();
+			
 			//first thread opens the first (in) door in the next (second) thread
 			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
@@ -622,7 +622,7 @@ void *CALC_THREAD(void *void_ptr)
 			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(sem_out[threadindex]);
-*/
+
 		}else{
 			MAX_TORQUE=0;
 			for (int i=0;i<THREADS_NUMBER;i++){
@@ -630,8 +630,8 @@ void *CALC_THREAD(void *void_ptr)
 				Max_torque[i] = 0;
 			}
 
-			SyncAllThreads();
-			/*
+			//SyncAllThreads();
+			
 			//all other calculation threads
 			sem_wait(sem_in[threadindex]);
 			// first button which open the first door in the next (second) thread
@@ -640,7 +640,7 @@ void *CALC_THREAD(void *void_ptr)
 			sem_wait(sem_out[threadindex]);
 			// second button which open the second door in the next (second) thread
 			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
-			*/
+			
 		}
 
 }

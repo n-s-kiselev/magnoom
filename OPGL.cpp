@@ -860,6 +860,7 @@ void setupOpenGL ()
 
 void idle ()
 {  
+	char	shortBufer[80];
 	currentTime = glutGet(GLUT_ELAPSED_TIME);
 	timeInterval = currentTime - previousTime;
 
@@ -882,6 +883,18 @@ void idle ()
 						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, NOS );
 			totalEnergyFerro = totalEnergyFerro/NOS;	
 			perSpEnergyMinusFerro = perSpEnergy - totalEnergyFerro;
+			//if (Record!=0 && ITERATION%rec_iteration == 0){
+			if (Record!=0){
+				totalEnergy = GetTotalEnergy( 	bSx, bSy, bSz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
+				  if (outFile!=NULL)
+				  {
+					snprintf(shortBufer,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,mtot[0],mtot[1],mtot[2],totalEnergy);
+				    fputs (shortBufer,outFile);  		
+				  }
+				//printf("%d \t %f \t %f \t %f \n",  ITERATION, Mtot[0],Mtot[1],Mtot[2] );
+			}
 			}
 			if (timeInterval > 2000)//~2 seconds
 			{
@@ -1735,7 +1748,7 @@ void setupTweakBar()
 	TwSetParam(view_bar, "LightDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
 
 	TwAddVarRW(view_bar, "Light_On_Off", TW_TYPE_BOOL32, &Light_On, 
-	" label='Light On/Off' help='Reflectins' group='Light'");
+	" label='Light On/Off' key=l help='Reflectins' group='Light'");
 
 	TwAddVarRW(view_bar, "CamAng", TW_TYPE_FLOAT, &PerspSet[0], 
 	" label='camera angle' min=1 max=120 help='camera angle' group='Camera control'");
@@ -1835,7 +1848,7 @@ void setupTweakBar()
 	// // TwAddVarRW(control_bar, "Field", TW_TYPE_FLOAT, &Hf, 
 	// // "label='Field' help='The value of uniaxial anisotropy' ");
 	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
-	"label='Field'  min=0 step=0.0001 help='The value of uniaxial anisotropy' ");
+	"label='Field'  min=0 step=0.00001 help='The value of uniaxial anisotropy' ");
     TwAddSeparator(control_bar, "sep-1", NULL);
 
 
