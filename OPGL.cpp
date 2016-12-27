@@ -869,6 +869,7 @@ void idle ()
 		if( DATA_TRANSFER_MUTEX==TAKE_DATA )
 		{
 			if (DataTransfer==1)
+			//if (Play==1)
 			{
 			ChangeVectorMode(1);
 			totalEnergy = GetTotalEnergy( 	bSx, bSy, bSz, 
@@ -896,7 +897,7 @@ void idle ()
 				//printf("%d \t %f \t %f \t %f \n",  ITERATION, Mtot[0],Mtot[1],Mtot[2] );
 			}
 			}
-			if (timeInterval > 2000)//~2 seconds
+			if (timeInterval > 1000)//~2 seconds
 			{
 				FPS = frameCount / (timeInterval * 0.002f);
 				previousTime = currentTime;

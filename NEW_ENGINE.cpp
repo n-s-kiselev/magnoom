@@ -110,21 +110,20 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 }
 
 double
-GetTotalEnergyMoment(	double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
+GetTotalEnergyMoment(	double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Mtot, int N)
 {
-	double tmp0 = 0;
+	double Etot = 0;
 	Mtot[0] = 0;
 	Mtot[1] = 0;
 	Mtot[2] = 0;
 	for (int i=0; i<N; i++)
 	{
-		Etot[i] = -Hx[i]*sx[i] - Hy[i]*sy[i] - Hz[i]*sz[i];
+		Etot+= -Hx[i]*sx[i] - Hy[i]*sy[i] - Hz[i]*sz[i];
 		Mtot[0] = Mtot[0] + sx[i];
 		Mtot[1] = Mtot[1] + sy[i];
 		Mtot[2] = Mtot[2] + sz[i];
-		tmp0 = tmp0 + Etot[i];
 	}
-	return tmp0;
+	return Etot;
 }
 
 double
@@ -611,9 +610,19 @@ void *CALC_THREAD(void *void_ptr)
 					currentIteration=ITERATION;
 				pthread_mutex_unlock(&show_mutex);	
 			}
-
-			//SyncAllThreads();
-			
+			//save to file
+			if (Record!=0 && ITERATION%rec_iteration == 0){
+			outputEtotal = GetTotalEnergy( 	bSx, bSy, bSz, 
+				NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+				Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot0, outputMtotal, NOS );
+			//outputEtotal = GetTotalEnergyMoment(bSx, bSy, bSz, Heffx, Heffy, Heffz, outputMtotal, NOS);
+			if (outFile!=NULL){
+				snprintf(BuferString,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,outputMtotal[0]/NOS,outputMtotal[1]/NOS,outputMtotal[2]/NOS,outputEtotal);
+				fputs (BuferString,outFile);  		
+				}
+			}
+			SyncAllThreads();
+			/*
 			//first thread opens the first (in) door in the next (second) thread
 			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
@@ -622,7 +631,7 @@ void *CALC_THREAD(void *void_ptr)
 			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(sem_out[threadindex]);
-
+*/
 		}else{
 			MAX_TORQUE=0;
 			for (int i=0;i<THREADS_NUMBER;i++){
@@ -630,8 +639,8 @@ void *CALC_THREAD(void *void_ptr)
 				Max_torque[i] = 0;
 			}
 
-			//SyncAllThreads();
-			
+			SyncAllThreads();
+			/*
 			//all other calculation threads
 			sem_wait(sem_in[threadindex]);
 			// first button which open the first door in the next (second) thread
@@ -640,7 +649,7 @@ void *CALC_THREAD(void *void_ptr)
 			sem_wait(sem_out[threadindex]);
 			// second button which open the second door in the next (second) thread
 			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
-			
+			*/
 		}
 
 }

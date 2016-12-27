@@ -22,13 +22,13 @@ float Block[2*3] =
     };
  */
 //Simple Cubic 1 [001]
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, 2.0/sqrt(3), 0.0f }, // b
-// 				{	0.0f, 0.0f, 2.0/3.0f }};// c
-// float			Block[][3] = { 
-// 				{0.5f, 0.5f, 0.5f},  
-// 				};
+float		abc[3][3] = {
+				{	1.0f, 0.0f, 0.0f }, // a
+				{	0.0f, 1.0f, 0.0f }, // b
+				{	0.0f, 0.0f, 1.0f }};// c
+float			Block[][3] = { 
+				{0.5f, 0.5f, 0.5f},  
+				};
 // float		abc[3][3] = {
 // 				{	1.0f, 0.0f, 0.0f }, // a
 // 				{	0.0f, 1.0f, 0.0f }, // b
@@ -48,12 +48,16 @@ float Block[2*3] =
 
 //Simple Cubic 3 [111]
 // float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, sqrt(2.f), 0.0f }, // b
-// 				{	0.0f, 0.0f, sqrt(2.f) }};// c				
+// 				{	sqrt(2.f), 0.0f, 0.0f }, // a
+// 				{	0.0f, sqrt(3.f)*sqrt(2.f), 0.0f }, // b
+// 				{	0.0f, 0.0f, sqrt(3.f) }};// c				
 // float		Block[][3] = {		
-// 				{0,		      0,	          0},	
-// 				{0,	sqrt(2.f)/2,	sqrt(2.f)/2}
+// 				{0,		      0,	        0},	
+// 				{sqrt(2.f)/2, sqrt(6.f)/2,	0},
+// 				{sqrt(2.f)/2, sqrt(6.f)/6,  sqrt(3.f)/3.f},
+// 				{0, 2*sqrt(6.f)/3,  sqrt(3.f)/3.f},
+// 				{0, 1*sqrt(6.f)/3, -sqrt(3.f)/3.f},
+// 				{sqrt(2.f)/2, 5*sqrt(6.f)/6, -sqrt(3.f)/3.f}
 // 				};
 
 //FCC 2
@@ -88,14 +92,14 @@ float Block[2*3] =
 // 				};
 //B20(2)
 
-float		abc[3][3] = {
-				{	1.0f, 0.0f, 0.0f }, // a
-				{	0.0f, 1.0f, 0.0f }, // b
-				{	0.0f, 0.0f, 1.0f }};// c
+// float		abc[3][3] = {
+// 				{	1.0f, 0.0f, 0.0f }, // a
+// 				{	0.0f, 1.0f, 0.0f }, // b
+// 				{	0.0f, 0.0f, 1.0f }};// c
 
-float		Block[][3] = {		
-				{   0.5,		   0.5,	    0.5}	
-				};
+// float		Block[][3] = {		
+// 				{   0.5,		   0.5,	    0.5}	
+// 				};
 // #define uB20		0.138f
 // float		Block[][3] = {		
 // 				{   0.,		   0.,	    0.},	
@@ -128,8 +132,8 @@ float		Block[][3] = {
 //int			uABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {128,128*3,64};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
-int			uABC[3] = {80,80,40};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
-int			Boundary[3] = {1, 1, 0};// boundary conditions along a, b, c translation vectors
+int			uABC[3] = {80,80,20};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
+int			Boundary[3] = {1, 1, 1};// boundary conditions along a, b, c translation vectors
 
 int			ShellNumber = 4;
 int			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;

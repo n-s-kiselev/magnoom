@@ -126,10 +126,9 @@ int		ENGINE_MUTEX=WAIT;
 int		DATA_TRANSFER_MUTEX=WAIT_DATA;
 
 #define THREADS_NUMBER 3 
-semaphore_ref	sem_in[THREADS_NUMBER];
-semaphore_ref	sem_out[THREADS_NUMBER];
+//semaphore_ref	sem_in[THREADS_NUMBER];
+//semaphore_ref	sem_out[THREADS_NUMBER];
 
-/*
 semaphore_ref	sem_A1;
 semaphore_ref   sem_A2;
 
@@ -146,7 +145,6 @@ void SyncAllThreads()
 			{sem_post(sem_A2);}
 		}
 	};
-*/
 
 
 int 	Record=0;// record <sx>, <sy>, <sz> into fole sxsysz.csv
@@ -193,6 +191,7 @@ double*		Heffy; // y component position array
 double*		Heffz; // z component position array
 
 double*		Etot; // array of total energy per spin 
+double*		Etot0; // array of total energy per spin 
 double		totalEnergy;
 double		perSpEnergy;
 double		totalEnergyFerro;
@@ -294,8 +293,9 @@ int				currentIteration=0;
 float			FPS, IPS;
 FILE*			outFile;//sxsysz output file
 int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
-
-
+char			BuferString[80];//for output file table
+double 			outputEtotal;
+double 			outputMtotal[3];
 
 #include "MATH.cpp"/*All mathematical fuctions*/
 #include "GEOM.cpp"/*All functions salculating size and neighbors*/
@@ -321,9 +321,7 @@ return NULL;
 int 
 main (int argc, char **argv)
 {
-	outFile = fopen ("sxsysz.csv","w");
-	if (outFile!=NULL) {fputs ("iter,sx,sy,sz,e_tot,\n",outFile);}
-	
+	/*
 	for (int i=0; i<THREADS_NUMBER; i++){
 		char name[10]; 
 		snprintf(name,10,"inDoor%d\n",i);
@@ -336,10 +334,10 @@ main (int argc, char **argv)
 		//sem_getvalue(sem_in[i], &value); //Function not implemented on Mac OS X!!!
 		Max_torque[i]=0;
 	} 
-
-	// char sem_name[]="A";
-	// if ( (sem_A1 = sem_open(sem_name, O_CREAT, 0644, (THREADS_NUMBER - 1))) == SEM_FAILED ) {perror("sem_open");}
-	// if ( (sem_A2 = sem_open(sem_name, O_CREAT, 0644, 0)) == SEM_FAILED ) {perror("sem_open");}
+*/
+	char sem_name[]="A";
+	if ( (sem_A1 = sem_open(sem_name, O_CREAT, 0644, (THREADS_NUMBER - 1))) == SEM_FAILED ) {perror("sem_open");}
+	if ( (sem_A2 = sem_open(sem_name, O_CREAT, 0644, 0)) == SEM_FAILED ) {perror("sem_open");}
 
 	////////////////////////////////////////////////
 	srand ( time(NULL) );//init random number seed//
@@ -441,6 +439,7 @@ main (int argc, char **argv)
 	Heffz = (double *)calloc(NOS, sizeof(double));// <-- + 12 Mega Byte
 
 	Etot = (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
+	Etot0= (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
 //	For 100x100x100x10^6 spins total allocated memory is about 6*12 = 72 Mega Byte
 //  in total possibly may reach up to 100 Mb
 
@@ -451,6 +450,9 @@ main (int argc, char **argv)
 	// pthread_create(&INFO_THREAD_idx, NULL, CALC_THREAD, NULL);
 	pthread_t thread_id[THREADS_NUMBER];
 	int thread_args[THREADS_NUMBER];
+
+ 	outFile = fopen ("table.csv","w");
+	if (outFile!=NULL) {fputs ("iter,Mx,My,Mz,E_tot,\n",outFile);}
 
 /* create the second thread which executes CALC_THREAD(&x) */
 
