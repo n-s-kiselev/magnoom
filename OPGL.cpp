@@ -115,8 +115,8 @@ float phi_max=2*PI;
 float phi_min=0;
 
 // Parameters for initial state 
-float			chSize = 15; // characteristic size of initial state in units of "a"
-float			chDir[3] = {0,0,1}; // characteristic size of initial state in units of "a"
+float			chSize = 35; // characteristic size of initial state in units of "a"
+float			chDir[3] = {0,1,0}; // characteristic size of initial state in units of "a"
 GLuint 			iStart;
 GLuint 			iNum;
 
@@ -1849,7 +1849,7 @@ void setupTweakBar()
 	// // TwAddVarRW(control_bar, "Field", TW_TYPE_FLOAT, &Hf, 
 	// // "label='Field' help='The value of uniaxial anisotropy' ");
 	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
-	"label='Field'  min=0 step=0.00001 help='The value of uniaxial anisotropy' ");
+	"label='Field'  min=0 step=0.001 help='The value of uniaxial anisotropy' ");
     TwAddSeparator(control_bar, "sep-1", NULL);
 
 
