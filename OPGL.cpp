@@ -1815,7 +1815,7 @@ void setupTweakBar()
 
 	TwAddButton(control_bar, "Run", CB_Run, NULL, "key='r' label='RUN simulation' ");
 	TwAddVarRW(control_bar, "Record", TW_TYPE_BOOL32, &Record, 
-	"keyIncr='r' label='Recording' true='Rec.' false='Pause' help='Recording <sx>, <sy>, <sz> in each iteration'");
+	"label='Recording' true='Rec.' false='Pause' help='Recording <sx>, <sy>, <sz> in each iteration'");
 	TwAddVarRW(control_bar, "Rec_Iteration", TW_TYPE_INT32, &rec_iteration, 
 	"label='Every iteration' min=1 max=1000 step=1 ");
 	TwAddButton(control_bar, "Clean the record", CB_CleanSxSySzFile, NULL, "label= 'Clean the record' help='clean the output file with <sx>, <sy>, <sz>' ");
