@@ -363,9 +363,9 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
-	int 	 Na = uABC[0];
-	int nb1, Nb = uABC[1];
-	int nc1;
+	int Na = uABC[0];
+	int Nb = uABC[1];
+	int nb1, nc1;
 	int i;
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
@@ -440,7 +440,6 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	//final step of midpoint solver:
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
-		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
 			nc1 = Na * Nb * nc;
@@ -454,17 +453,17 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 					// deterministic terms of Landau–Lifshitz equation:
-					Ax = 0.5 * h * ( - Hx - alpha * (ny * Hz - nz * Hy) );
-					Ay = 0.5 * h * ( - Hy - alpha * (nz * Hx - nx * Hz) );
-					Az = 0.5 * h * ( - Hz - alpha * (nx * Hy - ny * Hx) );
+					Ax = 0.5f * h * ( - Hx - alpha * (ny * Hz - nz * Hy) );
+					Ay = 0.5f * h * ( - Hy - alpha * (nz * Hx - nx * Hz) );
+					Az = 0.5f * h * ( - Hz - alpha * (nx * Hy - ny * Hx) );
 					// Spin-torque term
 					Ax = Ax + 0.5f * h * ( - alpha * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 					Ay = Ay + 0.5f * h * ( - alpha * Cy + (nz * Cx - nx * Cz) );
 					Az = Az + 0.5f * h * ( - alpha * Cz + (nx * Cy - ny * Cx) );
 					// stochastic terms of Landau–Lifshitz equation:
-					Ax = Ax + 0.5 * rh * D * ( - Rx - alpha * (ny * Rz - nz * Ry) );
-					Ay = Ay + 0.5 * rh * D * ( - Ry - alpha * (nz * Rx - nx * Rz) );
-					Az = Az + 0.5 * rh * D * ( - Rz - alpha * (nx * Ry - ny * Rx) );
+					Ax = Ax + 0.5f * rh * D * ( - Rx - alpha * (ny * Rz - nz * Ry) );
+					Ay = Ay + 0.5f * rh * D * ( - Ry - alpha * (nz * Rx - nx * Rz) );
+					Az = Az + 0.5f * rh * D * ( - Rz - alpha * (nx * Ry - ny * Rx) );
 
 					nx = inx[i];	ny = iny[i];	nz = inz[i];	//<-- pay attention to this line!
 
@@ -595,10 +594,36 @@ void *CALC_THREAD(void *void_ptr)
 						naini, 	nafin,
 						nbini, 	nbfin,
 						ncini, 	ncfin);
-		//printf("Tread[%d]\n",threadindex );
-		if (threadindex==THREADS_NUMBER-1){ 
-			//first calculation thread
+
+		if (threadindex==0){ 
+			//first thread opens the first (in) door in the next (second) thread
+			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
+			// first (in)door will be open from the last thread (first sem_post)
+			sem_wait(sem_in[threadindex]);
+
+			//Now the first thread is in the "waiting zone"
 			ITERATION++;
+			//normalize all spins every 100 iterations
+			if (ITERATION%100==0) 
+			{
+				for (int i=0;i<NOS;i++)
+				{
+					double absS = 1.0f/sqrt(Sx[i]*Sx[i]+Sy[i]*Sy[i]+Sz[i]*Sz[i]);
+					Sx[i] = Sx[i] * absS;
+					Sy[i] = Sy[i] * absS;
+					Sz[i] = Sz[i] * absS;		
+				}
+			}
+			//save to file if recording is on
+			if (Record!=0 && ITERATION%rec_iteration == 0){
+				outputEtotal = GetTotalEnergy( 	bSx, bSy, bSz, 
+					NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+					Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot0, outputMtotal, NOS );
+				if (outFile!=NULL){
+					snprintf(BuferString,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,outputMtotal[0]/NOS,outputMtotal[1]/NOS,outputMtotal[2]/NOS,outputEtotal);
+					fputs (BuferString,outFile);  		
+				}
+			}
 			if (DATA_TRANSFER_MUTEX==WAIT_DATA){
 				for (int i=0;i<NOS;i++){
 					bSx[i]=Sx[i];
@@ -610,19 +635,150 @@ void *CALC_THREAD(void *void_ptr)
 					currentIteration=ITERATION;
 				pthread_mutex_unlock(&show_mutex);	
 			}
-			//save to file
-			if (Record!=0 && ITERATION%rec_iteration == 0){
-			outputEtotal = GetTotalEnergy( 	bSx, bSy, bSz, 
-				NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-				Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot0, outputMtotal, NOS );
-			//outputEtotal = GetTotalEnergyMoment(bSx, bSy, bSz, Heffx, Heffy, Heffz, outputMtotal, NOS);
-			if (outFile!=NULL){
-				snprintf(BuferString,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,outputMtotal[0]/NOS,outputMtotal[1]/NOS,outputMtotal[2]/NOS,outputEtotal);
-				fputs (BuferString,outFile);  		
+			MAX_TORQUE=0;
+			for (int i=0;i<THREADS_NUMBER;i++){
+				if (Max_torque[i] > MAX_TORQUE) MAX_TORQUE = Max_torque[i];
+				Max_torque[i] = 0;
+			}
+		// Out the waiting zone
+		// now it opens the second (out) door in the next (second) thread
+		sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
+		// second (out)door will be open from the last thread (second sem_post)
+		sem_wait(sem_out[threadindex]);
+		}else{
+		//all other calculation threads
+		sem_wait(sem_in[threadindex]);
+		// first button which open the first door in the next (second) thread
+		sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
+		// second door will be open from the last thread (second button)
+		sem_wait(sem_out[threadindex]);
+		// second button which open the second door in the next (second) thread
+		sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
+		}
+
+}
+fclose (outFile);
+// the function must return something - NULL will do 
+return NULL;
+}
+
+
+/*
+void *CALC_THREAD(void *void_ptr)
+{
+    int threadindex = *((int *) void_ptr);
+    //printf("threadindex =%d\n", threadindex );
+    int dNa=0;
+    int dNb=0;
+    int dNc=0;
+    if (uABC[0]%THREADS_NUMBER==0){
+    		dNa = uABC[0]/THREADS_NUMBER;
+    }else{	dNa = (int)uABC[0]/THREADS_NUMBER+1;}
+
+    if (uABC[1]%THREADS_NUMBER==0){
+    		dNb = uABC[1]/THREADS_NUMBER;
+    }else{	dNb = (int)uABC[1]/THREADS_NUMBER+1;}
+
+    if (uABC[2]%THREADS_NUMBER==0){
+    		dNc = uABC[2]/THREADS_NUMBER;
+    }else{	dNc = (int)uABC[2]/THREADS_NUMBER+1;}
+
+    int naini=0;
+    int nafin=0;
+    int nbini=0; 
+    int nbfin=0;
+    int ncini=0;
+    int ncfin=0;
+
+    if (uABC[0]>=uABC[1]&&uABC[0]>=uABC[2]){      //a-axis is the longest side of the box
+    	naini = dNa*threadindex; 
+    	if (dNa*(threadindex+1)<uABC[0]){
+    		nafin = dNa*(threadindex+1);
+    	}else{
+    		nafin = uABC[0];
+    	}
+    	nbini = 0; nbfin = uABC[1];
+    	ncini = 0; ncfin = uABC[2];
+    }else if (uABC[2]>=uABC[0]&&uABC[2]>=uABC[1]){//c-axis is the longest side of the box
+    	ncini = dNa*threadindex; 
+    	if (dNc*(threadindex+1)<uABC[2]){
+    		ncfin = dNc*(threadindex+1);
+    	}else{
+    		ncfin = uABC[2];
+    	}
+    	naini = 0; nafin = uABC[0];	
+    	nbini = 0; nbfin = uABC[1];
+    }else if (uABC[1]>=uABC[0]&&uABC[1]>=uABC[2]){//b-axis is the longest side of the box
+    	nbini = dNb*threadindex; 
+    	if (dNb*(threadindex+1)<uABC[1]){
+    		nbfin = dNb*(threadindex+1);
+    	}else{
+    		nbfin = uABC[1];
+    	}
+    	naini = 0; nafin = uABC[0];	
+    	ncini = 0; ncfin = uABC[2];    	
+    }
+    // printf("thread[%d]\n",threadindex );
+    // printf("naini = %d, nafin = %d\n",naini, nafin);
+    // printf("nbini = %d, nbfin = %d\n",nbini, nbfin);
+    // printf("ncini = %d, ncfin = %d\n",ncini, ncfin);
+
+
+	while(true)
+	{
+		while(ENGINE_MUTEX != DO_IT){ 
+			usleep(10);
+			//nanosleep (&tw, NULL);
+		}
+		HacTime = GetACfield();
+		StochasticLLG( 	Sx, 	Sy, 	Sz, 
+						tSx,	tSy, 	tSz, 
+						Heffx, 	Heffy, 	Heffz, 
+						RNx, 	RNy, 	RNz, 
+						NOS, 	damping,t_step, 
+						Temperature, threadindex,
+						naini, 	nafin,
+						nbini, 	nbfin,
+						ncini, 	ncfin);
+		//printf("Tread[%d]\n",threadindex );
+		if (threadindex==THREADS_NUMBER-1){ 
+			//THREADS_NUMBER-1 is the index of the last calculation thread
+			ITERATION++;
+			//normalize all spins every 100 iterations
+			if (ITERATION%100==0) 
+			{
+				for (int i=0;i<NOS;i++)
+				{
+					double absS = 1.0f/sqrt(Sx[i]*Sx[i]+Sy[i]*Sy[i]+Sz[i]*Sz[i]);
+					Sx[i] = Sx[i] * absS;
+					Sy[i] = Sy[i] * absS;
+					Sz[i] = Sz[i] * absS;		
 				}
 			}
-			SyncAllThreads();
-			/*
+			if (DATA_TRANSFER_MUTEX==WAIT_DATA){
+				for (int i=0;i<NOS;i++){
+					bSx[i]=Sx[i];
+					bSy[i]=Sy[i];
+					bSz[i]=Sz[i];
+				}
+				pthread_mutex_lock(&show_mutex);
+					DATA_TRANSFER_MUTEX=TAKE_DATA;
+					currentIteration=ITERATION;
+				pthread_mutex_unlock(&show_mutex);	
+			}
+			//save to file if recording is on
+			if (Record!=0 && ITERATION%rec_iteration == 0){
+				outputEtotal = GetTotalEnergy( 	bSx, bSy, bSz, 
+					NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+					Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot0, outputMtotal, NOS );
+				if (outFile!=NULL){
+					snprintf(BuferString,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,outputMtotal[0]/NOS,outputMtotal[1]/NOS,outputMtotal[2]/NOS,outputEtotal);
+					fputs (BuferString,outFile);  		
+				}
+			}
+
+			//SyncAllThreads();
+			
 			//first thread opens the first (in) door in the next (second) thread
 			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
@@ -631,7 +787,7 @@ void *CALC_THREAD(void *void_ptr)
 			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(sem_out[threadindex]);
-*/
+
 		}else{
 			MAX_TORQUE=0;
 			for (int i=0;i<THREADS_NUMBER;i++){
@@ -639,21 +795,12 @@ void *CALC_THREAD(void *void_ptr)
 				Max_torque[i] = 0;
 			}
 
-			SyncAllThreads();
-			/*
-			//all other calculation threads
-			sem_wait(sem_in[threadindex]);
-			// first button which open the first door in the next (second) thread
-			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
-			// second door will be open from the last thread (second button)
-			sem_wait(sem_out[threadindex]);
-			// second button which open the second door in the next (second) thread
-			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
-			*/
+			//SyncAllThreads();			
 		}
 
 }
 fclose (outFile);
-/* the function must return something - NULL will do */
+// the function must return something - NULL will do 
 return NULL;
 }
+*/

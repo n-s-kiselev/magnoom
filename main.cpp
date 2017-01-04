@@ -126,9 +126,11 @@ int		ENGINE_MUTEX=WAIT;
 int		DATA_TRANSFER_MUTEX=WAIT_DATA;
 
 #define THREADS_NUMBER 3 
-//semaphore_ref	sem_in[THREADS_NUMBER];
-//semaphore_ref	sem_out[THREADS_NUMBER];
+semaphore_ref	sem_in[THREADS_NUMBER];
+semaphore_ref	sem_out[THREADS_NUMBER];
 
+//Alternative version of semaphores
+/*
 semaphore_ref	sem_A1;
 semaphore_ref   sem_A2;
 
@@ -145,7 +147,7 @@ void SyncAllThreads()
 			{sem_post(sem_A2);}
 		}
 	};
-
+*/
 
 int 	Record=0;// record <sx>, <sy>, <sz> into fole sxsysz.csv
 int     AC_FIELD_ON=0;//ON/OFF AC field signal.
@@ -258,11 +260,11 @@ float		VHf[]={ 0.0 , 0.0, 1.0 };
 float 		VHtheta=0;
 float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
-float		Hf=0.01;
+float		Hf=0.0163;
 //AC applied H-field:
 float		VHac[]={ 0.0 , 0.0, 1.0 };
-float		Hac=0.0;
-float		Period_dc=100;
+float		Hac=0.00163;
+float		Period_dc=180.168;
 float		Omega_dc=TPI/Period_dc;
 float		HacTime=0.0;//time (iteration) dependent value of ac field
 enum	    enACField{SIN_FIELD, GAUSSIAN_FIELD} ; // which mode
@@ -292,7 +294,7 @@ int				previousIteration=0;
 int				currentIteration=0;
 float			FPS, IPS;
 FILE*			outFile;//sxsysz output file
-int 			rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
+unsigned int 	rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 char			BuferString[80];//for output file table
 double 			outputEtotal;
 double 			outputMtotal[3];
@@ -321,7 +323,7 @@ return NULL;
 int 
 main (int argc, char **argv)
 {
-	/*
+	
 	for (int i=0; i<THREADS_NUMBER; i++){
 		char name[10]; 
 		snprintf(name,10,"inDoor%d\n",i);
@@ -334,10 +336,11 @@ main (int argc, char **argv)
 		//sem_getvalue(sem_in[i], &value); //Function not implemented on Mac OS X!!!
 		Max_torque[i]=0;
 	} 
-*/
-	char sem_name[]="A";
-	if ( (sem_A1 = sem_open(sem_name, O_CREAT, 0644, (THREADS_NUMBER - 1))) == SEM_FAILED ) {perror("sem_open");}
-	if ( (sem_A2 = sem_open(sem_name, O_CREAT, 0644, 0)) == SEM_FAILED ) {perror("sem_open");}
+
+	//Alternative semaphores
+	// char sem_name[]="A";
+	// if ( (sem_A1 = sem_open(sem_name, O_CREAT, 0644, (THREADS_NUMBER - 1))) == SEM_FAILED ) {perror("sem_open");}
+	// if ( (sem_A2 = sem_open(sem_name, O_CREAT, 0644, 0)) == SEM_FAILED ) {perror("sem_open");}
 
 	////////////////////////////////////////////////
 	srand ( time(NULL) );//init random number seed//
@@ -457,8 +460,7 @@ main (int argc, char **argv)
 /* create the second thread which executes CALC_THREAD(&x) */
 
 	for (int i=0; i<THREADS_NUMBER; i++){
-		thread_args[i] = i;
-		
+		thread_args[i] = i;		
 		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, (void *)&thread_args[i]) ) {
 			fprintf(stderr, "Error in creating CALC_THREAD thread\n"); return 1;
 		}		

@@ -135,7 +135,6 @@ GLfloat			AXES_LENGTH	= 2.;
 //tweak menu
 TwBar *help_bar; // Pointer to the default help tweak bar
 TwBar *view_bar; // Pointer to the tweak bar with widgets controling view options
-TwBar *slicing_bar; // Pointer to the tweak bar with widgets controling view options
 TwBar *control_bar; // Pointer to the tweak bar with widgets controling calculations
 TwBar *initial_bar; // Pointer to the tweak bar with widgets controling generation of initial state
 TwBar *ac_field_bar; // Pointer to the tweak bar with widgets controling generation of initial state
@@ -860,7 +859,6 @@ void setupOpenGL ()
 
 void idle ()
 {  
-	char	shortBufer[80];
 	currentTime = glutGet(GLUT_ELAPSED_TIME);
 	timeInterval = currentTime - previousTime;
 
@@ -884,18 +882,6 @@ void idle ()
 						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, NOS );
 			totalEnergyFerro = totalEnergyFerro/NOS;	
 			perSpEnergyMinusFerro = perSpEnergy - totalEnergyFerro;
-			//if (Record!=0 && ITERATION%rec_iteration == 0){
-			if (Record!=0){
-				totalEnergy = GetTotalEnergy( 	bSx, bSy, bSz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
-				  if (outFile!=NULL)
-				  {
-					snprintf(shortBufer,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,mtot[0],mtot[1],mtot[2],totalEnergy);
-				    fputs (shortBufer,outFile);  		
-				  }
-				//printf("%d \t %f \t %f \t %f \n",  ITERATION, Mtot[0],Mtot[1],Mtot[2] );
-			}
 			}
 			if (timeInterval > 1000)//~2 seconds
 			{
@@ -1164,6 +1150,24 @@ void TW_CALL CB_GetHfieldPhi(void *value, void *clientData)
     *(float*)value = VHphi; 
 }
 
+void TW_CALL CB_SetHfieldXYZ(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+ //    VHtheta = *(float*)value;
+ //    VHf[0]=sin(PI*VHtheta/180)*cos(PI*VHphi/180);
+	// VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
+	// VHf[2]=cos(PI*VHtheta/180);
+	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
+	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
+}
+
+void TW_CALL CB_GetHfieldXYZ(void *value, void *clientData)
+{
+    (void)clientData; 
+    // *(float*)value = VHtheta; 
+}
+
+
 
 void TW_CALL CB_SetACPeriod(const void *value, void *clientData )
 {
@@ -1232,8 +1236,8 @@ void TW_CALL CB_InvertZ( void *clientData )
 void TW_CALL CB_CleanSxSySzFile( void *clientData )
 {
   fclose (outFile);//outFile is a global variable - pointer FILE* see also CALC_THREAD in ENGINE.cpp
- 	outFile = fopen ("sxsysz.csv","w");
-	if (outFile!=NULL) {fputs ("iter,sx,sy,sz,e_tot,\n",outFile);}
+ 	outFile = fopen ("table.csv","w");
+	if (outFile!=NULL) {fputs ("iter,Mx,My,Mz,E_tot,\n",outFile);}
  }
 
 
@@ -1701,13 +1705,13 @@ void setupTweakBar()
 	TwDefine(" GLOBAL iconmargin='1 8'  "); // icons will be displayed at 1 and 16 pixels from the horizontal and vertical window borders respectively
 /*  Help Bar F1 */
 	help_bar = TwGetBarByIndex(0);
-	TwDefine(" TW_HELP size='440 510' color='70 100 100'");
+	TwDefine(" TW_HELP size='440 530' color='70 100 100'");
 	TwDefine(" TW_HELP help='F1: show/hide (this) Help bar' "); // change default tweak bar size and color
 
 /*  View Bar F2 */
     view_bar = TwNewBar("View");
     TwDefine(" View iconified=true "); 
-    TwDefine(" View size='220 510' color='224 216 96' alpha=200 "); // change default tweak bar size and color
+    TwDefine(" View size='220 530' color='100 100 70' alpha=200 "); // change default tweak bar size and color
     TwDefine(" View help='F2: show/hide View bar' "); // change default tweak bar size and color
 	{
 	TwEnumVal		enColorsTw[] = { {WHITE,"White"}, {BLACK, "Black"}, {RED, "Red"}, {GREEN, "Green"}, {BLUE, "Blue"} };
@@ -1739,10 +1743,26 @@ void setupTweakBar()
 	TwAddVarRW(view_bar, "Show basis", TW_TYPE_BOOL32, &AxesOn, " key=CTRL+o ");
 	TwAddVarRW(view_bar, "Show box", TW_TYPE_BOOL32, &BoxOn, " key=CTRL+b ");
 
+	TwAddSeparator(view_bar, "view_sep1", NULL);
+	{
+	TwEnumVal		enSliceModeTw[] = { 
+										{A_AXIS, "a-axis"}, 
+										{B_AXIS, "b-axis"}, 
+										{C_AXIS, "c-axis"},
+										{FILTER, "filter"}
+									  };
+	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
+	TwAddVarCB(view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
+	}
+	TwAddVarCB(view_bar, "T_max", TW_TYPE_FLOAT, CB_SetThetaMax, CB_GetThetaMax, &theta_max, " label='Theta max' min=0 max=3.141592 step=0.01 help='max value for angle theta'");
+	TwAddVarCB(view_bar, "T_min", TW_TYPE_FLOAT, CB_SetThetaMin, CB_GetThetaMin, &theta_min, " label='Theta min' min=0 max=3.141592 step=0.01 help='min value for angle theta'");
+
+	TwAddSeparator(view_bar, "view_sep2", NULL);
+
 	TwAddVarRW(view_bar, "Intensity", TW_TYPE_FLOAT, &g_LightMultiplier, 
 	" label='Light intensity' min=0.1 max=4 step=0.02 help='Increase/decrease the light power.' group='Light' ");
 	TwAddVarRW(view_bar, "LightDir", TW_TYPE_DIR3F, &g_LightDirection, 
-	" label='Light direction' opened=true help='Change the light direction.' group='Light'");
+	" label='Light direction' opened=false help='Change the light direction.' group='Light'");
 	temp_color[0] = 230;
 	temp_color[1] = 230;
 	temp_color[2] = 255;
@@ -1785,33 +1805,11 @@ void setupTweakBar()
 	TwAddVarCB(view_bar, "Color scheme", TV_TYPE_COL_SCH, CB_SetColorScheme, CB_GetColorScheme, &WhichColorScheme, "help='Type of 3D vectors' group='HSV color map' ");
 	}
 
-/*  Slicing F3 */
-    slicing_bar = TwNewBar("Slicing");
-    TwDefine(" Slicing iconified=true "); 
-    TwDefine(" Slicing size='220 220' color='224 216 96' alpha=200 "); // change default tweak bar size and color
-    TwDefine(" Slicing help='F3: show/hide Slicing bar' "); // change default tweak bar size and color
-
-	{
-	TwEnumVal		enSliceModeTw[] = { 
-										{A_AXIS, "a-axis"}, 
-										{B_AXIS, "b-axis"}, 
-										{C_AXIS, "c-axis"},
-										{FILTER, "filter"}
-									  };
-	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
-	TwAddVarCB(slicing_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
-	}
-	//TwAddVarCB(slicing_bar, "a layer min", TW_TYPE_INT32, CB_SetAlayerMin, CB_GetAlayerMin,  &A_layer_min, "step=1 help='Bottom layer of slicing along a-axis' ");
-	//TwAddVarCB(slicing_bar, "a layer max", TW_TYPE_INT32, CB_SetAlayerMax, CB_GetAlayerMax,  &A_layer_max, "step=1 help='Top layer of slicing along a-axis' ");
-	TwAddVarCB(slicing_bar, "T_max", TW_TYPE_FLOAT, CB_SetThetaMax, CB_GetThetaMax, &theta_max, " label='Theta max' min=0 max=3.141592 step=0.01 help='max value for angle theta'");
-	TwAddVarCB(slicing_bar, "T_min", TW_TYPE_FLOAT, CB_SetThetaMin, CB_GetThetaMin, &theta_min, " label='Theta min' min=0 max=3.141592 step=0.01 help='min value for angle theta'");
-
-
-/*  Hamiltonian parameters&controls F4 */
+/*  Hamiltonian parameters&controls F3 */
 	control_bar = TwNewBar("Parameters&Controls");
     TwDefine(" Parameters&Controls iconified=true "); 
-    TwDefine(" Parameters&Controls size='220 510' color='224 96 216' alpha=200 "); // change default tweak bar size and color
-    TwDefine(" Parameters&Controls help='F4: show/hide Control bar' "); // change default tweak bar size and color
+    TwDefine(" Parameters&Controls size='220 530' color='100 70 100' alpha=200 "); // change default tweak bar size and color
+    TwDefine(" Parameters&Controls help='F3: show/hide Control bar' "); // change default tweak bar size and color
 
 	TwAddButton(control_bar, "Run", CB_Run, NULL, "key='r' label='RUN simulation' ");
 	TwAddVarRW(control_bar, "Record", TW_TYPE_BOOL32, &Record, 
@@ -1831,9 +1829,9 @@ void setupTweakBar()
 	"label='along c' group='Boundary conditions' true='periodic' false='open' help='set boundary conditions along translation vector 'c' '");
     
 	TwAddVarRW(control_bar, "Damping", TW_TYPE_FLOAT, &damping, 
-	"label='Damping' min=0 max=10 group='LLG' ");
+	"label='Damping' min=0 max=100 step=0.01 group='LLG' ");
 	TwAddVarRW(control_bar, "Time_step", TW_TYPE_FLOAT, &t_step, 
-	"label='Time step' min=0 max=0.1 group='LLG' ");
+	"label='Time step' min=0 max=0.5 step=0.001   group='LLG' ");
 	TwAddVarRW(control_bar, "temperature", TW_TYPE_FLOAT, &Temperature, 
 	"label='k_b*T' min=0 max=100 step=0.01 group='LLG' ");
 
@@ -1849,7 +1847,14 @@ void setupTweakBar()
 	// // TwAddVarRW(control_bar, "Field", TW_TYPE_FLOAT, &Hf, 
 	// // "label='Field' help='The value of uniaxial anisotropy' ");
 	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
-	"label='Field'  min=0 step=0.001 help='The value of uniaxial anisotropy' ");
+	"label='Field'  min=0 step=0.00001 help='The value of uniaxial anisotropy' ");
+
+	TwAddSeparator(control_bar, "control_sep1", NULL);
+	TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldXYZ, CB_GetHfieldXYZ, &VHf, 
+	" label='Field direction' opened=false help='Change the applied field direction.' ");
+
+	TwAddSeparator(control_bar, "control_sep2", NULL);
+
     TwAddSeparator(control_bar, "sep-1", NULL);
 
 
@@ -1905,11 +1910,11 @@ void setupTweakBar()
 	TwAddVarRW(control_bar, "CurrentDir", TW_TYPE_DIR3F, &VCu, 
 	"label='cur. dir.' opened=true help='The polarization direction of electric current' ");
 
-/*  Initial state F5 */
+/*  Initial state F4 */
 	initial_bar = TwNewBar("Initial_State");
 	TwDefine(" Initial_State iconified=true "); 
-	TwDefine(" Initial_State size='220 510' color='180 180 254'  alpha=200"); // change default tweak bar size and color
-	TwDefine(" Initial_State help='F5: show/hide Initial state bar' "); // change default tweak bar size and color
+	TwDefine(" Initial_State size='220 530' color='70 70 100'  alpha=200"); // change default tweak bar size and color
+	TwDefine(" Initial_State help='F4: show/hide Initial state bar' "); // change default tweak bar size and color
 	{
 	TwEnumVal		enIniStateTw[] = { 	{RND, 		"Random"		        }, 
 										{HOMO, 		"Homogeneous"	        }, 
@@ -1967,11 +1972,11 @@ void setupTweakBar()
 	TwAddVarRW(initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(outputfilename)), outputfilename, ""); 
 	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='write to *.csv file' ");		
 
-/*  AC field F6 */
+/*  AC field F5 */
 	ac_field_bar = TwNewBar("AC_Field");
 	TwDefine(" AC_Field iconified=true "); 
-	TwDefine(" AC_Field size='300 510' color='180 100 140'  alpha=200"); // change default tweak bar size and color
-	TwDefine(" AC_Field help='F6: show/hide AC Field bar' "); // change default tweak bar size and color
+	TwDefine(" AC_Field size='220 530' color='100 70 70'  alpha=200"); // change default tweak bar size and color
+	TwDefine(" AC_Field help='F5: show/hide AC Field bar' "); // change default tweak bar size and color
 
 	{
 	TwEnumVal		enenACFieldTw[] = { {SIN_FIELD,  	"AC Sin(omega*t) "		},
@@ -1994,13 +1999,13 @@ void setupTweakBar()
 	TwAddVarRW(ac_field_bar, "AC field on/off", TW_TYPE_BOOL32, &AC_FIELD_ON, 
 	"keyIncr='f' label='AC/DC on/off' true='on' false='off' help='On/off ac field'");
 
-/*  Info bar F12 */
+/*  Info bar F11 */
 	info_bar = TwNewBar("Info");
 	TwDefine(" Info refresh=0.5 ");
 	TwDefine(" Info iconified = false movable = false alwaysbottom=true resizable=false fontstyle=fixed fontsize=2"); 
-	TwDefine(" Info help='F12: show/hide info-bar' "); // change default tweak bar size and color
+	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
-	TwDefine(" Info help='F12: show/hide info-bar' "); // change default tweak bar size and color
+	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info position = '1 30' size ='200 400' valueswidth=120"); // change default tweak bar size and color
 	TwAddVarRO(info_bar, "R/S", TW_TYPE_BOOL32,  &Play, "true='RUNING' false='STOPED' ");
 	TwAddVarRO(info_bar, "Rec.", TW_TYPE_BOOL32,  &Record, "true='On' false='Off' ");
@@ -2298,14 +2303,6 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 				}
 				break;
 			case  GLUT_KEY_F3:
-				TwGetParam(slicing_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-					TwDefine(" Slicing iconified=false ");				
-				}else{
-					TwDefine(" Slicing iconified=true ");
-				}
-				break;
-			case  GLUT_KEY_F4:
 				TwGetParam(control_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Parameters&Controls iconified=false ");				
@@ -2313,7 +2310,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Parameters&Controls iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F5:
+			case  GLUT_KEY_F4:
 				TwGetParam(initial_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Initial_State iconified=false ");				
@@ -2321,7 +2318,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Initial_State iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F6:
+			case  GLUT_KEY_F5:
 				TwGetParam(ac_field_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" AC_Field iconified=false ");				
@@ -2329,7 +2326,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" AC_Field iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F12:
+			case  GLUT_KEY_F11:
 				TwGetParam(info_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Info iconified=false ");				
