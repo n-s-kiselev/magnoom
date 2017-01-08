@@ -497,8 +497,22 @@ main (int argc, char **argv)
 	ReallocateArrayDrawing_H();
     UpdatePrototypeVerNorInd(vertexProto_H, normalProto_H, indices_H, arrowFaces_H, ARROW1,1);
     UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
+
+	ReallocateArrayDrawing_BOX();
+	UpdateVerticesNormalsColors_BOX(vertices_BOX, normals_BOX, colors_BOX, indices_BOX, Box);
+
+	ReallocateArrayDrawing_BOX_PBC();
+	UpdateVerticesNormalsColors_BOX_PBC(vertices_BOX_PBC, normals_BOX_PBC, colors_BOX_PBC, indices_BOX_PBC, Box);
+  
     CreateNewVBO_H();
     UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
+
+    CreateNewVBO_BOX();
+    UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
+
+	CreateNewVBO_BOX_PBC();
+    UpdateVBO_BOX_PBC(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
+
 //  Start GLUT event processing loop
 	glutMainLoop();
 
@@ -521,10 +535,10 @@ main (int argc, char **argv)
 	free(Px);    free(Py);    free(Pz); 
 	free(BPx);   free(BPy);   free(BPz); 
 	free(RHue);  free(GHue);  free(BHue);
-	free(vertices);			free(vertices_H);
-	free(normals);			free(normals_H);
-	free(colors);			free(colors_H);
-	free(indices);			free(indices_H);
+	free(vertices);			free(vertices_H); free(vertices_BOX); free(vertices_BOX_PBC);
+	free(normals);			free(normals_H); free(normals_BOX); free(normals_BOX_PBC);
+	free(colors);			free(colors_H); free(colors_BOX); free(colors_BOX_PBC);
+	free(indices);			free(indices_H); free(indices_BOX); free(indices_BOX_PBC);
 	free(vertexProto);		free(vertexProto_H);
 	free(normalProto);		free(normalProto_H);
 	free(indicesProto);		free(indicesProto_H);

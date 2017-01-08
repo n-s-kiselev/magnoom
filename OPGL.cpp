@@ -172,6 +172,16 @@ GLfloat*	normals_H	= NULL; // array of normals for tatal vector field
 GLfloat*	colors_H	= NULL; // array of colors 
 GLuint*		indices_H	= NULL; // array of indices for tatal vector field
 
+GLfloat*	vertices_BOX	= NULL; // array of vertexes for tatal vector field 
+GLfloat*	normals_BOX		= NULL; // array of normals for tatal vector field
+GLfloat*	colors_BOX		= NULL; // array of colors 
+GLuint*		indices_BOX		= NULL; // array of indices for tatal vector field
+
+GLfloat*	vertices_BOX_PBC	= NULL; // array of vertexes for tatal vector field 
+GLfloat*	normals_BOX_PBC		= NULL; // array of normals for tatal vector field
+GLfloat*	colors_BOX_PBC		= NULL; // array of colors 
+GLuint*		indices_BOX_PBC		= NULL; // array of indices for tatal vector field
+
 int			arrowFaces	= 6; // number of arrow faces, default number
 int			arrowFaces_H= 30; // number of arrow faces for applied field vector
 
@@ -185,6 +195,16 @@ GLuint		vboIdN_H;   // ID of VBO for normal arrays
 GLuint		vboIdC_H;   // ID of VBO for color arrays
 GLuint		iboIdI_H;   // ID of IBO for index arrays
 
+GLuint		vboIdV_BOX;   // ID of VBO for vertex arrays
+GLuint		vboIdN_BOX;   // ID of VBO for normal arrays
+GLuint		vboIdC_BOX;   // ID of VBO for color arrays
+GLuint		iboIdI_BOX;   // ID of IBO for index arrays
+
+GLuint		vboIdV_BOX_PBC;   // ID of VBO for vertex arrays
+GLuint		vboIdN_BOX_PBC;   // ID of VBO for normal arrays
+GLuint		vboIdC_BOX_PBC;   // ID of VBO for color arrays
+GLuint		iboIdI_BOX_PBC;   // ID of IBO for index arrays
+
 int			ElNumProto;   // number of triangles per arrow
 int			IdNumProto;   // number of indixes per arrow
 int			VCNumProto;   // number of Vertex and normals Component per arrow
@@ -193,9 +213,17 @@ int			ElNum; // total number of triangles for the whole vector field = ElNumProt
 int			IdNum; // total number of indixes for the whole vector field = IdNumProto * Number of spins
 int			VCNum; // total number of component of vertices for whole vector field = VCNumProto * Number of spins
 
-int			ElNum_H; 
-int			IdNum_H; 
+int			ElNum_H;
+int			IdNum_H;
 int			VCNum_H;
+
+int			ElNum_BOX;
+int			IdNum_BOX;
+int			VCNum_BOX;
+
+int			ElNum_BOX_PBC;
+int			IdNum_BOX_PBC;
+int			VCNum_BOX_PBC;
 
 int			Play=0;
 
@@ -2650,6 +2678,30 @@ void ReallocateArrayDrawing_H()
 	indices_H		= (GLuint *)malloc(VCNum_H * sizeof( GLuint ));				
 }
 
+void ReallocateArrayDrawing_BOX()
+{
+	free(vertices_BOX); free(normals_BOX); free(colors_BOX); free(indices_BOX);			
+	ElNum_BOX = 40; // number of triangles 
+	IdNum_BOX = 3*ElNum_BOX; // number of indixes per arrow
+	VCNum_BOX = 30;
+	vertices_BOX	= (float  *)malloc(VCNum_BOX * sizeof( float  ));
+	normals_BOX 	= (float  *)malloc(VCNum_BOX * sizeof( float  ));
+	colors_BOX 		= (float  *)malloc(VCNum_BOX * sizeof( float  ));
+	indices_BOX		= (GLuint *)malloc(VCNum_BOX * sizeof( GLuint ));				
+}
+
+void ReallocateArrayDrawing_BOX_PBC()
+{
+	free(vertices_BOX_PBC); free(normals_BOX_PBC); free(colors_BOX_PBC); free(indices_BOX_PBC);			
+	ElNum_BOX = 3 * 2 * 8 * 6 * 2; // number of triangles 
+	IdNum_BOX = 3*ElNum_BOX; // number of indixes 
+	VCNum_BOX = 3 * 2 * 8 * 6 * 4;
+	vertices_BOX	= (float  *)malloc(VCNum_BOX * sizeof( float  ));
+	normals_BOX 	= (float  *)malloc(VCNum_BOX * sizeof( float  ));
+	colors_BOX 		= (float  *)malloc(VCNum_BOX * sizeof( float  ));
+	indices_BOX		= (GLuint *)malloc(VCNum_BOX * sizeof( GLuint ));				
+}
+
 void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int mode, int style)//faces = arrowFaces
 {
 	int   i, j;
@@ -3518,6 +3570,16 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 	}
 }
 
+void UpdateVerticesNormalsColors_BOX(float * vertices, float * normals, float * colors, GLuint * indices, float Box[3][3])
+{
+
+}
+
+void UpdateVerticesNormalsColors_BOX_PBC(float * vertices, float * normals, float * colors, GLuint * indices, float Box[3][3])
+{
+	
+}
+
 void UpdateSpinPositions(float abc[][3], int uABC[3], float BD[][3], int NBD, float box[][3], float * Px, float * Py, float * Pz)
 {
 	float Tr[3] = {	
@@ -3563,12 +3625,25 @@ void CreateNewVBO( ){
 }
 
 void CreateNewVBO_H( ){
-	glGenBuffers(1, &vboIdV_H );
+	glGenBuffers(1, &vboIdV_H);
 	glGenBuffers(1, &vboIdN_H);
 	glGenBuffers(1, &vboIdC_H);
 	glGenBuffers(1, &iboIdI_H);
 }
 
+void CreateNewVBO_BOX( ){
+	glGenBuffers(1, &vboIdV_BOX);
+	glGenBuffers(1, &vboIdN_BOX);
+	glGenBuffers(1, &vboIdC_BOX);
+	glGenBuffers(1, &iboIdI_BOX);
+}
+
+void CreateNewVBO_BOX_PBC( ){
+	glGenBuffers(1, &vboIdV_BOX_PBC);
+	glGenBuffers(1, &vboIdN_BOX_PBC);
+	glGenBuffers(1, &vboIdC_BOX_PBC);
+	glGenBuffers(1, &iboIdI_BOX_PBC);
+}
 
 void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
 {	//ver, nor, col and ind pointer to arrays of vertxcies components, norlamls, colors and indecies 
@@ -3642,6 +3717,44 @@ void UpdateVBO_H(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, fl
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum_H* sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);//***?1<->2?
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_H* sizeof(GLuint), ind);
+}
+
+void UpdateVBO_BOX(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
+{	
+	glBindBuffer(GL_ARRAY_BUFFER, *V);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_BOX* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_BOX* sizeof(float), ver); 
+
+	glBindBuffer(GL_ARRAY_BUFFER, *N);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_BOX* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_BOX* sizeof(float), nor);
+
+	glBindBuffer(GL_ARRAY_BUFFER, *C);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_BOX* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_BOX* sizeof(float), col);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum_BOX* sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);//***?1<->2?
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_BOX* sizeof(GLuint), ind);
+}
+
+void UpdateVBO_BOX_PBC(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
+{	
+	glBindBuffer(GL_ARRAY_BUFFER, *V);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_BOX_PBC* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_BOX_PBC* sizeof(float), ver); 
+
+	glBindBuffer(GL_ARRAY_BUFFER, *N);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_BOX_PBC* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_BOX_PBC* sizeof(float), nor);
+
+	glBindBuffer(GL_ARRAY_BUFFER, *C);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_BOX_PBC* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_BOX_PBC* sizeof(float), col);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum_BOX_PBC* sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);//***?1<->2?
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_BOX_PBC* sizeof(GLuint), ind);	
 }
 
 void drawVBO()
@@ -3756,6 +3869,48 @@ void drawVBO_H()
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_H);
 	glDrawElements(GL_TRIANGLES, IdNum_H, GL_UNSIGNED_INT, (void*)(0));
+
+	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
+	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
+	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
+
+	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+}
+
+void drawVBO_BOX()
+{
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdC_BOX);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdN_BOX);		glNormalPointer(GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdV_BOX);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
+
+	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
+	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
+	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_BOX);
+	glDrawElements(GL_TRIANGLES, IdNum_BOX, GL_UNSIGNED_INT, (void*)(0));
+
+	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
+	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
+	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
+
+	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+}
+
+void drawVBO_BOX_PBC()
+{
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdC_BOX_PBC);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdN_BOX_PBC);		glNormalPointer(GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdV_BOX_PBC);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
+
+	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
+	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
+	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_BOX_PBC);
+	glDrawElements(GL_TRIANGLES, IdNum_BOX_PBC, GL_UNSIGNED_INT, (void*)(0));
 
 	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
 	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
