@@ -130,7 +130,7 @@ float			Block[][3] = {
 
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			uABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
-int			uABC[3] = {71,41,11};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
+int			uABC[3] = {71,41,1};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {6,6,6};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {80,80,20};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 int			Boundary[3] = {1, 1, 0};// boundary conditions along a, b, c translation vectors
