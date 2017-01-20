@@ -106,9 +106,9 @@ typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
 int   N_filter=0;
-float theta_max=PI/2+0.13; 
+float theta_max=0.01;//PI/2+0.13; 
 float Sz_min=cos(theta_max);
-float theta_min=PI/2-0.13;    
+float theta_min=0;//PI/2-0.13;    
 float Sz_max=cos(theta_min);
 
 float phi_max=2*PI;
