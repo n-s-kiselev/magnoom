@@ -3573,16 +3573,16 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 void
 parallelepiped( float abc[][3], float tr[3], 
 	float scale1, float scale2, float scale3, 
-	float* V, float* N, GLuint * I)
+	int offset_index, float* V, float* N, GLuint * I)
 {
 /*
-  p23 o-------o p123
-     /|      /|
- p3 o-------o p13
-  ^ | |p2   | |
- c| | o-----|-o p12 
-    |/b     |/     
- p0 o-------o p1
+  p23 o-----------o p123
+     /|          /|
+ p3 o-----------o p13
+  ^ | |p2       | |
+ c| | o---------|-o p12 
+    |/b         |/     
+ p0 o-----------o p1
       -->a  
 */
 	float p0[3]={0,0,0};
@@ -3615,9 +3615,12 @@ parallelepiped( float abc[][3], float tr[3],
 	p23[0] +=tr[0]; p23[1] +=tr[1]; p23[2] +=tr[2];
 	p123[0]+=tr[0]; p123[1]+=tr[1]; p123[2]+=tr[2];
 
-	int i=-1;//vertec component counter
-	int j=-1;//vertex index counter
-	int k   ;//used with j
+	// int i =-1;//vertec component counter
+	// int j =-1;//vertex index counter
+	// int k = 0;//used with j
+	int i =offset_index*6*4*3-1;//vertec component counter
+	int j =offset_index*6*4-1;//vertex index counter
+	int k = 0;//used with j
 	//top vertices + normals, two triangles: p3-p123-p13, p3-p23-p123
 	V[++i] = p3[0]; N[i] = normal3[0];
 	V[++i] = p3[1]; N[i] = normal3[1];
@@ -3660,7 +3663,7 @@ parallelepiped( float abc[][3], float tr[3],
 	V[++i] = p2[0]; N[i] = normal3[0];
 	V[++i] = p2[1]; N[i] = normal3[1];
 	V[++i] = p2[2]; N[i] = normal3[2];
-	//top indices p0-p1-p12:
+	//bottom indices p0-p1-p12:
 	k = 1;
 	I[++j] = k * 4 + 0; //p0
 	I[++j] = k * 4 + 1; //p1
@@ -3686,7 +3689,7 @@ parallelepiped( float abc[][3], float tr[3],
 	V[++i] = p1[0]; N[i] = normal2[0];
 	V[++i] = p1[1]; N[i] = normal2[1];
 	V[++i] = p1[2]; N[i] = normal2[2];
-	//top indices p0-p3-p13:
+	//front indices p0-p3-p13:
 	k = 2;
 	I[++j] = k * 4 + 0; //p0
 	I[++j] = k * 4 + 1; //p3
@@ -3712,7 +3715,7 @@ parallelepiped( float abc[][3], float tr[3],
 	V[++i] = p23[0]; N[i] = normal2[0];
 	V[++i] = p23[1]; N[i] = normal2[1];
 	V[++i] = p23[2]; N[i] = normal2[2];
-	//top indices p2-p12-p123:
+	//back indices p2-p12-p123:
 	k = 3;
 	I[++j] = k * 4 + 0; //p2
 	I[++j] = k * 4 + 1; //p12
@@ -3738,7 +3741,7 @@ parallelepiped( float abc[][3], float tr[3],
 	V[++i] = p12[0]; N[i] = normal1[0];
 	V[++i] = p12[1]; N[i] = normal1[1];
 	V[++i] = p12[2]; N[i] = normal1[2];
-	//top indices p1-p13-p123:
+	//righ indices p1-p13-p123:
 	k = 4;
 	I[++j] = k * 4 + 0; //p1
 	I[++j] = k * 4 + 1; //p13
@@ -3764,7 +3767,7 @@ parallelepiped( float abc[][3], float tr[3],
 	V[++i] = p3[0]; N[i] = normal1[0];
 	V[++i] = p3[1]; N[i] = normal1[1];
 	V[++i] = p3[2]; N[i] = normal1[2];
-	//top indices p0-p2-p23:
+	//left indices p0-p2-p23:
 	k = 5;
 	I[++j] = k * 4 + 0; //p0
 	I[++j] = k * 4 + 1; //p2
@@ -3778,13 +3781,18 @@ parallelepiped( float abc[][3], float tr[3],
 
 void UpdateVerticesNormalsColors_BOX(float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
 {
+	float d = 1;
 	float 	Tr[3] = {	-(box[0][0]+box[1][0]+box[2][0])/2.f,
 						-(box[0][1]+box[1][1]+box[2][1])/2.f,
 						-(box[0][2]+box[1][2]+box[2][2])/2.f };
-	float 	Vtemp[6*4*3];
-	float 	Ntemp[6*4*3];
-	int 	Itemp[6*4];
+	float tr[3] = {0., 0., 0.};
+	float length_a = uABC[0] * sqrt(abc[0][0]*abc[0][0] + abc[0][1]*abc[0][1] + abc[0][2]*abc[0][2]);
+	float length_b = uABC[1] * sqrt(abc[1][0]*abc[1][0] + abc[1][1]*abc[1][1] + abc[1][2]*abc[1][2]);
+	float length_c = uABC[2] * sqrt(abc[2][0]*abc[2][0] + abc[2][1]*abc[2][1] + abc[2][2]*abc[2][2]);
 
+	parallelepiped( abc, tr, length_a, d, d, 0, vertices, normals, indices);//(0,0,0)-->(1,0,0)
+	parallelepiped( abc, tr, d, length_b, d, 1, vertices, normals, indices);//(0,0,0)-->(0,1,0)
+	parallelepiped( abc, tr, d, d, length_c, 2, vertices, normals, indices);//(0,0,0)-->(0,0,1)
 	/*
 	// create the box:
 	BoxList = glGenLists( 1 );
