@@ -374,122 +374,6 @@ void GetBox(float abc[][3], int uABC[3], float box[3][3])
 	box[2][2] = (uABC[2])*abc[2][2];
 }
 
-void
-Parallelepiped( float abc[][3], float tr[3], float scale1, float scale2, float scale3)
-{
-	float p0[3]={0,0,0};
-	float p1[3]={abc[0][0],abc[0][1],abc[0][2]};
-	(void)Unitf(p1,p1);
-	p1[0]*=scale1;p1[1]*=scale1;p1[2]*=scale1;
-	float p2[3]={abc[1][0],abc[1][1],abc[1][2]};
-	(void)Unitf(p2,p2 );
-	p2[0]*=scale2;p2[1]*=scale2;p2[2]*=scale2;
-	float p3[3]={abc[2][0],abc[2][1],abc[2][2]};
-	(void)Unitf(p3,p3);
-	p3[0]*=scale3;p3[1]*=scale3;p3[2]*=scale3;
-	float p12[3]={p1[0]+p2[0],p1[1]+p2[1],p1[2]+p2[2]};
-	float p13[3]={p1[0]+p3[0],p1[1]+p3[1],p1[2]+p3[2]};
-	float p23[3]={p2[0]+p3[0],p2[1]+p3[1],p2[2]+p3[2]};
-	float p123[3]={p1[0]+p23[0],p1[1]+p23[1],p1[2]+p23[2]};
-	float normal1[3];
-	float normal2[3];
-	float normal3[3];
-	Enorm( p0, p2, p3, normal1);
-	Enorm( p0, p1, p3, normal2);
-	Enorm( p0, p1, p2, normal3);
-	p0[0]+=tr[0]; p0[1]+=tr[1]; p0[2]+=tr[2];
-	p1[0]+=tr[0]; p1[1]+=tr[1]; p1[2]+=tr[2];
-	p2[0]+=tr[0]; p2[1]+=tr[1]; p2[2]+=tr[2];
-	p3[0]+=tr[0]; p3[1]+=tr[1]; p3[2]+=tr[2];
-	p12[0]+=tr[0];p12[1]+=tr[1];p12[2]+=tr[2];
-	p13[0]+=tr[0];p13[1]+=tr[1];p13[2]+=tr[2];
-	p23[0]+=tr[0];p23[1]+=tr[1];p23[2]+=tr[2];
-	p123[0]+=tr[0];p123[1]+=tr[1];p123[2]+=tr[2];
-			glNormal3fv(normal3);
-			//top 
-				glVertex3fv( p3);  
-				glVertex3fv( p123); 
-				glVertex3fv( p13); 
-				glVertex3fv( p3);  
-				glVertex3fv( p23); 
-				glVertex3fv( p123);
-			//bottom
-				glVertex3fv( p0);  
-				glVertex3fv( p1); 
-				glVertex3fv( p12); 
-				glVertex3fv( p0);  
-				glVertex3fv( p12); 
-				glVertex3fv( p2);	
-			//front
-			glNormal3fv(normal2);
-				glVertex3fv( p0);  
-				glVertex3fv( p3); 
-				glVertex3fv( p13); 
-				glVertex3fv( p0);  
-				glVertex3fv( p13); 
-				glVertex3fv( p1);
-			//back
-				glVertex3fv( p2);  
-				glVertex3fv( p12); 
-				glVertex3fv( p123); 
-				glVertex3fv( p2);  
-				glVertex3fv( p123); 
-				glVertex3fv( p23);	
-			//righ
-			glNormal3fv(normal1);
-				glVertex3fv( p1);  
-				glVertex3fv( p13); 
-				glVertex3fv( p123); 
-				glVertex3fv( p1);  
-				glVertex3fv( p123); 
-				glVertex3fv( p12);
-			//left
-				glVertex3fv( p0);  
-				glVertex3fv( p2); 
-				glVertex3fv( p23); 
-				glVertex3fv( p0);  
-				glVertex3fv( p23); 
-				glVertex3fv( p3);	
-}
-
-void
-InitLists(float abc[][3], int uABC[3])
-{
-	float d=0.16f;
-	float Tr[3] = {	
-					-(abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2])/2.f,
-					-(abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2])/2.f,
-					-(abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2])/2.f
-				  };
-	Tr[0]-= d/2;
-	Tr[1]-= d/2;
-	Tr[2]-= d/2;
-	float tr[3] = {0., 0., 0.};
-
-	// create the axes:
-	float xyz[][3]={ {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0} };
-	tr[0] = -d/2;
-	tr[1] = -d/2;
-	tr[2] = -d/2;
-	AxesList = glGenLists( 1 );
-	glNewList( AxesList, GL_COMPILE );
-		glBegin( GL_TRIANGLES );
-			glColor3f(1,0,0);
-			Parallelepiped( xyz, tr, 2, d, d);//(0,0,0)-->(1,0,0)
-			glColor3f(0,1,0);
-			Parallelepiped( xyz, tr, d, 2, d);//(0,0,0)-->(0,1,0)
-			glColor3f(0,0,1);
-			Parallelepiped( xyz, tr, d, d, 2);//(0,0,0)-->(0,0,1)
-			tr[0]+= -d/10;
-			tr[1]+= -d/10;
-			tr[2]+= -d/10;
-			glColor3f(0.2,0.2,0.2);		
-			Parallelepiped( xyz, tr, d+d/5, d+d/5, d+d/5);//(0,0,0)-->(1,0,0)
-		glEnd();
-	glEndList( );
-}
-
-
 void Display (void)
 {
 	GLdouble Hight;
@@ -582,8 +466,6 @@ void setupOpenGL ()
 		CameraPosition[i][6]=PerspSet[0];
 	}
 
-    // initialize element of the drawing scene which remain unchanged e.g. coordinate basis, domain boundary etc.
-	InitLists(abc, uABC);
 	InitRGB(RHue, GHue, BHue, HueMapRGB);
 	// Set the GLUT callback functions
 	glutDisplayFunc( Display );// DisplayFunc -- redraws the OpenGl main window
@@ -1059,7 +941,6 @@ void TW_CALL CB_GetThetaMin(void *value, void *clientData)
     *(float *)value = theta_min; 
 }
 
-
 void TW_CALL CB_SetThetaMin(const void *value, void *clientData )
 {
 	(void)clientData; // unused
@@ -1070,41 +951,6 @@ void TW_CALL CB_SetThetaMin(const void *value, void *clientData )
         ChangeVectorMode(0);
 	}
 }
-
-// void TW_CALL CB_SetAlayerMin(const void *value, void *clientData )
-// {
-// 	(void)clientData; // unused
-// 	int test= *( int *)value; // copy value to A_layer_min
-// 	if (test>=1 && test<=A_layer_max){
-//         A_layer_min = test; // copy value to A_layer_min
-//         ChangeVectorMode(0);
-// 	}
-// }
-
-// void TW_CALL CB_GetAlayerMin(void *value, void *clientData)
-// {
-//     (void)clientData; // unused
-//     *(int *)value = A_layer_min; // just copy A_layer_min to value
-// }
-
-
-// void TW_CALL CB_SetAlayerMax(const void *value, void *clientData )
-// {
-// 	(void)clientData; // unused
-// 	int test= *( int *)value; // copy value to A_layer_min
-// 	if (test<=uABC[0] && test>=A_layer_min){
-//         A_layer_max = test; // copy value to A_layer_min
-//         ChangeVectorMode(0);
-// 	}
-// }
-
-
-// void TW_CALL CB_GetAlayerMax(void *value, void *clientData)
-// {
-//     (void)clientData; // unused
-//     *(int *)value = A_layer_max; // just copy A_layer_min to value
-// }
-
 
 void TW_CALL CB_ResetIterations( void *clientData )
 {
@@ -3347,9 +3193,8 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 }
 
 void
-parallelepiped( float abc[][3], float tr[3], 
-	float scale1, float scale2, float scale3, 
-	int offset_index, float* V, float* N, float* C, GLuint* I)
+parallelepiped( float abc[][3], float tr[3], float scale1, float scale2, float scale3, 
+	float color[3], int offset_index, float* V, float* N, float* C, GLuint* I)
 {
 /*
   p23 o-----------o p123
@@ -3396,21 +3241,21 @@ parallelepiped( float abc[][3], float tr[3],
 	int k = 0;//used with j
 
 	//top vertices + normals, two triangles: p3-p123-p13, p3-p23-p123
-	V[++i] = p3[0]; N[i] = normal3[0]; C[i]=0.6;
-	V[++i] = p3[1]; N[i] = normal3[1]; C[i]=0.6;
-	V[++i] = p3[2]; N[i] = normal3[2]; C[i]=0.6;
+	V[++i] = p3[0]; N[i] = normal3[0]; C[i]=color[0];
+	V[++i] = p3[1]; N[i] = normal3[1]; C[i]=color[1];
+	V[++i] = p3[2]; N[i] = normal3[2]; C[i]=color[2];
 
-	V[++i] = p123[0]; N[i] = normal3[0]; C[i]=0.6;
-	V[++i] = p123[1]; N[i] = normal3[1]; C[i]=0.6;
-	V[++i] = p123[2]; N[i] = normal3[2]; C[i]=0.6;
+	V[++i] = p123[0]; N[i] = normal3[0]; C[i]=color[0];
+	V[++i] = p123[1]; N[i] = normal3[1]; C[i]=color[1];
+	V[++i] = p123[2]; N[i] = normal3[2]; C[i]=color[2];
 
-	V[++i] = p13[0]; N[i] = normal3[0]; C[i]=0.6;
-	V[++i] = p13[1]; N[i] = normal3[1]; C[i]=0.6;
-	V[++i] = p13[2]; N[i] = normal3[2]; C[i]=0.6;
+	V[++i] = p13[0]; N[i] = normal3[0]; C[i]=color[0];
+	V[++i] = p13[1]; N[i] = normal3[1]; C[i]=color[1];
+	V[++i] = p13[2]; N[i] = normal3[2]; C[i]=color[2];
 
-	V[++i] = p23[0]; N[i] = normal3[0]; C[i]=0.6;
-	V[++i] = p23[1]; N[i] = normal3[1]; C[i]=0.6;
-	V[++i] = p23[2]; N[i] = normal3[2]; C[i]=0.6;
+	V[++i] = p23[0]; N[i] = normal3[0]; C[i]=color[0];
+	V[++i] = p23[1]; N[i] = normal3[1]; C[i]=color[1];
+	V[++i] = p23[2]; N[i] = normal3[2]; C[i]=color[2];
 	//top indices p3-p123-p13:
 	k = 0;
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p3
@@ -3422,21 +3267,21 @@ parallelepiped( float abc[][3], float tr[3],
 	I[++j] = offset_index*6*4 + k * 4 + 1; //p123
 
 	//bottom vertices + normals, two triangles: p0-p1-p12, p0-p12-p2
-	V[++i] = p0[0]; N[i] = normal3[0]; C[i]=0.6;
-	V[++i] = p0[1]; N[i] = normal3[1]; C[i]=0.6;
-	V[++i] = p0[2]; N[i] = normal3[2]; C[i]=0.6;
+	V[++i] = p0[0]; N[i] = normal3[0]; C[i]=color[0];
+	V[++i] = p0[1]; N[i] = normal3[1]; C[i]=color[1];
+	V[++i] = p0[2]; N[i] = normal3[2]; C[i]=color[2];
 
-	V[++i] = p12[0]; N[i] = normal3[0]; C[i]=0.6;
-	V[++i] = p12[1]; N[i] = normal3[1]; C[i]=0.6;
-	V[++i] = p12[2]; N[i] = normal3[2]; C[i]=0.6;
+	V[++i] = p12[0]; N[i] = normal3[0]; C[i]=color[0];
+	V[++i] = p12[1]; N[i] = normal3[1]; C[i]=color[1];
+	V[++i] = p12[2]; N[i] = normal3[2]; C[i]=color[2];
 
-	V[++i] = p1[0]; N[i] = normal3[0]; C[i]=0.6;
-	V[++i] = p1[1]; N[i] = normal3[1]; C[i]=0.6;
-	V[++i] = p1[2]; N[i] = normal3[2]; C[i]=0.6;
+	V[++i] = p1[0]; N[i] = normal3[0]; C[i]=color[0];
+	V[++i] = p1[1]; N[i] = normal3[1]; C[i]=color[1];
+	V[++i] = p1[2]; N[i] = normal3[2]; C[i]=color[2];
 
-	V[++i] = p2[0]; N[i] = normal3[0]; C[i]=0.6;
-	V[++i] = p2[1]; N[i] = normal3[1]; C[i]=0.6;
-	V[++i] = p2[2]; N[i] = normal3[2]; C[i]=0.6;
+	V[++i] = p2[0]; N[i] = normal3[0]; C[i]=color[0];
+	V[++i] = p2[1]; N[i] = normal3[1]; C[i]=color[1];
+	V[++i] = p2[2]; N[i] = normal3[2]; C[i]=color[2];
 	//bottom indices p0-p1-p12:
 	k = 1;
 	I[++j] = offset_index*6*4 + k * 4 + 2; //p0
@@ -3448,21 +3293,21 @@ parallelepiped( float abc[][3], float tr[3],
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p2
 
 	//front vertices + normals, two triangles: p0-p3-p13, p0-p13-p1
-	V[++i] = p0[0]; N[i] = normal2[0]; C[i]=0.6;
-	V[++i] = p0[1]; N[i] = normal2[1]; C[i]=0.6;
-	V[++i] = p0[2]; N[i] = normal2[2]; C[i]=0.6;
+	V[++i] = p0[0]; N[i] = normal2[0]; C[i]=color[0];
+	V[++i] = p0[1]; N[i] = normal2[1]; C[i]=color[1];
+	V[++i] = p0[2]; N[i] = normal2[2]; C[i]=color[2];
  
-	V[++i] = p3[0]; N[i] = normal2[0]; C[i]=0.6;
-	V[++i] = p3[1]; N[i] = normal2[1]; C[i]=0.6;
-	V[++i] = p3[2]; N[i] = normal2[2]; C[i]=0.6;
+	V[++i] = p3[0]; N[i] = normal2[0]; C[i]=color[0];
+	V[++i] = p3[1]; N[i] = normal2[1]; C[i]=color[1];
+	V[++i] = p3[2]; N[i] = normal2[2]; C[i]=color[2];
 
-	V[++i] = p13[0]; N[i] = normal2[0]; C[i]=0.6;
-	V[++i] = p13[1]; N[i] = normal2[1]; C[i]=0.6;
-	V[++i] = p13[2]; N[i] = normal2[2]; C[i]=0.6;
+	V[++i] = p13[0]; N[i] = normal2[0]; C[i]=color[0];
+	V[++i] = p13[1]; N[i] = normal2[1]; C[i]=color[1];
+	V[++i] = p13[2]; N[i] = normal2[2]; C[i]=color[2];
 
-	V[++i] = p1[0]; N[i] = normal2[0]; C[i]=0.6;
-	V[++i] = p1[1]; N[i] = normal2[1]; C[i]=0.6;
-	V[++i] = p1[2]; N[i] = normal2[2]; C[i]=0.6;
+	V[++i] = p1[0]; N[i] = normal2[0]; C[i]=color[0];
+	V[++i] = p1[1]; N[i] = normal2[1]; C[i]=color[1];
+	V[++i] = p1[2]; N[i] = normal2[2]; C[i]=color[2];
 	//front indices p0-p3-p13:
 	k = 2;
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p0
@@ -3474,21 +3319,21 @@ parallelepiped( float abc[][3], float tr[3],
 	I[++j] = offset_index*6*4 + k * 4 + 3; //p1
 
 	//back vertices + normals, two triangles: p2-p12-p123, p2-p123-p23
-	V[++i] = p2[0]; N[i] = normal2[0]; C[i]=0.6;
-	V[++i] = p2[1]; N[i] = normal2[1]; C[i]=0.6;
-	V[++i] = p2[2]; N[i] = normal2[2]; C[i]=0.6;
+	V[++i] = p2[0]; N[i] = normal2[0]; C[i]=color[0];
+	V[++i] = p2[1]; N[i] = normal2[1]; C[i]=color[1];
+	V[++i] = p2[2]; N[i] = normal2[2]; C[i]=color[2];
 
-	V[++i] = p12[0]; N[i] = normal2[0]; C[i]=0.6;
-	V[++i] = p12[1]; N[i] = normal2[1]; C[i]=0.6;
-	V[++i] = p12[2]; N[i] = normal2[2]; C[i]=0.6;
+	V[++i] = p12[0]; N[i] = normal2[0]; C[i]=color[0];
+	V[++i] = p12[1]; N[i] = normal2[1]; C[i]=color[1];
+	V[++i] = p12[2]; N[i] = normal2[2]; C[i]=color[2];
 
-	V[++i] = p123[0]; N[i] = normal2[0]; C[i]=0.6;
-	V[++i] = p123[1]; N[i] = normal2[1]; C[i]=0.6;
-	V[++i] = p123[2]; N[i] = normal2[2]; C[i]=0.6;
+	V[++i] = p123[0]; N[i] = normal2[0]; C[i]=color[0];
+	V[++i] = p123[1]; N[i] = normal2[1]; C[i]=color[1];
+	V[++i] = p123[2]; N[i] = normal2[2]; C[i]=color[2];
 
-	V[++i] = p23[0]; N[i] = normal2[0]; C[i]=0.6;
-	V[++i] = p23[1]; N[i] = normal2[1]; C[i]=0.6;
-	V[++i] = p23[2]; N[i] = normal2[2]; C[i]=0.6;
+	V[++i] = p23[0]; N[i] = normal2[0]; C[i]=color[0];
+	V[++i] = p23[1]; N[i] = normal2[1]; C[i]=color[1];
+	V[++i] = p23[2]; N[i] = normal2[2]; C[i]=color[2];
 	//back indices p2-p12-p123:
 	k = 3;
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p2
@@ -3500,21 +3345,21 @@ parallelepiped( float abc[][3], float tr[3],
 	I[++j] = offset_index*6*4 + k * 4 + 3; //p23
  
 	//righ vertices + normals, two triangles: p1-p13-p123, p1-p123-p12
-	V[++i] = p1[0]; N[i] = normal1[0]; C[i]=0.6;
-	V[++i] = p1[1]; N[i] = normal1[1]; C[i]=0.6;
-	V[++i] = p1[2]; N[i] = normal1[2]; C[i]=0.6;
+	V[++i] = p1[0]; N[i] = normal1[0]; C[i]=color[0];
+	V[++i] = p1[1]; N[i] = normal1[1]; C[i]=color[1];
+	V[++i] = p1[2]; N[i] = normal1[2]; C[i]=color[2];
 
-	V[++i] = p13[0]; N[i] = normal1[0]; C[i]=0.6;
-	V[++i] = p13[1]; N[i] = normal1[1]; C[i]=0.6;
-	V[++i] = p13[2]; N[i] = normal1[2]; C[i]=0.6;
+	V[++i] = p13[0]; N[i] = normal1[0]; C[i]=color[0];
+	V[++i] = p13[1]; N[i] = normal1[1]; C[i]=color[1];
+	V[++i] = p13[2]; N[i] = normal1[2]; C[i]=color[2];
 
-	V[++i] = p123[0]; N[i] = normal1[0]; C[i]=0.6;
-	V[++i] = p123[1]; N[i] = normal1[1]; C[i]=0.6;
-	V[++i] = p123[2]; N[i] = normal1[2]; C[i]=0.6;
+	V[++i] = p123[0]; N[i] = normal1[0]; C[i]=color[0];
+	V[++i] = p123[1]; N[i] = normal1[1]; C[i]=color[1];
+	V[++i] = p123[2]; N[i] = normal1[2]; C[i]=color[2];
 
-	V[++i] = p12[0]; N[i] = normal1[0]; C[i]=0.6;
-	V[++i] = p12[1]; N[i] = normal1[1]; C[i]=0.6;
-	V[++i] = p12[2]; N[i] = normal1[2]; C[i]=0.6;
+	V[++i] = p12[0]; N[i] = normal1[0]; C[i]=color[0];
+	V[++i] = p12[1]; N[i] = normal1[1]; C[i]=color[1];
+	V[++i] = p12[2]; N[i] = normal1[2]; C[i]=color[2];
 	//righ indices p1-p13-p123:
 	k = 4;
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p1
@@ -3526,21 +3371,21 @@ parallelepiped( float abc[][3], float tr[3],
 	I[++j] = offset_index*6*4 + k * 4 + 3; //p12	
  
 	//left vertices + normals, two triangles: p0-p2-p23, p0-p23-p3
-	V[++i] = p0[0]; N[i] = normal1[0]; C[i]=0.6;
-	V[++i] = p0[1]; N[i] = normal1[1]; C[i]=0.6;
-	V[++i] = p0[2]; N[i] = normal1[2]; C[i]=0.6;
+	V[++i] = p0[0]; N[i] = normal1[0]; C[i]=color[0];
+	V[++i] = p0[1]; N[i] = normal1[1]; C[i]=color[1];
+	V[++i] = p0[2]; N[i] = normal1[2]; C[i]=color[2];
 
-	V[++i] = p2[0]; N[i] = normal1[0]; C[i]=0.6;
-	V[++i] = p2[1]; N[i] = normal1[1]; C[i]=0.6;
-	V[++i] = p2[2]; N[i] = normal1[2]; C[i]=0.6;
+	V[++i] = p2[0]; N[i] = normal1[0]; C[i]=color[0];
+	V[++i] = p2[1]; N[i] = normal1[1]; C[i]=color[1];
+	V[++i] = p2[2]; N[i] = normal1[2]; C[i]=color[2];
 
-	V[++i] = p23[0]; N[i] = normal1[0]; C[i]=0.6;
-	V[++i] = p23[1]; N[i] = normal1[1]; C[i]=0.6;
-	V[++i] = p23[2]; N[i] = normal1[2]; C[i]=0.6;
+	V[++i] = p23[0]; N[i] = normal1[0]; C[i]=color[0];
+	V[++i] = p23[1]; N[i] = normal1[1]; C[i]=color[1];
+	V[++i] = p23[2]; N[i] = normal1[2]; C[i]=color[2];
 
-	V[++i] = p3[0]; N[i] = normal1[0]; C[i]=0.6;
-	V[++i] = p3[1]; N[i] = normal1[1]; C[i]=0.6;
-	V[++i] = p3[2]; N[i] = normal1[2]; C[i]=0.6;
+	V[++i] = p3[0]; N[i] = normal1[0]; C[i]=color[0];
+	V[++i] = p3[1]; N[i] = normal1[1]; C[i]=color[1];
+	V[++i] = p3[2]; N[i] = normal1[2]; C[i]=color[2];
 	//left indices p0-p2-p23:
 	k = 5;
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p0
@@ -3567,37 +3412,38 @@ void UpdateVerticesNormalsColors_BOX(float * vertices, float * normals, float * 
 	float length_a = uABC[0] * sqrt(abc[0][0]*abc[0][0] + abc[0][1]*abc[0][1] + abc[0][2]*abc[0][2])+d;
 	float length_b = uABC[1] * sqrt(abc[1][0]*abc[1][0] + abc[1][1]*abc[1][1] + abc[1][2]*abc[1][2])+d;
 	float length_c = uABC[2] * sqrt(abc[2][0]*abc[2][0] + abc[2][1]*abc[2][1] + abc[2][2]*abc[2][2])+d;
+	float color[3]={0.7,0.7,0.7};
 
-	parallelepiped( abc, tr, length_a, d, d, 0, vertices, normals, colors, indices );//(0,0,0)-->(1,0,0)
-	parallelepiped( abc, tr, d, length_b, d, 1, vertices, normals, colors, indices );//(0,0,0)-->(0,1,0)
-	parallelepiped( abc, tr, d, d, length_c, 2, vertices, normals, colors, indices );//(0,0,0)-->(0,0,1)
+	parallelepiped( abc, tr, length_a, d, d, color, 0, vertices, normals, colors, indices );//(0,0,0)-->(1,0,0)
+	parallelepiped( abc, tr, d, length_b, d, color, 1, vertices, normals, colors, indices );//(0,0,0)-->(0,1,0)
+	parallelepiped( abc, tr, d, d, length_c, color, 2, vertices, normals, colors, indices );//(0,0,0)-->(0,0,1)
 
 	tr[0] = Tr[0]+abc[1][0]*uABC[1]; tr[1] = Tr[1]+abc[1][1]*uABC[1]; tr[2] = Tr[2]+abc[1][2]*uABC[1];
-	parallelepiped( abc, tr, length_a, d, d, 3, vertices, normals, colors, indices );//(0,1,0)-->(1,1,0)
+	parallelepiped( abc, tr, length_a, d, d, color, 3, vertices, normals, colors, indices );//(0,1,0)-->(1,1,0)
 
 	tr[0]=Tr[0]+abc[2][0]*uABC[2]; tr[1]=Tr[1]+abc[2][1]*uABC[2]; tr[2]=Tr[2]+abc[2][2]*uABC[2];
-	parallelepiped( abc, tr, length_a, d, d, 4, vertices, normals, colors, indices );//(0,0,1)-->(0,1,1)
+	parallelepiped( abc, tr, length_a, d, d, color, 4, vertices, normals, colors, indices );//(0,0,1)-->(0,1,1)
 
 	tr[0]+=abc[1][0]*uABC[1]; tr[1]+=abc[1][1]*uABC[1]; tr[2]+=abc[1][2]*uABC[1];
-	parallelepiped( abc, tr, length_a, d, d, 5, vertices, normals, colors, indices );//(1,0,1)-->(1,1,1)
+	parallelepiped( abc, tr, length_a, d, d, color, 5, vertices, normals, colors, indices );//(1,0,1)-->(1,1,1)
 
 	tr[0]=Tr[0]+abc[0][0]*uABC[0]; tr[1]=Tr[1]+abc[0][1]*uABC[0]; tr[2]=Tr[2]+abc[0][2]*uABC[0];
-	parallelepiped( abc, tr, d, length_b, d, 6, vertices, normals, colors, indices );//(1,0,0)-->(1,1,0)
+	parallelepiped( abc, tr, d, length_b, d, color, 6, vertices, normals, colors, indices );//(1,0,0)-->(1,1,0)
 
 	tr[0]=Tr[0]+abc[2][0]*uABC[2]; tr[1]=Tr[1]+abc[2][1]*uABC[2]; tr[2]=Tr[2]+abc[2][2]*uABC[2];
-	parallelepiped( abc, tr, d, length_b, d, 7, vertices, normals, colors, indices );//(0,0,1)-->(0,1,1)
+	parallelepiped( abc, tr, d, length_b, d, color, 7, vertices, normals, colors, indices );//(0,0,1)-->(0,1,1)
 
 	tr[0]+=abc[0][0]*uABC[0]; tr[1]+=abc[0][1]*uABC[0]; tr[2]+=abc[0][2]*uABC[0];
-	parallelepiped( abc, tr, d, length_b, d, 8, vertices, normals, colors, indices );//(0,1,1)-->(1,1,1)
+	parallelepiped( abc, tr, d, length_b, d, color, 8, vertices, normals, colors, indices );//(0,1,1)-->(1,1,1)
 
 	tr[0]=Tr[0]+abc[0][0]*uABC[0]; tr[1]=Tr[1]+abc[0][1]*uABC[0]; tr[2]=Tr[2]+abc[0][2]*uABC[0];
-	parallelepiped( abc, tr, d, d, length_c, 9, vertices, normals, colors, indices );//(1,0,0)-->(1,0,1)
+	parallelepiped( abc, tr, d, d, length_c, color, 9, vertices, normals, colors, indices );//(1,0,0)-->(1,0,1)
 
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]; tr[1]=Tr[1]+abc[1][1]*uABC[1]; tr[2]=Tr[2]+abc[1][2]*uABC[1];
-	parallelepiped( abc, tr, d, d, length_c, 10, vertices, normals, colors, indices );//(0,1,0)-->(0,1,1)
+	parallelepiped( abc, tr, d, d, length_c, color, 10, vertices, normals, colors, indices );//(0,1,0)-->(0,1,1)
 
 	tr[0]+=abc[0][0]*uABC[0]; tr[1]+=abc[0][1]*uABC[0]; tr[2]+=abc[0][2]*uABC[0];
-	parallelepiped( abc, tr, d, d, length_c, 11, vertices, normals, colors, indices );//(1,1,0)-->(1,1,1)
+	parallelepiped( abc, tr, d, d, length_c, color, 11, vertices, normals, colors, indices );//(1,1,0)-->(1,1,1)
 }
 
 void UpdateVerticesNormalsColors_BASIS(float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
@@ -3609,12 +3455,17 @@ void UpdateVerticesNormalsColors_BASIS(float * vertices, float * normals, float 
 				{	0.0f, 0.0f, 1.0f }};// c
 	float tr[3] = {-d/2, -d/2, -d/2};
 	float length = 20*d;
-
-	parallelepiped( cube, tr, length, d, d, 0, vertices, normals, colors, indices );//X
-	parallelepiped( cube, tr, d, length, d, 1, vertices, normals, colors, indices );//Y
-	parallelepiped( cube, tr, d, d, length, 2, vertices, normals, colors, indices );//Z
+	float colorR[3]={1, 0, 0};
+	float colorG[3]={0, 1, 0};
+	float colorB[3]={0, 0, 1};
+	float color0[3]={0.1,0.1,0.1};
+	
+	parallelepiped( cube, tr, length, d, d, colorR, 0, vertices, normals, colors, indices );//X
+	parallelepiped( cube, tr, d, length, d, colorG, 1, vertices, normals, colors, indices );//Y
+	parallelepiped( cube, tr, d, d, length, colorB, 2, vertices, normals, colors, indices );//Z
 	d *= 1.5; tr[0]=-d/2; tr[1]=-d/2; tr[2]=-d/2;
-	parallelepiped( cube, tr, d, d, d, 3, vertices, normals, colors, indices );//O
+
+	parallelepiped( cube, tr, d, d, d, color0, 3, vertices, normals, colors, indices );//O
 
 }
 
@@ -3632,6 +3483,7 @@ void UpdateVerticesNormalsColors_PBC(int K0, float * vertices, float * normals, 
 	if (K0==1) length_b = 5*d;
 	if (K0==2) length_c = 5*d;
 	float tr[3];
+	float color[3]={0.7,0.7,0.7};
 	int K1=(K0+1)%3;
 	int K2=(K0+2)%3;
 
@@ -3639,81 +3491,81 @@ void UpdateVerticesNormalsColors_PBC(int K0, float * vertices, float * normals, 
 	tr[1] = Tr[1]+abc[K0][1]*(uABC[K0]+6*d);
 	tr[2] = Tr[2]+abc[K0][2]*(uABC[K0]+6*d);
 
-	parallelepiped( abc, tr, length_a, length_b, length_c, 0, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 0, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K0][0]*(uABC[K0]+16*d); 
 	tr[1]=Tr[1]+abc[K0][1]*(uABC[K0]+16*d);
 	tr[2]=Tr[2]+abc[K0][2]*(uABC[K0]+16*d);
-    parallelepiped( abc, tr, length_a, length_b, length_c, 1, vertices, normals, colors, indices );
+    parallelepiped( abc, tr, length_a, length_b, length_c, color, 1, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K0][0]*(-10*d); 
 	tr[1]=Tr[1]+abc[K0][1]*(-10*d);
 	tr[2]=Tr[2]+abc[K0][2]*(-10*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 2, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 2, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K0][0]*(-20*d); 
 	tr[1]=Tr[1]+abc[K0][1]*(-20*d);
 	tr[2]=Tr[2]+abc[K0][2]*(-20*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 3, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 3, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K0][0]*(uABC[K0]+6*d);
 	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K0][1]*(uABC[K0]+6*d);
 	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K0][2]*(uABC[K0]+6*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 4, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 4, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K0][0]*(uABC[K0]+16*d);
 	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K0][1]*(uABC[K0]+16*d);
 	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K0][2]*(uABC[K0]+16*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 5, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 5, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K0][0]*(-10*d);
 	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K0][1]*(-10*d);
 	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K0][2]*(-10*d);	
-	parallelepiped( abc, tr, length_a, length_b, length_c, 6, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 6, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K0][0]*(-20*d);
 	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K0][1]*(-20*d);
 	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K0][2]*(-20*d);	
-	parallelepiped( abc, tr, length_a, length_b, length_c, 7, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 7, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K2][0]*uABC[K2]+abc[K0][0]*(uABC[K0]+6*d);
 	tr[1]=Tr[1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(uABC[K0]+6*d);
 	tr[2]=Tr[2]+abc[K2][2]*uABC[K2]+abc[K0][2]*(uABC[K0]+6*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 8, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 8, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K2][0]*uABC[K2]+abc[K0][0]*(uABC[K0]+16*d);
 	tr[1]=Tr[1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(uABC[K0]+16*d);
 	tr[2]=Tr[2]+abc[K2][2]*uABC[K2]+abc[K0][2]*(uABC[K0]+16*d);
 
-	parallelepiped( abc, tr, length_a, length_b, length_c, 9, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 9, vertices, normals, colors, indices );
 	tr[0]=Tr[0]+abc[K2][0]*uABC[K2]+abc[K0][0]*(-10*d);
 	tr[1]=Tr[1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(-10*d);
 	tr[2]=Tr[2]+abc[K2][2]*uABC[K2]+abc[K0][2]*(-10*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 10, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 10, vertices, normals, colors, indices );
 	tr[0]=Tr[0]+abc[K2][0]*uABC[K2]+abc[K0][0]*(-20*d);
 	tr[1]=Tr[1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(-20*d);
 	tr[2]=Tr[2]+abc[K2][2]*uABC[K2]+abc[K0][2]*(-20*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 11, vertices, normals, colors, indices );	
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 11, vertices, normals, colors, indices );	
 
 	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K2][0]*uABC[K2]+abc[K0][0]*(uABC[K0]+6*d);
 	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(uABC[K0]+6*d);
 	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K2][2]*uABC[K2]+abc[K0][2]*(uABC[K0]+6*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 12, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 12, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K2][0]*uABC[K2]+abc[K0][0]*(uABC[K0]+16*d);
 	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(uABC[K0]+16*d);
 	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K2][2]*uABC[K2]+abc[K0][2]*(uABC[K0]+16*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 13, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 13, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K2][0]*uABC[K2]+abc[K0][0]*(-10*d);
 	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(-10*d);
 	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K2][2]*uABC[K2]+abc[K0][2]*(-10*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 14, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 14, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K2][0]*uABC[K2]+abc[K0][0]*(-20*d);
 	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(-20*d);
 	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K2][2]*uABC[K2]+abc[K0][2]*(-20*d);
-	parallelepiped( abc, tr, length_a, length_b, length_c, 15, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, color, 15, vertices, normals, colors, indices );
 }
 
 void UpdateSpinPositions(float abc[][3], int uABC[3], float BD[][3], int NBD, float box[][3], float * Px, float * Py, float * Pz)
