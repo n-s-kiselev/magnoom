@@ -183,6 +183,16 @@ GLfloat*	normals_PBC_A		= NULL; // array of normals for tatal vector field
 GLfloat*	colors_PBC_A		= NULL; // array of colors 
 GLuint*		indices_PBC_A		= NULL; // array of indices for tatal vector field
 
+GLfloat*	vertices_PBC_B	= NULL; // array of vertexes for tatal vector field 
+GLfloat*	normals_PBC_B		= NULL; // array of normals for tatal vector field
+GLfloat*	colors_PBC_B		= NULL; // array of colors 
+GLuint*		indices_PBC_B		= NULL; // array of indices for tatal vector field
+
+GLfloat*	vertices_PBC_C	= NULL; // array of vertexes for tatal vector field 
+GLfloat*	normals_PBC_C		= NULL; // array of normals for tatal vector field
+GLfloat*	colors_PBC_C		= NULL; // array of colors 
+GLuint*		indices_PBC_C		= NULL; // array of indices for tatal vector field
+
 int			arrowFaces	= 6; // number of arrow faces, default number
 int			arrowFaces_H= 30; // number of arrow faces for applied field vector
 
@@ -201,10 +211,10 @@ GLuint		vboIdN_BOX;   // ID of VBO for normal arrays
 GLuint		vboIdC_BOX;   // ID of VBO for color arrays
 GLuint		iboIdI_BOX;   // ID of IBO for index arrays
 
-GLuint		vboIdV_PBC_A;   // ID of VBO for vertex arrays
-GLuint		vboIdN_PBC_A;   // ID of VBO for normal arrays
-GLuint		vboIdC_PBC_A;   // ID of VBO for color arrays
-GLuint		iboIdI_PBC_A;   // ID of IBO for index arrays
+GLuint		vboIdV_PBC_A, vboIdV_PBC_B, vboIdV_PBC_C;   // ID of VBO for vertex arrays
+GLuint		vboIdN_PBC_A, vboIdN_PBC_B, vboIdN_PBC_C;   // ID of VBO for normal arrays
+GLuint		vboIdC_PBC_A, vboIdC_PBC_B, vboIdC_PBC_C;   // ID of VBO for color arrays
+GLuint		iboIdI_PBC_A, iboIdI_PBC_B, iboIdI_PBC_C;   // ID of IBO for index arrays
 
 int			ElNumProto;   // number of triangles per arrow
 int			IdNumProto;   // number of indixes per arrow
@@ -222,9 +232,9 @@ int			ElNum_BOX;
 int			IdNum_BOX;
 int			VCNum_BOX;
 
-int			ElNum_PBC_A;
-int			IdNum_PBC_A;
-int			VCNum_PBC_A;
+int			ElNum_PBC;
+int			IdNum_PBC;
+int			VCNum_PBC;
 
 int			Play=0;
 
@@ -260,6 +270,8 @@ void			drawVBO();
 void			drawVBO_H();
 void			drawVBO_BOX();
 void			drawVBO_PBC_A();
+void			drawVBO_PBC_B();
+void			drawVBO_PBC_C();
 void			idle();
 void			setupTweakBar();
 // return the number of seconds since the start of the program:
@@ -796,10 +808,10 @@ void Display (void)
 	if( BoxOn != 0 ) 
 		{	//glCallList( BoxList);
 			drawVBO_BOX();
-			if(Boundary[0]!=0) drawVBO_PBC_A();
-			if(Boundary[1]!=0) glCallList( BoundaryListB );
-			if(Boundary[2]!=0) glCallList( BoundaryListC );
-		}//else{drawVBO_PBC_A();}
+			if(Boundary[0]!=0) drawVBO_PBC_A();;
+			if(Boundary[1]!=0) drawVBO_PBC_B();
+			if(Boundary[2]!=0) drawVBO_PBC_C();
+		}
 	// possibly draw the axes:
 	if( AxesOn != 0 ) glCallList( AxesList );
     // Draw tweak bars
@@ -2694,16 +2706,29 @@ void ReallocateArrayDrawing_BOX()
 	indices_BOX		= (GLuint *)malloc(IdNum_BOX * sizeof( GLuint ));				
 }
 
-void ReallocateArrayDrawing_PBC_A()
+void ReallocateArrayDrawing_PBC()
 {
-	free(vertices_PBC_A); free(normals_PBC_A); free(colors_PBC_A); free(indices_PBC_A);			
-	ElNum_PBC_A = 6*2*16; // number of triangles 
-	IdNum_PBC_A = 3*ElNum_PBC_A; // number of indixes 
-	VCNum_PBC_A = 6*4*3*16;
-	vertices_PBC_A	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
-	normals_PBC_A 	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
-	colors_PBC_A 	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
-	indices_PBC_A	= (GLuint *)malloc(VCNum_PBC_A * sizeof( GLuint ));				
+	free(vertices_PBC_A); free(normals_PBC_A); free(colors_PBC_A); free(indices_PBC_A);		
+	free(vertices_PBC_B); free(normals_PBC_B); free(colors_PBC_B); free(indices_PBC_B);		
+	free(vertices_PBC_C); free(normals_PBC_C); free(colors_PBC_C); free(indices_PBC_C);			
+	ElNum_PBC = 6*2*16; // number of triangles 
+	IdNum_PBC = 3*ElNum_PBC; // number of indixes 
+	VCNum_PBC = 6*4*3*16;
+	vertices_PBC_A	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+	vertices_PBC_B	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+	vertices_PBC_C	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+
+	normals_PBC_A 	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+	normals_PBC_B 	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+	normals_PBC_C 	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+
+	colors_PBC_A 	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+	colors_PBC_B 	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+	colors_PBC_C 	= (float  *)malloc(VCNum_PBC * sizeof( float  ));
+
+	indices_PBC_A	= (GLuint *)malloc(VCNum_PBC * sizeof( GLuint ));
+	indices_PBC_B	= (GLuint *)malloc(VCNum_PBC * sizeof( GLuint ));
+	indices_PBC_C	= (GLuint *)malloc(VCNum_PBC * sizeof( GLuint ));					
 }
 
 void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int mode, int style)//faces = arrowFaces
@@ -3826,322 +3851,104 @@ void UpdateVerticesNormalsColors_BOX(float * vertices, float * normals, float * 
 
 	tr[0]+=abc[0][0]*uABC[0]; tr[1]+=abc[0][1]*uABC[0]; tr[2]+=abc[0][2]*uABC[0];
 	parallelepiped( abc, tr, d, d, length_c, 11, vertices, normals, colors, indices );//(1,1,0)-->(1,1,1)
-	/*
-
-
-	// create the boundary signal doted lines:
-	BoundaryListA = glGenLists( 1 );
-	glNewList( BoundaryListA, GL_COMPILE );
-		glBegin( GL_TRIANGLES );
-			glColor3f(0.7,0.7,0.7);
-			tr[0]=Tr[0]+abc[0][0]*(uABC[0]+6*d); 
-			tr[1]=Tr[1]+abc[0][1]*(uABC[0]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*(uABC[0]+6*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[0][0]*(uABC[0]+16*d); 
-			tr[1]=Tr[1]+abc[0][1]*(uABC[0]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*(uABC[0]+16*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[0][0]*(-10*d); 
-			tr[1]=Tr[1]+abc[0][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*(-10*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[0][0]*(-20*d); 
-			tr[1]=Tr[1]+abc[0][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*(-20*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(uABC[0]+6*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(uABC[0]+6*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(uABC[0]+6*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(uABC[0]+16*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(uABC[0]+16*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(uABC[0]+16*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(-10*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(-10*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(-10*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(-20*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(-20*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(-20*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-
-			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+6*d);
-			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+6*d);
-			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+6*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+16*d);
-			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+16*d);
-			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+16*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(-10*d);
-			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(-10*d);
-			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(-10*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(-20*d);
-			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(-20*d);
-			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(-20*d);
-			Parallelepiped( abc, tr, 5*d, d, d);		
-
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+6*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+6*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+6*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+16*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+16*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+16*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(-10*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(-10*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(-10*d);
-			Parallelepiped( abc, tr, 5*d, d, d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(-20*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(-20*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(-20*d);
-			Parallelepiped( abc, tr, 5*d, d, d);	
-		glEnd( );//GL_TRIANGLES
-	glEndList( );
-
-	BoundaryListB = glGenLists( 1 );
-	glNewList( BoundaryListB, GL_COMPILE );
-		glBegin( GL_TRIANGLES );
-			glColor3f(0.7,0.7,0.7);
-			tr[0]=Tr[0]+abc[1][0]*(uABC[1]+6*d); 
-			tr[1]=Tr[1]+abc[1][1]*(uABC[1]+6*d);
-			tr[2]=Tr[2]+abc[1][2]*(uABC[1]+6*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[1][0]*(uABC[1]+16*d); 
-			tr[1]=Tr[1]+abc[1][1]*(uABC[1]+16*d);
-			tr[2]=Tr[2]+abc[1][2]*(uABC[1]+16*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[1][0]*(-10*d); 
-			tr[1]=Tr[1]+abc[1][1]*(-10*d);
-			tr[2]=Tr[2]+abc[1][2]*(-10*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[1][0]*(-20*d); 
-			tr[1]=Tr[1]+abc[1][1]*(-20*d);
-			tr[2]=Tr[2]+abc[1][2]*(-20*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*(uABC[1]+6*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*(uABC[1]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*(uABC[1]+6*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*(uABC[1]+16*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*(uABC[1]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*(uABC[1]+16*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*(-10*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*(-10*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*(-20*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*(-20*d);
-			Parallelepiped( abc, tr, d, 5*d, d);		
-
-			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[1][0]*(uABC[1]+6*d);
-			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[1][1]*(uABC[1]+6*d);
-			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[1][2]*(uABC[1]+6*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[1][0]*(uABC[1]+16*d);
-			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[1][1]*(uABC[1]+16*d);
-			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[1][2]*(uABC[1]+16*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[1][0]*(-10*d);
-			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[1][1]*(-10*d);
-			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[1][2]*(-10*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[1][0]*(-20*d);
-			tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[1][1]*(-20*d);
-			tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[1][2]*(-20*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*uABC[2]+abc[1][0]*(uABC[1]+6*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*uABC[2]+abc[1][1]*(uABC[1]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*uABC[2]+abc[1][2]*(uABC[1]+6*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*uABC[2]+abc[1][0]*(uABC[1]+16*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*uABC[2]+abc[1][1]*(uABC[1]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*uABC[2]+abc[1][2]*(uABC[1]+16*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*uABC[2]+abc[1][0]*(-10*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*uABC[2]+abc[1][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*uABC[2]+abc[1][2]*(-10*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*uABC[2]+abc[1][0]*(-20*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*uABC[2]+abc[1][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*uABC[2]+abc[1][2]*(-20*d);
-			Parallelepiped( abc, tr, d, 5*d, d);
-		glEnd( );//GL_TRIANGLES
-	glEndList( );
-
-	BoundaryListC = glGenLists( 1 );
-	glNewList( BoundaryListC, GL_COMPILE );
-		glBegin( GL_TRIANGLES );
-			glColor3f(0.7,0.7,0.7);
-			tr[0]=Tr[0]+abc[2][0]*(uABC[2]+6*d); 
-			tr[1]=Tr[1]+abc[2][1]*(uABC[2]+6*d);
-			tr[2]=Tr[2]+abc[2][2]*(uABC[2]+6*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[2][0]*(uABC[2]+16*d); 
-			tr[1]=Tr[1]+abc[2][1]*(uABC[2]+16*d);
-			tr[2]=Tr[2]+abc[2][2]*(uABC[2]+16*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[2][0]*(-10*d); 
-			tr[1]=Tr[1]+abc[2][1]*(-10*d);
-			tr[2]=Tr[2]+abc[2][2]*(-10*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[2][0]*(-20*d); 
-			tr[1]=Tr[1]+abc[2][1]*(-20*d);
-			tr[2]=Tr[2]+abc[2][2]*(-20*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*(uABC[2]+6*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*(uABC[2]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*(uABC[2]+6*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*(uABC[2]+16*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*(uABC[2]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*(uABC[2]+16*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*(-10*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*(-10*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[2][0]*(-20*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[2][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[2][2]*(-20*d);
-			Parallelepiped( abc, tr, d, d, 5*d);		
-
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*(uABC[2]+6*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*(uABC[2]+6*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*(uABC[2]+6*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*(uABC[2]+16*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*(uABC[2]+16*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*(uABC[2]+16*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*(-10*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*(-10*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*(-10*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*(-20*d);
-			tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*(-20*d);
-			tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*(-20*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*(uABC[2]+6*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*(uABC[2]+6*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*(uABC[2]+6*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*(uABC[2]+16*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*(uABC[2]+16*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*(uABC[2]+16*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*(-10*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*(-10*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*(-10*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-			tr[0]=Tr[0]+abc[0][0]*uABC[0]+abc[1][0]*uABC[1]+abc[2][0]*(-20*d);
-			tr[1]=Tr[1]+abc[0][1]*uABC[0]+abc[1][1]*uABC[1]+abc[2][1]*(-20*d);
-			tr[2]=Tr[2]+abc[0][2]*uABC[0]+abc[1][2]*uABC[1]+abc[2][2]*(-20*d);
-			Parallelepiped( abc, tr, d, d, 5*d);
-		glEnd( );//GL_TRIANGLES
-	glEndList( );
-	*/
 }
 
-void UpdateVerticesNormalsColors_PBC_A(float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
+void UpdateVerticesNormalsColors_PBC(int K0, float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
 {
 	float 	d = WireWidth;
 	float 	Tr[3] = {-(box[0][0]+box[1][0]+box[2][0]+d)/2.f,
 					 -(box[0][1]+box[1][1]+box[2][1]+d)/2.f,
 					 -(box[0][2]+box[1][2]+box[2][2]+d)/2.f 
 					};
-	float length = 5*d;
+	float length_a = d;
+	float length_b = d;
+	float length_c = d;
+	if (K0==0) length_a = 5*d;
+	if (K0==1) length_b = 5*d;
+	if (K0==2) length_c = 5*d;
 	float tr[3];
+	int K1=(K0+1)%3;
+	int K2=(K0+2)%3;
 
-	tr[0] = Tr[0]+abc[0][0]*(uABC[0]+6*d); 
-	tr[1] = Tr[1]+abc[0][1]*(uABC[0]+6*d);
-	tr[2] = Tr[2]+abc[0][2]*(uABC[0]+6*d);
+	tr[0] = Tr[0]+abc[K0][0]*(uABC[K0]+6*d); 
+	tr[1] = Tr[1]+abc[K0][1]*(uABC[K0]+6*d);
+	tr[2] = Tr[2]+abc[K0][2]*(uABC[K0]+6*d);
 
-	parallelepiped( abc, tr, length, d, d, 0, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, 0, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[0][0]*(uABC[0]+16*d); 
-	tr[1]=Tr[1]+abc[0][1]*(uABC[0]+16*d);
-	tr[2]=Tr[2]+abc[0][2]*(uABC[0]+16*d);
-    parallelepiped( abc, tr, length, d, d, 1, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K0][0]*(uABC[K0]+16*d); 
+	tr[1]=Tr[1]+abc[K0][1]*(uABC[K0]+16*d);
+	tr[2]=Tr[2]+abc[K0][2]*(uABC[K0]+16*d);
+    parallelepiped( abc, tr, length_a, length_b, length_c, 1, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[0][0]*(-10*d); 
-	tr[1]=Tr[1]+abc[0][1]*(-10*d);
-	tr[2]=Tr[2]+abc[0][2]*(-10*d);
-	parallelepiped( abc, tr, length, d, d, 2, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K0][0]*(-10*d); 
+	tr[1]=Tr[1]+abc[K0][1]*(-10*d);
+	tr[2]=Tr[2]+abc[K0][2]*(-10*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 2, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[0][0]*(-20*d); 
-	tr[1]=Tr[1]+abc[0][1]*(-20*d);
-	tr[2]=Tr[2]+abc[0][2]*(-20*d);
-	parallelepiped( abc, tr, length, d, d, 3, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K0][0]*(-20*d); 
+	tr[1]=Tr[1]+abc[K0][1]*(-20*d);
+	tr[2]=Tr[2]+abc[K0][2]*(-20*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 3, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(uABC[0]+6*d);
-	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(uABC[0]+6*d);
-	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(uABC[0]+6*d);
-	parallelepiped( abc, tr, length, d, d, 4, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K0][0]*(uABC[K0]+6*d);
+	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K0][1]*(uABC[K0]+6*d);
+	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K0][2]*(uABC[K0]+6*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 4, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(uABC[0]+16*d);
-	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(uABC[0]+16*d);
-	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(uABC[0]+16*d);
-	parallelepiped( abc, tr, length, d, d, 5, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K0][0]*(uABC[K0]+16*d);
+	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K0][1]*(uABC[K0]+16*d);
+	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K0][2]*(uABC[K0]+16*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 5, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(-10*d);
-	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(-10*d);
-	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(-10*d);	
-	parallelepiped( abc, tr, length, d, d, 6, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K0][0]*(-10*d);
+	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K0][1]*(-10*d);
+	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K0][2]*(-10*d);	
+	parallelepiped( abc, tr, length_a, length_b, length_c, 6, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(-20*d);
-	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(-20*d);
-	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(-20*d);	
-	parallelepiped( abc, tr, length, d, d, 7, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K0][0]*(-20*d);
+	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K0][1]*(-20*d);
+	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K0][2]*(-20*d);	
+	parallelepiped( abc, tr, length_a, length_b, length_c, 7, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+6*d);
-	tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+6*d);
-	tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+6*d);
-	parallelepiped( abc, tr, length, d, d, 8, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K2][0]*uABC[K2]+abc[K0][0]*(uABC[K0]+6*d);
+	tr[1]=Tr[1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(uABC[K0]+6*d);
+	tr[2]=Tr[2]+abc[K2][2]*uABC[K2]+abc[K0][2]*(uABC[K0]+6*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 8, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+16*d);
-	tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+16*d);
-	tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+16*d);
-	parallelepiped( abc, tr, length, d, d, 9, vertices, normals, colors, indices );
-	tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(-10*d);
-	tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(-10*d);
-	tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(-10*d);
-	parallelepiped( abc, tr, length, d, d, 10, vertices, normals, colors, indices );
-	tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(-20*d);
-	tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(-20*d);
-	tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(-20*d);
-	parallelepiped( abc, tr, length, d, d, 11, vertices, normals, colors, indices );	
+	tr[0]=Tr[0]+abc[K2][0]*uABC[K2]+abc[K0][0]*(uABC[K0]+16*d);
+	tr[1]=Tr[1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(uABC[K0]+16*d);
+	tr[2]=Tr[2]+abc[K2][2]*uABC[K2]+abc[K0][2]*(uABC[K0]+16*d);
 
-	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+6*d);
-	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+6*d);
-	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+6*d);
-	parallelepiped( abc, tr, length, d, d, 12, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length_a, length_b, length_c, 9, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K2][0]*uABC[K2]+abc[K0][0]*(-10*d);
+	tr[1]=Tr[1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(-10*d);
+	tr[2]=Tr[2]+abc[K2][2]*uABC[K2]+abc[K0][2]*(-10*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 10, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K2][0]*uABC[K2]+abc[K0][0]*(-20*d);
+	tr[1]=Tr[1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(-20*d);
+	tr[2]=Tr[2]+abc[K2][2]*uABC[K2]+abc[K0][2]*(-20*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 11, vertices, normals, colors, indices );	
 
-	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+16*d);
-	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+16*d);
-	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+16*d);
-	parallelepiped( abc, tr, length, d, d, 13, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K2][0]*uABC[K2]+abc[K0][0]*(uABC[K0]+6*d);
+	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(uABC[K0]+6*d);
+	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K2][2]*uABC[K2]+abc[K0][2]*(uABC[K0]+6*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 12, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(-10*d);
-	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(-10*d);
-	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(-10*d);
-	parallelepiped( abc, tr, length, d, d, 14, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K2][0]*uABC[K2]+abc[K0][0]*(uABC[K0]+16*d);
+	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(uABC[K0]+16*d);
+	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K2][2]*uABC[K2]+abc[K0][2]*(uABC[K0]+16*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 13, vertices, normals, colors, indices );
 
-	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(-20*d);
-	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(-20*d);
-	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(-20*d);
-	parallelepiped( abc, tr, length, d, d, 15, vertices, normals, colors, indices );
+	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K2][0]*uABC[K2]+abc[K0][0]*(-10*d);
+	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(-10*d);
+	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K2][2]*uABC[K2]+abc[K0][2]*(-10*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 14, vertices, normals, colors, indices );
+
+	tr[0]=Tr[0]+abc[K1][0]*uABC[K1]+abc[K2][0]*uABC[K2]+abc[K0][0]*(-20*d);
+	tr[1]=Tr[1]+abc[K1][1]*uABC[K1]+abc[K2][1]*uABC[K2]+abc[K0][1]*(-20*d);
+	tr[2]=Tr[2]+abc[K1][2]*uABC[K1]+abc[K2][2]*uABC[K2]+abc[K0][2]*(-20*d);
+	parallelepiped( abc, tr, length_a, length_b, length_c, 15, vertices, normals, colors, indices );
 }
 
 void UpdateSpinPositions(float abc[][3], int uABC[3], float BD[][3], int NBD, float box[][3], float * Px, float * Py, float * Pz)
@@ -4202,11 +4009,21 @@ void CreateNewVBO_BOX( ){
 	glGenBuffers(1, &iboIdI_BOX);
 }
 
-void CreateNewVBO_PBC_A( ){
+void CreateNewVBO_PBC( ){
 	glGenBuffers(1, &vboIdV_PBC_A);
 	glGenBuffers(1, &vboIdN_PBC_A);
 	glGenBuffers(1, &vboIdC_PBC_A);
 	glGenBuffers(1, &iboIdI_PBC_A);
+
+	glGenBuffers(1, &vboIdV_PBC_B);
+	glGenBuffers(1, &vboIdN_PBC_B);
+	glGenBuffers(1, &vboIdC_PBC_B);
+	glGenBuffers(1, &iboIdI_PBC_B);
+
+	glGenBuffers(1, &vboIdV_PBC_C);
+	glGenBuffers(1, &vboIdN_PBC_C);
+	glGenBuffers(1, &vboIdC_PBC_C);
+	glGenBuffers(1, &iboIdI_PBC_C);
 }
 
 void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
@@ -4302,24 +4119,25 @@ void UpdateVBO_BOX(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, 
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_BOX * sizeof(GLuint), ind);
 }
 
-void UpdateVBO_PBC_A(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
+void UpdateVBO_PBC(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
 {	
 	glBindBuffer(GL_ARRAY_BUFFER, *V);
-	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC_A* sizeof(float), ver); 
+	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC * sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC * sizeof(float), ver); 
 
 	glBindBuffer(GL_ARRAY_BUFFER, *N);
-	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC_A* sizeof(float), nor);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC * sizeof(float), nor);
 
 	glBindBuffer(GL_ARRAY_BUFFER, *C);
-	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC_A* sizeof(float), col);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC * sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC * sizeof(float), col);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum_PBC_A* sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_PBC_A* sizeof(GLuint), ind);	
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum_PBC * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_PBC * sizeof(GLuint), ind);	
 }
+
 
 void drawVBO()
 {
@@ -4474,7 +4292,49 @@ void drawVBO_PBC_A()
 	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_PBC_A);
-	glDrawElements(GL_TRIANGLES, IdNum_PBC_A, GL_UNSIGNED_INT, (void*)(0));
+	glDrawElements(GL_TRIANGLES, IdNum_PBC, GL_UNSIGNED_INT, (void*)(0));
+
+	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
+	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
+	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
+
+	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+}
+
+void drawVBO_PBC_B()
+{
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdC_PBC_B);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdN_PBC_B);		glNormalPointer(GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdV_PBC_B);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
+
+	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
+	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
+	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_PBC_B);
+	glDrawElements(GL_TRIANGLES, IdNum_PBC, GL_UNSIGNED_INT, (void*)(0));
+
+	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
+	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
+	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
+
+	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+}
+
+void drawVBO_PBC_C()
+{
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdC_PBC_C);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdN_PBC_C);		glNormalPointer(GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdV_PBC_C);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
+
+	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
+	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
+	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_PBC_C);
+	glDrawElements(GL_TRIANGLES, IdNum_PBC, GL_UNSIGNED_INT, (void*)(0));
 
 	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
 	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays

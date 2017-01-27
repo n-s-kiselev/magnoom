@@ -501,17 +501,21 @@ main (int argc, char **argv)
 	ReallocateArrayDrawing_BOX();
 	UpdateVerticesNormalsColors_BOX(vertices_BOX, normals_BOX, colors_BOX, indices_BOX, Box);
 
-	ReallocateArrayDrawing_PBC_A();
-	UpdateVerticesNormalsColors_PBC_A(vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A, Box);
-  
+	ReallocateArrayDrawing_PBC();
+	UpdateVerticesNormalsColors_PBC(0, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A, Box);
+	UpdateVerticesNormalsColors_PBC(1, vertices_PBC_B, normals_PBC_B, colors_PBC_B, indices_PBC_B, Box);
+	UpdateVerticesNormalsColors_PBC(2, vertices_PBC_C, normals_PBC_C, colors_PBC_C, indices_PBC_C, Box);  
+
     CreateNewVBO_H();
     UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 
     CreateNewVBO_BOX();
     UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
 
-	CreateNewVBO_PBC_A();
-    UpdateVBO_PBC_A(vboIdV_PBC_A, vboIdN_PBC_A, vboIdC_PBC_A, iboIdI_PBC_A, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A);
+	CreateNewVBO_PBC();
+    UpdateVBO_PBC(&vboIdV_PBC_A, &vboIdN_PBC_A, &vboIdC_PBC_A, &iboIdI_PBC_A, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A);
+    UpdateVBO_PBC(&vboIdV_PBC_B, &vboIdN_PBC_B, &vboIdC_PBC_B, &iboIdI_PBC_B, vertices_PBC_B, normals_PBC_B, colors_PBC_B, indices_PBC_B);
+    UpdateVBO_PBC(&vboIdV_PBC_C, &vboIdN_PBC_C, &vboIdC_PBC_C, &iboIdI_PBC_C, vertices_PBC_C, normals_PBC_C, colors_PBC_C, indices_PBC_C);
 
 //  Start GLUT event processing loop
 	glutMainLoop();
