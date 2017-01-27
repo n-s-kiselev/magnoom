@@ -501,8 +501,8 @@ main (int argc, char **argv)
 	ReallocateArrayDrawing_BOX();
 	UpdateVerticesNormalsColors_BOX(vertices_BOX, normals_BOX, colors_BOX, indices_BOX, Box);
 
-	ReallocateArrayDrawing_BOX_PBC();
-	UpdateVerticesNormalsColors_BOX_PBC(vertices_BOX_PBC, normals_BOX_PBC, colors_BOX_PBC, indices_BOX_PBC, Box);
+	ReallocateArrayDrawing_PBC_A();
+	UpdateVerticesNormalsColors_PBC_A(vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A, Box);
   
     CreateNewVBO_H();
     UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
@@ -510,8 +510,8 @@ main (int argc, char **argv)
     CreateNewVBO_BOX();
     UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
 
-	CreateNewVBO_BOX_PBC();
-    UpdateVBO_BOX_PBC(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
+	CreateNewVBO_PBC_A();
+    UpdateVBO_PBC_A(&vboIdV_PBC_A, &vboIdN_PBC_A, &vboIdC_PBC_A, &iboIdI_PBC_A, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A);
 
 //  Start GLUT event processing loop
 	glutMainLoop();
@@ -522,7 +522,7 @@ main (int argc, char **argv)
 	free(NIdxGridA);
 	free(NIdxGridB);
 	free(NIdxGridC);
-	free(SIdx); 
+	free(SIdx);
 
 	free(Jexc);  free(Bexc);  free(Dexc);
 	free(VDMx);  free(VDMy);  free(VDMz);
@@ -532,13 +532,13 @@ main (int argc, char **argv)
 	free(bSx);   free(bSy);   free(bSz);
 	free(Heffx); free(Heffy); free(Heffz);
 	free(RNx);   free(RNy);   free(RNz);
-	free(Px);    free(Py);    free(Pz); 
-	free(BPx);   free(BPy);   free(BPz); 
+	free(Px);    free(Py);    free(Pz);
+	free(BPx);   free(BPy);   free(BPz);
 	free(RHue);  free(GHue);  free(BHue);
-	free(vertices);			free(vertices_H); free(vertices_BOX); free(vertices_BOX_PBC);
-	free(normals);			free(normals_H); free(normals_BOX); free(normals_BOX_PBC);
-	free(colors);			free(colors_H); free(colors_BOX); free(colors_BOX_PBC);
-	free(indices);			free(indices_H); free(indices_BOX); free(indices_BOX_PBC);
+	free(vertices);			free(vertices_H); free(vertices_BOX); free(vertices_PBC_A);
+	free(normals);			free(normals_H); free(normals_BOX); free(normals_PBC_A);
+	free(colors);			free(colors_H); free(colors_BOX); free(colors_PBC_A);
+	free(indices);			free(indices_H); free(indices_BOX); free(indices_PBC_A);
 	free(vertexProto);		free(vertexProto_H);
 	free(normalProto);		free(normalProto_H);
 	free(indicesProto);		free(indicesProto_H);

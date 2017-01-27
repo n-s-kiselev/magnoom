@@ -25,7 +25,7 @@ float Block[2*3] =
 float		abc[3][3] = {
 				{	1.0f, 0.0f, 0.0f }, // a
 				{	0.0f, 1.0f, 0.0f }, // b
-				{	0.0f, 0.0f, 1.0f }};// c
+				{	0.50f, 0.30f, 1.0f }};// c
 float			Block[][3] = { 
 				{0.5f, 0.5f, 0.5f},  
 				};
@@ -130,7 +130,7 @@ float			Block[][3] = {
 
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			uABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
-int			uABC[3] = {50,50,1};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
+int			uABC[3] = {50,57,13};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {6,6,6};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {80,80,20};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 int			Boundary[3] = {1, 1, 0};// boundary conditions along a, b, c translation vectors
