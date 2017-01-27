@@ -511,7 +511,7 @@ main (int argc, char **argv)
     UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
 
 	CreateNewVBO_PBC_A();
-    UpdateVBO_PBC_A(&vboIdV_PBC_A, &vboIdN_PBC_A, &vboIdC_PBC_A, &iboIdI_PBC_A, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A);
+    UpdateVBO_PBC_A(vboIdV_PBC_A, vboIdN_PBC_A, vboIdC_PBC_A, iboIdI_PBC_A, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A);
 
 //  Start GLUT event processing loop
 	glutMainLoop();

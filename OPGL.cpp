@@ -163,25 +163,25 @@ GLfloat*	vertexProto_H = NULL; // array of vertexes for prototipe arrow or cane
 GLfloat*	normalProto_H = NULL; // array of normals for prototipe arrow (not used in vector "cane mode")
 GLuint*		indicesProto_H= NULL; // array of indices for prototipe arrow or cane
 
-GLfloat*	vertices	= NULL; // array of vertexes for tatal vector field 
-GLfloat*	normals		= NULL; // array of normals for tatal vector field
+GLfloat*	vertices	= NULL; // array of vertexes for total vector field 
+GLfloat*	normals		= NULL; // array of normals for total vector field
 GLfloat*	colors		= NULL; // array of colors 
-GLuint*		indices		= NULL; // array of indices for tatal vector field
+GLuint*		indices		= NULL; // array of indices for total vector field
 
-GLfloat*	vertices_H	= NULL; // array of vertexes for tatal vector field 
-GLfloat*	normals_H	= NULL; // array of normals for tatal vector field
+GLfloat*	vertices_H	= NULL; // array of vertexes for total vector field 
+GLfloat*	normals_H	= NULL; // array of normals for total vector field
 GLfloat*	colors_H	= NULL; // array of colors 
-GLuint*		indices_H	= NULL; // array of indices for tatal vector field
+GLuint*		indices_H	= NULL; // array of indices for total vector field
 
-GLfloat*	vertices_BOX	= NULL; // array of vertexes for tatal vector field 
-GLfloat*	normals_BOX		= NULL; // array of normals for tatal vector field
+GLfloat*	vertices_BOX	= NULL; // array of vertexes for total vector field 
+GLfloat*	normals_BOX		= NULL; // array of normals for total vector field
 GLfloat*	colors_BOX		= NULL; // array of colors 
-GLuint*		indices_BOX		= NULL; // array of indices for tatal vector field
+GLuint*		indices_BOX		= NULL; // array of indices for total vector field
 
-GLfloat*	vertices_PBC_A	= NULL; // array of vertexes for tatal vector field 
-GLfloat*	normals_PBC_A		= NULL; // array of normals for tatal vector field
-GLfloat*	colors_PBC_A		= NULL; // array of colors 
-GLuint*		indices_PBC_A		= NULL; // array of indices for tatal vector field
+GLfloat	vertices_PBC_A	[3][192]; // array of vertexes for total vector field 
+GLfloat	normals_PBC_A	[3][192]; // array of normals for total vector field
+GLfloat	colors_PBC_A	[3][192]; // array of colors 
+GLuint	indices_PBC_A	[3][192]; // array of indices for total vector field
 
 int			arrowFaces	= 6; // number of arrow faces, default number
 int			arrowFaces_H= 30; // number of arrow faces for applied field vector
@@ -201,10 +201,10 @@ GLuint		vboIdN_BOX;   // ID of VBO for normal arrays
 GLuint		vboIdC_BOX;   // ID of VBO for color arrays
 GLuint		iboIdI_BOX;   // ID of IBO for index arrays
 
-GLuint		vboIdV_PBC_A;   // ID of VBO for vertex arrays
-GLuint		vboIdN_PBC_A;   // ID of VBO for normal arrays
-GLuint		vboIdC_PBC_A;   // ID of VBO for color arrays
-GLuint		iboIdI_PBC_A;   // ID of IBO for index arrays
+GLuint		vboIdV_PBC_A[3];   // ID of VBO for vertex arrays
+GLuint		vboIdN_PBC_A[3];   // ID of VBO for normal arrays
+GLuint		vboIdC_PBC_A[3];   // ID of VBO for color arrays
+GLuint		iboIdI_PBC_A[3];   // ID of IBO for index arrays
 
 int			ElNumProto;   // number of triangles per arrow
 int			IdNumProto;   // number of indixes per arrow
@@ -2696,14 +2696,14 @@ void ReallocateArrayDrawing_BOX()
 
 void ReallocateArrayDrawing_PBC_A()
 {
-	free(vertices_PBC_A); free(normals_PBC_A); free(colors_PBC_A); free(indices_PBC_A);			
-	ElNum_PBC_A = 6*2*16; // number of triangles 
-	IdNum_PBC_A = 3*ElNum_PBC_A; // number of indixes 
-	VCNum_PBC_A = 6*4*3*16;
-	vertices_PBC_A	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
-	normals_PBC_A 	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
-	colors_PBC_A 	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
-	indices_PBC_A	= (GLuint *)malloc(VCNum_PBC_A * sizeof( GLuint ));				
+	// free(vertices_PBC_A); free(normals_PBC_A); free(colors_PBC_A); free(indices_PBC_A);			
+	// ElNum_PBC_A = 6*2*16; // number of triangles 
+	// IdNum_PBC_A = 3*ElNum_PBC_A; // number of indixes 
+	// VCNum_PBC_A = 6*4*3*16;
+	// vertices_PBC_A	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
+	// normals_PBC_A 	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
+	// colors_PBC_A 	= (float  *)malloc(VCNum_PBC_A * sizeof( float  ));
+	// indices_PBC_A	= (GLuint *)malloc(VCNum_PBC_A * sizeof( GLuint ));				
 }
 
 void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int mode, int style)//faces = arrowFaces
@@ -4054,7 +4054,8 @@ void UpdateVerticesNormalsColors_BOX(float * vertices, float * normals, float * 
 	*/
 }
 
-void UpdateVerticesNormalsColors_PBC_A(float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
+void UpdateVerticesNormalsColors_PBC_A(GLfloat vertices[3][192], GLfloat normals[3][192], 
+GLfloat colors[3][192], GLuint indices[3][192], float box[3][3])
 {
 	float 	d = WireWidth;
 	float 	Tr[3] = {-(box[0][0]+box[1][0]+box[2][0]+d)/2.f,
@@ -4068,80 +4069,82 @@ void UpdateVerticesNormalsColors_PBC_A(float * vertices, float * normals, float 
 	tr[1] = Tr[1]+abc[0][1]*(uABC[0]+6*d);
 	tr[2] = Tr[2]+abc[0][2]*(uABC[0]+6*d);
 
-	parallelepiped( abc, tr, length, d, d, 0, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 0, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[0][0]*(uABC[0]+16*d); 
 	tr[1]=Tr[1]+abc[0][1]*(uABC[0]+16*d);
 	tr[2]=Tr[2]+abc[0][2]*(uABC[0]+16*d);
-    parallelepiped( abc, tr, length, d, d, 1, vertices, normals, colors, indices );
+    parallelepiped( abc, tr, length, d, d, 1, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[0][0]*(-10*d); 
 	tr[1]=Tr[1]+abc[0][1]*(-10*d);
 	tr[2]=Tr[2]+abc[0][2]*(-10*d);
-	parallelepiped( abc, tr, length, d, d, 2, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 2, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[0][0]*(-20*d); 
 	tr[1]=Tr[1]+abc[0][1]*(-20*d);
 	tr[2]=Tr[2]+abc[0][2]*(-20*d);
-	parallelepiped( abc, tr, length, d, d, 3, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 3, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(uABC[0]+6*d);
 	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(uABC[0]+6*d);
 	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(uABC[0]+6*d);
-	parallelepiped( abc, tr, length, d, d, 4, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 4, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(uABC[0]+16*d);
 	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(uABC[0]+16*d);
 	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(uABC[0]+16*d);
-	parallelepiped( abc, tr, length, d, d, 5, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 5, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(-10*d);
 	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(-10*d);
 	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(-10*d);	
-	parallelepiped( abc, tr, length, d, d, 6, vertices, normals, colors, indices );
-
+	parallelepiped( abc, tr, length, d, d, 6, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
+	
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[0][0]*(-20*d);
 	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[0][1]*(-20*d);
 	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[0][2]*(-20*d);	
-	parallelepiped( abc, tr, length, d, d, 7, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 7, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+6*d);
 	tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+6*d);
 	tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+6*d);
-	parallelepiped( abc, tr, length, d, d, 8, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 8, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+16*d);
 	tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+16*d);
 	tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+16*d);
-	parallelepiped( abc, tr, length, d, d, 9, vertices, normals, colors, indices );
+
+	parallelepiped( abc, tr, length, d, d, 9, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 	tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(-10*d);
 	tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(-10*d);
 	tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(-10*d);
-	parallelepiped( abc, tr, length, d, d, 10, vertices, normals, colors, indices );
+
+	parallelepiped( abc, tr, length, d, d, 10, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 	tr[0]=Tr[0]+abc[2][0]*uABC[2]+abc[0][0]*(-20*d);
 	tr[1]=Tr[1]+abc[2][1]*uABC[2]+abc[0][1]*(-20*d);
 	tr[2]=Tr[2]+abc[2][2]*uABC[2]+abc[0][2]*(-20*d);
-	parallelepiped( abc, tr, length, d, d, 11, vertices, normals, colors, indices );	
+	parallelepiped( abc, tr, length, d, d, 11, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+6*d);
 	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+6*d);
 	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+6*d);
-	parallelepiped( abc, tr, length, d, d, 12, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 12, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(uABC[0]+16*d);
 	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(uABC[0]+16*d);
 	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(uABC[0]+16*d);
-	parallelepiped( abc, tr, length, d, d, 13, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 13, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(-10*d);
 	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(-10*d);
 	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(-10*d);
-	parallelepiped( abc, tr, length, d, d, 14, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 14, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 
 	tr[0]=Tr[0]+abc[1][0]*uABC[1]+abc[2][0]*uABC[2]+abc[0][0]*(-20*d);
 	tr[1]=Tr[1]+abc[1][1]*uABC[1]+abc[2][1]*uABC[2]+abc[0][1]*(-20*d);
 	tr[2]=Tr[2]+abc[1][2]*uABC[1]+abc[2][2]*uABC[2]+abc[0][2]*(-20*d);
-	parallelepiped( abc, tr, length, d, d, 15, vertices, normals, colors, indices );
+	parallelepiped( abc, tr, length, d, d, 15, &vertices[0][0], &normals[0][0], &colors[0][0], &indices[0][0] );
 }
 
 void UpdateSpinPositions(float abc[][3], int uABC[3], float BD[][3], int NBD, float box[][3], float * Px, float * Py, float * Pz)
@@ -4203,10 +4206,10 @@ void CreateNewVBO_BOX( ){
 }
 
 void CreateNewVBO_PBC_A( ){
-	glGenBuffers(1, &vboIdV_PBC_A);
-	glGenBuffers(1, &vboIdN_PBC_A);
-	glGenBuffers(1, &vboIdC_PBC_A);
-	glGenBuffers(1, &iboIdI_PBC_A);
+	glGenBuffers(3, vboIdV_PBC_A);
+	glGenBuffers(3, vboIdN_PBC_A);
+	glGenBuffers(3, vboIdC_PBC_A);
+	glGenBuffers(3, iboIdI_PBC_A);
 }
 
 void UpdateVBO(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
@@ -4302,22 +4305,23 @@ void UpdateVBO_BOX(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, 
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_BOX * sizeof(GLuint), ind);
 }
 
-void UpdateVBO_PBC_A(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
+void UpdateVBO_PBC_A(GLuint * V, GLuint * N, GLuint * C, GLuint * I, 
+	GLfloat ver[3][192], GLfloat nor[3][192], GLfloat col[3][192], GLuint ind[3][192])
 {	
-	glBindBuffer(GL_ARRAY_BUFFER, *V);
-	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, V[0]);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC_A* sizeof(float), ver); 
 
-	glBindBuffer(GL_ARRAY_BUFFER, *N);
-	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, N[0]);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC_A* sizeof(float), nor);
 
-	glBindBuffer(GL_ARRAY_BUFFER, *C);
-	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, C[0]);
+	glBufferData(GL_ARRAY_BUFFER, VCNum_PBC_A* sizeof(float), NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum_PBC_A* sizeof(float), col);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum_PBC_A* sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, I[0]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum_PBC_A* sizeof(GLuint), NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_PBC_A* sizeof(GLuint), ind);	
 }
 
@@ -4465,15 +4469,15 @@ void drawVBO_BOX()
 
 void drawVBO_PBC_A()
 {
-	glBindBuffer(GL_ARRAY_BUFFER, vboIdC_PBC_A);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, vboIdN_PBC_A);		glNormalPointer(GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, vboIdV_PBC_A);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdC_PBC_A[0]);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdN_PBC_A[0]);		glNormalPointer(GL_FLOAT, 0, (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vboIdV_PBC_A[0]);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
 
 	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
 	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
 	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_PBC_A);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_PBC_A[0]);
 	glDrawElements(GL_TRIANGLES, IdNum_PBC_A, GL_UNSIGNED_INT, (void*)(0));
 
 	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
