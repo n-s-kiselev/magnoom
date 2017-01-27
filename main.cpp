@@ -494,24 +494,28 @@ main (int argc, char **argv)
     VHf[0]=sin(PI*VHtheta/180)*cos(PI*VHphi/180);
 	VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
 	VHf[2]=cos(PI*VHtheta/180);
+
 	ReallocateArrayDrawing_H();
     UpdatePrototypeVerNorInd(vertexProto_H, normalProto_H, indices_H, arrowFaces_H, ARROW1,1);
     UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
+    CreateNewVBO_H();
+    UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 
 	ReallocateArrayDrawing_BOX();
 	UpdateVerticesNormalsColors_BOX(vertices_BOX, normals_BOX, colors_BOX, indices_BOX, Box);
+	CreateNewVBO_BOX();
+	UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
+
+	ReallocateArrayDrawing_BASIS();
+	UpdateVerticesNormalsColors_BASIS(vertices_BASIS, normals_BASIS, colors_BASIS, indices_BASIS, Box);
+	CreateNewVBO_BASIS();
+	UpdateVBO_BASIS(&vboIdV_BASIS, &vboIdN_BASIS, &vboIdC_BASIS, &iboIdI_BASIS, vertices_BASIS, normals_BASIS, colors_BASIS, indices_BASIS);
+
 
 	ReallocateArrayDrawing_PBC();
 	UpdateVerticesNormalsColors_PBC(0, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A, Box);
 	UpdateVerticesNormalsColors_PBC(1, vertices_PBC_B, normals_PBC_B, colors_PBC_B, indices_PBC_B, Box);
 	UpdateVerticesNormalsColors_PBC(2, vertices_PBC_C, normals_PBC_C, colors_PBC_C, indices_PBC_C, Box);  
-
-    CreateNewVBO_H();
-    UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
-
-    CreateNewVBO_BOX();
-    UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
-
 	CreateNewVBO_PBC();
     UpdateVBO_PBC(&vboIdV_PBC_A, &vboIdN_PBC_A, &vboIdC_PBC_A, &iboIdI_PBC_A, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A);
     UpdateVBO_PBC(&vboIdV_PBC_B, &vboIdN_PBC_B, &vboIdC_PBC_B, &iboIdI_PBC_B, vertices_PBC_B, normals_PBC_B, colors_PBC_B, indices_PBC_B);
