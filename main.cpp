@@ -202,6 +202,10 @@ double 		Mtot[3]; // Total magnetic moment
 double 		mtot[3]; // Total magnetic moment
 double 		Max_torque[THREADS_NUMBER];
 double 		MAX_TORQUE=0;
+
+double 		BigDataBank[5][1000];
+int 		recordsCounter=0;
+
 //Color scheme variables
 int			HueMapRGB[6]={0,60,120,180,240,300};// initial (equidistant RGB) hue map for the color sphere
 int			HueMapRYGB[6]={0,90,180,225,270,315};// initial (equidistant RYGB) hue map for the color sphere
@@ -293,7 +297,7 @@ unsigned int	ITERATION=0;
 int				previousIteration=0; 
 int				currentIteration=0;
 float			FPS, IPS;
-FILE*			outFile;//sxsysz output file
+FILE*			outFile;//table output file
 unsigned int 	rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 char			BuferString[80];//for output file table
 double 			outputEtotal;
@@ -316,6 +320,51 @@ void *INFO_THREAD(void *void_ptr)
 return NULL;
 }
 
+void ReallocateMemoryForSpins(int NOS){
+	Sx = (double *)calloc(NOS, sizeof(double));
+	Sy = (double *)calloc(NOS, sizeof(double));
+	Sz = (double *)calloc(NOS, sizeof(double));	// <-- for 10^6 spins allocated memory for Sz,Sy,Sz = 12 Mega Byte
+}
+
+void ReallocateMemoryForAllOther(int NOS){
+	tSx = (double *)calloc(NOS, sizeof(double));
+	tSy = (double *)calloc(NOS, sizeof(double));
+	tSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
+
+	bSx = (double *)calloc(NOS, sizeof(double));
+	bSy = (double *)calloc(NOS, sizeof(double));
+	bSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
+
+	RNx = (float *)calloc(NOS, sizeof(float));
+	RNy = (float *)calloc(NOS, sizeof(float));
+	RNz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
+
+	Px = (float *)calloc(NOS, sizeof(float));
+	Py = (float *)calloc(NOS, sizeof(float));
+	Pz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
+
+	BPx = (float *)calloc(NOB, sizeof(float));
+	BPy = (float *)calloc(NOB, sizeof(float));
+	BPz = (float *)calloc(NOB, sizeof(float));	// <-- + 12 Mega Byte
+
+	Heffx = (double *)calloc(NOS, sizeof(double));
+	Heffy = (double *)calloc(NOS, sizeof(double));
+	Heffz = (double *)calloc(NOS, sizeof(double));// <-- + 12 Mega Byte
+
+	Etot = (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
+	Etot0= (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
+//	For 100x100x100x10^6 spins total allocated memory is about 6*12 = 72 Mega Byte
+//  and possibly may reach up to 100 Mb in total with all other variables.
+}
+
+void RestartCalcThreads(pthread_t * thread_id, int * thread_args){
+		for (int i=0; i<THREADS_NUMBER; i++){
+		thread_args[i] = i;		
+		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, (void *)&thread_args[i]) ) {
+			fprintf(stderr, "Error in creating CALC_THREAD thread\n"); 
+		}		
+	}
+}
 
 /*************************************************************************/
 /*                        Program Main Thread                            */
@@ -345,6 +394,8 @@ main (int argc, char **argv)
 	////////////////////////////////////////////////
 	srand ( time(NULL) );//init random number seed//
 	////////////////////////////////////////////////
+
+	readConfigFile();
 
 	// VHf[0]=0;
 	// VHf[1]=0;
@@ -413,38 +464,8 @@ main (int argc, char **argv)
 	}
 
 //	Memory allocation:
-	Sx = (double *)calloc(NOS, sizeof(double));
-	Sy = (double *)calloc(NOS, sizeof(double));
-	Sz = (double *)calloc(NOS, sizeof(double));	// <-- for 10^6 spins allocated memory for Sz,Sy,Sz = 12 Mega Byte
-
-	tSx = (double *)calloc(NOS, sizeof(double));
-	tSy = (double *)calloc(NOS, sizeof(double));
-	tSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
-
-	bSx = (double *)calloc(NOS, sizeof(double));
-	bSy = (double *)calloc(NOS, sizeof(double));
-	bSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
-
-	RNx = (float *)calloc(NOS, sizeof(float));
-	RNy = (float *)calloc(NOS, sizeof(float));
-	RNz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
-
-	Px = (float *)calloc(NOS, sizeof(float));
-	Py = (float *)calloc(NOS, sizeof(float));
-	Pz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
-
-	BPx = (float *)calloc(NOB, sizeof(float));
-	BPy = (float *)calloc(NOB, sizeof(float));
-	BPz = (float *)calloc(NOB, sizeof(float));	// <-- + 12 Mega Byte
-
-	Heffx = (double *)calloc(NOS, sizeof(double));
-	Heffy = (double *)calloc(NOS, sizeof(double));
-	Heffz = (double *)calloc(NOS, sizeof(double));// <-- + 12 Mega Byte
-
-	Etot = (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
-	Etot0= (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
-//	For 100x100x100x10^6 spins total allocated memory is about 6*12 = 72 Mega Byte
-//  in total possibly may reach up to 100 Mb
+	ReallocateMemoryForSpins(NOS);
+	ReallocateMemoryForAllOther(NOS);
 
 	pthread_mutex_init(&culc_mutex,0);
 	pthread_mutex_init(&show_mutex,0);
@@ -455,16 +476,10 @@ main (int argc, char **argv)
 	int thread_args[THREADS_NUMBER];
 
  	outFile = fopen ("table.csv","w");
-	if (outFile!=NULL) {fputs ("iter,Mx,My,Mz,E_tot,\n",outFile);}
+	if (outFile!=NULL) {fputs ("iter,time,Mx,My,Mz,E_tot,\n",outFile);}
 
 /* create the second thread which executes CALC_THREAD(&x) */
-
-	for (int i=0; i<THREADS_NUMBER; i++){
-		thread_args[i] = i;		
-		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, (void *)&thread_args[i]) ) {
-			fprintf(stderr, "Error in creating CALC_THREAD thread\n"); return 1;
-		}		
-	}
+	RestartCalcThreads(thread_id, thread_args);
 
 /* create the third thread which executes INFO_THREAD(&x) */
 	// if(pthread_create(&INFO_THREAD_idx, NULL, INFO_THREAD, NULL)) 
@@ -494,24 +509,32 @@ main (int argc, char **argv)
     VHf[0]=sin(PI*VHtheta/180)*cos(PI*VHphi/180);
 	VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
 	VHf[2]=cos(PI*VHtheta/180);
+
 	ReallocateArrayDrawing_H();
     UpdatePrototypeVerNorInd(vertexProto_H, normalProto_H, indices_H, arrowFaces_H, ARROW1,1);
     UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
-
-	ReallocateArrayDrawing_BOX();
-	UpdateVerticesNormalsColors_BOX(vertices_BOX, normals_BOX, colors_BOX, indices_BOX, Box);
-
-	ReallocateArrayDrawing_BOX_PBC();
-	UpdateVerticesNormalsColors_BOX_PBC(vertices_BOX_PBC, normals_BOX_PBC, colors_BOX_PBC, indices_BOX_PBC, Box);
-  
     CreateNewVBO_H();
     UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 
-    CreateNewVBO_BOX();
-    UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
+	ReallocateArrayDrawing_BOX();
+	UpdateVerticesNormalsColors_BOX(vertices_BOX, normals_BOX, colors_BOX, indices_BOX, Box);
+	CreateNewVBO_BOX();
+	UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
 
-	CreateNewVBO_BOX_PBC();
-    UpdateVBO_BOX_PBC(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
+	ReallocateArrayDrawing_BASIS();
+	UpdateVerticesNormalsColors_BASIS(vertices_BASIS, normals_BASIS, colors_BASIS, indices_BASIS, Box);
+	CreateNewVBO_BASIS();
+	UpdateVBO_BASIS(&vboIdV_BASIS, &vboIdN_BASIS, &vboIdC_BASIS, &iboIdI_BASIS, vertices_BASIS, normals_BASIS, colors_BASIS, indices_BASIS);
+
+
+	ReallocateArrayDrawing_PBC();
+	UpdateVerticesNormalsColors_PBC(0, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A, Box);
+	UpdateVerticesNormalsColors_PBC(1, vertices_PBC_B, normals_PBC_B, colors_PBC_B, indices_PBC_B, Box);
+	UpdateVerticesNormalsColors_PBC(2, vertices_PBC_C, normals_PBC_C, colors_PBC_C, indices_PBC_C, Box);  
+	CreateNewVBO_PBC();
+    UpdateVBO_PBC(&vboIdV_PBC_A, &vboIdN_PBC_A, &vboIdC_PBC_A, &iboIdI_PBC_A, vertices_PBC_A, normals_PBC_A, colors_PBC_A, indices_PBC_A);
+    UpdateVBO_PBC(&vboIdV_PBC_B, &vboIdN_PBC_B, &vboIdC_PBC_B, &iboIdI_PBC_B, vertices_PBC_B, normals_PBC_B, colors_PBC_B, indices_PBC_B);
+    UpdateVBO_PBC(&vboIdV_PBC_C, &vboIdN_PBC_C, &vboIdC_PBC_C, &iboIdI_PBC_C, vertices_PBC_C, normals_PBC_C, colors_PBC_C, indices_PBC_C);
 
 //  Start GLUT event processing loop
 	glutMainLoop();
@@ -522,7 +545,7 @@ main (int argc, char **argv)
 	free(NIdxGridA);
 	free(NIdxGridB);
 	free(NIdxGridC);
-	free(SIdx); 
+	free(SIdx);
 
 	free(Jexc);  free(Bexc);  free(Dexc);
 	free(VDMx);  free(VDMy);  free(VDMz);
@@ -532,17 +555,21 @@ main (int argc, char **argv)
 	free(bSx);   free(bSy);   free(bSz);
 	free(Heffx); free(Heffy); free(Heffz);
 	free(RNx);   free(RNy);   free(RNz);
-	free(Px);    free(Py);    free(Pz); 
-	free(BPx);   free(BPy);   free(BPz); 
+	free(Px);    free(Py);    free(Pz);
+	free(BPx);   free(BPy);   free(BPz);
 	free(RHue);  free(GHue);  free(BHue);
-	free(vertices);			free(vertices_H); free(vertices_BOX); free(vertices_BOX_PBC);
-	free(normals);			free(normals_H); free(normals_BOX); free(normals_BOX_PBC);
-	free(colors);			free(colors_H); free(colors_BOX); free(colors_BOX_PBC);
-	free(indices);			free(indices_H); free(indices_BOX); free(indices_BOX_PBC);
+	free(vertices);			free(vertices_H); free(vertices_BOX); free(vertices_PBC_A);
+	free(normals);			free(normals_H); free(normals_BOX); free(normals_PBC_A);
+	free(colors);			free(colors_H); free(colors_BOX); free(colors_PBC_A);
+	free(indices);			free(indices_H); free(indices_BOX); free(indices_PBC_A);
 	free(vertexProto);		free(vertexProto_H);
 	free(normalProto);		free(normalProto_H);
 	free(indicesProto);		free(indicesProto_H);
 
+	free(RadiusOfShell);
+	free(NeighborsPerAtom);
+
+	fclose (outFile);
 /*
 	for (int i=0; i<THREADS_NUMBER; i++){
 		if (sem_close(sem_in[i]) == -1) {
