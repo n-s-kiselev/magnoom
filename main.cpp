@@ -202,6 +202,10 @@ double 		Mtot[3]; // Total magnetic moment
 double 		mtot[3]; // Total magnetic moment
 double 		Max_torque[THREADS_NUMBER];
 double 		MAX_TORQUE=0;
+
+double 		BigDataBank[5][1000];
+int 		recordsCounter=0;
+
 //Color scheme variables
 int			HueMapRGB[6]={0,60,120,180,240,300};// initial (equidistant RGB) hue map for the color sphere
 int			HueMapRYGB[6]={0,90,180,225,270,315};// initial (equidistant RYGB) hue map for the color sphere
@@ -293,7 +297,7 @@ unsigned int	ITERATION=0;
 int				previousIteration=0; 
 int				currentIteration=0;
 float			FPS, IPS;
-FILE*			outFile;//sxsysz output file
+FILE*			outFile;//table output file
 unsigned int 	rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 char			BuferString[80];//for output file table
 double 			outputEtotal;
@@ -316,6 +320,51 @@ void *INFO_THREAD(void *void_ptr)
 return NULL;
 }
 
+void ReallocateMemoryForSpins(int NOS){
+	Sx = (double *)calloc(NOS, sizeof(double));
+	Sy = (double *)calloc(NOS, sizeof(double));
+	Sz = (double *)calloc(NOS, sizeof(double));	// <-- for 10^6 spins allocated memory for Sz,Sy,Sz = 12 Mega Byte
+}
+
+void ReallocateMemoryForAllOther(int NOS){
+	tSx = (double *)calloc(NOS, sizeof(double));
+	tSy = (double *)calloc(NOS, sizeof(double));
+	tSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
+
+	bSx = (double *)calloc(NOS, sizeof(double));
+	bSy = (double *)calloc(NOS, sizeof(double));
+	bSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
+
+	RNx = (float *)calloc(NOS, sizeof(float));
+	RNy = (float *)calloc(NOS, sizeof(float));
+	RNz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
+
+	Px = (float *)calloc(NOS, sizeof(float));
+	Py = (float *)calloc(NOS, sizeof(float));
+	Pz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
+
+	BPx = (float *)calloc(NOB, sizeof(float));
+	BPy = (float *)calloc(NOB, sizeof(float));
+	BPz = (float *)calloc(NOB, sizeof(float));	// <-- + 12 Mega Byte
+
+	Heffx = (double *)calloc(NOS, sizeof(double));
+	Heffy = (double *)calloc(NOS, sizeof(double));
+	Heffz = (double *)calloc(NOS, sizeof(double));// <-- + 12 Mega Byte
+
+	Etot = (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
+	Etot0= (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
+//	For 100x100x100x10^6 spins total allocated memory is about 6*12 = 72 Mega Byte
+//  and possibly may reach up to 100 Mb in total with all other variables.
+}
+
+void RestartCalcThreads(pthread_t * thread_id, int * thread_args){
+		for (int i=0; i<THREADS_NUMBER; i++){
+		thread_args[i] = i;		
+		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, (void *)&thread_args[i]) ) {
+			fprintf(stderr, "Error in creating CALC_THREAD thread\n"); 
+		}		
+	}
+}
 
 /*************************************************************************/
 /*                        Program Main Thread                            */
@@ -345,6 +394,8 @@ main (int argc, char **argv)
 	////////////////////////////////////////////////
 	srand ( time(NULL) );//init random number seed//
 	////////////////////////////////////////////////
+
+	readConfigFile();
 
 	// VHf[0]=0;
 	// VHf[1]=0;
@@ -413,38 +464,8 @@ main (int argc, char **argv)
 	}
 
 //	Memory allocation:
-	Sx = (double *)calloc(NOS, sizeof(double));
-	Sy = (double *)calloc(NOS, sizeof(double));
-	Sz = (double *)calloc(NOS, sizeof(double));	// <-- for 10^6 spins allocated memory for Sz,Sy,Sz = 12 Mega Byte
-
-	tSx = (double *)calloc(NOS, sizeof(double));
-	tSy = (double *)calloc(NOS, sizeof(double));
-	tSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
-
-	bSx = (double *)calloc(NOS, sizeof(double));
-	bSy = (double *)calloc(NOS, sizeof(double));
-	bSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
-
-	RNx = (float *)calloc(NOS, sizeof(float));
-	RNy = (float *)calloc(NOS, sizeof(float));
-	RNz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
-
-	Px = (float *)calloc(NOS, sizeof(float));
-	Py = (float *)calloc(NOS, sizeof(float));
-	Pz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
-
-	BPx = (float *)calloc(NOB, sizeof(float));
-	BPy = (float *)calloc(NOB, sizeof(float));
-	BPz = (float *)calloc(NOB, sizeof(float));	// <-- + 12 Mega Byte
-
-	Heffx = (double *)calloc(NOS, sizeof(double));
-	Heffy = (double *)calloc(NOS, sizeof(double));
-	Heffz = (double *)calloc(NOS, sizeof(double));// <-- + 12 Mega Byte
-
-	Etot = (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
-	Etot0= (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
-//	For 100x100x100x10^6 spins total allocated memory is about 6*12 = 72 Mega Byte
-//  in total possibly may reach up to 100 Mb
+	ReallocateMemoryForSpins(NOS);
+	ReallocateMemoryForAllOther(NOS);
 
 	pthread_mutex_init(&culc_mutex,0);
 	pthread_mutex_init(&show_mutex,0);
@@ -455,16 +476,10 @@ main (int argc, char **argv)
 	int thread_args[THREADS_NUMBER];
 
  	outFile = fopen ("table.csv","w");
-	if (outFile!=NULL) {fputs ("iter,Mx,My,Mz,E_tot,\n",outFile);}
+	if (outFile!=NULL) {fputs ("iter,time,Mx,My,Mz,E_tot,\n",outFile);}
 
 /* create the second thread which executes CALC_THREAD(&x) */
-
-	for (int i=0; i<THREADS_NUMBER; i++){
-		thread_args[i] = i;		
-		if ( pthread_create(&thread_id[i], NULL, CALC_THREAD, (void *)&thread_args[i]) ) {
-			fprintf(stderr, "Error in creating CALC_THREAD thread\n"); return 1;
-		}		
-	}
+	RestartCalcThreads(thread_id, thread_args);
 
 /* create the third thread which executes INFO_THREAD(&x) */
 	// if(pthread_create(&INFO_THREAD_idx, NULL, INFO_THREAD, NULL)) 
@@ -551,6 +566,10 @@ main (int argc, char **argv)
 	free(normalProto);		free(normalProto_H);
 	free(indicesProto);		free(indicesProto_H);
 
+	free(RadiusOfShell);
+	free(NeighborsPerAtom);
+
+	fclose (outFile);
 /*
 	for (int i=0; i<THREADS_NUMBER; i++){
 		if (sem_close(sem_in[i]) == -1) {

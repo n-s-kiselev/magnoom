@@ -107,9 +107,9 @@ typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
 int   N_filter=0;
-float theta_max=0.01;//PI/2+0.13; 
+float theta_max=PI/2+0.13; //0.01;//
 float Sz_min=cos(theta_max);
-float theta_min=0;//PI/2-0.13;    
+float theta_min=PI/2-0.13; //0;//   
 float Sz_max=cos(theta_min);
 
 float phi_max=2*PI;
@@ -374,6 +374,11 @@ void GetBox(float abc[][3], int uABC[3], float box[3][3])
 	box[2][2] = (uABC[2])*abc[2][2];
 }
 
+void ChangeBoxSize(int Na, int Nb, int Nc){
+	if (Play==1) Play=0;
+}
+
+
 void Display (void)
 {
 	GLdouble Hight;
@@ -424,13 +429,12 @@ void Display (void)
 	drawVBO_H(); // Draw VBO for vector representing the firld direction 
 	
 	// possibly draw the box and periodic boundary condition :
-	if( BoxOn != 0 ) 
-		{	//glCallList( BoxList);
-			drawVBO_BOX();
-			if(Boundary[0]!=0) drawVBO_PBC_A();;
-			if(Boundary[1]!=0) drawVBO_PBC_B();
-			if(Boundary[2]!=0) drawVBO_PBC_C();
-		}
+	if( BoxOn != 0 ) {	
+		drawVBO_BOX();
+		if(Boundary[0]!=0) drawVBO_PBC_A();;
+		if(Boundary[1]!=0) drawVBO_PBC_B();
+		if(Boundary[2]!=0) drawVBO_PBC_C();
+	}
 	// possibly draw the axes:
 	if( AxesOn != 0 ) drawVBO_BASIS();//glCallList( AxesList );//
     // Draw tweak bars
@@ -888,44 +892,38 @@ void TW_CALL CB_InvertY( void *clientData )
 	ChangeVectorMode(1);
 }
 
-void TW_CALL CB_InvertZ( void *clientData )
-{
+void TW_CALL CB_InvertZ( void *clientData ){
 	for (int i=0; i<NOS; i++) {Sz[i] = -Sz[i]; bSz[i] = -bSz[i];}
 	ChangeVectorMode(1);
 }
 
-void TW_CALL CB_CleanSxSySzFile( void *clientData )
-{
+void TW_CALL CB_CleanSxSySzFile( void *clientData ){
   fclose (outFile);//outFile is a global variable - pointer FILE* see also CALC_THREAD in ENGINE.cpp
- 	outFile = fopen ("table.csv","w");
-	if (outFile!=NULL) {fputs ("iter,Mx,My,Mz,E_tot,\n",outFile);}
+	outFile = fopen ("table.csv","w");
+	if (outFile!=NULL) {fputs ("iter,time,Mx,My,Mz,E_tot,\n",outFile);}
  }
 
 
-void TW_CALL CB_SetSliceMode(const void *value, void *clientData )
-{
+void TW_CALL CB_SetSliceMode(const void *value, void *clientData ){
 	(void)clientData; // unused
     WhichSliceMode = *( enSliceMode *)value; // copy value to WhichSliceMode
     ChangeVectorMode(0);
 }
 
 
-void TW_CALL CB_GetSliceMode(void *value, void *clientData)
-{
+void TW_CALL CB_GetSliceMode(void *value, void *clientData){
     (void)clientData; // unused
     *(int *)value = WhichSliceMode; // just copy WhichSliceMode to value
 }
 
 
-void TW_CALL CB_GetThetaMax(void *value, void *clientData)
-{
+void TW_CALL CB_GetThetaMax(void *value, void *clientData){
     (void)clientData; // unused
     *(float *)value = theta_max; 
 }
 
 
-void TW_CALL CB_SetThetaMax(const void *value, void *clientData )
-{
+void TW_CALL CB_SetThetaMax(const void *value, void *clientData ){
 	(void)clientData; // unused
 	float test= *( float *)value; 
 	if (test>=theta_min ){
@@ -935,14 +933,12 @@ void TW_CALL CB_SetThetaMax(const void *value, void *clientData )
 	}
 }
 
-void TW_CALL CB_GetThetaMin(void *value, void *clientData)
-{
+void TW_CALL CB_GetThetaMin(void *value, void *clientData){
     (void)clientData; // unused
     *(float *)value = theta_min; 
 }
 
-void TW_CALL CB_SetThetaMin(const void *value, void *clientData )
-{
+void TW_CALL CB_SetThetaMin(const void *value, void *clientData ){
 	(void)clientData; // unused
 	float test= *( float *)value; 
 	if (test<=theta_max ){
@@ -952,9 +948,9 @@ void TW_CALL CB_SetThetaMin(const void *value, void *clientData )
 	}
 }
 
-void TW_CALL CB_ResetIterations( void *clientData )
-{
+void TW_CALL CB_ResetIterations( void *clientData ){
   ITERATION=0;
+  //glutPostRedisplay();
 }
 
 
@@ -1167,7 +1163,7 @@ int ReadHeaderLine(FILE * fp, char * line){
 	if ((pos==0 || line[0]!='#') && c != EOF){
 		return ReadHeaderLine(fp, line);// recursive call for ReadHeaderLine if the current line is empty
 	} 
-	return pos-1;// the last simbol is the line end simbole
+	return pos-1;// the last simbol is the line end simbol
 }
 
 void ReadDataLine(FILE * fp, char * line){
@@ -1319,6 +1315,111 @@ void TW_CALL CB_ReadOVF( void *clientData )
 	ChangeVectorMode(1);
 }
 
+void readConfigFile()
+{
+	char  configfilename[64] = "magnoom.cfg";
+	char  line[256];//whole line of header should be not longer then 256 characters
+	int   lineLength=0;
+    char  keyW1 [256];//key word 1
+    char  keyW2 [256];//key word 2
+    char  keyW3 [256];//key word 3
+
+    FILE * FilePointer = fopen(configfilename, "rb");
+	if(FilePointer!=NULL) {	
+		lineLength=ReadHeaderLine(FilePointer, line);//read and check the first nonempty line which starts with '#'
+		if (lineLength==-1) {// if there are no one line which starts with '#'
+			printf("%s has a wrong format! \n", configfilename);
+		    printf("new magnoom.cfg will be created.\n");
+		}else{
+		    sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
+		    if(strncmp(keyW1, "begin",5)!=0 || strncmp(keyW2, "magnoom",7)!=0 || strncmp(keyW3, "config",  6)!=0){
+		        //if the first line isn't "# magnoom config file"
+		    	printf("%s has wrong header of wrong file format! \n", configfilename);
+		    	lineLength=-1;
+		    }
+		}
+		//READING HEADER
+		if (lineLength!=-1){
+			do{
+				lineLength = ReadHeaderLine(FilePointer, line);
+				sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
+				//printf("%s %s %s\n", keyW1, keyW2, keyW3);
+				if (strncmp(keyW1, "ax:",3)==0) {
+					sscanf(keyW2, "%f", &abc[0][0] );
+					printf("ax=%f\n", abc[0][0]);					
+				}else if (strncmp(keyW1, "ay:",3)==0) {
+					sscanf(keyW2, "%f", &abc[0][1] );
+					printf("ay=%f\n", abc[0][1]);
+				}else if (strncmp(keyW1, "az:",3)==0) {
+					sscanf(keyW2, "%f", &abc[0][2] );
+					printf("az=%f\n", abc[0][2]);					
+				}else if (strncmp(keyW1, "bx:",3)==0) {
+					sscanf(keyW2, "%f", &abc[1][0] );
+					printf("bx=%f\n", abc[1][0]);					
+				}else if (strncmp(keyW1, "by:",3)==0) {
+					sscanf(keyW2, "%f", &abc[1][1] );
+					printf("by=%f\n", abc[1][1]);
+				}else if (strncmp(keyW1, "bz:",3)==0) {
+					sscanf(keyW2, "%f", &abc[1][2] );
+					printf("bz=%f\n", abc[1][2]);					
+				}else if (strncmp(keyW1, "cx:",3)==0) {
+					sscanf(keyW2, "%f", &abc[2][0] );
+					printf("cx=%f\n", abc[2][0]);					
+				}else if (strncmp(keyW1, "cy:",3)==0) {
+					sscanf(keyW2, "%f", &abc[2][1] );
+					printf("cy=%f\n", abc[2][1]);
+				}else if (strncmp(keyW1, "cz:",3)==0) {
+					sscanf(keyW2, "%f", &abc[2][2] );
+					printf("cz=%f\n", abc[2][2]);					
+				}else if (strncmp(keyW1, "Na:",3)==0) {
+					sscanf(keyW2, "%d", &uABC[0] );
+					printf("Na=%d\n", uABC[0]);					
+				}else if (strncmp(keyW1, "Nb:",3)==0) {
+					sscanf(keyW2, "%d", &uABC[1] );
+					printf("Nb=%d\n", uABC[1]);
+				}else if (strncmp(keyW1, "Nc:",3)==0) {
+					sscanf(keyW2, "%d", &uABC[2] );
+					printf("Nc=%d\n", uABC[2]);					
+				}else if (strncmp(keyW1, "Shells:",7)==0) {
+					sscanf(keyW2, "%d", &ShellNumber );
+					printf("Shells=%d\n", ShellNumber);					
+				}else if (strncmp(keyW1, "BCa:",3)==0) {
+					sscanf(keyW2, "%d", &Boundary[0] );
+					printf("BCa=%d\n", Boundary[0]);					
+				}else if (strncmp(keyW1, "BCb:",3)==0) {
+					sscanf(keyW2, "%d", &Boundary[1] );
+					printf("BCc=%d\n", Boundary[1]);					
+				}else if (strncmp(keyW1, "BCc:",3)==0) {
+					sscanf(keyW2, "%d", &Boundary[2] );
+					printf("BCc=%d\n", Boundary[2]);					
+				}
+			}while(strncmp(keyW1, "end",3)!=0 || strncmp(keyW2, "magnoom",7)!=0 || strncmp(keyW3, "config",  6)!=0);
+		}     
+			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
+			free(RadiusOfShell);
+			RadiusOfShell = (float *)calloc(ShellNumber , sizeof(float));  
+			free(NeighborsPerAtom);
+			NeighborsPerAtom = (int *)calloc(AtomsPerBlock, sizeof(int));
+			// total number of neighbour pairs per whole map of neighbours
+ 			NOS=AtomsPerBlock*uABC[0]*uABC[1]*uABC[2]; // number of spins
+			NOS_AL=AtomsPerBlock*uABC[1]*uABC[2]; // number of spins per A layer
+			NOS_BL=AtomsPerBlock*uABC[0]*uABC[2]; // number of spins per B layer
+			NOS_CL=AtomsPerBlock*uABC[0]*uABC[1]; // number of spins per C layer
+
+			iNOS = 1.0/NOS;
+
+			NOB=uABC[0]*uABC[1]*uABC[2]; // number of Blocks
+			NOB_AL=uABC[1]*uABC[2]; // number of spins per A layer
+			NOB_BL=uABC[0]*uABC[2]; // number of spins per B layer
+			NOB_CL=uABC[0]*uABC[1]; // number of spins per C layer
+		// when everything is done
+		printf("Done!\n");
+		fclose(FilePointer);
+	}else{
+		printf("Cannot open file: %s \n", configfilename);
+		printf("new magnoom.cfg will be created.\n");
+	}
+}
 
 
 void setupTweakBar()
@@ -1631,12 +1732,17 @@ void setupTweakBar()
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
-	TwDefine(" Info position = '1 30' size ='200 400' valueswidth=120"); // change default tweak bar size and color
+	TwDefine(" Info position = '1 30' size ='200 500' valueswidth=120"); // change default tweak bar size and color
 	TwAddVarRO(info_bar, "R/S", TW_TYPE_BOOL32,  &Play, "true='RUNING' false='STOPED' ");
 	TwAddVarRO(info_bar, "Rec.", TW_TYPE_BOOL32,  &Record, "true='On' false='Off' ");
 	TwAddVarRO(info_bar, "ACF", TW_TYPE_BOOL32,  &AC_FIELD_ON, "true='On' false='Off' help='AC filed on/off'");
-	TwAddSeparator(info_bar, "sep", NULL);
+	TwAddSeparator(info_bar, "sep-0", NULL);
+	TwAddVarRO(info_bar, "NPB", TW_TYPE_INT32,  &AtomsPerBlock, "help='number of atoms per block' ");
+	TwAddVarRO(info_bar, "N_a", TW_TYPE_INT32,  &uABC[0], "help='translations along a' ");
+	TwAddVarRO(info_bar, "N_b", TW_TYPE_INT32,  &uABC[1], "help='translations along b' ");
+	TwAddVarRO(info_bar, "N_c", TW_TYPE_INT32,  &uABC[2], "help='translations along c' ");	
 	TwAddVarRO(info_bar, "NOS", TW_TYPE_INT32,  &NOS, "help='Number of spins' ");
+	TwAddSeparator(info_bar, "sep", NULL);
 	TwAddVarRO(info_bar, "FPS", TW_TYPE_FLOAT,  &FPS, "help='Frame per second' ");
 	TwAddVarRO(info_bar, "ITR", TW_TYPE_INT32,  &currentIteration, "help='Total number of iterations' ");
 	TwAddVarRO(info_bar, "IPS", TW_TYPE_FLOAT,  &IPS, "help='Iterations per secon' ");
@@ -1839,12 +1945,12 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				break;
 			case 'a':
 			case 'A':
-				Rot[1] -= 0.25;
+				Rot[0] -= 0.25;
 				//TransXYZ[0]-=1;	
 				break;
 			case 'd':
 			case 'D':
-				Rot[1] += 0.25;
+				Rot[0] += 0.25;
 				//TransXYZ[0]+=1;	
 				break;
 
@@ -1873,6 +1979,8 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 
 	}
 }
+
+
 
 void KeyboardAdd( int key, int x, int y ){
 int isiconified;

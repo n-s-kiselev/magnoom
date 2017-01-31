@@ -352,8 +352,10 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	double Ax, Ay, Az;// total matrix
 	double detMi;	 // detMi = 1/detM
 	double D = sqrt(2.0 * alpha / (1.0 + alpha * alpha) * temperature);
+	double Alpha_d = alpha / (1.0 + alpha * alpha);
+	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
 
-	if (temperature>0) GetFluctuations( rx, ry, rz, nos );
+	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
 	Cx = VCu[0] * Cu;
 	Cy = VCu[1] * Cu;
@@ -384,19 +386,23 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					// deterministic terms of Landau–Lifshitz equation:
-					Ax = 0.5f * h * ( - Hx - alpha * (ny * Hz - nz * Hy) );
-					Ay = 0.5f * h * ( - Hy - alpha * (nz * Hx - nx * Hz) );
-					Az = 0.5f * h * ( - Hz - alpha * (nx * Hy - ny * Hx) );
+					Ax = 0.5f * h * ( - Alpha_p * Hx - Alpha_d * (ny * Hz - nz * Hy) );
+					Ay = 0.5f * h * ( - Alpha_p * Hy - Alpha_d * (nz * Hx - nx * Hz) );
+					Az = 0.5f * h * ( - Alpha_p * Hz - Alpha_d * (nx * Hy - ny * Hx) );
 
 					// Spin-torque term
-					Ax = Ax + 0.5f * h * ( - alpha * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
-					Ay = Ay + 0.5f * h * ( - alpha * Cy + (nz * Cx - nx * Cz) );
-					Az = Az + 0.5f * h * ( - alpha * Cz + (nx * Cy - ny * Cx) );
+					if (Cu!=0) {
+						Ax = Ax + 0.5f * h * ( - Alpha_d * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Ay = Ay + 0.5f * h * ( - Alpha_d * Cy + (nz * Cx - nx * Cz) );
+						Az = Az + 0.5f * h * ( - Alpha_d * Cz + (nx * Cy - ny * Cx) );
+					}
 
 					// stochastic terms of Landau–Lifshitz equation:
-					Ax = Ax + 0.5f * rh * D * ( - Rx - alpha * (ny * Rz - nz * Ry) );
-					Ay = Ay + 0.5f * rh * D * ( - Ry - alpha * (nz * Rx - nx * Rz) );
-					Az = Az + 0.5f * rh * D * ( - Rz - alpha * (nx * Ry - ny * Rx) );
+					if (temperature>0) {
+						Ax = Ax + 0.5f * rh * D * ( - Alpha_p * Rx - Alpha_d * (ny * Rz - nz * Ry) );
+						Ay = Ay + 0.5f * rh * D * ( - Alpha_p * Ry - Alpha_d * (nz * Rx - nx * Rz) );
+						Az = Az + 0.5f * rh * D * ( - Alpha_p * Rz - Alpha_d * (nx * Ry - ny * Rx) );
+					}
 
 					ax = nx + ny * Az - nz * Ay;
 					ay = ny + nz * Ax - nx * Az;
@@ -453,17 +459,17 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 					// deterministic terms of Landau–Lifshitz equation:
-					Ax = 0.5f * h * ( - Hx - alpha * (ny * Hz - nz * Hy) );
-					Ay = 0.5f * h * ( - Hy - alpha * (nz * Hx - nx * Hz) );
-					Az = 0.5f * h * ( - Hz - alpha * (nx * Hy - ny * Hx) );
+					Ax = 0.5f * h * ( - Alpha_p * Hx - Alpha_d * (ny * Hz - nz * Hy) );
+					Ay = 0.5f * h * ( - Alpha_p * Hy - Alpha_d * (nz * Hx - nx * Hz) );
+					Az = 0.5f * h * ( - Alpha_p * Hz - Alpha_d * (nx * Hy - ny * Hx) );
 					// Spin-torque term
-					Ax = Ax + 0.5f * h * ( - alpha * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
-					Ay = Ay + 0.5f * h * ( - alpha * Cy + (nz * Cx - nx * Cz) );
-					Az = Az + 0.5f * h * ( - alpha * Cz + (nx * Cy - ny * Cx) );
+					Ax = Ax + 0.5f * h * ( - Alpha_d * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+					Ay = Ay + 0.5f * h * ( - Alpha_d * Cy + (nz * Cx - nx * Cz) );
+					Az = Az + 0.5f * h * ( - Alpha_d * Cz + (nx * Cy - ny * Cx) );
 					// stochastic terms of Landau–Lifshitz equation:
-					Ax = Ax + 0.5f * rh * D * ( - Rx - alpha * (ny * Rz - nz * Ry) );
-					Ay = Ay + 0.5f * rh * D * ( - Ry - alpha * (nz * Rx - nx * Rz) );
-					Az = Az + 0.5f * rh * D * ( - Rz - alpha * (nx * Ry - ny * Rx) );
+					Ax = Ax + 0.5f * rh * D * ( - Alpha_p * Rx - Alpha_d * (ny * Rz - nz * Ry) );
+					Ay = Ay + 0.5f * rh * D * ( - Alpha_p * Ry - Alpha_d * (nz * Rx - nx * Rz) );
+					Az = Az + 0.5f * rh * D * ( - Alpha_p * Rz - Alpha_d * (nx * Ry - ny * Rx) );
 
 					nx = inx[i];	ny = iny[i];	nz = inz[i];	//<-- pay attention to this line!
 
@@ -577,7 +583,6 @@ void *CALC_THREAD(void *void_ptr)
     // printf("nbini = %d, nbfin = %d\n",nbini, nbfin);
     // printf("ncini = %d, ncfin = %d\n",ncini, ncfin);
 
-
 	while(true)
 	{
 		while(ENGINE_MUTEX != DO_IT){ 
@@ -585,6 +590,7 @@ void *CALC_THREAD(void *void_ptr)
 			//nanosleep (&tw, NULL);
 		}
 		HacTime = GetACfield();
+		if (threadindex==1) GetFluctuations(RNx, RNy, RNz, NOS );
 		StochasticLLG( 	Sx, 	Sy, 	Sz, 
 						tSx,	tSy, 	tSz, 
 						Heffx, 	Heffy, 	Heffz, 
@@ -619,9 +625,21 @@ void *CALC_THREAD(void *void_ptr)
 				outputEtotal = GetTotalEnergy( 	bSx, bSy, bSz, 
 					NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
 					Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot0, outputMtotal, NOS );
-				if (outFile!=NULL){
-					snprintf(BuferString,80,"%d,%2.5f,%2.5f,%2.5f,%2.5f,\n",ITERATION,outputMtotal[0]/NOS,outputMtotal[1]/NOS,outputMtotal[2]/NOS,outputEtotal);
-					fputs (BuferString,outFile);  		
+				BigDataBank[0][recordsCounter] = (float)ITERATION;
+				BigDataBank[1][recordsCounter] = outputMtotal[0]*iNOS;
+				BigDataBank[2][recordsCounter] = outputMtotal[1]*iNOS;
+				BigDataBank[3][recordsCounter] = outputMtotal[2]*iNOS;
+				BigDataBank[4][recordsCounter] = outputEtotal;
+				recordsCounter++;
+				if (recordsCounter==1000){
+					if (outFile!=NULL){
+						for (int i=0; i<recordsCounter; i++){
+							snprintf(BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i],BigDataBank[0][i]*t_step,BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i]);
+							fputs (BuferString,outFile);  							
+						}
+					}
+					printf("%s\n", "Recording to file table.csv is done!");
+					recordsCounter=0;
 				}
 			}
 			if (DATA_TRANSFER_MUTEX==WAIT_DATA){
@@ -657,7 +675,6 @@ void *CALC_THREAD(void *void_ptr)
 		}
 
 }
-fclose (outFile);
 // the function must return something - NULL will do 
 return NULL;
 }
