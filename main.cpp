@@ -281,6 +281,9 @@ int 		save_slice=0;
 float		VCu[]={ 0.0 , 0.0, 1.0 };
 //Spin-torque parameter ~ density of ingected current
 float		Cu = 0.0;
+
+//on/off precession term
+int         Precession=1;
 //damping parameter:
 float		damping=1.0;
 //timestep

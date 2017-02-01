@@ -352,7 +352,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	double Ax, Ay, Az;// total matrix
 	double detMi;	 // detMi = 1/detM
 	double D = sqrt(2.0 * alpha / (1.0 + alpha * alpha) * temperature);
-	double Alpha_d = alpha / (1.0 + alpha * alpha);
+	double Alpha_d = alpha / (1.0 + alpha * alpha * Precession);
 	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
 
 	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
@@ -386,9 +386,9 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					// deterministic terms of Landau–Lifshitz equation:
-					Ax = 0.5f * h * ( - Alpha_p * Hx - Alpha_d * (ny * Hz - nz * Hy) );
-					Ay = 0.5f * h * ( - Alpha_p * Hy - Alpha_d * (nz * Hx - nx * Hz) );
-					Az = 0.5f * h * ( - Alpha_p * Hz - Alpha_d * (nx * Hy - ny * Hx) );
+					Ax = 0.5f * h * ( - Alpha_p * Precession * Hx - Alpha_d * (ny * Hz - nz * Hy) );
+					Ay = 0.5f * h * ( - Alpha_p * Precession * Hy - Alpha_d * (nz * Hx - nx * Hz) );
+					Az = 0.5f * h * ( - Alpha_p * Precession * Hz - Alpha_d * (nx * Hy - ny * Hx) );
 
 					// Spin-torque term
 					if (Cu!=0) {

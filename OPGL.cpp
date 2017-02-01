@@ -107,13 +107,18 @@ typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
 int   N_filter=0;
-float theta_max=PI/2+0.13; //0.01;//
-float Sz_min=cos(theta_max);
-float theta_min=PI/2-0.13; //0;//   
-float Sz_max=cos(theta_min);
+float theta_max1=PI/2+0.13; //0.01;//
+float Sz_min1=cos(theta_max1);
+float theta_min1=PI/2-0.13; //0;//   
+float Sz_max1=cos(theta_min1);
 
-float phi_max=2*PI;
-float phi_min=0;
+float theta_max2=PI/4+0.13; //0.01;//
+float Sz_min2=cos(theta_max2);
+float theta_min2=PI/4-0.13; //0;//   
+float Sz_max2=cos(theta_min2);
+
+int phi_max1=360;
+int phi_min1=0;
 
 // Parameters for initial state 
 float			chSize = 35; // characteristic size of initial state in units of "a"
@@ -919,31 +924,62 @@ void TW_CALL CB_GetSliceMode(void *value, void *clientData){
 
 void TW_CALL CB_GetThetaMax(void *value, void *clientData){
     (void)clientData; // unused
-    *(float *)value = theta_max; 
+    *(float *)value = theta_max1; 
 }
 
 
 void TW_CALL CB_SetThetaMax(const void *value, void *clientData ){
 	(void)clientData; // unused
 	float test= *( float *)value; 
-	if (test>=theta_min ){
-        theta_max = test;
-        Sz_min=cos(theta_max);
+	if (test>=theta_min1 ){
+        theta_max1 = test;
+        Sz_min1=cos(theta_max1);
         ChangeVectorMode(0);
 	}
 }
 
+
 void TW_CALL CB_GetThetaMin(void *value, void *clientData){
     (void)clientData; // unused
-    *(float *)value = theta_min; 
+    *(float *)value = theta_min1; 
 }
 
 void TW_CALL CB_SetThetaMin(const void *value, void *clientData ){
 	(void)clientData; // unused
 	float test= *( float *)value; 
-	if (test<=theta_max ){
-        theta_min = test; 
-        Sz_max=cos(theta_min);
+	if (test<=theta_max1 ){
+        theta_min1 = test; 
+        Sz_max1=cos(theta_min1);
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetPhiMax(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = phi_max1; 
+}
+
+
+void TW_CALL CB_SetPhiMax(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test>=phi_min1 ){
+        phi_max1 = test;
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetPhiMin(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = phi_min1; 
+}
+
+
+void TW_CALL CB_SetPhiMin(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test<=phi_max1 ){
+        phi_min1 = test;
         ChangeVectorMode(0);
 	}
 }
@@ -1480,8 +1516,11 @@ void setupTweakBar()
 	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
 	TwAddVarCB(view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
 	}
-	TwAddVarCB(view_bar, "T_max", TW_TYPE_FLOAT, CB_SetThetaMax, CB_GetThetaMax, &theta_max, " label='Theta max' min=0 max=3.141592 step=0.01 help='max value for angle theta'");
-	TwAddVarCB(view_bar, "T_min", TW_TYPE_FLOAT, CB_SetThetaMin, CB_GetThetaMin, &theta_min, " label='Theta min' min=0 max=3.141592 step=0.01 help='min value for angle theta'");
+	TwAddVarCB(view_bar, "T_max", TW_TYPE_FLOAT, CB_SetThetaMax, CB_GetThetaMax, &theta_max1, " label='Theta max' min=0 max=3.141592 step=0.01 help='max value for polar angle theta'");
+	TwAddVarCB(view_bar, "T_min", TW_TYPE_FLOAT, CB_SetThetaMin, CB_GetThetaMin, &theta_min1, " label='Theta min' min=0 max=3.141592 step=0.01 help='min value for polar angle theta'");
+
+	TwAddVarCB(view_bar, "F_max", TW_TYPE_INT32, CB_SetPhiMax, CB_GetPhiMax, &phi_max1, " label='Phi max' min=0 max=360 step=1 help='max value for azimuthal angle phi'");
+	TwAddVarCB(view_bar, "F_min", TW_TYPE_INT32, CB_SetPhiMin, CB_GetPhiMin, &phi_min1, " label='Phi min' min=0 max=360 step=1 help='min value for azimuthal angle phi'");
 
 	TwAddSeparator(view_bar, "view_sep2", NULL);
 
@@ -1554,6 +1593,8 @@ void setupTweakBar()
 	TwAddVarRW(control_bar, "BCinC", TW_TYPE_BOOL32, &Boundary[2], 
 	"label='along c' group='Boundary conditions' true='periodic' false='open' help='set boundary conditions along translation vector 'c' '");
     
+    TwAddVarRW(control_bar, "Preces", TW_TYPE_BOOL32, &Precession, 
+	"label='precession' group='LLG' true='On' false='Off' help='On/Off precession'");
 	TwAddVarRW(control_bar, "Damping", TW_TYPE_FLOAT, &damping, 
 	"label='Damping' min=0 max=100 step=0.01 group='LLG' ");
 	TwAddVarRW(control_bar, "Time_step", TW_TYPE_FLOAT, &t_step, 
@@ -2852,9 +2893,11 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					S[0] = Sx[N];
 					S[1] = Sy[N];
 					S[2] = Sz[N];
-					vlength = Unitf(S,S);
-					if (S[2]>=Sz_min && S[2]<=Sz_max)
+					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
+					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
+					if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
 					{
+						vlength = Unitf(S,S);
 						N_filter++;
 				        HSVtoRGB(S, RGB, InvertValue, InvertHue);
 						j++;
@@ -3002,7 +3045,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					S[1]+= Sy[N];
 					S[2]+= Sz[N];
 			    }
-			    if (S[2]>=Sz_min && S[2]<=Sz_max)
+				int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
+				//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
+				if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
 				{
 					N_filter++;
 				    (void)Unitf(S,S);
@@ -3098,7 +3143,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					S[1] = Sy[n+atom];
 					S[2] = Sz[n+atom];
 					vlength = Unitf(S,S);
-					if (S[2]>=Sz_min && S[2]<=Sz_max)
+					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
+					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
+					if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
 					{
 						N_filter++;
 				        HSVtoRGB( S, RGB, InvertValue, InvertHue);
@@ -3165,7 +3212,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					S[1] = Sy[n+atom];
 					S[2] = Sz[n+atom];
 					vlength = Unitf(S,S);
-					if (S[2]>=Sz_min && S[2]<=Sz_max) 
+					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
+					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
+					if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
 					{
 						N_filter++;
 				        HSVtoRGB( S, RGB, InvertValue, InvertHue);
