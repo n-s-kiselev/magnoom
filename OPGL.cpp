@@ -107,18 +107,37 @@ typedef enum	{A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode; // which mode
 enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default 
 
 int   N_filter=0;
-float theta_max1=PI/2+0.13; //0.01;//
-float Sz_min1=cos(theta_max1);
-float theta_min1=PI/2-0.13; //0;//   
-float Sz_max1=cos(theta_min1);
 
-float theta_max2=PI/4+0.13; //0.01;//
-float Sz_min2=cos(theta_max2);
-float theta_min2=PI/4-0.13; //0;//   
-float Sz_max2=cos(theta_min2);
+int SpinFilter=1;
+
+int theta_max1=90+5; //0.01;//
+float Sz_min1=cos(theta_max1*PI/180.0);
+int theta_min1=90-5; //0;//   
+float Sz_max1=cos(theta_min1*PI/180.0);
+
+int theta_max2=45+5; //0.01;//
+float Sz_min2=cos(theta_max2*PI/180.0);
+int theta_min2=45-5; //0;//   
+float Sz_max2=cos(theta_min2*PI/180.0);
 
 int phi_max1=360;
 int phi_min1=0;
+
+int phi_max2=360;
+int phi_min2=0;
+
+
+int GreedFilter=0;
+int GreedFilterInvert=0;
+
+int GreedFilterMaxA=uABC[0]-1;// redefined in readConfigFile()
+int GreedFilterMinA=0;
+
+int GreedFilterMaxB=uABC[1]-1;// redefined in readConfigFile()
+int GreedFilterMinB=0;
+
+int GreedFilterMaxC=uABC[2]-1;// redefined in readConfigFile()
+int GreedFilterMinC=0;
 
 // Parameters for initial state 
 float			chSize = 35; // characteristic size of initial state in units of "a"
@@ -922,45 +941,75 @@ void TW_CALL CB_GetSliceMode(void *value, void *clientData){
 }
 
 
-void TW_CALL CB_GetThetaMax(void *value, void *clientData){
+void TW_CALL CB_GetThetaMax1(void *value, void *clientData){
     (void)clientData; // unused
-    *(float *)value = theta_max1; 
+    *(int *)value = theta_max1; 
 }
 
 
-void TW_CALL CB_SetThetaMax(const void *value, void *clientData ){
+void TW_CALL CB_SetThetaMax1(const void *value, void *clientData ){
 	(void)clientData; // unused
-	float test= *( float *)value; 
+	int test= *( int *)value; 
 	if (test>=theta_min1 ){
         theta_max1 = test;
-        Sz_min1=cos(theta_max1);
+        Sz_min1=cos(theta_max1*PI/180.0);
         ChangeVectorMode(0);
 	}
 }
 
-
-void TW_CALL CB_GetThetaMin(void *value, void *clientData){
+void TW_CALL CB_GetThetaMax2(void *value, void *clientData){
     (void)clientData; // unused
-    *(float *)value = theta_min1; 
+    *(int *)value = theta_max2; 
 }
 
-void TW_CALL CB_SetThetaMin(const void *value, void *clientData ){
+
+void TW_CALL CB_SetThetaMax2(const void *value, void *clientData ){
 	(void)clientData; // unused
-	float test= *( float *)value; 
+	int test= *( int *)value; 
+	if (test>=theta_min2 ){
+        theta_max2 = test;
+        Sz_min2=cos(theta_max2*PI/180.0);
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetThetaMin1(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = theta_min1; 
+}
+
+void TW_CALL CB_SetThetaMin1(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
 	if (test<=theta_max1 ){
         theta_min1 = test; 
-        Sz_max1=cos(theta_min1);
+        Sz_max1=cos(theta_min1*PI/180.0);
         ChangeVectorMode(0);
 	}
 }
 
-void TW_CALL CB_GetPhiMax(void *value, void *clientData){
+void TW_CALL CB_GetThetaMin2(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = theta_min2; 
+}
+
+void TW_CALL CB_SetThetaMin2(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test<=theta_max2 ){
+        theta_min2 = test; 
+        Sz_max2=cos(theta_min2*PI/180.0);
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetPhiMax1(void *value, void *clientData){
     (void)clientData; // unused
     *(int *)value = phi_max1; 
 }
 
 
-void TW_CALL CB_SetPhiMax(const void *value, void *clientData ){
+void TW_CALL CB_SetPhiMax1(const void *value, void *clientData ){
 	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test>=phi_min1 ){
@@ -969,13 +1018,13 @@ void TW_CALL CB_SetPhiMax(const void *value, void *clientData ){
 	}
 }
 
-void TW_CALL CB_GetPhiMin(void *value, void *clientData){
+void TW_CALL CB_GetPhiMin1(void *value, void *clientData){
     (void)clientData; // unused
     *(int *)value = phi_min1; 
 }
 
 
-void TW_CALL CB_SetPhiMin(const void *value, void *clientData ){
+void TW_CALL CB_SetPhiMin1(const void *value, void *clientData ){
 	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test<=phi_max1 ){
@@ -983,6 +1032,112 @@ void TW_CALL CB_SetPhiMin(const void *value, void *clientData ){
         ChangeVectorMode(0);
 	}
 }
+
+void TW_CALL CB_GetPhiMax2(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = phi_max2; 
+}
+
+
+void TW_CALL CB_SetPhiMax2(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test>=phi_min2 ){
+        phi_max2 = test;
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetPhiMin2(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = phi_min2; 
+}
+
+
+void TW_CALL CB_SetPhiMin2(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test<=phi_max2 ){
+        phi_min2 = test;
+        ChangeVectorMode(0);
+	}
+}
+/*************/
+void TW_CALL CB_GetGreedMaxA(void *value, void *clientData){
+    *(int *)value = GreedFilterMaxA; 
+}
+
+void TW_CALL CB_SetGreedMaxA(const void *value, void *clientData ){
+	int test= *( int *)value; 
+	if (test<uABC[0] && test>GreedFilterMinA){
+        GreedFilterMaxA = test;
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetGreedMinA(void *value, void *clientData){
+    *(int *)value = GreedFilterMinA; 
+}
+
+void TW_CALL CB_SetGreedMinA(const void *value, void *clientData ){
+	int test= *( int *)value; 
+	if (test<GreedFilterMaxA && test>=0){
+        GreedFilterMinA = test;
+        ChangeVectorMode(0);
+	}
+}
+/*************/
+void TW_CALL CB_GetGreedMaxB(void *value, void *clientData){
+    *(int *)value = GreedFilterMaxB; 
+}
+
+void TW_CALL CB_SetGreedMaxB(const void *value, void *clientData ){
+	int test= *( int *)value; 
+	if (test<uABC[1] && test>GreedFilterMinB){
+        GreedFilterMaxB = test;
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetGreedMinB(void *value, void *clientData){
+    *(int *)value = GreedFilterMinB; 
+}
+
+void TW_CALL CB_SetGreedMinB(const void *value, void *clientData ){
+	int test= *( int *)value; 
+	if (test<GreedFilterMaxB && test>=0){
+        GreedFilterMinB = test;
+        ChangeVectorMode(0);
+	}
+}
+/*************/
+void TW_CALL CB_GetGreedMaxC(void *value, void *clientData){
+    *(int *)value = GreedFilterMaxC; 
+}
+
+void TW_CALL CB_SetGreedMaxC(const void *value, void *clientData ){
+	int test= *( int *)value; 
+	if (test<uABC[2] && test>GreedFilterMinC){
+        GreedFilterMaxC = test;
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetGreedMinC(void *value, void *clientData){
+    *(int *)value = GreedFilterMinC; 
+}
+
+void TW_CALL CB_SetGreedMinC(const void *value, void *clientData ){
+	int test= *( int *)value; 
+	if (test<GreedFilterMaxC && test>=0){
+        GreedFilterMinC = test;
+        ChangeVectorMode(0);
+	}
+}
+
+
+
+
 
 void TW_CALL CB_ResetIterations( void *clientData ){
   ITERATION=0;
@@ -1448,6 +1603,10 @@ void readConfigFile()
 			NOB_AL=uABC[1]*uABC[2]; // number of spins per A layer
 			NOB_BL=uABC[0]*uABC[2]; // number of spins per B layer
 			NOB_CL=uABC[0]*uABC[1]; // number of spins per C layer
+
+			GreedFilterMaxA=uABC[0]-1;
+			GreedFilterMaxB=uABC[1]-1;
+			GreedFilterMaxC=uABC[2]-1;
 		// when everything is done
 		printf("Done!\n");
 		fclose(FilePointer);
@@ -1516,11 +1675,49 @@ void setupTweakBar()
 	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
 	TwAddVarCB(view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
 	}
-	TwAddVarCB(view_bar, "T_max", TW_TYPE_FLOAT, CB_SetThetaMax, CB_GetThetaMax, &theta_max1, " label='Theta max' min=0 max=3.141592 step=0.01 help='max value for polar angle theta'");
-	TwAddVarCB(view_bar, "T_min", TW_TYPE_FLOAT, CB_SetThetaMin, CB_GetThetaMin, &theta_min1, " label='Theta min' min=0 max=3.141592 step=0.01 help='min value for polar angle theta'");
 
-	TwAddVarCB(view_bar, "F_max", TW_TYPE_INT32, CB_SetPhiMax, CB_GetPhiMax, &phi_max1, " label='Phi max' min=0 max=360 step=1 help='max value for azimuthal angle phi'");
-	TwAddVarCB(view_bar, "F_min", TW_TYPE_INT32, CB_SetPhiMin, CB_GetPhiMin, &phi_min1, " label='Phi min' min=0 max=360 step=1 help='min value for azimuthal angle phi'");
+	TwAddVarRW(view_bar, "Spin_filter", TW_TYPE_BOOL32, &SpinFilter, 
+		" label='Spin filter' true='On' false='Off' group='Filters' ");
+
+	TwAddVarCB(view_bar, "T_max1", TW_TYPE_INT32, CB_SetThetaMax1, CB_GetThetaMax1, &theta_max1, 
+		" group='Spin_filter_1' label='Theta max 1' min=0 max=180  help='max value for polar angle theta'");
+	TwAddVarCB(view_bar, "T_min1", TW_TYPE_INT32, CB_SetThetaMin1, CB_GetThetaMin1, &theta_min1, 
+		" group='Spin_filter_1' label='Theta min 1' min=0 max=180  help='min value for polar angle theta'");
+	TwAddVarCB(view_bar, "F_max1", TW_TYPE_INT32, CB_SetPhiMax1, CB_GetPhiMax1, &phi_max1, 
+		" group='Spin_filter_1' label='Phi max 1' min=0 max=360 step=1 help='max value for azimuthal angle phi'");
+	TwAddVarCB(view_bar, "F_min1", TW_TYPE_INT32, CB_SetPhiMin1, CB_GetPhiMin1, &phi_min1, 
+		" group='Spin_filter_1' label='Phi min 1' min=0 max=360 step=1 help='min value for azimuthal angle phi'");
+
+	TwAddVarCB(view_bar, "T_max2", TW_TYPE_INT32, CB_SetThetaMax2, CB_GetThetaMax2, &theta_max2, 
+		" group='Spin_filter_2' label='Theta max 2' min=0 max=180  help='max value for polar angle theta'");
+	TwAddVarCB(view_bar, "T_min2", TW_TYPE_INT32, CB_SetThetaMin2, CB_GetThetaMin2, &theta_min2, 
+		" group='Spin_filter_2' label='Theta min 2' min=0 max=180  help='min value for polar angle theta'");
+	
+	TwAddVarCB(view_bar, "F_max2", TW_TYPE_INT32, CB_SetPhiMax2, CB_GetPhiMax2, &phi_max2, 
+		" group='Spin_filter_2' label='Phi max 2' min=0 max=360 step=1 help='max value for azimuthal angle phi'");
+	TwAddVarCB(view_bar, "F_min2", TW_TYPE_INT32, CB_SetPhiMin2, CB_GetPhiMin2, &phi_min2, 
+		" group='Spin_filter_2' label='Phi min 2' min=0 max=360 step=1 help='min value for azimuthal angle phi'");
+
+	TwDefine(" View/Spin_filter_1 opened=false group='Filters'");
+	TwDefine(" View/Spin_filter_2 opened=false group='Filters'");
+
+	TwAddVarRW(view_bar, "GreedFilter", TW_TYPE_BOOL32, &GreedFilter, 
+		" label='Greed filter' true='On' false='Off' group='Filters' ");
+	TwAddVarCB(view_bar, "GFmaxA", TW_TYPE_INT32, CB_SetGreedMaxA, CB_GetGreedMaxA, &GreedFilterMaxA, " group='Greed_filter' label='max na' ");
+	TwAddVarCB(view_bar, "GFminA", TW_TYPE_INT32, CB_SetGreedMinA, CB_GetGreedMinA, &GreedFilterMinA, " group='Greed_filter' label='min na' ");
+	TwAddVarCB(view_bar, "GFmaxB", TW_TYPE_INT32, CB_SetGreedMaxB, CB_GetGreedMaxB, &GreedFilterMaxB, " group='Greed_filter' label='max nb' ");
+	TwAddVarCB(view_bar, "GFminB", TW_TYPE_INT32, CB_SetGreedMinB, CB_GetGreedMinB, &GreedFilterMinB, " group='Greed_filter' label='min nb' ");
+	TwAddVarCB(view_bar, "GFmaxC", TW_TYPE_INT32, CB_SetGreedMaxC, CB_GetGreedMaxC, &GreedFilterMaxC, " group='Greed_filter' label='max nc' ");
+	TwAddVarCB(view_bar, "GFminC", TW_TYPE_INT32, CB_SetGreedMinC, CB_GetGreedMinC, &GreedFilterMinC, " group='Greed_filter' label='min nc' ");
+
+
+    TwAddVarRW(view_bar, "GreedFilterInvert", TW_TYPE_BOOL32, &GreedFilterInvert, " label='Invert G filter' true='On' false='Off' group='Greed_filter' ");
+
+	TwDefine(" View/Greed_filter opened=false group='Filters'");
+
+
+
+
 
 	TwAddSeparator(view_bar, "view_sep2", NULL);
 
@@ -1536,27 +1733,31 @@ void setupTweakBar()
 	TwAddVarRW(view_bar, "Light_On_Off", TW_TYPE_BOOL32, &Light_On, 
 	" label='Light On/Off' key=l help='Reflectins' group='Light'");
 
+    TwDefine(" View/Light opened=false ");
+	
+
 	TwAddVarRW(view_bar, "CamAng", TW_TYPE_FLOAT, &PerspSet[0], 
-	" label='camera angle' min=1 max=120 help='camera angle' group='Camera control'");
+	" label='camera angle' min=1 max=120 help='camera angle' group='Camera'");
 	TwAddVarRW(view_bar, "PosX", TW_TYPE_FLOAT, &TransXYZ[0], 
-	" label='position in x' min=-1000 max=1000 help='camera position along X-axis' group='Camera control'");
+	" label='position in x' min=-1000 max=1000 help='camera position along X-axis' group='Camera'");
 	TwAddVarRW(view_bar, "PosY", TW_TYPE_FLOAT, &TransXYZ[1], 
-	" label='position in y' min=-1000 max=1000 help='camera position along Y-axis' group='Camera control'");
+	" label='position in y' min=-1000 max=1000 help='camera position along Y-axis' group='Camera'");
 	TwAddVarRW(view_bar, "PosZ", TW_TYPE_FLOAT, &TransXYZ[2], 
-	" label='position in z' min=-1000 max=1000 help='camera position along Z-axis' group='Camera control'");
+	" label='position in z' min=-1000 max=1000 help='camera position along Z-axis' group='Camera'");
 
 	TwAddVarRW(view_bar, "RotX", TW_TYPE_FLOAT, &Rot[0], 
-	" label='turn around x' min=-360 max=360 help='rotate camera around X-axis' group='Camera control'");
+	" label='turn around x' min=-360 max=360 help='rotate camera around X-axis' group='Camera'");
 	TwAddVarRW(view_bar, "RotY", TW_TYPE_FLOAT, &Rot[1], 
-	" label='turn around y' min=-360 max=360 help='rotate camera around Y-axis' group='Camera control'");
+	" label='turn around y' min=-360 max=360 help='rotate camera around Y-axis' group='Camera'");
 	TwAddVarRW(view_bar, "RotZ", TW_TYPE_FLOAT, &Rot[2], 
-	" label='turn around z' min=-360 max=360 help='rotate camera around Z-axis' group='Camera control'");
+	" label='turn around z' min=-360 max=360 help='rotate camera around Z-axis' group='Camera'");
+	TwDefine(" View/Camera opened=true ");
 
 	TwAddVarRW(view_bar, "CamBank", TW_TYPE_INT32, &CurrentCameraPositionBank, 
-	" label='Current camera' min=0 max=4 group='Camera read/write'");
-	TwAddButton(view_bar, "Read Camera", CB_GetCameraPosition, NULL, "label='read camera pos.' ");
-	TwAddButton(view_bar, "Write Camera", CB_SaveCameraPosition, NULL, "label='save camera pos.' ");
-
+	" label='Current camera' min=0 max=4 group='CameraRW'");
+	TwAddButton(view_bar, "Read Camera", CB_GetCameraPosition, NULL, "label='read camera pos.' group='CameraRW'");
+	TwAddButton(view_bar, "Write Camera", CB_SaveCameraPosition, NULL, "label='save camera pos.' group='CameraRW'");
+	TwDefine(" View/CameraRW opened=false ");
 
 	TwAddVarCB(view_bar, "ColSh", TW_TYPE_INT32, CB_SetColorShift, CB_GetColorShift, &ColorShift, 
 	" label='Rotate hue' min=0 max=360 help='rotate color hue in xy-plane' group='HSV color map'");
@@ -1773,7 +1974,7 @@ void setupTweakBar()
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
-	TwDefine(" Info position = '1 30' size ='200 500' valueswidth=120"); // change default tweak bar size and color
+	TwDefine(" Info position = '1 30' size ='180 500' valueswidth=120"); // change default tweak bar size and color
 	TwAddVarRO(info_bar, "R/S", TW_TYPE_BOOL32,  &Play, "true='RUNING' false='STOPED' ");
 	TwAddVarRO(info_bar, "Rec.", TW_TYPE_BOOL32,  &Record, "true='On' false='Off' ");
 	TwAddVarRO(info_bar, "ACF", TW_TYPE_BOOL32,  &AC_FIELD_ON, "true='On' false='Off' help='AC filed on/off'");
@@ -1784,29 +1985,29 @@ void setupTweakBar()
 	TwAddVarRO(info_bar, "N_c", TW_TYPE_INT32,  &uABC[2], "help='translations along c' ");	
 	TwAddVarRO(info_bar, "NOS", TW_TYPE_INT32,  &NOS, "help='Number of spins' ");
 	TwAddSeparator(info_bar, "sep", NULL);
-	TwAddVarRO(info_bar, "FPS", TW_TYPE_FLOAT,  &FPS, "help='Frame per second' ");
+	TwAddVarRO(info_bar, "FPS", TW_TYPE_FLOAT,  &FPS, "help='Frame per second' precision=4");
 	TwAddVarRO(info_bar, "ITR", TW_TYPE_INT32,  &currentIteration, "help='Total number of iterations' ");
-	TwAddVarRO(info_bar, "IPS", TW_TYPE_FLOAT,  &IPS, "help='Iterations per secon' ");
+	TwAddVarRO(info_bar, "IPS", TW_TYPE_FLOAT,  &IPS, "help='Iterations per secon' precision=4");
 
 	TwAddSeparator(info_bar, "sep0", NULL);
-	TwAddVarRO(info_bar, "Etot", TW_TYPE_DOUBLE, &totalEnergy, " help='Total energy' ");
-	TwAddVarRO(info_bar, "e", TW_TYPE_DOUBLE, &perSpEnergy, " help='Energy density per spin'");
+	TwAddVarRO(info_bar, "Etot", TW_TYPE_DOUBLE, &totalEnergy, " precision=12 help='Total energy' ");
+	TwAddVarRO(info_bar, "e", TW_TYPE_DOUBLE, &perSpEnergy, " precision=12 help='Energy density per spin'");
 
 	TwAddSeparator(info_bar, "sep01", NULL);
-	TwAddVarRO(info_bar, "e0", TW_TYPE_DOUBLE, &totalEnergyFerro, " help='Energy density for ferromagnetic state' ");
-	TwAddVarRO(info_bar, "e-e0", TW_TYPE_DOUBLE, &perSpEnergyMinusFerro, " help='Energy density per spin wrt ferromagnetic state'");
+	TwAddVarRO(info_bar, "e0", TW_TYPE_DOUBLE, &totalEnergyFerro, " precision=12 help='Energy density for ferromagnetic state' ");
+	TwAddVarRO(info_bar, "e-e0", TW_TYPE_DOUBLE, &perSpEnergyMinusFerro, " precision=12 help='Energy density per spin wrt ferromagnetic state'");
 
 	TwAddSeparator(info_bar, "sep1", NULL);	
-	TwAddVarRO(info_bar, "M_x", TW_TYPE_DOUBLE, &Mtot[0], " help='x-component of total moment' ");
-	TwAddVarRO(info_bar, "M_y", TW_TYPE_DOUBLE, &Mtot[1], " help='y-component of total moment' ");
-	TwAddVarRO(info_bar, "M_z", TW_TYPE_DOUBLE, &Mtot[2], " help='z-component of total moment' ");
+	TwAddVarRO(info_bar, "M_x", TW_TYPE_DOUBLE, &Mtot[0], " help='x-component of total moment' precision=12");
+	TwAddVarRO(info_bar, "M_y", TW_TYPE_DOUBLE, &Mtot[1], " help='y-component of total moment' precision=12");
+	TwAddVarRO(info_bar, "M_z", TW_TYPE_DOUBLE, &Mtot[2], " help='z-component of total moment' precision=12");
 
 	TwAddSeparator(info_bar, "sep2", NULL);
-	TwAddVarRO(info_bar, "m_x", TW_TYPE_DOUBLE, &mtot[0], " help='x-component of average moment per spin' ");
-	TwAddVarRO(info_bar, "m_y", TW_TYPE_DOUBLE, &mtot[1], " help='y-component of average moment per spin' ");
-	TwAddVarRO(info_bar, "m_z", TW_TYPE_DOUBLE, &mtot[2], " help='z-component of average moment per spin' ");
+	TwAddVarRO(info_bar, "m_x", TW_TYPE_DOUBLE, &mtot[0], " help='x-component of average moment per spin' precision=12");
+	TwAddVarRO(info_bar, "m_y", TW_TYPE_DOUBLE, &mtot[1], " help='y-component of average moment per spin' precision=12");
+	TwAddVarRO(info_bar, "m_z", TW_TYPE_DOUBLE, &mtot[2], " help='z-component of average moment per spin' precision=12");
 	TwAddSeparator(info_bar, "sep3", NULL);
-	TwAddVarRO(info_bar, "max_torque", TW_TYPE_DOUBLE, &MAX_TORQUE, " help='maximum torque acting on the spin' ");
+	TwAddVarRO(info_bar, "max_torque", TW_TYPE_DOUBLE, &MAX_TORQUE, " help='maximum torque acting on the spin' precision=6");
 }
 
 
@@ -2878,68 +3079,72 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 		if (WhichSliceMode==FILTER)
 			{
 			N_filter=0;
-			for (int an = 0; an<uABC[0]; an++) 
-			{
-			for (int bn = 0; bn<uABC[1]; bn++) 
-			{
-			for (int cn = 0; cn<uABC[2]; cn++) 
-			{
+			for (int an = 0; an<uABC[0]; an++) {
+			for (int bn = 0; bn<uABC[1]; bn++) {
+			for (int cn = 0; cn<uABC[2]; cn++) {
 				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				n = n*AtomsPerBlock;//index of the first spin in the block
-				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				if (((an>=GreedFilterMinA && an<=GreedFilterMaxA) &&
+					 (bn>=GreedFilterMinB && bn<=GreedFilterMaxB) &&
+					 (cn>=GreedFilterMinC && cn<=GreedFilterMaxC)) || GreedFilterInvert )
 				{
-				    N = n + atom;
-					//slow version is commented but easy to read: 
-					S[0] = Sx[N];
-					S[1] = Sy[N];
-					S[2] = Sz[N];
-					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
-					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
-					if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
+					for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
-						vlength = Unitf(S,S);
-						N_filter++;
-				        HSVtoRGB(S, RGB, InvertValue, InvertHue);
-						j++;
-						for (int k=0; k<Kinp/3; k++) // k runs over vertices of the arrow/cone 
+					    N = n + atom;
+						//slow version is commented but easy to read: 
+						S[0] = Sx[N];
+						S[1] = Sy[N];
+						S[2] = Sz[N];
+						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
+						//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
+						//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
+						if ( ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ||
+							 ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )
 						{
-							i = j*Kinp + 3*k;	// vertex index
-							//slow version is commented but easy to read: 
-							// tmpV1[0] = Vinp[3*k+0];
-							// tmpV1[1] = Vinp[3*k+1];
-							// tmpV1[2] = Vinp[3*k+2];
-							// NewBasisCartesian(tmpV1, S, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
-							// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
-							// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
-							// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
-							U = 1.0f/(S[0]*S[0]+S[1]*S[1]+(1e-37f)); 
-							
-							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
+							vlength = Unitf(S,S);
+							N_filter++;
+					        HSVtoRGB(S, RGB, InvertValue, InvertHue);
+							j++;
+							for (int k=0; k<Kinp/3; k++) // k runs over vertices of the arrow/cone 
+							{
+								i = j*Kinp + 3*k;	// vertex index
+								//slow version is commented but easy to read: 
+								// tmpV1[0] = Vinp[3*k+0];
+								// tmpV1[1] = Vinp[3*k+1];
+								// tmpV1[2] = Vinp[3*k+2];
+								// NewBasisCartesian(tmpV1, S, tmpV3); // to find arrow vector components w.r.t basis based on Sx,Sy,Sz
+								// Vout[i+0] = tmpV3[0]*Scale + Px[n];	// new x-component of vertex + translation
+								// Vout[i+1] = tmpV3[1]*Scale + Py[n];	// new y-component of vertex + translation
+								// Vout[i+2] = tmpV3[2]*Scale + Pz[n];	// new z-component of vertex + translation
+								U = 1.0f/(S[0]*S[0]+S[1]*S[1]+(1e-37f)); 
+								
+								A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-							Vout[i+0] =(-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			)*Scale*vlength + Px[N];
-							Vout[i+1] =( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			)*Scale*vlength + Py[N];
-							Vout[i+2] =( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1])	)*Scale*vlength + Pz[N];	
+								Vout[i+0] =(-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			)*Scale*vlength + Px[N];
+								Vout[i+1] =( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			)*Scale*vlength + Py[N];
+								Vout[i+2] =( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1])	)*Scale*vlength + Pz[N];	
 
-							//slow version is commented but easy to read:
-							// tmpV1[0] = Ninp[3*k+0];
-							// tmpV1[1] = Ninp[3*k+1];
-							// tmpV1[2] = Ninp[3*k+2];
-							//NewBasisCartesian(tmpV1, S, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
-							// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
-							// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
-							// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
+								//slow version is commented but easy to read:
+								// tmpV1[0] = Ninp[3*k+0];
+								// tmpV1[1] = Ninp[3*k+1];
+								// tmpV1[2] = Ninp[3*k+2];
+								//NewBasisCartesian(tmpV1, S, tmpV3);	// to find vertices normals w.r.t basis based on Sx,Sy,Sz
+								// Nout[i+0] = tmpV3[0];		// x-component of vertex normal
+								// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
+								// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
+								A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-							Nout[i+0] =-S[1]*A + Ninp[3*k+0]*S[2] + S[0]*Ninp[3*k+2];
-							Nout[i+1] = S[0]*A + Ninp[3*k+1]*S[2] + S[1]*Ninp[3*k+2];
-							Nout[i+2] = Ninp[3*k+2]*S[2] - (S[0]*Ninp[3*k+0]+S[1]*Ninp[3*k+1]);
+								Nout[i+0] =-S[1]*A + Ninp[3*k+0]*S[2] + S[0]*Ninp[3*k+2];
+								Nout[i+1] = S[0]*A + Ninp[3*k+1]*S[2] + S[1]*Ninp[3*k+2];
+								Nout[i+2] = Ninp[3*k+2]*S[2] - (S[0]*Ninp[3*k+0]+S[1]*Ninp[3*k+1]);
 
-							Cout[i+0] = RGB[0];			// x-component of vertex normal
-							Cout[i+1] = RGB[1];			// y-component of vertex normal
-							Cout[i+2] = RGB[2];			// z-component of vertex normal
-						}
-					}//if
+								Cout[i+0] = RGB[0];			// x-component of vertex normal
+								Cout[i+1] = RGB[1];			// y-component of vertex normal
+								Cout[i+2] = RGB[2];			// z-component of vertex normal
+							}
+						}//if
+					}
 				}
 			}
 			}
