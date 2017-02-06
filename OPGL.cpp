@@ -27,7 +27,7 @@ float			PerspSet[4]		= {60.0, asp_rat, 0.01, 50000}; // {Setings: Field of view 
 typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projections
 enProjections	WhichProjection = PERSP; // PERSP by default 	
 
-typedef enum	{RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B, HOPFION1, SPIRAL, SKYRMION_L} enIniState; // which mode
+typedef enum	{RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B, HOPFION1, SPIRAL, SKYRMION_L, GLOBULA} enIniState; // which mode
 enIniState		WhichInitialState = RND;	// RND by default 
 
 // what the glui package defines as true and false:
@@ -109,6 +109,8 @@ enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default
 int   N_filter=0;
 
 int SpinFilter=1;
+int PhiInvert1=0;
+int PhiInvert2=0;
 
 int theta_max1=90+5; //0.01;//
 float Sz_min1=cos(theta_max1*PI/180.0);
@@ -1135,8 +1137,32 @@ void TW_CALL CB_SetGreedMinC(const void *value, void *clientData ){
 	}
 }
 
+void TW_CALL CB_GetGreedFilterInvert(void *value, void *clientData){
+    *(bool *)value = GreedFilterInvert; 
+}
 
+void TW_CALL CB_SetGreedFilterInvert(const void *value, void *clientData ){
+	GreedFilterInvert= *( bool *)value; 
+    ChangeVectorMode(0);
+}
 
+void TW_CALL CB_GetSpinFilter(void *value, void *clientData){
+    *(bool *)value = SpinFilter; 
+}
+
+void TW_CALL CB_SetSpinFilter(const void *value, void *clientData ){
+	SpinFilter= *( bool *)value; 
+    ChangeVectorMode(0);
+}
+
+void TW_CALL CB_GetGreedFilter(void *value, void *clientData){
+    *(bool *)value = GreedFilter; 
+}
+
+void TW_CALL CB_SetGreedFilter(const void *value, void *clientData ){
+	GreedFilter= *( bool *)value; 
+    ChangeVectorMode(0);
+}
 
 
 void TW_CALL CB_ResetIterations( void *clientData ){
@@ -1676,8 +1702,10 @@ void setupTweakBar()
 	TwAddVarCB(view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
 	}
 
-	TwAddVarRW(view_bar, "Spin_filter", TW_TYPE_BOOL32, &SpinFilter, 
+	TwAddVarCB(view_bar, "Spin_filter", TW_TYPE_BOOL32, CB_SetSpinFilter, CB_GetSpinFilter, &SpinFilter, 
 		" label='Spin filter' true='On' false='Off' group='Filters' ");
+	TwAddVarCB(view_bar, "GreedFilter", TW_TYPE_BOOL32, CB_SetGreedFilter, CB_GetGreedFilter, &GreedFilter, 
+		" label='Greed filter' true='On' false='Off' group='Filters' ");
 
 	TwAddVarCB(view_bar, "T_max1", TW_TYPE_INT32, CB_SetThetaMax1, CB_GetThetaMax1, &theta_max1, 
 		" group='Spin_filter_1' label='Theta max 1' min=0 max=180  help='max value for polar angle theta'");
@@ -1701,8 +1729,6 @@ void setupTweakBar()
 	TwDefine(" View/Spin_filter_1 opened=false group='Filters'");
 	TwDefine(" View/Spin_filter_2 opened=false group='Filters'");
 
-	TwAddVarRW(view_bar, "GreedFilter", TW_TYPE_BOOL32, &GreedFilter, 
-		" label='Greed filter' true='On' false='Off' group='Filters' ");
 	TwAddVarCB(view_bar, "GFmaxA", TW_TYPE_INT32, CB_SetGreedMaxA, CB_GetGreedMaxA, &GreedFilterMaxA, " group='Greed_filter' label='max na' ");
 	TwAddVarCB(view_bar, "GFminA", TW_TYPE_INT32, CB_SetGreedMinA, CB_GetGreedMinA, &GreedFilterMinA, " group='Greed_filter' label='min na' ");
 	TwAddVarCB(view_bar, "GFmaxB", TW_TYPE_INT32, CB_SetGreedMaxB, CB_GetGreedMaxB, &GreedFilterMaxB, " group='Greed_filter' label='max nb' ");
@@ -1710,8 +1736,8 @@ void setupTweakBar()
 	TwAddVarCB(view_bar, "GFmaxC", TW_TYPE_INT32, CB_SetGreedMaxC, CB_GetGreedMaxC, &GreedFilterMaxC, " group='Greed_filter' label='max nc' ");
 	TwAddVarCB(view_bar, "GFminC", TW_TYPE_INT32, CB_SetGreedMinC, CB_GetGreedMinC, &GreedFilterMinC, " group='Greed_filter' label='min nc' ");
 
+    TwAddVarCB(view_bar, "GreedFilterInvert", TW_TYPE_BOOL32, CB_SetGreedFilterInvert, CB_GetGreedFilterInvert, &GreedFilterInvert, " label='Invert G filter' true='On' false='Off' group='Greed_filter' ");
 
-    TwAddVarRW(view_bar, "GreedFilterInvert", TW_TYPE_BOOL32, &GreedFilterInvert, " label='Invert G filter' true='On' false='Off' group='Greed_filter' ");
 
 	TwDefine(" View/Greed_filter opened=false group='Filters'");
 
@@ -1896,9 +1922,10 @@ void setupTweakBar()
 										{BOBBER_L_B,"Bobber latt. bottom"	}, 
 										{HOPFION1, 	"Hopfion"		        }, 
 										{SPIRAL, 	"Spiral"		        }, 
-										{SKYRMION_L,"Sk. lattice"	        }
+										{SKYRMION_L,"Sk. lattice"	        },
+										{GLOBULA,   "Globula"	            }
 									};
-	TwType			TV_TYPE_INI_STATE = TwDefineEnum("IniState", enIniStateTw, 13);
+	TwType			TV_TYPE_INI_STATE = TwDefineEnum("IniState", enIniStateTw, 14);
 	TwAddVarRW(initial_bar, "Choose ini. state", TV_TYPE_INI_STATE, &WhichInitialState, "help='Choose initial spin configuration'");
 	}
 
@@ -2073,13 +2100,13 @@ if( !TwEventMouseMotionGLUT(x, y) )  // send event to AntTweakBar
 
 		if( ( ActiveButton & MIDDLE ) != 0 )
 		{
-			TransXYZ[0]+=dx*0.05;
-			TransXYZ[1]-=dy*0.05;	
+			TransXYZ[2]+=(dx-dy)*0.05;	
 		}
 
 		if( ( ( ActiveButton & RIGHT ) != 0 ) & (true))//WhichProjection == PERSP
 		{
-			TransXYZ[2]+=(dx-dy)*0.05;
+			TransXYZ[0]+=dx*0.1;
+			TransXYZ[1]-=dy*0.1;
 		}
 
 		Xmouse = x;			// new current position
@@ -2177,22 +2204,22 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 
 			case 'w':
 			case 'W':
-				//Rot[0] += 0.25;
-				TransXYZ[2]-=0.5;
+				Rot[0] += 0.25;
+				//TransXYZ[2]-=0.5;
 				break;
 			case 's':
 			case 'S':
-				//Rot[0] -= 0.25;
-				TransXYZ[2]+=0.5;
+				Rot[0] -= 0.25;
+				//TransXYZ[2]+=0.5;
 				break;
 			case 'a':
 			case 'A':
-				Rot[0] -= 0.25;
+				Rot[1] -= 0.25;
 				//TransXYZ[0]-=1;	
 				break;
 			case 'd':
 			case 'D':
-				Rot[0] += 0.25;
+				Rot[1] += 0.25;
 				//TransXYZ[0]+=1;	
 				break;
 
@@ -3053,6 +3080,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 	int bnfin=uABC[1];
 	int cnini=0;
 	int cnfin=uABC[2];
+	bool F;//factor
 
 	switch( WhichSliceMode)
 	{
@@ -3084,9 +3112,15 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			for (int cn = 0; cn<uABC[2]; cn++) {
 				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
 				n = n*AtomsPerBlock;//index of the first spin in the block
-				if (((an>=GreedFilterMinA && an<=GreedFilterMaxA) &&
-					 (bn>=GreedFilterMinB && bn<=GreedFilterMaxB) &&
-					 (cn>=GreedFilterMinC && cn<=GreedFilterMaxC)) || GreedFilterInvert )
+				if (GreedFilter){
+					F=(an>=GreedFilterMinA && an<=GreedFilterMaxA) &&
+						  (bn>=GreedFilterMinB && bn<=GreedFilterMaxB) &&
+						  (cn>=GreedFilterMinC && cn<=GreedFilterMaxC) ;
+					if (GreedFilterInvert) F=!F;					
+				}else{F=true;}
+
+
+				if (F)
 				{
 					for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
@@ -3096,10 +3130,20 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						S[1] = Sy[N];
 						S[2] = Sz[N];
 						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
-						//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
-						//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
-						if ( ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ||
-							 ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )
+						if (SpinFilter){
+							if (!PhiInvert1 && !PhiInvert2){
+								F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) &&  (phi>=phi_min1 && phi<=phi_max1)) ||
+							      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) &&  (phi>=phi_min2 && phi<=phi_max2))  ;	
+							}else if (!PhiInvert1 && PhiInvert2){
+								F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) &&  (phi>=phi_min1 && phi<=phi_max1)) ||
+							      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && !(phi>=phi_min2 && phi<=phi_max2))  ;	
+							}else if ( PhiInvert1 && PhiInvert2){
+								F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) && !(phi>=phi_min1 && phi<=phi_max1)) ||
+							      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && !(phi>=phi_min2 && phi<=phi_max2))  ;									
+							}				
+						}else{F=true;}
+
+						if (F)
 						{
 							vlength = Unitf(S,S);
 							N_filter++;

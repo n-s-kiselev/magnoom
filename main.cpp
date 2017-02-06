@@ -248,7 +248,7 @@ float		Bij[]={		// Bij[shell]
 			};
 //Dzyaloshinskii-Moriya Interaction
 float		Dij[]={	// Dij[shell] abs value for DMI vector 
-			0.18,//0.0369138485,	// first shell
+			0.62832,//0.18,//0.0369138485,	// first shell
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
