@@ -82,7 +82,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 		}	
 	break;
 
-	case 1: //ferro up
+	case 1: //homogeneous
 		for (int n=0; n<NOS; n++)
 		{	
 			Sx[n] = chDir[0];
@@ -398,6 +398,39 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 					CreatSkyrmion(px, py, pz, sx, sy, sz, Sk_Radius, RotTranLatX, RotTranLatY);
 				}
 			}	
+		}
+	break;
+
+	case 13: // globula
+		if(chSize!=0)
+		{
+			float T = 0.f;
+			float F = 0.f;
+			float r1,r2;
+			float rx=0.0f;
+			float ry=0.0f;
+			float rz=0.0f;
+
+			for (int n=0; n<NOS; n++)
+			{
+				rx=px[n];
+				ry=py[n];
+				rz=pz[n];
+				r1 = sqrt(rx*rx+ry*ry);
+				r2 = sqrt(rx*rx+ry*ry+rz*rz);
+				if (r2<chSize*0.5)
+				{
+					T=PI*exp(-2*r1/chSize);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
+					F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
+					Sx[n] = sin(T)*cos(F);
+					Sy[n] = sin(T)*sin(F);
+					Sz[n] = cos(T);			
+				}else{
+					// Sx[n] = 0;
+					// Sy[n] = 0;
+					// Sz[n] = 1;						
+				}
+			}
 		}
 	break;
 	}	
