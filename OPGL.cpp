@@ -480,6 +480,9 @@ void setupOpenGL ()
 	glutInit(&glutArgc, NULL); //glutInit(&argc, argv);
 	glutInitWindowSize (window_width, window_height);
 	glutInitWindowPosition (0, 0);
+	#if !defined(__APPLE__)
+	glutSetOption(GLUT_MULTISAMPLE, 8);
+	#endif
     glutInitDisplayMode( GLUT_RGB|GLUT_DOUBLE|GLUT_DEPTH|GLUT_MULTISAMPLE|GLUT_ALPHA);
 	GLUT_window = glutCreateWindow (WINDOWTITLE);
 	#if !defined(__APPLE__)
@@ -538,14 +541,15 @@ void setupOpenGL ()
 	glCullFace(GL_FRONT);//GL_FRONT//GL_FRONT_AND_BACK
 	glEnable(GL_CULL_FACE);
 
-	glEnable(GL_POINT_SMOOTH);
-	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+	// glEnable(GL_POINT_SMOOTH);
+	// glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
 
-	glEnable(GL_LINE_SMOOTH);               
-	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+	// glEnable(GL_LINE_SMOOTH);               
+	// glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
-	glEnable(GL_POLYGON_SMOOTH);
-	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+	// glEnable(GL_POLYGON_SMOOTH);
+	// glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_MULTISAMPLE);
 }
 
 void idle ()
