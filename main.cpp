@@ -248,7 +248,7 @@ float		Bij[]={		// Bij[shell]
 			};
 //Dzyaloshinskii-Moriya Interaction
 float		Dij[]={	// Dij[shell] abs value for DMI vector 
-			0.62832,//0.18,//0.0369138485,	// first shell
+			0.18,//0.0369138485,	// first shell
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
@@ -308,8 +308,8 @@ double 			outputMtotal[3];
 
 #include "MATH.cpp"/*All mathematical fuctions*/
 #include "GEOM.cpp"/*All functions salculating size and neighbors*/
-#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/
-//#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
+//#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/
+#include "ENGINE.cpp"/*CALC THREAD:LLG solver*/
 #include "OPGL.cpp"/*VISUAL THREAD: All Visualization Functions*/
 #include "INITSTATE.cpp"/*Set of functions for initial states*/
 
@@ -494,7 +494,7 @@ main (int argc, char **argv)
 
 	GetBox(abc, uABC, Box);
 	UpdateSpinPositions(abc, uABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0 );
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 12 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
     //  Set OpenGL context initial state.

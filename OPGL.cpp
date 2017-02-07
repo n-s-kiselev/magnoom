@@ -142,7 +142,7 @@ int GreedFilterMaxC=uABC[2]-1;// redefined in readConfigFile()
 int GreedFilterMinC=0;
 
 // Parameters for initial state 
-float			chSize = 35; // characteristic size of initial state in units of "a"
+float			chSize = 37; // characteristic size of initial state in units of "a"
 float			chDir[3] = {0,1,0}; // characteristic size of initial state in units of "a"
 GLuint 			iStart;
 GLuint 			iNum;
@@ -574,7 +574,7 @@ void idle ()
 			totalEnergyFerro = totalEnergyFerro/NOS;	
 			perSpEnergyMinusFerro = perSpEnergy - totalEnergyFerro;
 			}
-			if (timeInterval > 1000)//~2 seconds
+			if (timeInterval > 1000)//~1 second
 			{
 				FPS = frameCount / (timeInterval * 0.002f);
 				previousTime = currentTime;
@@ -2204,12 +2204,12 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 
 			case 'w':
 			case 'W':
-				Rot[0] += 0.25;
+				Rot[0] -= 0.25;
 				//TransXYZ[2]-=0.5;
 				break;
 			case 's':
 			case 'S':
-				Rot[0] -= 0.25;
+				Rot[0] += 0.25;
 				//TransXYZ[2]+=0.5;
 				break;
 			case 'a':

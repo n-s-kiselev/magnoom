@@ -459,9 +459,9 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 					// deterministic terms of Landau–Lifshitz equation:
-					Ax = 0.5f * h * ( - Alpha_p * Hx - Alpha_d * (ny * Hz - nz * Hy) );
-					Ay = 0.5f * h * ( - Alpha_p * Hy - Alpha_d * (nz * Hx - nx * Hz) );
-					Az = 0.5f * h * ( - Alpha_p * Hz - Alpha_d * (nx * Hy - ny * Hx) );
+					Ax = 0.5f * h * ( - Alpha_p * Precession * Hx - Alpha_d * (ny * Hz - nz * Hy) );
+					Ay = 0.5f * h * ( - Alpha_p * Precession * Hy - Alpha_d * (nz * Hx - nx * Hz) );
+					Az = 0.5f * h * ( - Alpha_p * Precession * Hz - Alpha_d * (nx * Hy - ny * Hx) );
 					// Spin-torque term
 					Ax = Ax + 0.5f * h * ( - Alpha_d * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 					Ay = Ay + 0.5f * h * ( - Alpha_d * Cy + (nz * Cx - nx * Cz) );
@@ -585,12 +585,9 @@ void *CALC_THREAD(void *void_ptr)
 
 	while(true)
 	{
-		while(ENGINE_MUTEX != DO_IT){ 
-			usleep(10);
-			//nanosleep (&tw, NULL);
-		}
+		while(ENGINE_MUTEX != DO_IT){ usleep(10);}
 		HacTime = GetACfield();
-		if (threadindex==1) GetFluctuations(RNx, RNy, RNz, NOS );
+		if (threadindex==0 && Temperature > 0) GetFluctuations(RNx, RNy, RNz, NOS );
 		StochasticLLG( 	Sx, 	Sy, 	Sz, 
 						tSx,	tSy, 	tSz, 
 						Heffx, 	Heffy, 	Heffz, 
@@ -601,7 +598,7 @@ void *CALC_THREAD(void *void_ptr)
 						nbini, 	nbfin,
 						ncini, 	ncfin);
 
-		if (threadindex==0){ 
+		if (threadindex==THREADS_NUMBER-1){ 
 			//first thread opens the first (in) door in the next (second) thread
 			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
