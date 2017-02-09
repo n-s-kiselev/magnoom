@@ -33,7 +33,7 @@ enIniState		WhichInitialState = RND;	// RND by default
 typedef enum 	{DEFAULT_G, CILINDER_G, SPHERE_G} enGeom; // which mode
 enGeom         WhichGeometry = DEFAULT_G;
 
-float			chSizeG = 37; // characteristic size of initial state in units of "a"
+float			chSizeG = 50; // characteristic size of initial state in units of "a"
 
 // what the glui package defines as true and false:
 const int 		GLUITRUE  = { true  };
@@ -903,7 +903,7 @@ void TW_CALL CB_SetInitial( void *clientData )
 void
 UpdateKind(int* Kind,float* Px, float* Py, float* Pz, int NOS, int NOSK)
 {
-	float dist, dist_max=50*50;
+	float dist, dist_max = chSizeG * chSizeG;
 	switch(WhichGeometry){
 		case CILINDER_G:
 			for (int i=0; i<NOS; i++){
