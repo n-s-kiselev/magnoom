@@ -133,7 +133,7 @@ float			Block[][3] = {
 int			uABC[3] = {50,57,13};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {6,6,6};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {80,80,20};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
-int			Boundary[3] = {1, 1, 1};// boundary conditions along a, b, c translation vectors
+int			Boundary[3] = {1, 1, 0};// boundary conditions along a, b, c translation vectors
 
 int			ShellNumber = 1;
 int			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
@@ -144,6 +144,8 @@ int			NOS=AtomsPerBlock*uABC[0]*uABC[1]*uABC[2]; // number of spins
 int			NOS_AL=AtomsPerBlock*uABC[1]*uABC[2]; // number of spins per A layer
 int			NOS_BL=AtomsPerBlock*uABC[0]*uABC[2]; // number of spins per B layer
 int			NOS_CL=AtomsPerBlock*uABC[0]*uABC[1]; // number of spins per C layer
+
+int 		NOSK = 0;
 
 double 		iNOS = 1.0/NOS;
 

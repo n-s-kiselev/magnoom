@@ -519,10 +519,22 @@ SimpleMinimizer(double* inx,		double* iny,		double* inz,		// input vector field
 }
 
 
-float GetACfield()
+float GetACfield(int type)
 {
-	return AC_FIELD_ON*Hac*sin(Omega_dc*t_step*ITERATION);
+	float R=0;
+	float temp;
+	switch (type){
+		case SIN_FIELD:
+			R = AC_FIELD_ON*Hac*sin(Omega_dc*t_step*ITERATION);
+		break;
+		case GAUSSIAN_FIELD:
+			temp = (t_step*ITERATION-t_offset)/GPulseWidth;
+			R = AC_FIELD_ON*Hac*exp(-0.5*temp*temp );
+		break;
+	}
+	return R;
 }
+	
 
 /* this function is run by the distinct thread */
 void *CALC_THREAD(void *void_ptr)
@@ -588,7 +600,7 @@ void *CALC_THREAD(void *void_ptr)
 	while(true)
 	{
 		while(ENGINE_MUTEX != DO_IT){ usleep(10);}
-		HacTime = GetACfield();
+		HacTime = GetACfield(WhichACField);
 		if (threadindex==0 && Temperature > 0) GetFluctuations(RNx, RNy, RNz, NOS );
 		StochasticLLG( 	Sx, 	Sy, 	Sz, 
 						tSx,	tSy, 	tSz, 
@@ -612,10 +624,12 @@ void *CALC_THREAD(void *void_ptr)
 			{
 				for (int i=0;i<NOS;i++)
 				{
+					if (Kind[i]!=0){
 					double absS = 1.0f/sqrt(Sx[i]*Sx[i]+Sy[i]*Sy[i]+Sz[i]*Sz[i]);
 					Sx[i] = Sx[i] * absS;
 					Sy[i] = Sy[i] * absS;
-					Sz[i] = Sz[i] * absS;		
+					Sz[i] = Sz[i] * absS;
+					}		
 				}
 			}
 

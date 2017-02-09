@@ -15,9 +15,9 @@ void CreatSkyrmion(float * px, float * py, float * pz, double * sx, double * sy,
 		{
 			T=PI*exp(-2*r/Sk_R);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
 			F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
-			Sx[n] = sin(T)*cos(F);
-			Sy[n] = sin(T)*sin(F);
-			Sz[n] = cos(T);			
+			Sx[n] = sin(T)*cos(F)*Kind[n];
+			Sy[n] = sin(T)*sin(F)*Kind[n];
+			Sz[n] = cos(T)*Kind[n];			
 		}
 	}
 }
@@ -48,9 +48,9 @@ void CreatBobber(float * px, float * py, float * pz, double * sx, double * sy, d
 			{
 			T=PI*(R-r)/R;//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
 			F= 1*(-atan2(rx,ry));//<--chiral (bloch) skyrmion |Q|=1
-			Sx[n] = -sin(T)*cos(F);
-			Sy[n] = -sin(T)*sin(F);
-			Sz[n] = cos(T);	
+			Sx[n] = -sin(T)*cos(F)*Kind[n];
+			Sy[n] = -sin(T)*sin(F)*Kind[n];
+			Sz[n] = cos(T)*Kind[n];	
 			}
 		}	
 	}
@@ -76,18 +76,18 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			rnd[1] = 2.0 * (0.5 - rand() / (double)RAND_MAX);
 			rnd[2] = 2.0 * (0.5 - rand() / (double)RAND_MAX);
 			(void)Unit(rnd,rnd);
-			Sx[n] = rnd[0];
-			Sy[n] = rnd[1];
-			Sz[n] = rnd[2];	
+			Sx[n] = rnd[0]*Kind[n];
+			Sy[n] = rnd[1]*Kind[n];
+			Sz[n] = rnd[2]*Kind[n];	
 		}	
 	break;
 
 	case 1: //homogeneous
 		for (int n=0; n<NOS; n++)
 		{	
-			Sx[n] = chDir[0];
-			Sy[n] = chDir[1];
-			Sz[n] = chDir[2];	
+			Sx[n] = chDir[0]*Kind[n];
+			Sy[n] = chDir[1]*Kind[n];
+			Sz[n] = chDir[2]*Kind[n];	
 		}	
 	break;
 
@@ -118,9 +118,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			//F=-1*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=1
 			F=-2*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=2
 			//F=-3*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=3
-			Sx[n] = sin(T)*cos(F);
-			Sy[n] = sin(T)*sin(F);
-			Sz[n] = cos(T);	
+			Sx[n] = sin(T)*cos(F)*Kind[n];
+			Sy[n] = sin(T)*sin(F)*Kind[n];
+			Sz[n] = cos(T)*Kind[n];	
 			}	
 		}
 	break;
@@ -145,9 +145,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			//F=-1*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=1
 			//F=-2*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=2
 			F=-3*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=3
-			Sx[n] = sin(T)*cos(F);
-			Sy[n] = sin(T)*sin(F);
-			Sz[n] = cos(T);	
+			Sx[n] = sin(T)*cos(F)*Kind[n];
+			Sy[n] = sin(T)*sin(F)*Kind[n];
+			Sz[n] = cos(T)*Kind[n];	
 			}
 		}	
 	break;
@@ -184,9 +184,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 		
 			for (int n=0; n<NOS; n++)
 			{	
-				Sx[n] = 0.f;
-				Sy[n] = 0.f;
-				Sz[n] = 1.f;	
+				Sx[n] = 0.f*Kind[n];
+				Sy[n] = 0.f*Kind[n];
+				Sz[n] = 1.f*Kind[n];	
 			}
 			
 			int Ntr=10;
@@ -230,9 +230,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			{	
 				if (pz[n]>0)
 				{
-				Sx[n] = 0.f;
-				Sy[n] = 0.f;
-				Sz[n] = 1.f;
+				Sx[n] = 0.f*Kind[n];
+				Sy[n] = 0.f*Kind[n];
+				Sz[n] = 1.f*Kind[n];
 				}	
 			}
 			
@@ -269,9 +269,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			{	
 				if (pz[n]<0)
 				{
-				Sx[n] = 0.f;
-				Sy[n] = 0.f;
-				Sz[n] = 1.f;
+				Sx[n] = 0.f*Kind[n];
+				Sy[n] = 0.f*Kind[n];
+				Sz[n] = 1.f*Kind[n];
 				}	
 			}
 			
@@ -310,9 +310,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 				t = acos(1.0-2.0*t*t);
 				F = atan2(py[n],px[n]);
 				f = F + atan2( 1.0/(tan(tmp)),cos(T) );
-				Sx[n] = sin(t)*cos(f);
-				Sy[n] = sin(t)*sin(f);
-				Sz[n] = cos(t);
+				Sx[n] = sin(t)*cos(f)*Kind[n];
+				Sy[n] = sin(t)*sin(f)*Kind[n];
+				Sz[n] = cos(t)*Kind[n];
 			}
 		}
 	break;
@@ -358,9 +358,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 				tmpv[1] = sin(T);
 				tmpv[2] = 0.0f;
 				NewBasisCartesian(tmpv, chDir, tmpv2);
-				Sx[n] = tmpv2[0];
-				Sy[n] = tmpv2[1];
-				Sz[n] = tmpv2[2];
+				Sx[n] = tmpv2[0]*Kind[n];
+				Sy[n] = tmpv2[1]*Kind[n];
+				Sz[n] = tmpv2[2]*Kind[n];
 			}
 		}
 	break;
@@ -381,9 +381,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 		
 			for (int n=0; n<NOS; n++)
 			{	
-				Sx[n] = 0.f;
-				Sy[n] = 0.f;
-				Sz[n] = 1.f;	
+				Sx[n] = 0.f*Kind[n];
+				Sy[n] = 0.f*Kind[n];
+				Sz[n] = 1.f*Kind[n];	
 			}
 			
 			int Ntr=10;
@@ -422,9 +422,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 				{
 					T=PI*exp(-2*r1/chSize);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
 					F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
-					Sx[n] = sin(T)*cos(F);
-					Sy[n] = sin(T)*sin(F);
-					Sz[n] = cos(T);			
+					Sx[n] = sin(T)*cos(F)*Kind[n];
+					Sy[n] = sin(T)*sin(F)*Kind[n];
+					Sz[n] = cos(T)*Kind[n];			
 				}else{
 					// Sx[n] = 0;
 					// Sy[n] = 0;

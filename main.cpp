@@ -168,6 +168,8 @@ double*		Sx; // array of spin x-component
 double*		Sy; // array of spin y-component
 double*		Sz; // array of spin z-component
 
+int*		Kind; 
+
 double*		tSx; // temporal array of spin x-component 
 double*		tSy; // temporal array of spin y-component
 double*		tSz; // temporal array of spin z-component
@@ -264,12 +266,14 @@ float		VHf[]={ 0.0 , 0.0, 1.0 };
 float 		VHtheta=0;
 float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
-float		Hf=0.0163;
+float		Hf=0.01632;
 //AC applied H-field:
 float		VHac[]={ 0.0 , 0.0, 1.0 };
-float		Hac=0.00163;
+float		Hac=0.001632;
 float		Period_dc=180.168;
 float		Omega_dc=TPI/Period_dc;
+float 		GPulseWidth=20.0;
+float 		t_offset=80;
 float		HacTime=0.0;//time (iteration) dependent value of ac field
 enum	    enACField{SIN_FIELD, GAUSSIAN_FIELD} ; // which mode
 enACField		WhichACField = SIN_FIELD;	// RND by default 
@@ -287,7 +291,7 @@ int         Precession=1;
 //damping parameter:
 float		damping=1.0;
 //timestep
-float		t_step=0.01;
+float		t_step=0.1;
 //temperature
 float		Temperature=0.0;
 
@@ -327,6 +331,7 @@ void ReallocateMemoryForSpins(int NOS){
 	Sx = (double *)calloc(NOS, sizeof(double));
 	Sy = (double *)calloc(NOS, sizeof(double));
 	Sz = (double *)calloc(NOS, sizeof(double));	// <-- for 10^6 spins allocated memory for Sz,Sy,Sz = 12 Mega Byte
+	Kind = (int *)calloc(NOS, sizeof(int));
 }
 
 void ReallocateMemoryForAllOther(int NOS){
@@ -494,6 +499,7 @@ main (int argc, char **argv)
 
 	GetBox(abc, uABC, Box);
 	UpdateSpinPositions(abc, uABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
+	UpdateKind(Kind, Px, Py, Pz, NOS, NOSK);
 	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 12 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 

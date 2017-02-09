@@ -5,7 +5,7 @@ int				window_height	= 600;//768;//300;//
 float 			asp_rat			= (float)( ((double)window_width)/((double)window_height) );
 float 			asp_rat_inv		= (float)( ((double)window_height)/((double)window_width) );
 
-float			CameraEye[3]	= { 0.0, 0.0, 50.0}; // "camera position"
+float			CameraEye[3]	= { 0.0, 0.0, 150.0}; // "camera position"
 float			CameraC[3]		= { 0.0, 0.0,  0.0}; // "look at point"
 float			CameraUp[3]		= { 0.0, 1.0,  0.0}; // "where is up direction"
 
@@ -29,6 +29,11 @@ enProjections	WhichProjection = PERSP; // PERSP by default
 
 typedef enum	{RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B, HOPFION1, SPIRAL, SKYRMION_L, GLOBULA} enIniState; // which mode
 enIniState		WhichInitialState = RND;	// RND by default 
+
+typedef enum 	{DEFAULT_G, CILINDER_G, SPHERE_G} enGeom; // which mode
+enGeom         WhichGeometry = DEFAULT_G;
+
+float			chSizeG = 37; // characteristic size of initial state in units of "a"
 
 // what the glui package defines as true and false:
 const int 		GLUITRUE  = { true  };
@@ -557,7 +562,7 @@ void idle ()
 	currentTime = glutGet(GLUT_ELAPSED_TIME);
 	timeInterval = currentTime - previousTime;
 
-	if(timeInterval > 40 && Play==1)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
+	if(timeInterval > 40 && Play!=0)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
 	{
 		if( DATA_TRANSFER_MUTEX==TAKE_DATA )
 		{
@@ -893,6 +898,52 @@ void TW_CALL CB_GetOmega(void *value, void *clientData)
 void TW_CALL CB_SetInitial( void *clientData )
 {
 	ChangeInitialState( WhichInitialState );
+}
+
+void
+UpdateKind(int* Kind,float* Px, float* Py, float* Pz, int NOS, int NOSK)
+{
+	float dist, dist_max=50*50;
+	switch(WhichGeometry){
+		case CILINDER_G:
+			for (int i=0; i<NOS; i++){
+				dist = Px[i]*Px[i]+Py[i]*Py[i];
+				if (dist>dist_max){
+					Kind[i] = 0;
+				}else{
+					Kind[i] = 1;
+					NOSK++;
+				}
+			}
+		break;
+
+		case SPHERE_G:
+			for (int i=0; i<NOS; i++){
+				dist = Px[i]*Px[i]+Py[i]*Py[i]+Pz[i]*Pz[i];
+				if (dist>dist_max){
+					Kind[i] = 0;
+				}else{
+					Kind[i] = 1;
+					NOSK++;
+				}
+			}
+		break;
+
+		default:
+			for (int i=0; i<NOS; i++){
+					Kind[i] = 1;
+				}
+			NOSK = NOS;
+		break;
+	}
+
+
+}
+
+void TW_CALL CB_SetShape( void *clientData )
+{
+	UpdateKind(Kind, Px, Py, Pz, NOS, NOSK);
+	ChangeVectorMode(1);
 }
 
 void TW_CALL CB_RotateAllSpins( void *clientData )
@@ -1914,6 +1965,20 @@ void setupTweakBar()
 	TwDefine(" Initial_State size='220 530' color='70 70 100'  alpha=200"); // change default tweak bar size and color
 	TwDefine(" Initial_State help='F4: show/hide Initial state bar' "); // change default tweak bar size and color
 	{
+	TwEnumVal		enGeomTw[] = { 	{DEFAULT_G, 		"Default"		    }, 
+										{CILINDER_G, 	"Cilinder"	        }, 
+										{SPHERE_G, 		"Sphere"	        }
+									};
+	TwType			TV_TYPE_GEOMETRY = TwDefineEnum("DomainShape", enGeomTw, 3);
+	TwAddVarRW(initial_bar, "Choose shape", TV_TYPE_GEOMETRY, &WhichGeometry, "help='Choose shape of the simulated domain'");
+	}
+	TwAddVarRW(initial_bar, "Size", TW_TYPE_FLOAT,  &chSizeG, 
+	" min=0 max=100000 step=0.5 help='characteristic size of the shape (radius)' ");
+
+	TwAddButton(initial_bar, "Set shape", CB_SetShape, NULL, " label='Set up shape' ");
+
+
+	{
 	TwEnumVal		enIniStateTw[] = { 	{RND, 		"Random"		        }, 
 										{HOMO, 		"Homogeneous"	        }, 
 										{SKYRM1, 	"Skyrmion Q=1"	        }, 
@@ -1976,7 +2041,21 @@ void setupTweakBar()
 	TwDefine(" AC_Field iconified=true "); 
 	TwDefine(" AC_Field size='220 530' color='100 70 70'  alpha=200"); // change default tweak bar size and color
 	TwDefine(" AC_Field help='F5: show/hide AC Field bar' "); // change default tweak bar size and color
+	TwAddVarRW(ac_field_bar, "AC field on/off", TW_TYPE_BOOL32, &AC_FIELD_ON, 
+	"keyIncr='f' label='AC/DC on/off' true='on' false='off' help='On/off ac field'");
 
+	TwAddVarRW(ac_field_bar, "AC field", TW_TYPE_FLOAT, &Hac,	"label='AC field' help='The value of AC field amplitude' "); 
+
+	TwAddVarRW(ac_field_bar, "ACfieldDir", TW_TYPE_DIR3F, &VHac, 
+	"label='Field direction' opened=true help='Change the direction of applied field' ");
+
+	TwAddSeparator(ac_field_bar, "sep0", NULL);
+
+	temp_color[0] = 55;
+	temp_color[1] = 55;
+	temp_color[2] = 155;
+
+	TwSetParam(ac_field_bar, "ACfieldDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
 	{
 	TwEnumVal		enenACFieldTw[] = { {SIN_FIELD,  	"AC Sin(omega*t) "		},
 										{GAUSSIAN_FIELD,"Gaussian field pulse" }};
@@ -1984,19 +2063,11 @@ void setupTweakBar()
 	TwAddVarRW(ac_field_bar, "Type of AC field", TV_TYPE_INI_STATE, &WhichACField, "help='Choose type of signal for time dependent magnetic field'");
 	}
 
-	TwAddVarRW(ac_field_bar, "ACfieldDir", TW_TYPE_DIR3F, &VHac, 
-	"label='Field direction' opened=true help='Change the direction of applied field' ");
-	temp_color[0] = 55;
-	temp_color[1] = 55;
-	temp_color[2] = 155;
-	TwSetParam(ac_field_bar, "ACfieldDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
-	TwAddVarRW(ac_field_bar, "AC field", TW_TYPE_FLOAT, &Hac, 
-	"label='AC field' help='The value of AC field amplitude' ");
-
+	TwAddVarRW(ac_field_bar, "t_offset", TW_TYPE_FLOAT,  &t_offset, "min=0 help='offset of time scale.' ");
+	TwAddVarRW(ac_field_bar, "pulse width", TW_TYPE_FLOAT,  &GPulseWidth, "min=0 help='width of Gaussian pulse.' ");
 	TwAddVarCB(ac_field_bar, "Period/Width", TW_TYPE_FLOAT, CB_SetACPeriod, CB_GetACPeriod,  &Period_dc, "min=0 help='period of sin-field or width of gaussian pulse field' ");
 	TwAddVarCB(ac_field_bar, "Omega=2*pi*P", TW_TYPE_FLOAT, CB_SetOmega, CB_GetOmega,  &Omega_dc, "min=0 help='period of sin-field or width of gaussian pulse field' ");
-	TwAddVarRW(ac_field_bar, "AC field on/off", TW_TYPE_BOOL32, &AC_FIELD_ON, 
-	"keyIncr='f' label='AC/DC on/off' true='on' false='off' help='On/off ac field'");
+
 
 /*  Info bar F11 */
 	info_bar = TwNewBar("Info");
@@ -3168,9 +3239,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 								
 								A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-								Vout[i+0] =(-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			)*Scale*vlength + Px[N];
-								Vout[i+1] =( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			)*Scale*vlength + Py[N];
-								Vout[i+2] =( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1])	)*Scale*vlength + Pz[N];	
+								Vout[i+0] =Kind[N]*( (-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			  )*Scale*vlength + Px[N]);
+								Vout[i+1] =Kind[N]*( ( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			  )*Scale*vlength + Py[N]);
+								Vout[i+2] =Kind[N]*( ( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1]) )*Scale*vlength + Pz[N]);	
 
 								//slow version is commented but easy to read:
 								// tmpV1[0] = Ninp[3*k+0];
@@ -3219,9 +3290,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					if (S[2]==-1){
 					for (int k=0; k<Kinp/3; k++){// k runs over vertices 
 							i = j*Kinp + 3*k;
-							Vout[i+0] = (-Vinp[3*k+0])*Scale*vlength + Px[N];
-							Vout[i+1] = ( Vinp[3*k+1])*Scale*vlength + Py[N];
-							Vout[i+2] = (-Vinp[3*k+2])*Scale*vlength + Pz[N];	
+							Vout[i+0] = Kind[N]*((-Vinp[3*k+0])*Scale*vlength + Px[N]);
+							Vout[i+1] = Kind[N]*(( Vinp[3*k+1])*Scale*vlength + Py[N]);
+							Vout[i+2] = Kind[N]*((-Vinp[3*k+2])*Scale*vlength + Pz[N]);	
 
 							Nout[i+0] = -Ninp[3*k+0];
 							Nout[i+1] =  Ninp[3*k+1];
@@ -3247,9 +3318,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 							
 							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-							Vout[i+0] =(-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			)*Scale*vlength + Px[N];
-							Vout[i+1] =( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			)*Scale*vlength + Py[N];
-							Vout[i+2] =( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1])	)*Scale*vlength + Pz[N];
+							Vout[i+0] =Kind[N]*((-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			 )*Scale*vlength + Px[N]);
+							Vout[i+1] =Kind[N]*(( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			 )*Scale*vlength + Py[N]);
+							Vout[i+2] =Kind[N]*(( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1]) )*Scale*vlength + Pz[N]);
 
 							//slow version is commented but easy to read:
 							// tmpV1[0] = Ninp[3*k+0];
@@ -3311,9 +3382,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					{
 						i = j*Kinp + 3*k;	// vertex index
 
-						Vout[i+0] = Vinp[3*k+0] + BPx[n];
-						Vout[i+1] = Vinp[3*k+1] + BPy[n];
-						Vout[i+2] = Vinp[3*k+2] + BPz[n];	
+						Vout[i+0] = (Vinp[3*k+0] + BPx[n])*Kind[N];
+						Vout[i+1] = (Vinp[3*k+1] + BPy[n])*Kind[N];
+						Vout[i+2] = (Vinp[3*k+2] + BPz[n])*Kind[N];	
 
 						Nout[i+0] = Ninp[3*k+0];
 						Nout[i+1] = Ninp[3*k+1];
@@ -3359,9 +3430,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					{
 						i = j*Kinp + 3*k;	// vertex index
 
-						Vout[i+0] = Vinp[3*k+0] + BPx[n];
-						Vout[i+1] = Vinp[3*k+1] + BPy[n];
-						Vout[i+2] = Vinp[3*k+2] + BPz[n];	
+						Vout[i+0] = (Vinp[3*k+0] + BPx[n])*Kind[N];
+						Vout[i+1] = (Vinp[3*k+1] + BPy[n])*Kind[N];
+						Vout[i+2] = (Vinp[3*k+2] + BPz[n])*Kind[N];	
 
 						Nout[i+0] = Ninp[3*k+0];
 						Nout[i+1] = Ninp[3*k+1];
@@ -3407,9 +3478,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
 						Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
 						Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
-						Cout[i+0] = RGB[0];	// x-component of vertex normal
-						Cout[i+1] = RGB[1];	// y-component of vertex normal
-						Cout[i+2] = RGB[2];	// z-component of vertex normal
+						Cout[i+0] = RGB[0]*Kind[n+atom];	// x-component of vertex normal
+						Cout[i+1] = RGB[1]*Kind[n+atom];	// y-component of vertex normal
+						Cout[i+2] = RGB[2]*Kind[n+atom];	// z-component of vertex normal
 				    }
 				}	
 			}
@@ -3436,9 +3507,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
 					Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
 					Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
-					Cout[i+0] = RGB[0];	// x-component of vertex normal
-					Cout[i+1] = RGB[1];	// y-component of vertex normal
-					Cout[i+2] = RGB[2];	// z-component of vertex normal
+					Cout[i+0] = RGB[0]*Kind[n+atom];	// x-component of vertex normal
+					Cout[i+1] = RGB[1]*Kind[n+atom];	// y-component of vertex normal
+					Cout[i+2] = RGB[2]*Kind[n+atom];	// z-component of vertex normal
 				}	
 			}
 			}
@@ -3474,9 +3545,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 				        j++;
 						//i = (n-nini)*Kinp;							// index of ferst cane vertex 
 						i = j*Kinp;
-						Vout[i+0] = S[0]*(1-Pivot)*Scale*vlength + Px[n+atom];	// new x-component of vertex + translation
-						Vout[i+1] = S[1]*(1-Pivot)*Scale*vlength + Py[n+atom];	// new y-component of vertex + translation
-						Vout[i+2] = S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom];	// new z-component of vertex + translation
+						Vout[i+0] = Kind[n+atom]*( S[0]*(1-Pivot)*Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
+						Vout[i+1] = Kind[n+atom]*( S[1]*(1-Pivot)*Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
+						Vout[i+2] = Kind[n+atom]*( S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
 						//i = n*Kinp/3*4;		// colors contains 4 floats
 						Cout[i+0] = RGB[0];					// x-component of vertex normal
 						Cout[i+1] = RGB[1];					// y-component of vertex normal
@@ -3489,9 +3560,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						Vout[i+1] = -S[1]*(Pivot)*Scale*vlength + Py[n+atom];		// new y-component of vertex + translation
 						Vout[i+2] = -S[2]*(Pivot)*Scale*vlength + Pz[n+atom];		// new z-component of vertex + translation
 						//i = n*Kinp/3*4+4;			// colors contains 4 floats
-						Cout[i+0] = RGB[0];					// x-component of vertex normal
-						Cout[i+1] = RGB[1];					// y-component of vertex normal
-						Cout[i+2] = RGB[2];					// z-component of vertex normal
+						Cout[i+0] = RGB[0]*Kind[n+atom];					// x-component of vertex normal
+						Cout[i+1] = RGB[1]*Kind[n+atom];					// y-component of vertex normal
+						Cout[i+2] = RGB[2]*Kind[n+atom];					// z-component of vertex normal
 						//Cout[i+3] = 1.f;
 						//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 					}
@@ -3518,9 +3589,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			        j++;
 					//i = (n-nini)*Kinp;							// index of ferst cane vertex 
 					i = j*Kinp;
-					Vout[i+0] = S[0]*(1-Pivot)*Scale*vlength + Px[n+atom];	// new x-component of vertex + translation
-					Vout[i+1] = S[1]*(1-Pivot)*Scale*vlength + Py[n+atom];	// new y-component of vertex + translation
-					Vout[i+2] = S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom];	// new z-component of vertex + translation
+					Vout[i+0] = Kind[n+atom]*( S[0]*(1-Pivot)*Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
+					Vout[i+1] = Kind[n+atom]*( S[1]*(1-Pivot)*Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
+					Vout[i+2] = Kind[n+atom]*( S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
 					//i = n*Kinp/3*4;		// colors contains 4 floats
 					Cout[i+0] = RGB[0];					// x-component of vertex normal
 					Cout[i+1] = RGB[1];					// y-component of vertex normal
@@ -3533,9 +3604,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					Vout[i+1] = -S[1]*(Pivot)*Scale*vlength + Py[n+atom];		// new y-component of vertex + translation
 					Vout[i+2] = -S[2]*(Pivot)*Scale*vlength + Pz[n+atom];		// new z-component of vertex + translation
 					//i = n*Kinp/3*4+4;			// colors contains 4 floats
-					Cout[i+0] = RGB[0];					// x-component of vertex normal
-					Cout[i+1] = RGB[1];					// y-component of vertex normal
-					Cout[i+2] = RGB[2];					// z-component of vertex normal
+					Cout[i+0] = Kind[n+atom]*RGB[0];					// x-component of vertex normal
+					Cout[i+1] = Kind[n+atom]*RGB[1];					// y-component of vertex normal
+					Cout[i+2] = Kind[n+atom]*RGB[2];					// z-component of vertex normal
 					//Cout[i+3] = 1.f;
 					//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 				}
