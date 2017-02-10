@@ -38,7 +38,7 @@ if (num_args>0) then
 		n=i/2
 		write(*,'(A10,I7,A3,I2,A7)') "I'll take ", n,"=2^",j-1 ," lines!" 
 		allocate(input(2*n), output(2*n),input_time(n))
-		call read_csv_file(input_file_name,input,n,3)!3 means values from the third column (column with raw index ignored)
+		call read_csv_file(input_file_name,input,n,3)!3 means values from the third column (5-mz, 3-mx)
 		do i=1,2*n
 			output(i)=input(i)
 		enddo
