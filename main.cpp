@@ -54,6 +54,11 @@
 //			LD_LIBRARY_PATH=~/Desktop/JSpinx4/lib/
 //			LD_LIBRARY_PATH=~/Desktop/JSpinx4/include/
 //*****************************************************************************
+//
+//    Arch Linux:
+//    you would need instal: sudo pacman -S mesa glu freeglut 
+//    the rest works the same as on Ubuntu 
+//
 
 //	Windows 32bit + MSVC
 // 	$ "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\vcvars32.bat"
