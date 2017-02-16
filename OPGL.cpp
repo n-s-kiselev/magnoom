@@ -47,8 +47,9 @@ const int 		RIGHT  = { 1 };
 typedef enum 	{XUP, YUP, ZUP, ADD_SET, RESET, QUIT, PLAY, RECORD} enButton;
 
 // the color numbers, this order must match the radio button order
-typedef enum	{WHITE, BLACK, RED, GREEN, BLUE} enColors;
-enColors		WhichColor = BLACK;	// index into Colors[ ]
+typedef enum	{WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
+int my_background_color[3] = { 55, 55, 155 };
+enColors		WhichBackgroundColor = BLACK;	// index into Colors[ ]
 
 typedef enum	{RGB, RYGB} enColorScheme;
 enColorScheme	WhichColorScheme = RGB;
@@ -56,13 +57,14 @@ enColorScheme	WhichColorScheme = RGB;
 int temp_color[3] = { 55, 55, 155 };
 
 // the color definitions, this order must match the radio button order
-const GLfloat 	Colors[ ][3] = 
+GLfloat 	BackgroundColors[6][3] = 
 {
-				{ 0.975, 0.975, 0.975 },		// white
+				{ 1, 1, 1 },		// white
 				{ 0.1, 0.1, 0.1 },	// black
 				{ 1., 0.8, 0.8 },	// red
 				{ 0.8, 1., 0.8 },	// green
 				{ 0.8, 0.8, 1. },	// blue
+				{ 0.3, 0.3, 0.3 },	// manual
 };
 
 typedef enum	{ARROW1 
@@ -416,7 +418,7 @@ void Display (void)
 	float Vtemp[3];
 
 	glutSetWindow( GLUT_window );// set which window we want to do the graphics into
-	glClearColor( Colors[WhichColor][0], Colors[WhichColor][1], Colors[WhichColor][2], 0. );// setup the clear values
+	glClearColor( BackgroundColors[WhichBackgroundColor][0], BackgroundColors[WhichBackgroundColor][1], BackgroundColors[WhichBackgroundColor][2], 0. );// setup the clear values
 	glDrawBuffer( GL_BACK );// erase the background
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
 	glMatrixMode( GL_PROJECTION ); glLoadIdentity( );
@@ -1715,17 +1717,63 @@ void setupTweakBar()
     TwDefine(" View iconified=true "); 
     TwDefine(" View size='220 530' color='100 100 70' alpha=200 "); // change default tweak bar size and color
     TwDefine(" View help='F2: show/hide View bar' "); // change default tweak bar size and color
-	{
-	TwEnumVal		enColorsTw[] = { {WHITE,"White"}, {BLACK, "Black"}, {RED, "Red"}, {GREEN, "Green"}, {BLUE, "Blue"} };
-	TwType			TV_TYPE_COLOR = TwDefineEnum("BG_Color", enColorsTw, 5);
-	TwAddVarRW(view_bar, "Background color", TV_TYPE_COLOR, &WhichColor, "help='Background color for 3D scene' ");
-	}
 
 	{
 	TwEnumVal		enProjectionsTw[] = { {ORTHO, "Orthogonal"}, {PERSP, "Perspective"} };
-	TwType			TV_TYPE_PROJ = TwDefineEnum("ProjectionType", enProjectionsTw, 2);
-	TwAddVarRW(view_bar, "Projection", TV_TYPE_PROJ, &WhichProjection, "keyIncr='p' help='Type of 3D projection' ");
+	TwType			TW_TYPE_PROJ = TwDefineEnum("ProjectionType", enProjectionsTw, 2);
+	TwAddVarRW(view_bar, "Projection", TW_TYPE_PROJ, &WhichProjection, "keyIncr='p' help='Type of 3D projection' group='Camera'");
 	}
+	TwAddVarRW(view_bar, "CamAng", TW_TYPE_FLOAT, &PerspSet[0], 
+	" label='camera angle' min=1 max=120 help='camera angle' group='Camera'");
+	TwAddVarRW(view_bar, "PosX", TW_TYPE_FLOAT, &TransXYZ[0], 
+	" label='position in x' min=-1000 max=1000 help='camera position along X-axis' group='Camera'");
+	TwAddVarRW(view_bar, "PosY", TW_TYPE_FLOAT, &TransXYZ[1], 
+	" label='position in y' min=-1000 max=1000 help='camera position along Y-axis' group='Camera'");
+	TwAddVarRW(view_bar, "PosZ", TW_TYPE_FLOAT, &TransXYZ[2], 
+	" label='position in z' min=-1000 max=1000 help='camera position along Z-axis' group='Camera'");
+
+	TwAddVarRW(view_bar, "RotX", TW_TYPE_FLOAT, &Rot[0], 
+	" label='turn around x' min=-360 max=360 help='rotate camera around X-axis' group='Camera'");
+	TwAddVarRW(view_bar, "RotY", TW_TYPE_FLOAT, &Rot[1], 
+	" label='turn around y' min=-360 max=360 help='rotate camera around Y-axis' group='Camera'");
+	TwAddVarRW(view_bar, "RotZ", TW_TYPE_FLOAT, &Rot[2], 
+	" label='turn around z' min=-360 max=360 help='rotate camera around Z-axis' group='Camera'");
+	TwDefine(" View/Camera opened=false ");
+
+	TwAddVarRW(view_bar, "CamBank", TW_TYPE_INT32, &CurrentCameraPositionBank, 
+	" label='Current camera' min=0 max=4 group='CameraRW'");
+	TwAddButton(view_bar, "Read Camera", CB_GetCameraPosition, NULL, "label='read camera pos.' group='CameraRW'");
+	TwAddButton(view_bar, "Write Camera", CB_SaveCameraPosition, NULL, "label='save camera pos.' group='CameraRW'");
+	TwDefine(" View/CameraRW opened=false ");
+
+	/****** Light ******/
+	TwAddVarRW(view_bar, "Light_On_Off", TW_TYPE_BOOL32, &Light_On, 
+	" label='Light On/Off' key=l help='Reflectins' group='Light'");
+	TwAddVarRW(view_bar, "Intensity", TW_TYPE_FLOAT, &g_LightMultiplier, 
+	" label='Light intensity' min=0.1 max=4 step=0.02 help='Increase/decrease the light power.' group='Light' ");
+	TwAddVarRW(view_bar, "LightDir", TW_TYPE_DIR3F, &g_LightDirection, 
+	" label='Light direction' opened=false help='Change the light direction.' group='Light'");
+	temp_color[0] = 230;
+	temp_color[1] = 230;
+	temp_color[2] = 255;
+	TwSetParam(view_bar, "LightDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
+
+
+    TwDefine(" View/Light opened=false ");
+
+	{
+	TwEnumVal		enColorsTw[] = { {WHITE,"White"}, {BLACK, "Black"}, {RED, "Red"}, {GREEN, "Green"}, {BLUE, "Blue"}, {MANUAL, "Manual"} };
+	TwType			TW_TYPE_COLOR = TwDefineEnum("BG_Color", enColorsTw, 6);
+	TwAddVarRW(view_bar, "Choose_background", TW_TYPE_COLOR, &WhichBackgroundColor, "help='Background color for 3D scene' group='Background'");
+	}
+	TwAddVarRW(view_bar, "red", TW_TYPE_FLOAT, &BackgroundColors[5][0], 
+	" min=0 max=1 step=0.01 group='Background'");
+	TwAddVarRW(view_bar, "green", TW_TYPE_FLOAT, &BackgroundColors[5][1], 
+	" min=0 max=1 step=0.01 group='Background'");
+	TwAddVarRW(view_bar, "blue", TW_TYPE_FLOAT, &BackgroundColors[5][2], 
+	" min=0 max=1 step=0.01 group='Background'");
+	TwDefine(" View/Background opened=false ");
+
 
 	{
 	TwEnumVal		enVectorModeTw[] = {{ARROW1, "Arrows"} 
@@ -1734,18 +1782,18 @@ void setupTweakBar()
 										,{uPOINT,  "Points"}
 										,{BOX1,    "Boxes"}
 									};
-	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Type_of_vectors", enVectorModeTw, 5);
-	TwAddVarCB(view_bar, "Type of vectors", TV_TYPE_VEC_MOD, CB_SetVectorMode, CB_GetVectorMode, &WhichVectorMode, "keyIncr='v' keyDecr='V' help='Type of 3D vectors' ");
+	TwType			TW_TYPE_VEC_MOD = TwDefineEnum("Type_of_vectors", enVectorModeTw, 5);
+	TwAddVarCB(view_bar, "Type of vectors", TW_TYPE_VEC_MOD, CB_SetVectorMode, CB_GetVectorMode, &WhichVectorMode, "keyIncr='v' keyDecr='V' help='Type of 3D vectors' group='Appearance' ");
 	}
 
-	TwAddVarCB(view_bar, "Pivot", TW_TYPE_FLOAT, CB_SetPivot, CB_GetPivot,  &Pivot, " min=0 max=1 step=0.01 help='Pivot of 3D arrow.' ");
-	TwAddVarCB(view_bar, "Faces", TW_TYPE_INT32, CB_SetFaces, CB_GetFaces,  &arrowFaces, " min=3 max=20 step=1 help='Number of faces for 3D arrow.' ");
-	TwAddVarCB(view_bar, "Scale", TW_TYPE_FLOAT, CB_SetScale, CB_GetScale,  &Scale, " min=0.1 max=2.5 step=0.01 keyIncr='+' keyDecr='-' help='Scale the vectors.' ");
+	TwAddVarCB(view_bar, "Pivot", TW_TYPE_FLOAT, CB_SetPivot, CB_GetPivot,  &Pivot, " min=0 max=1 step=0.01 help='Pivot of 3D arrow.' group='Appearance' ");
+	TwAddVarCB(view_bar, "Faces", TW_TYPE_INT32, CB_SetFaces, CB_GetFaces,  &arrowFaces, " min=3 max=20 step=1 help='Number of faces for 3D arrow.' group='Appearance' ");
+	TwAddVarCB(view_bar, "Scale", TW_TYPE_FLOAT, CB_SetScale, CB_GetScale,  &Scale, " min=0.1 max=2.5 step=0.01 keyIncr='+' keyDecr='-' help='Scale the vectors.' group='Appearance' ");
 
-	TwAddVarRW(view_bar, "Show basis", TW_TYPE_BOOL32, &AxesOn, " key=CTRL+o ");
-	TwAddVarRW(view_bar, "Show box", TW_TYPE_BOOL32, &BoxOn, " key=CTRL+b ");
+	TwAddVarRW(view_bar, "Show basis", TW_TYPE_BOOL32, &AxesOn, " key=CTRL+o  group='Appearance'");
+	TwAddVarRW(view_bar, "Show box", TW_TYPE_BOOL32, &BoxOn, " key=CTRL+b group='Appearance'");
+	TwDefine(" View/Appearance opened=false ");
 
-	TwAddSeparator(view_bar, "view_sep1", NULL);
 	{
 	TwEnumVal		enSliceModeTw[] = { 
 										{A_AXIS, "a-axis"}, 
@@ -1754,13 +1802,13 @@ void setupTweakBar()
 										{FILTER, "filter"}
 									  };
 	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
-	TwAddVarCB(view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' ");
+	TwAddVarCB(view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' group='Filters&Slices' ");
 	}
 
 	TwAddVarCB(view_bar, "Spin_filter", TW_TYPE_BOOL32, CB_SetSpinFilter, CB_GetSpinFilter, &SpinFilter, 
-		" label='Spin filter' true='On' false='Off' group='Filters' ");
+		" label='Spin filter' true='On' false='Off' group='Filters&Slices' ");
 	TwAddVarCB(view_bar, "GreedFilter", TW_TYPE_BOOL32, CB_SetGreedFilter, CB_GetGreedFilter, &GreedFilter, 
-		" label='Greed filter' true='On' false='Off' group='Filters' ");
+		" label='Greed filter' true='On' false='Off' group='Filters&Slices' ");
 
 	TwAddVarCB(view_bar, "T_max1", TW_TYPE_INT32, CB_SetThetaMax1, CB_GetThetaMax1, &theta_max1, 
 		" group='Spin_filter_1' label='Theta max 1' min=0 max=180  help='max value for polar angle theta'");
@@ -1781,8 +1829,8 @@ void setupTweakBar()
 	TwAddVarCB(view_bar, "F_min2", TW_TYPE_INT32, CB_SetPhiMin2, CB_GetPhiMin2, &phi_min2, 
 		" group='Spin_filter_2' label='Phi min 2' min=0 max=360 step=1 help='min value for azimuthal angle phi'");
 
-	TwDefine(" View/Spin_filter_1 opened=false group='Filters'");
-	TwDefine(" View/Spin_filter_2 opened=false group='Filters'");
+	TwDefine(" View/Spin_filter_1 opened=false group='Filters&Slices'");
+	TwDefine(" View/Spin_filter_2 opened=false group='Filters&Slices'");
 
 	TwAddVarCB(view_bar, "GFmaxA", TW_TYPE_INT32, CB_SetGreedMaxA, CB_GetGreedMaxA, &GreedFilterMaxA, " group='Greed_filter' label='max na' ");
 	TwAddVarCB(view_bar, "GFminA", TW_TYPE_INT32, CB_SetGreedMinA, CB_GetGreedMinA, &GreedFilterMinA, " group='Greed_filter' label='min na' ");
@@ -1794,63 +1842,22 @@ void setupTweakBar()
     TwAddVarCB(view_bar, "GreedFilterInvert", TW_TYPE_BOOL32, CB_SetGreedFilterInvert, CB_GetGreedFilterInvert, &GreedFilterInvert, " label='Invert G filter' true='On' false='Off' group='Greed_filter' ");
 
 
-	TwDefine(" View/Greed_filter opened=false group='Filters'");
+	TwDefine(" View/Greed_filter opened=false group='Filters&Slices'");
+	TwDefine(" View/Filters&Slices opened=false ");
 
 
-
-
-
-	TwAddSeparator(view_bar, "view_sep2", NULL);
-
-	TwAddVarRW(view_bar, "Intensity", TW_TYPE_FLOAT, &g_LightMultiplier, 
-	" label='Light intensity' min=0.1 max=4 step=0.02 help='Increase/decrease the light power.' group='Light' ");
-	TwAddVarRW(view_bar, "LightDir", TW_TYPE_DIR3F, &g_LightDirection, 
-	" label='Light direction' opened=false help='Change the light direction.' group='Light'");
-	temp_color[0] = 230;
-	temp_color[1] = 230;
-	temp_color[2] = 255;
-	TwSetParam(view_bar, "LightDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
-
-	TwAddVarRW(view_bar, "Light_On_Off", TW_TYPE_BOOL32, &Light_On, 
-	" label='Light On/Off' key=l help='Reflectins' group='Light'");
-
-    TwDefine(" View/Light opened=false ");
-	
-
-	TwAddVarRW(view_bar, "CamAng", TW_TYPE_FLOAT, &PerspSet[0], 
-	" label='camera angle' min=1 max=120 help='camera angle' group='Camera'");
-	TwAddVarRW(view_bar, "PosX", TW_TYPE_FLOAT, &TransXYZ[0], 
-	" label='position in x' min=-1000 max=1000 help='camera position along X-axis' group='Camera'");
-	TwAddVarRW(view_bar, "PosY", TW_TYPE_FLOAT, &TransXYZ[1], 
-	" label='position in y' min=-1000 max=1000 help='camera position along Y-axis' group='Camera'");
-	TwAddVarRW(view_bar, "PosZ", TW_TYPE_FLOAT, &TransXYZ[2], 
-	" label='position in z' min=-1000 max=1000 help='camera position along Z-axis' group='Camera'");
-
-	TwAddVarRW(view_bar, "RotX", TW_TYPE_FLOAT, &Rot[0], 
-	" label='turn around x' min=-360 max=360 help='rotate camera around X-axis' group='Camera'");
-	TwAddVarRW(view_bar, "RotY", TW_TYPE_FLOAT, &Rot[1], 
-	" label='turn around y' min=-360 max=360 help='rotate camera around Y-axis' group='Camera'");
-	TwAddVarRW(view_bar, "RotZ", TW_TYPE_FLOAT, &Rot[2], 
-	" label='turn around z' min=-360 max=360 help='rotate camera around Z-axis' group='Camera'");
-	TwDefine(" View/Camera opened=true ");
-
-	TwAddVarRW(view_bar, "CamBank", TW_TYPE_INT32, &CurrentCameraPositionBank, 
-	" label='Current camera' min=0 max=4 group='CameraRW'");
-	TwAddButton(view_bar, "Read Camera", CB_GetCameraPosition, NULL, "label='read camera pos.' group='CameraRW'");
-	TwAddButton(view_bar, "Write Camera", CB_SaveCameraPosition, NULL, "label='save camera pos.' group='CameraRW'");
-	TwDefine(" View/CameraRW opened=false ");
-
-	TwAddVarCB(view_bar, "ColSh", TW_TYPE_INT32, CB_SetColorShift, CB_GetColorShift, &ColorShift, 
-	" label='Rotate hue' min=0 max=360 help='rotate color hue in xy-plane' group='HSV color map'");
+	TwAddVarCB(view_bar, "ColorShift", TW_TYPE_INT32, CB_SetColorShift, CB_GetColorShift, &ColorShift, 
+	" label='Rotate hue' min=0 max=360 help='rotate color hue in xy-plane' group='HSV to RGB'");
 	TwAddVarCB(view_bar, "InvHue", TW_TYPE_BOOL32, CB_SetInvHue, CB_GetInvHue, &InvertHue, 
-	" label='Invert hue' help='invert RGB to RBG color hue' group='HSV color map'");
+	" label='Invert hue' help='invert RGB to RBG color hue' group='HSV to RGB'");
 	TwAddVarCB(view_bar, "InvVal", TW_TYPE_BOOL32, CB_SetInvVal, CB_GetInvVal, &InvertValue, 
-	" label='Invert value' help='invert black to white' group='HSV color map'");
+	" label='Invert value' help='invert black to white' group='HSV to RGB'");
 	{
 	TwEnumVal		enWhichColorSchemeTw[] = { {RGB, "RGB"}, {RYGB, "RYGB"}};
 	TwType			TV_TYPE_COL_SCH = TwDefineEnum("ColorSh", enWhichColorSchemeTw, 2);
-	TwAddVarCB(view_bar, "Color scheme", TV_TYPE_COL_SCH, CB_SetColorScheme, CB_GetColorScheme, &WhichColorScheme, "help='Type of 3D vectors' group='HSV color map' ");
+	TwAddVarCB(view_bar, "Color scheme", TV_TYPE_COL_SCH, CB_SetColorScheme, CB_GetColorScheme, &WhichColorScheme, "help='Type of 3D vectors' group='HSV to RGB' ");
 	}
+	TwDefine(" View/'HSV to RGB' opened=false ");
 
 /*  Hamiltonian parameters&controls F3 */
 	control_bar = TwNewBar("Parameters&Controls");
@@ -3637,7 +3644,7 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 			Nout[i+0] = -Ninp[i+0];
 			Nout[i+1] =  Ninp[i+1];
 			Nout[i+2] = -Ninp[i+2];
-			if (WhichColor == BLACK){
+			if (WhichBackgroundColor == BLACK){
 				Cout[i+0] = 0.9;			// x-component of vertex normal
 				Cout[i+1] = 0.9;			// y-component of vertex normal
 				Cout[i+2] = 0.9;			// z-component of vertex normal
@@ -3660,7 +3667,7 @@ void UpdateVerticesNormalsColors_H(float * Vinp, float * Ninp, int Kinp,
 			Nout[i+0] =-Sy*A + Ninp[3*k+0]*Sz + Sx*Ninp[3*k+2];
 			Nout[i+1] = Sx*A + Ninp[3*k+1]*Sz + Sy*Ninp[3*k+2];
 			Nout[i+2] = Ninp[3*k+2]*Sz - (Sx*Ninp[3*k+0]+Sy*Ninp[3*k+1]);
-			if (WhichColor == BLACK){
+			if (WhichBackgroundColor == BLACK){
 				Cout[i+0] = 0.9;			// x-component of vertex normal
 				Cout[i+1] = 0.9;			// y-component of vertex normal
 				Cout[i+2] = 0.9;			// z-component of vertex normal
