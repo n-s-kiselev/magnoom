@@ -1867,7 +1867,7 @@ void setupTweakBar()
 
 	TwAddButton(control_bar, "Run", CB_Run, NULL, "key='r' label='RUN simulation' ");
 	TwAddVarRW(control_bar, "Record", TW_TYPE_BOOL32, &Record, 
-	"label='Recording' true='Rec.' false='Pause' help='Recording <sx>, <sy>, <sz> in each iteration'");
+	"label='Recording' true='On' false='Off' help='Recording <sx>, <sy>, <sz> in each iteration'");
 	TwAddVarRW(control_bar, "Rec_Iteration", TW_TYPE_INT32, &rec_iteration, 
 	"label='Every iteration' min=1 max=1000 step=1 ");
 	TwAddButton(control_bar, "Clean the record", CB_CleanSxSySzFile, NULL, "label= 'Clean the record' help='clean the output file with <sx>, <sy>, <sz>' ");
@@ -1894,6 +1894,8 @@ void setupTweakBar()
     TwAddSeparator(control_bar, "sep-2", NULL);
 	TwAddVarCB(control_bar, "FieldTheta", TW_TYPE_FLOAT, CB_SetHfieldTheta, CB_GetHfieldTheta, &VHtheta, "label='H theta'  step=1 help='Change the direction of applied field' ");
 	TwAddVarCB(control_bar, "FieldPhi", TW_TYPE_FLOAT, CB_SetHfieldPhi, CB_GetHfieldPhi, &VHphi, "label='H phi' step=1  help='Change the direction of applied field' ");
+	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
+	"label='Field'  min=0 step=0.00001 help='The value of uniaxial anisotropy' ");
 	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldDir, CB_GetHfieldDir, VHf, 
 	// "label='Field direction' opened=true help='Change the direction of applied field' ");
 	// temp_color[0] = 55;
@@ -1902,20 +1904,15 @@ void setupTweakBar()
 	// TwSetParam(control_bar, "FieldDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
 	// // TwAddVarRW(control_bar, "Field", TW_TYPE_FLOAT, &Hf, 
 	// // "label='Field' help='The value of uniaxial anisotropy' ");
-	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
-	"label='Field'  min=0 step=0.00001 help='The value of uniaxial anisotropy' ");
-
-	TwAddSeparator(control_bar, "control_sep1", NULL);
-	TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldXYZ, CB_GetHfieldXYZ, &VHf, 
-	" label='Field direction' opened=false help='Change the applied field direction.' ");
+	// TwAddSeparator(control_bar, "control_sep1", NULL);
+	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldXYZ, CB_GetHfieldXYZ, &VHf, 
+	// " label='Field direction' opened=false help='Change the applied field direction.' ");
 
 	TwAddSeparator(control_bar, "control_sep2", NULL);
 
-    TwAddSeparator(control_bar, "sep-1", NULL);
-
 
 	TwAddVarRW(control_bar, "KudDir", TW_TYPE_DIR3F, &VKu, 
-	"label='Ku' opened=true help='The direction of uniaxial anisotropy' ");
+	"label='Ku axis' opened=true help='The axis of uniaxial anisotropy' ");
 	temp_color[0] = 55;
 	temp_color[1] = 155;
 	temp_color[2] = 55;
@@ -1972,9 +1969,9 @@ void setupTweakBar()
 	TwDefine(" Initial_State size='220 530' color='70 70 100'  alpha=200"); // change default tweak bar size and color
 	TwDefine(" Initial_State help='F4: show/hide Initial state bar' "); // change default tweak bar size and color
 	{
-	TwEnumVal		enGeomTw[] = { 	{DEFAULT_G, 		"Default"		    }, 
-										{CILINDER_G, 	"Cilinder"	        }, 
-										{SPHERE_G, 		"Sphere"	        }
+	TwEnumVal		enGeomTw[] = { 	{DEFAULT_G, 	"Default"		    }, 
+									{CILINDER_G, 	"Cilinder"	        }, 
+									{SPHERE_G, 		"Sphere"	        }
 									};
 	TwType			TV_TYPE_GEOMETRY = TwDefineEnum("DomainShape", enGeomTw, 3);
 	TwAddVarRW(initial_bar, "Choose shape", TV_TYPE_GEOMETRY, &WhichGeometry, "help='Choose shape of the simulated domain'");
@@ -2034,11 +2031,11 @@ void setupTweakBar()
 	TwEnumVal		enAverage_mode[] = {{ALONG_A, 	"Along a-axis"	}, 
 										{ALONG_B, 	"Along b-axis"	}, 
 										{ALONG_C, 	"Along c-axis"	}, 
-										{ALONG_0, 	"No avearge  "	}
+										{ALONG_0, 	"No averaging"	}
 									};
 
 	TwType			TV_TYPE_AVERAGE_MODE = TwDefineEnum("Average mode", enAverage_mode, 4);
-	TwAddVarRW(initial_bar, "Choose average mode", TV_TYPE_AVERAGE_MODE, &WhichAverageMode, "help='Choose type of average mode'");}
+	TwAddVarRW(initial_bar, "Averaging mode", TV_TYPE_AVERAGE_MODE, &WhichAverageMode, "help='Choose type of average mode'");}
 
 	TwAddVarRW(initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(outputfilename)), outputfilename, ""); 
 	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='write to *.csv file' ");		
@@ -2149,7 +2146,7 @@ if( !TwEventMouseButtonGLUT(button, state, x, y) )  // send event to AntTweakBar
 
 			default:
 				b = 0;
-				fprintf( stderr, "Unknown mouse button: %d\n", button );
+				//fprintf( stderr, "Unknown mouse button: %d\n", button );
 		}
 
 		// button down sets the bit, up clears the bit:
@@ -2324,8 +2321,8 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				Buttons( QUIT );
 				break;
 
-			default:
-				fprintf( stderr, "Don't know what to do with keyboard hit: '%c' (0x%0x)\n", c, c );
+			//default:
+				//fprintf( stderr, "Don't know what to do with keyboard hit: '%c' (0x%0x)\n", c, c );
 		}
 
 	}
@@ -2418,8 +2415,8 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Info iconified=true ");
 				}
 				break;
-			default:
-				fprintf( stderr, "Don't know what to do with special key: '%c' (0x%0x)\n", key, key );
+			//default:
+				//fprintf( stderr, "Don't know what to do with special key: '%c' (0x%0x)\n", key, key );
 		}
 	}
 }
@@ -2453,8 +2450,8 @@ void Buttons( int id )
 			exit( 0 );						// gracefully exit the program
 			break;
 
-		default:
-			fprintf( stderr, "Don't know what to do with Button ID %d\n", id );
+		// default:
+		// 	fprintf( stderr, "Don't know what to do with Button ID %d\n", id );
 	}
 }
 
