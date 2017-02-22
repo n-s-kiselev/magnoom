@@ -608,22 +608,28 @@ void idle ()
 	}
 }
 
-void TW_CALL CB_Run( void *clientData )
+void TW_CALL CB_Set_Run( const void *value, void *clientData )
 {
-	if (Play==0)
+	Play = *( int *)value;
+	if (Play!=0)
 	{
-		Play=1;
-		TwDefine(" Parameters&Controls/Run  label='STOP simulation' ");
+		// Play=1;
+		// TwDefine(" Parameters&Controls/Run  label='STOP simulation' ");
 		pthread_mutex_lock(&culc_mutex);
 			ENGINE_MUTEX=DO_IT;
 		pthread_mutex_unlock(&culc_mutex);
 	}else{
-		Play=0; 
-		TwDefine(" Parameters&Controls/Run  label='RUN simulation' ");
+		// Play=0; 
+		// TwDefine(" Parameters&Controls/Run  label='RUN simulation' ");
 		pthread_mutex_lock(&culc_mutex);
 			ENGINE_MUTEX=WAIT;
 		pthread_mutex_unlock(&culc_mutex);	
 	}
+}
+
+void TW_CALL CB_Get_Run(void *value, void *clientData)
+{
+    *(float *)value = Play; // just copy Scale to value
 }
 
 void TW_CALL CB_SetScale(const void *value, void *clientData )
@@ -1870,7 +1876,8 @@ void setupTweakBar()
     TwDefine(" Parameters&Controls size='220 530' color='100 70 100' alpha=200 "); // change default tweak bar size and color
     TwDefine(" Parameters&Controls help='F3: show/hide Control bar' "); // change default tweak bar size and color
 
-	TwAddButton(control_bar, "Run", CB_Run, NULL, "key='r' label='RUN simulation' ");
+	//TwAddButton(control_bar, "Run", CB_Run, NULL, "key='r' label='RUN simulation' ");
+	TwAddVarCB(control_bar, "Run", TW_TYPE_BOOL32, CB_Set_Run, CB_Get_Run, &Play, " keyIncr='r' true='On' false='Off' label='RUN simulation' ");
 	TwAddVarRW(control_bar, "Record", TW_TYPE_BOOL32, &Record, 
 	"label='Recording' true='On' false='Off' help='Recording <sx>, <sy>, <sz> in each iteration'");
 	TwAddVarRW(control_bar, "Rec_Iteration", TW_TYPE_INT32, &rec_iteration, 
@@ -1984,9 +1991,10 @@ void setupTweakBar()
 	TwAddVarRW(initial_bar, "Size", TW_TYPE_FLOAT,  &chSizeG, 
 	" min=0 max=100000 step=0.5 help='characteristic size of the shape (radius)' ");
 
-	TwAddButton(initial_bar, "Set shape", CB_SetShape, NULL, " label='Set up shape' ");
+	TwAddButton(initial_bar, "Set shape", CB_SetShape, NULL, " label='Set shape' ");
 
 
+	TwAddSeparator(initial_bar, "sep00", NULL);
 	{
 	TwEnumVal		enIniStateTw[] = { 	{RND, 		"Random"		        }, 
 										{HOMO, 		"Homogeneous"	        }, 
