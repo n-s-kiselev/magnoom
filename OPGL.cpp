@@ -280,6 +280,7 @@ int			IdNum_PBC;
 int			VCNum_PBC;
 
 int			Play=0;
+int			SpecialEvent=1;
 
 int			DataTransfer=1;
 
@@ -530,7 +531,7 @@ void setupOpenGL ()
 	// glutTabletMotionFunc( NULL );// TabletMotionFunc -- handle digitizing tablet motion
 	// glutTabletButtonFunc( NULL );// TabletButtonFunc -- handle digitizing tablet button hits
 	// glutMenuStateFunc( NULL );// MenuStateFunc -- declare when a pop-up menu is in use
-	// glutTimerFunc( 0, NULL, 0 );// TimerFunc -- trigger something to happen a certain time from now
+	//glutTimerFunc( 40, idle, 0 );// TimerFunc -- trigger something to happen a certain time from now
 	glutIdleFunc( idle );// IdleFunc -- what to do when nothing else is going on
 
 	// Initialize AntTweakBar
@@ -564,34 +565,37 @@ void idle ()
 	currentTime = glutGet(GLUT_ELAPSED_TIME);
 	timeInterval = currentTime - previousTime;
 
-	if(timeInterval > 40 && Play!=0)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
+	if((timeInterval > 40 && Play!=0)||SpecialEvent!=0)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
 	{
-		if( DATA_TRANSFER_MUTEX==TAKE_DATA )
+		if( DATA_TRANSFER_MUTEX==TAKE_DATA || SpecialEvent!=0)
 		{
-			if (DataTransfer==1)
-			//if (Play==1)
+			switch (SpecialEvent)
 			{
-			ChangeVectorMode(1);
-			totalEnergy = GetTotalEnergy( 	bSx, bSy, bSz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
-			mtot[0] = Mtot[0]/NOS;
-			mtot[1] = Mtot[1]/NOS;
-			mtot[2] = Mtot[2]/NOS;
-			perSpEnergy = totalEnergy/NOS;
-			totalEnergyFerro = GetTotalEnergyFerro( VHf[0], VHf[1], VHf[2], 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, NOS );
-			totalEnergyFerro = totalEnergyFerro/NOS;	
-			perSpEnergyMinusFerro = perSpEnergy - totalEnergyFerro;
+				case 0:
+				ChangeVectorMode(1);
+				case 1:
+				totalEnergy = GetTotalEnergy( 	bSx, bSy, bSz, 
+							NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+							Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
+				mtot[0] = Mtot[0]/NOS;
+				mtot[1] = Mtot[1]/NOS;
+				mtot[2] = Mtot[2]/NOS;
+				perSpEnergy = totalEnergy/NOS;
+				totalEnergyFerro = GetTotalEnergyFerro( VHf[0], VHf[1], VHf[2], 
+							NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+							Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, NOS );
+				totalEnergyFerro = totalEnergyFerro/NOS;	
+				perSpEnergyMinusFerro = perSpEnergy - totalEnergyFerro;
+				SpecialEvent=0;
 			}
-			if (timeInterval > 1000)//~1 second
-			{
+			if (timeInterval > 1000){//~1 second
 				FPS = frameCount / (timeInterval * 0.002f);
 				previousTime = currentTime;
 				frameCount = 0;	
-				IPS = (currentIteration - previousIteration)/ (timeInterval * 0.002f);;
-				previousIteration = currentIteration;
+				if (Play!=0){
+					IPS = (currentIteration - previousIteration)/ (timeInterval * 0.002f);;
+					previousIteration = currentIteration;
+				}
 			}
 			pthread_mutex_lock( &show_mutex);
 				DATA_TRANSFER_MUTEX = WAIT_DATA; // meaning that OpenGL is waiting for new data from engine
@@ -1224,7 +1228,8 @@ void TW_CALL CB_SetGreedFilter(const void *value, void *clientData ){
 
 void TW_CALL CB_ResetIterations( void *clientData ){
   ITERATION=0;
-  //glutPostRedisplay();
+  currentIteration=0;
+  SpecialEvent=1;
 }
 
 
@@ -2080,40 +2085,46 @@ void setupTweakBar()
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
-	TwDefine(" Info position = '1 30' size ='180 500' valueswidth=120"); // change default tweak bar size and color
-	TwAddVarRO(info_bar, "R/S", TW_TYPE_BOOL32,  &Play, "true='RUNING' false='STOPED' ");
-	TwAddVarRO(info_bar, "Rec.", TW_TYPE_BOOL32,  &Record, "true='On' false='Off' ");
-	TwAddVarRO(info_bar, "ACF", TW_TYPE_BOOL32,  &AC_FIELD_ON, "true='On' false='Off' help='AC filed on/off'");
+	TwDefine(" Info position = '1 30' size ='220 500' valueswidth=130"); // change default tweak bar size and color
+	TwAddVarRO(info_bar, "Run/Stop", TW_TYPE_BOOL32,  &Play, "true='RUNING' false='STOPED' ");
+	TwAddVarRO(info_bar, "RECORD", TW_TYPE_BOOL32,  &Record, "true='On' false='Off' ");
+	TwAddVarRO(info_bar, "AC/DC", TW_TYPE_BOOL32,  &AC_FIELD_ON, "true='On' false='Off' help='AC filed on/off'");
+	TwAddVarRO(info_bar, "ACField", TW_TYPE_FLOAT,  &Hac, " ");
+
 	TwAddSeparator(info_bar, "sep-0", NULL);
 	TwAddVarRO(info_bar, "NPB", TW_TYPE_INT32,  &AtomsPerBlock, "help='number of atoms per block' ");
-	TwAddVarRO(info_bar, "N_a", TW_TYPE_INT32,  &uABC[0], "help='translations along a' ");
-	TwAddVarRO(info_bar, "N_b", TW_TYPE_INT32,  &uABC[1], "help='translations along b' ");
-	TwAddVarRO(info_bar, "N_c", TW_TYPE_INT32,  &uABC[2], "help='translations along c' ");	
-	TwAddVarRO(info_bar, "NOS", TW_TYPE_INT32,  &NOS, "help='Number of spins' ");
+	TwAddVarRO(info_bar, "N_a", TW_TYPE_INT32,  &uABC[0],       "help='translations along a' ");
+	TwAddVarRO(info_bar, "N_b", TW_TYPE_INT32,  &uABC[1],       "help='translations along b' ");
+	TwAddVarRO(info_bar, "N_c", TW_TYPE_INT32,  &uABC[2],       "help='translations along c' ");	
+	TwAddVarRO(info_bar, "NOS", TW_TYPE_INT32,  &NOS,           "help='Number of spins'      ");
 	TwAddSeparator(info_bar, "sep", NULL);
-	TwAddVarRO(info_bar, "FPS", TW_TYPE_FLOAT,  &FPS, "help='Frame per second' precision=4");
 	TwAddVarRO(info_bar, "ITR", TW_TYPE_INT32,  &currentIteration, "help='Total number of iterations' ");
-	TwAddVarRO(info_bar, "IPS", TW_TYPE_FLOAT,  &IPS, "help='Iterations per secon' precision=4");
+
 
 	TwAddSeparator(info_bar, "sep0", NULL);
-	TwAddVarRO(info_bar, "Etot", TW_TYPE_DOUBLE, &totalEnergy, " precision=12 help='Total energy' ");
-	TwAddVarRO(info_bar, "e", TW_TYPE_DOUBLE, &perSpEnergy, " precision=12 help='Energy density per spin'");
+
+	TwAddVarRO(info_bar, "FPS", TW_TYPE_FLOAT,  &FPS, "help='Frame per second' precision=4");
+	TwAddVarRO(info_bar, "IPS", TW_TYPE_FLOAT,  &IPS, "help='Iterations per secon' precision=4");	
 
 	TwAddSeparator(info_bar, "sep01", NULL);
-	TwAddVarRO(info_bar, "e0", TW_TYPE_DOUBLE, &totalEnergyFerro, " precision=12 help='Energy density for ferromagnetic state' ");
-	TwAddVarRO(info_bar, "e-e0", TW_TYPE_DOUBLE, &perSpEnergyMinusFerro, " precision=12 help='Energy density per spin wrt ferromagnetic state'");
+
+
+	TwAddVarRO(info_bar, "Etot", TW_TYPE_DOUBLE, &totalEnergy, " precision=10 help='Total energy' ");
+	TwAddVarRO(info_bar, "etot", TW_TYPE_DOUBLE, &perSpEnergy, " precision=10 help='Energy density per spin'");
+	TwAddVarRO(info_bar, "esat", TW_TYPE_DOUBLE, &totalEnergyFerro, " precision=10 help='Energy density for ferromagnetic state' ");
+	TwAddVarRO(info_bar, "de", TW_TYPE_DOUBLE, &perSpEnergyMinusFerro, " precision=10 help='Energy density per spin wrt ferromagnetic state'");
 
 	TwAddSeparator(info_bar, "sep1", NULL);	
-	TwAddVarRO(info_bar, "M_x", TW_TYPE_DOUBLE, &Mtot[0], " help='x-component of total moment' precision=12");
-	TwAddVarRO(info_bar, "M_y", TW_TYPE_DOUBLE, &Mtot[1], " help='y-component of total moment' precision=12");
-	TwAddVarRO(info_bar, "M_z", TW_TYPE_DOUBLE, &Mtot[2], " help='z-component of total moment' precision=12");
+	TwAddVarRO(info_bar, "M_x", TW_TYPE_DOUBLE, &Mtot[0], " help='x-component of total moment' precision=10");
+	TwAddVarRO(info_bar, "M_y", TW_TYPE_DOUBLE, &Mtot[1], " help='y-component of total moment' precision=10");
+	TwAddVarRO(info_bar, "M_z", TW_TYPE_DOUBLE, &Mtot[2], " help='z-component of total moment' precision=10");
 
 	TwAddSeparator(info_bar, "sep2", NULL);
-	TwAddVarRO(info_bar, "m_x", TW_TYPE_DOUBLE, &mtot[0], " help='x-component of average moment per spin' precision=12");
-	TwAddVarRO(info_bar, "m_y", TW_TYPE_DOUBLE, &mtot[1], " help='y-component of average moment per spin' precision=12");
-	TwAddVarRO(info_bar, "m_z", TW_TYPE_DOUBLE, &mtot[2], " help='z-component of average moment per spin' precision=12");
+	TwAddVarRO(info_bar, "m_x", TW_TYPE_DOUBLE, &mtot[0], " help='x-component of average moment per spin' precision=10");
+	TwAddVarRO(info_bar, "m_y", TW_TYPE_DOUBLE, &mtot[1], " help='y-component of average moment per spin' precision=10");
+	TwAddVarRO(info_bar, "m_z", TW_TYPE_DOUBLE, &mtot[2], " help='z-component of average moment per spin' precision=10");
 	TwAddSeparator(info_bar, "sep3", NULL);
-	TwAddVarRO(info_bar, "max_torque", TW_TYPE_DOUBLE, &MAX_TORQUE, " help='maximum torque acting on the spin' precision=6");
+	TwAddVarRO(info_bar, "Torque", TW_TYPE_DOUBLE, &MAX_TORQUE, " help='maximum torque acting on the spin' precision=10");
 }
 
 
@@ -2460,6 +2471,7 @@ void ChangeInitialState ( int id )
 	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, id );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 	ChangeVectorMode ( 1 );
+	SpecialEvent=1;
 }
 
 void ChangeVectorMode( int id )
