@@ -1,7 +1,7 @@
 GLuint 			GLUT_window;
 const char *	WINDOWTITLE = { "Magnoom v1.0" };
-int				window_width	= 800;//1024;//400;//
-int				window_height	= 600;//768;//300;//
+int				window_width	= 1024;//1024;//400;//
+int				window_height	= 768;//768;//300;//
 float 			asp_rat			= (float)( ((double)window_width)/((double)window_height) );
 float 			asp_rat_inv		= (float)( ((double)window_height)/((double)window_width) );
 
@@ -835,6 +835,9 @@ void TW_CALL CB_SetHfieldTheta(const void *value, void *clientData )
     VHf[0]=sin(PI*VHtheta/180)*cos(PI*VHphi/180);
 	VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
 	VHf[2]=cos(PI*VHtheta/180);
+	Bdc[0]=Hf*VHf[0];
+	Bdc[1]=Hf*VHf[1];
+	Bdc[2]=Hf*VHf[2];
 	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
 	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 }
@@ -2089,15 +2092,27 @@ void setupTweakBar()
 /*  Info bar F11 */
 	info_bar = TwNewBar("Info");
 	TwDefine(" Info refresh=0.5 ");
-	TwDefine(" Info iconified = false movable = false alwaysbottom=true resizable=false fontstyle=fixed fontsize=2"); 
+	TwDefine(" Info iconified = false movable = false alwaysbottom=true resizable=false fontstyle=default fontsize=2"); 
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
-	TwDefine(" Info position = '1 30' size ='220 500' valueswidth=130"); // change default tweak bar size and color
+	TwDefine(" Info position = '1 30' size ='170 620' valueswidth=130"); // change default tweak bar size and color
 	TwAddVarRO(info_bar, "Run/Stop", TW_TYPE_BOOL32,  &Play, "true='RUNING' false='STOPED' ");
 	TwAddVarRO(info_bar, "RECORD", TW_TYPE_BOOL32,  &Record, "true='On' false='Off' ");
-	TwAddVarRO(info_bar, "AC/DC", TW_TYPE_BOOL32,  &AC_FIELD_ON, "true='On' false='Off' help='AC filed on/off'");
-	TwAddVarRO(info_bar, "ACField", TW_TYPE_FLOAT,  &Hac, " ");
+	TwAddSeparator(info_bar, "sep+21", NULL);
+	//TwAddVarRO(info_bar, "AC field", TW_TYPE_BOOL32,  &AC_FIELD_ON, "true='On' false='Off' help='AC filed on/off'");
+	TwAddButton(info_bar, "AC field", NULL, NULL, " ");
+	TwAddVarRO(info_bar, " Bx ", TW_TYPE_FLOAT,  &Bac[0], " ");
+	TwAddVarRO(info_bar, " By ", TW_TYPE_FLOAT,  &Bac[1], " ");
+	TwAddVarRO(info_bar, " Bz ", TW_TYPE_FLOAT,  &Bac[2], " ");
+
+	TwAddSeparator(info_bar, "sep+11", NULL);
+
+	//TwAddVarRO(info_bar, "DC field", TW_TYPE_FLOAT, NULL, " label='DC field'");
+	TwAddButton(info_bar, "DC field", NULL, NULL, " ");
+	TwAddVarRO(info_bar, " Bx", TW_TYPE_FLOAT,  &Bdc[0], " ");
+	TwAddVarRO(info_bar, " By", TW_TYPE_FLOAT,  &Bdc[1], " ");
+	TwAddVarRO(info_bar, " Bz", TW_TYPE_FLOAT,  &Bdc[2], " ");
 
 	TwAddSeparator(info_bar, "sep-0", NULL);
 	TwAddVarRO(info_bar, "NPB", TW_TYPE_INT32,  &AtomsPerBlock, "help='number of atoms per block' ");

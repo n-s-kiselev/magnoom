@@ -272,9 +272,11 @@ float 		VHtheta=0;
 float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
 float		Hf=0.01632;
+float       Bdc[]={ Hf*VHf[0] , Hf*VHf[1], Hf*VHf[2] };
 //AC applied H-field:
 float		VHac[]={ 0.0 , 0.0, 1.0 };
 float		Hac=0.001632;
+float       Bac[]={ 0.0 , 0.0, 0.0 };//Bac is components of external field for info panel only.
 float		Period_dc=180.168;
 float		Omega_dc=TPI/Period_dc;
 float 		GPulseWidth=20.0;

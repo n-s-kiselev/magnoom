@@ -532,6 +532,9 @@ float GetACfield(int type)
 			R = AC_FIELD_ON*Hac*exp(-0.5*temp*temp );
 		break;
 	}
+		Bac[0] = R * VHac[0];
+		Bac[1] = R * VHac[1];
+		Bac[2] = R * VHac[2];
 	return R;
 }
 	
