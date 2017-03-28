@@ -4,7 +4,8 @@
 Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://github.com/n-s-kiselev/magnoom/wiki) )
 
 ###Developer:
-  [Nikolai S. Kiselev](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Kiselev_N.html?nn=758466)
+  [Nikolai S. Kiselev](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Kiselev_N.html?nn=758466) 
+
 ###Contributors:
   1. [Filipp N. Rybakov](http://www.hopfion.com) (Implementation for Windows OS and alternative threads semaphores)
   2. [Jonathan Chico](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Chico_J.html?nn=758466)
