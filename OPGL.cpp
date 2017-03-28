@@ -1900,7 +1900,7 @@ void setupTweakBar()
     TwAddVarRW(control_bar, "Preces", TW_TYPE_BOOL32, &Precession, 
 	"label='precession' group='LLG' true='On' false='Off' help='On/Off precession'");
 	TwAddVarRW(control_bar, "Damping", TW_TYPE_FLOAT, &damping, 
-	"label='Damping' min=0 max=100 step=0.01 group='LLG' ");
+	"label='Damping' min=0 max=100 step=0.0001 group='LLG' ");
 	TwAddVarRW(control_bar, "Time_step", TW_TYPE_FLOAT, &t_step, 
 	"label='Time step' min=0 max=0.5 step=0.001   group='LLG' ");
 	TwAddVarRW(control_bar, "temperature", TW_TYPE_FLOAT, &Temperature, 
@@ -1910,7 +1910,7 @@ void setupTweakBar()
 	TwAddVarCB(control_bar, "FieldTheta", TW_TYPE_FLOAT, CB_SetHfieldTheta, CB_GetHfieldTheta, &VHtheta, "label='H theta'  step=1 help='Change the direction of applied field' ");
 	TwAddVarCB(control_bar, "FieldPhi", TW_TYPE_FLOAT, CB_SetHfieldPhi, CB_GetHfieldPhi, &VHphi, "label='H phi' step=1  help='Change the direction of applied field' ");
 	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
-	"label='Field'  min=0 step=0.00001 help='The value of uniaxial anisotropy' ");
+	"label='Field'  min=0 step=0.001 help='The value of uniaxial anisotropy' ");
 	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldDir, CB_GetHfieldDir, VHf, 
 	// "label='Field direction' opened=true help='Change the direction of applied field' ");
 	// temp_color[0] = 55;
@@ -2009,7 +2009,8 @@ void setupTweakBar()
 										{BOBBER_L,	"Bobber lattice"	    }, 
 										{BOBBER_L_T,"Bobber latt. top"	    },  
 										{BOBBER_L_B,"Bobber latt. bottom"	}, 
-										{HOPFION1, 	"Hopfion"		        }, 
+										//{HOPFION1, 	"Hopfion"		        }, 
+										{HOPFION1, 	"Bobber+Skyrmio"		        },
 										{SPIRAL, 	"Spiral"		        }, 
 										{SKYRMION_L,"Sk. lattice"	        },
 										{GLOBULA,   "Globula"	            }
@@ -2307,12 +2308,12 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 
 			case 'q':
 			case 'Q':
-				Rot[2] -= 0.25;
+				Rot[2] -= 0.75;
 			break;
 
 			case 'e':
 			case 'E':
-				Rot[2] += 0.25;
+				Rot[2] += 0.75;
 			break;
 
 			case 'w':
@@ -2425,7 +2426,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Parameters&Controls iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F4:
+			case  GLUT_KEY_F6:
 				TwGetParam(initial_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Initial_State iconified=false ");				
@@ -3244,7 +3245,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						S[1] = Sy[N];
 						S[2] = Sz[N];
 						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
-						if (SpinFilter){
+					/*	if (SpinFilter){
 							if (!PhiInvert1 && !PhiInvert2){
 								F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) &&  (phi>=phi_min1 && phi<=phi_max1)) ||
 							      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) &&  (phi>=phi_min2 && phi<=phi_max2))  ;	
@@ -3255,7 +3256,13 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 								F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) && !(phi>=phi_min1 && phi<=phi_max1)) ||
 							      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && !(phi>=phi_min2 && phi<=phi_max2))  ;									
 							}				
-						}else{F=true;}
+						}else{F=true;}*/
+
+						if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) ) 
+						{
+							F=true;}else{
+								F=false;
+							}
 
 						if (F)
 						{

@@ -291,30 +291,32 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 10: // hopfion H=1
-		if(chSize!=0)
-		{
-			float tmp;
-			for (int n=0; n<NOS; n++)
-			{	
-				r = sqrt(px[n]*px[n]+py[n]*py[n]+pz[n]*pz[n]);
-				if (r==0){
-					T = 0;
-				}else{
-					T = pz[n]/r; // angle with respect to the main axis of toroid [0,0,1]
-				}
-				T = acos(T);
-				t = r/chSize;
-				t = 1.0 + 4.22/(t*t);
-				tmp = PI*(1.0-1.0/sqrt(t));
-				t = sin(tmp)*sin(T);
-				t = acos(1.0-2.0*t*t);
-				F = atan2(py[n],px[n]);
-				f = F + atan2( 1.0/(tan(tmp)),cos(T) );
-				Sx[n] = sin(t)*cos(f)*Kind[n];
-				Sy[n] = sin(t)*sin(f)*Kind[n];
-				Sz[n] = cos(t)*Kind[n];
-			}
-		}
+		// if(chSize!=0)
+		// {
+		// 	float tmp;
+		// 	for (int n=0; n<NOS; n++)
+		// 	{	
+		// 		r = sqrt(px[n]*px[n]+py[n]*py[n]+pz[n]*pz[n]);
+		// 		if (r==0){
+		// 			T = 0;
+		// 		}else{
+		// 			T = pz[n]/r; // angle with respect to the main axis of toroid [0,0,1]
+		// 		}
+		// 		T = acos(T);
+		// 		t = r/chSize;
+		// 		t = 1.0 + 4.22/(t*t);
+		// 		tmp = PI*(1.0-1.0/sqrt(t));
+		// 		t = sin(tmp)*sin(T);
+		// 		t = acos(1.0-2.0*t*t);
+		// 		F = atan2(py[n],px[n]);
+		// 		f = F + atan2( 1.0/(tan(tmp)),cos(T) );
+		// 		Sx[n] = sin(t)*cos(f)*Kind[n];
+		// 		Sy[n] = sin(t)*sin(f)*Kind[n];
+		// 		Sz[n] = cos(t)*Kind[n];
+		// 	}
+		// }
+	CreatBobber(px, py, pz, sx, sy, sz, chSize, -20, 0, 1);
+	CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,20,0);
 	break;
 
 	case 11: // spiral
