@@ -1,16 +1,17 @@
 ![Alt text](https://github.com/n-s-kiselev/magnoom/blob/master/MagnoomWiki/TitleImage.png)
-#Magnoom
+
+# Magnoom
 
 Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://github.com/n-s-kiselev/magnoom/wiki) )
 
-###Developer:
+### Developer:
   [Nikolai S. Kiselev](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Kiselev_N.html?nn=758466) 
 
-###Contributors:
+### Contributors:
   1. [Filipp N. Rybakov](http://www.hopfion.com) (Implementation for Windows OS and alternative threads semaphores)
   2. [Jonathan Chico](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Chico_J.html?nn=758466)
 
-###Main features:
+### Main features:
   * platform independent code writen in C/C++
   * efficiently CPU parallelized, multithreading code
   * minimal dependencies on external libraries
@@ -23,12 +24,12 @@ Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://githu
   
 
 
-###Dependencies:
+### Dependencies:
   * gcc >=4.8.1 (possibly can be compiled also with earlier versions of gcc)
   * OpenGL >= 2.1 (On Ubuntu and MacOS check your version of OpenGL with `glxinfo | grep "OpenGL version"`
   * [AntTweakBar](http://anttweakbar.sourceforge.net/) by Philippe Decaudin wich is cool C/C++ library allowing graphical user interface in OpenGL applications 
 
-###Building from source:
+### Building from source:
   * install a C compiler
     - Ubuntu: `sudo apt-get install gcc`
     - MacOSX: [link] (https://developer.apple.com/xcode/download/)
@@ -39,7 +40,7 @@ Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://githu
     - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL -Wno-deprecated-declarations`
     - Windows: via System Preferences add the path to the `vcvars64.bat`, for example `"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\amd64\vcvars64.bat"`, then compile with: `cl main.cpp -o magnoom /O3`
     
-###Contributing:
+### Contributing:
 
 Contributions are welcome!!! 
 
