@@ -1802,7 +1802,7 @@ void setupTweakBar()
 
 	TwAddVarCB(view_bar, "Pivot", TW_TYPE_FLOAT, CB_SetPivot, CB_GetPivot,  &Pivot, " min=0 max=1 step=0.01 help='Pivot of 3D arrow.' group='Appearance' ");
 	TwAddVarCB(view_bar, "Faces", TW_TYPE_INT32, CB_SetFaces, CB_GetFaces,  &arrowFaces, " min=3 max=20 step=1 help='Number of faces for 3D arrow.' group='Appearance' ");
-	TwAddVarCB(view_bar, "Scale", TW_TYPE_FLOAT, CB_SetScale, CB_GetScale,  &Scale, " min=0.1 max=2.5 step=0.01 keyIncr='+' keyDecr='-' help='Scale the vectors.' group='Appearance' ");
+	TwAddVarCB(view_bar, "Scale", TW_TYPE_FLOAT, CB_SetScale, CB_GetScale,  &Scale, " min=0.1 max=10 step=0.01 keyIncr='+' keyDecr='-' help='Scale the vectors.' group='Appearance' ");
 
 	TwAddVarRW(view_bar, "Show basis", TW_TYPE_BOOL32, &AxesOn, " key=CTRL+o  group='Appearance'");
 	TwAddVarRW(view_bar, "Show box", TW_TYPE_BOOL32, &BoxOn, " key=CTRL+b group='Appearance'");
@@ -2426,7 +2426,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Parameters&Controls iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F6:
+			case  GLUT_KEY_F4:
 				TwGetParam(initial_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Initial_State iconified=false ");				
@@ -3532,7 +3532,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			}
 			}
 			}
-		}else{
+		}else{// slice mode
 			for (int an = anini; an<anfin; an++) // n runs over spins 
 			{
 			for (int bn = bnini; bn<bnfin; bn++) // n runs over spins 
@@ -3550,12 +3550,19 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			        HSVtoRGB( S, RGB, InvertValue, InvertHue);
 			        j++;
 					i = j*Kinp;			// index of first cane vertex 
+					int Factor = Kind[n+atom];
+					if (Factor==0) {
+					Vout[i+0] = 1000000;	// new x-component of vertex + translation
+					Vout[i+1] = 1000000;	// new y-component of vertex + translation
+					Vout[i+2] = 1000000;	// new z-component of vertex + translation
+					}else{
 					Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
 					Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
 					Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
-					Cout[i+0] = RGB[0]*Kind[n+atom];	// x-component of vertex normal
-					Cout[i+1] = RGB[1]*Kind[n+atom];	// y-component of vertex normal
-					Cout[i+2] = RGB[2]*Kind[n+atom];	// z-component of vertex normal
+					}
+					Cout[i+0] = RGB[0];	// x-component of vertex normal
+					Cout[i+1] = RGB[1];	// y-component of vertex normal
+					Cout[i+2] = RGB[2];	// z-component of vertex normal
 				}	
 			}
 			}
@@ -3602,13 +3609,13 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 						//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
 						i = j*Kinp+ 3*1;
-						Vout[i+0] = -S[0]*(Pivot)*Scale*vlength + Px[n+atom];		// new x-component of vertex + translation
-						Vout[i+1] = -S[1]*(Pivot)*Scale*vlength + Py[n+atom];		// new y-component of vertex + translation
-						Vout[i+2] = -S[2]*(Pivot)*Scale*vlength + Pz[n+atom];		// new z-component of vertex + translation
+						Vout[i+0] = Kind[n+atom]*(-S[0]*(Pivot)*Scale*vlength + Px[n+atom]);		// new x-component of vertex + translation
+						Vout[i+1] = Kind[n+atom]*(-S[1]*(Pivot)*Scale*vlength + Py[n+atom]);		// new y-component of vertex + translation
+						Vout[i+2] = Kind[n+atom]*(-S[2]*(Pivot)*Scale*vlength + Pz[n+atom]);		// new z-component of vertex + translation
 						//i = n*Kinp/3*4+4;			// colors contains 4 floats
-						Cout[i+0] = RGB[0]*Kind[n+atom];					// x-component of vertex normal
-						Cout[i+1] = RGB[1]*Kind[n+atom];					// y-component of vertex normal
-						Cout[i+2] = RGB[2]*Kind[n+atom];					// z-component of vertex normal
+						Cout[i+0] = RGB[0];//*Kind[n+atom];					// x-component of vertex normal
+						Cout[i+1] = RGB[1];//*Kind[n+atom];					// y-component of vertex normal
+						Cout[i+2] = RGB[2];//*Kind[n+atom];					// z-component of vertex normal
 						//Cout[i+3] = 1.f;
 						//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 					}
@@ -3616,7 +3623,7 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			}
 			}
 			}
-		}else{
+		}else{//slice mode
 			for (int an = anini; an<anfin; an++) // an runs over slice along A_AXIS
 			{
 			for (int bn = bnini; bn<bnfin; bn++) // bn runs over slice along B_AXIS
@@ -3634,10 +3641,12 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			        HSVtoRGB( S, RGB, InvertValue, InvertHue);
 			        j++;
 					//i = (n-nini)*Kinp;							// index of ferst cane vertex 
-					i = j*Kinp;
-					Vout[i+0] = Kind[n+atom]*( S[0]*(1-Pivot)*Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
-					Vout[i+1] = Kind[n+atom]*( S[1]*(1-Pivot)*Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
-					Vout[i+2] = Kind[n+atom]*( S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
+					i = j*Kinp;//intMAX
+					int Factor = Kind[n+atom];
+					if (Factor==0) Factor=intMAX;
+					Vout[i+0] = Factor*( S[0]*(1-Pivot)*Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
+					Vout[i+1] = Factor*( S[1]*(1-Pivot)*Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
+					Vout[i+2] = Factor*( S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
 					//i = n*Kinp/3*4;		// colors contains 4 floats
 					Cout[i+0] = RGB[0];					// x-component of vertex normal
 					Cout[i+1] = RGB[1];					// y-component of vertex normal
@@ -3646,9 +3655,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 					//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
 					i = j*Kinp+ 3*1;
-					Vout[i+0] = -S[0]*(Pivot)*Scale*vlength + Px[n+atom];		// new x-component of vertex + translation
-					Vout[i+1] = -S[1]*(Pivot)*Scale*vlength + Py[n+atom];		// new y-component of vertex + translation
-					Vout[i+2] = -S[2]*(Pivot)*Scale*vlength + Pz[n+atom];		// new z-component of vertex + translation
+					Vout[i+0] = Factor*(-S[0]*(Pivot)*Scale*vlength + Px[n+atom]);		// new x-component of vertex + translation
+					Vout[i+1] = Factor*(-S[1]*(Pivot)*Scale*vlength + Py[n+atom]);		// new y-component of vertex + translation
+					Vout[i+2] = Factor*(-S[2]*(Pivot)*Scale*vlength + Pz[n+atom]);		// new z-component of vertex + translation
 					//i = n*Kinp/3*4+4;			// colors contains 4 floats
 					Cout[i+0] = Kind[n+atom]*RGB[0];					// x-component of vertex normal
 					Cout[i+1] = Kind[n+atom]*RGB[1];					// y-component of vertex normal

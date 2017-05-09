@@ -22,13 +22,13 @@ float Block[2*3] =
     };
  */
 //Simple Cubic 1 [001]
-float		abc[3][3] = {
-				{	1.0f, 0.0f, 0.0f }, // a
-				{	0.0f, 1.0f, 0.0f }, // b
-				{	0.0f, 0.0f, 1.0f }};// c
-float			Block[][3] = { 
-				{0.5f, 0.5f, 0.5f},  
-				};
+// float		abc[3][3] = {
+// 				{	1.0f, 0.0f, 0.0f }, // a
+// 				{	0.0f, 1.0f, 0.0f }, // b
+// 				{	0.0f, 0.0f, 1.0f }};// c
+// float			Block[][3] = { 
+// 				{0.5f, 0.5f, 0.5f},  
+// 				};
 
 /*float		abc[3][3] = {
 				{	3.0f, 0.0f, 0.0f }, // a
@@ -107,21 +107,21 @@ float			Block[][3] = {
 // 				};
 //B20(2)
 
-// float		abc[3][3] = {
-// 				{	1.0f, 0.0f, 0.0f }, // a
-// 				{	0.0f, 1.0f, 0.0f }, // b
-// 				{	0.0f, 0.0f, 1.0f }};// c
+float		abc[3][3] = {
+				{	1.0f, 0.0f, 0.0f }, // a
+				{	0.0f, 1.0f, 0.0f }, // b
+				{	0.0f, 0.0f, 1.0f }};// c
 
 // float		Block[][3] = {		
 // 				{   0.5,		   0.5,	    0.5}	
 // 				};
-// #define uB20		0.138f
-// float		Block[][3] = {		
-// 				{   0.,		   0.,	    0.},	
-// 				{0.5f,	0.5f-2*uB20,	1.0f-2*uB20},
-// 				{1.0f-2*uB20,	0.5f,	0.5f-2*uB20},	
-// 				{0.5f-2*uB20,	1.0f-2*uB20,	0.5f}	
-// 				};
+#define uB20		0.138f
+float		Block[][3] = {		
+				{   0.,		   0.,	    0.},	
+				{0.5f,	0.5f-2*uB20,	1.0f-2*uB20},
+				{1.0f-2*uB20,	0.5f,	0.5f-2*uB20},	
+				{0.5f-2*uB20,	1.0f-2*uB20,	0.5f}	
+				};
 
 //B20(Maria)
 // float		abc[3][3] = {
@@ -145,7 +145,7 @@ float			Block[][3] = {
 
 //number of translations for the basic domain along a,b, and c verctors respectively 
 //int			uABC[3] = {2,147,2};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
-int			uABC[3] = {50,57,13};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
+int			uABC[3] = {50,50,2};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {6,6,6};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {80,80,20};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 int			Boundary[3] = {1, 1, 1};// boundary conditions along a, b, c translation vectors

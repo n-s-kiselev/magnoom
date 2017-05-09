@@ -125,7 +125,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 		}
 	break;
 
-	case 4: // skyrmion Q=1
+	case 4: // skyrmion Q=3
 		if(chSize!=0)
 		{
 			for (int n=0; n<NOS; n++)
@@ -144,7 +144,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			//F= 1*(-atan2(px[n],py[n]))+PI*0.5;//<--chiral (neel) skyrmion |Q|=1
 			//F=-1*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=1
 			//F=-2*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=2
-			F=-3*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=3
+			F=-7*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=3
 			Sx[n] = sin(T)*cos(F)*Kind[n];
 			Sy[n] = sin(T)*sin(F)*Kind[n];
 			Sz[n] = cos(T)*Kind[n];	

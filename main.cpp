@@ -167,6 +167,7 @@ int     AC_FIELD_ON=0;//ON/OFF AC field signal.
 #define max_float ((float)(3.402823466e+38F))
 #define setNAN(x) *((int *)x) = 0x7FC00000
 #define isNAN(x)  ( *((int *)x) == 0x7FC00000  ? TRUE : FALSE  )
+#define intMAX 24000000
 
 //Cartesian coordinates
 double*		Sx; // array of spin x-component 
@@ -239,11 +240,12 @@ float*		VDMy;//Dzyaloshinskii vector y-component (normalized)
 float*		VDMz;//Dzyaloshinskii vector z-component (normalized)
 //Heisenberg exchange
 float		Jij[]={		// Jij[shell]
-			1,	// first shell
-			0,	// second shell
-			0,	// third shell
-			-0.252,	// fourth shell
-			0.0
+			1.46,	// first shell
+			-0.141,	// second shell
+			-0.08,	// third shell
+			0.3,	// fourth shell
+			0.009,
+			-0.141
 			};
 //bi-quadratic exchange
 float		Bij[]={		// Bij[shell]
@@ -251,11 +253,12 @@ float		Bij[]={		// Bij[shell]
 			0.0,	// second shell
 			0.0,	// third shell
 			0.0,	// fourth shell
+			0.0,
 			0.0
 			};
 //Dzyaloshinskii-Moriya Interaction
 float		Dij[]={	// Dij[shell] abs value for DMI vector 
-			0.35,//0.0369138485,	// first shell
+			0.0,//0.0369138485,	// first shell
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
@@ -275,7 +278,7 @@ float		Hf=0.1;//0.01632;
 float       Bdc[]={ Hf*VHf[0] , Hf*VHf[1], Hf*VHf[2] };
 //AC applied H-field:
 float		VHac[]={ 0.0 , 0.0, 1.0 };
-float		Hac=0.001632;
+float		Hac=0.0;//001632;
 float       Bac[]={ 0.0 , 0.0, 0.0 };//Bac is components of external field for info panel only.
 float		Period_dc=180.168;
 float		Omega_dc=TPI/Period_dc;
