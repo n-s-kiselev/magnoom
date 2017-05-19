@@ -240,7 +240,7 @@ float*		VDMy;//Dzyaloshinskii vector y-component (normalized)
 float*		VDMz;//Dzyaloshinskii vector z-component (normalized)
 //Heisenberg exchange
 float		Jij[]={		// Jij[shell]
-			1.46,	// first shell
+			1.0,	// first shell
 			-0.141,	// second shell
 			-0.08,	// third shell
 			0.3,	// fourth shell
@@ -258,7 +258,7 @@ float		Bij[]={		// Bij[shell]
 			};
 //Dzyaloshinskii-Moriya Interaction
 float		Dij[]={	// Dij[shell] abs value for DMI vector 
-			0.0,//0.0369138485,	// first shell
+			0.18,//0.0369138485,	// first shell
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
@@ -274,7 +274,7 @@ float		VHf[]={ 0.0 , 0.0, 1.0 };
 float 		VHtheta=0;
 float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
-float		Hf=0.1;//0.01632;
+float		Hf=0.017;//0.01632;
 float       Bdc[]={ Hf*VHf[0] , Hf*VHf[1], Hf*VHf[2] };
 //AC applied H-field:
 float		VHac[]={ 0.0 , 0.0, 1.0 };
@@ -510,7 +510,7 @@ main (int argc, char **argv)
 	GetBox(abc, uABC, Box);
 	UpdateSpinPositions(abc, uABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
 	UpdateKind(Kind, Px, Py, Pz, NOS, NOSK);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0 );
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 12 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
     //  Set OpenGL context initial state.

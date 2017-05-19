@@ -1910,7 +1910,7 @@ void setupTweakBar()
 	TwAddVarCB(control_bar, "FieldTheta", TW_TYPE_FLOAT, CB_SetHfieldTheta, CB_GetHfieldTheta, &VHtheta, "label='H theta'  step=1 help='Change the direction of applied field' ");
 	TwAddVarCB(control_bar, "FieldPhi", TW_TYPE_FLOAT, CB_SetHfieldPhi, CB_GetHfieldPhi, &VHphi, "label='H phi' step=1  help='Change the direction of applied field' ");
 	TwAddVarCB(control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, &Hf, 
-	"label='Field'  min=0 step=0.001 help='The value of uniaxial anisotropy' ");
+	"label='Field'  min=0 step=0.00001 help='The value of uniaxial anisotropy' ");
 	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldDir, CB_GetHfieldDir, VHf, 
 	// "label='Field direction' opened=true help='Change the direction of applied field' ");
 	// temp_color[0] = 55;
