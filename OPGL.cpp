@@ -117,18 +117,24 @@ int   N_filter=0;
 
 int SpinFilter1=1;
 int SpinFilter2=0;
+int SpinFilter3=0;
 // int PhiInvert1=0;
 // int PhiInvert2=0;
 
-int theta_max1=90+5; //0.01;//
-float Sz_min1=cos(theta_max1*PI/180.0);
-int theta_min1=90-5; //0;//   
-float Sz_max1=cos(theta_min1*PI/180.0);
+int theta_max1 = 90+5; //0.01;//
+float  Sz_min1 = cos(theta_max1*PI/180.0);
+int theta_min1 = 90-5; //0;//   
+float  Sz_max1 = cos(theta_min1*PI/180.0);
 
-int theta_max2=45+5; //0.01;//
-float Sz_min2=cos(theta_max2*PI/180.0);
-int theta_min2=45-5; //0;//   
-float Sz_max2=cos(theta_min2*PI/180.0);
+int theta_max2 = 180; //0.01;//
+float  Sz_min2 = cos(theta_max2*PI/180.0);
+int theta_min2 = 160; //0;//   
+float  Sz_max2 = cos(theta_min2*PI/180.0);
+
+int theta_max3 = 10; //0.01;//
+float  Sz_min3 = cos(theta_max3*PI/180.0);
+int theta_min3 = 0; //0;//   
+float  Sz_max3 = cos(theta_min3*PI/180.0);
 
 int phi_max1=360;
 int phi_min1=0;
@@ -136,6 +142,8 @@ int phi_min1=0;
 int phi_max2=360;
 int phi_min2=0;
 
+int phi_max3=360;
+int phi_min3=0;
 
 int GreedFilter=0;
 int GreedFilterInvert=0;
@@ -1013,12 +1021,10 @@ void TW_CALL CB_GetSliceMode(void *value, void *clientData){
     *(int *)value = WhichSliceMode; // just copy WhichSliceMode to value
 }
 
-
 void TW_CALL CB_GetThetaMax1(void *value, void *clientData){
     (void)clientData; // unused
     *(int *)value = theta_max1; 
 }
-
 
 void TW_CALL CB_SetThetaMax1(const void *value, void *clientData ){
 	(void)clientData; // unused
@@ -1035,13 +1041,27 @@ void TW_CALL CB_GetThetaMax2(void *value, void *clientData){
     *(int *)value = theta_max2; 
 }
 
-
 void TW_CALL CB_SetThetaMax2(const void *value, void *clientData ){
 	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test>=theta_min2 ){
         theta_max2 = test;
         Sz_min2=cos(theta_max2*PI/180.0);
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetThetaMax3(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = theta_max3; 
+}
+
+void TW_CALL CB_SetThetaMax3(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test>=theta_min3 ){
+        theta_max3 = test;
+        Sz_min3=cos(theta_max3*PI/180.0);
         ChangeVectorMode(0);
 	}
 }
@@ -1072,6 +1092,21 @@ void TW_CALL CB_SetThetaMin2(const void *value, void *clientData ){
 	if (test<=theta_max2 ){
         theta_min2 = test; 
         Sz_max2=cos(theta_min2*PI/180.0);
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetThetaMin3(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = theta_min3; 
+}
+
+void TW_CALL CB_SetThetaMin3(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test<=theta_max3 ){
+        theta_min3 = test; 
+        Sz_max3=cos(theta_min3*PI/180.0);
         ChangeVectorMode(0);
 	}
 }
@@ -1135,7 +1170,36 @@ void TW_CALL CB_SetPhiMin2(const void *value, void *clientData ){
         ChangeVectorMode(0);
 	}
 }
-/*************/
+
+void TW_CALL CB_GetPhiMax3(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = phi_max3; 
+}
+
+
+void TW_CALL CB_SetPhiMax3(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test>=phi_min3 ){
+        phi_max3 = test;
+        ChangeVectorMode(0);
+	}
+}
+
+void TW_CALL CB_GetPhiMin3(void *value, void *clientData){
+    (void)clientData; // unused
+    *(int *)value = phi_min3; 
+}
+
+void TW_CALL CB_SetPhiMin3(const void *value, void *clientData ){
+	(void)clientData; // unused
+	int test= *( int *)value; 
+	if (test<=phi_max3 ){
+        phi_min3 = test;
+        ChangeVectorMode(0);
+	}
+}
+/**********************************************************************/
 void TW_CALL CB_GetGreedMaxA(void *value, void *clientData){
     *(int *)value = GreedFilterMaxA; 
 }
@@ -1232,6 +1296,15 @@ void TW_CALL CB_GetSpinFilter2(void *value, void *clientData){
 
 void TW_CALL CB_SetSpinFilter2(const void *value, void *clientData ){
 	SpinFilter2= *( bool *)value; 
+    ChangeVectorMode(0);
+}
+
+void TW_CALL CB_GetSpinFilter3(void *value, void *clientData){
+    *(bool *)value = SpinFilter3; 
+}
+
+void TW_CALL CB_SetSpinFilter3(const void *value, void *clientData ){
+	SpinFilter3= *( bool *)value; 
     ChangeVectorMode(0);
 }
 
@@ -1828,13 +1901,14 @@ void setupTweakBar()
 	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
 	TwAddVarCB(view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' group='Filters&Slices' ");
 	}
-
+	TwAddVarCB(view_bar, "GreedFilter", TW_TYPE_BOOL32, CB_SetGreedFilter, CB_GetGreedFilter, &GreedFilter, 
+		" label='Greed filter' true='On' false='Off' group='Filters&Slices' ");
 	TwAddVarCB(view_bar, "Spin_filter1", TW_TYPE_BOOL32, CB_SetSpinFilter1, CB_GetSpinFilter1, &SpinFilter1, 
 		" label='Spin filter N1' true='On' false='Off' group='Filters&Slices' ");
 	TwAddVarCB(view_bar, "Spin_filter2", TW_TYPE_BOOL32, CB_SetSpinFilter2, CB_GetSpinFilter2, &SpinFilter2, 
 		" label='Spin filter N2' true='On' false='Off' group='Filters&Slices' ");
-	TwAddVarCB(view_bar, "GreedFilter", TW_TYPE_BOOL32, CB_SetGreedFilter, CB_GetGreedFilter, &GreedFilter, 
-		" label='Greed filter' true='On' false='Off' group='Filters&Slices' ");
+	TwAddVarCB(view_bar, "Spin_filter3", TW_TYPE_BOOL32, CB_SetSpinFilter3, CB_GetSpinFilter3, &SpinFilter3, 
+		" label='Spin filter N3' true='On' false='Off' group='Filters&Slices' ");
 
 	TwAddVarCB(view_bar, "T_max1", TW_TYPE_INT32, CB_SetThetaMax1, CB_GetThetaMax1, &theta_max1, 
 		" group='Spin_filter_1' label='Theta max 1' min=0 max=180  help='max value for polar angle theta'");
@@ -1848,15 +1922,24 @@ void setupTweakBar()
 	TwAddVarCB(view_bar, "T_max2", TW_TYPE_INT32, CB_SetThetaMax2, CB_GetThetaMax2, &theta_max2, 
 		" group='Spin_filter_2' label='Theta max 2' min=0 max=180  help='max value for polar angle theta'");
 	TwAddVarCB(view_bar, "T_min2", TW_TYPE_INT32, CB_SetThetaMin2, CB_GetThetaMin2, &theta_min2, 
-		" group='Spin_filter_2' label='Theta min 2' min=0 max=180  help='min value for polar angle theta'");
-	
+		" group='Spin_filter_2' label='Theta min 2' min=0 max=180  help='min value for polar angle theta'");	
 	TwAddVarCB(view_bar, "F_max2", TW_TYPE_INT32, CB_SetPhiMax2, CB_GetPhiMax2, &phi_max2, 
 		" group='Spin_filter_2' label='Phi max 2' min=0 max=360 step=1 help='max value for azimuthal angle phi'");
 	TwAddVarCB(view_bar, "F_min2", TW_TYPE_INT32, CB_SetPhiMin2, CB_GetPhiMin2, &phi_min2, 
 		" group='Spin_filter_2' label='Phi min 2' min=0 max=360 step=1 help='min value for azimuthal angle phi'");
 
+	TwAddVarCB(view_bar, "T_max3", TW_TYPE_INT32, CB_SetThetaMax3, CB_GetThetaMax3, &theta_max3, 
+		" group='Spin_filter_3' label='Theta max 3' min=0 max=180  help='max value for polar angle theta'");
+	TwAddVarCB(view_bar, "T_min3", TW_TYPE_INT32, CB_SetThetaMin3, CB_GetThetaMin3, &theta_min3, 
+		" group='Spin_filter_3' label='Theta min 3' min=0 max=180  help='min value for polar angle theta'");	
+	TwAddVarCB(view_bar, "F_max3", TW_TYPE_INT32, CB_SetPhiMax3, CB_GetPhiMax3, &phi_max3, 
+		" group='Spin_filter_3' label='Phi max 3' min=0 max=360 step=1 help='max value for azimuthal angle phi'");
+	TwAddVarCB(view_bar, "F_min3", TW_TYPE_INT32, CB_SetPhiMin3, CB_GetPhiMin3, &phi_min3, 
+		" group='Spin_filter_3' label='Phi min 3' min=0 max=360 step=1 help='min value for azimuthal angle phi'");
+
 	TwDefine(" View/Spin_filter_1 opened=false group='Filters&Slices'");
 	TwDefine(" View/Spin_filter_2 opened=false group='Filters&Slices'");
+	TwDefine(" View/Spin_filter_3 opened=false group='Filters&Slices'");
 
 	TwAddVarCB(view_bar, "GFmaxA", TW_TYPE_INT32, CB_SetGreedMaxA, CB_GetGreedMaxA, &GreedFilterMaxA, " group='Greed_filter' label='max na' ");
 	TwAddVarCB(view_bar, "GFminA", TW_TYPE_INT32, CB_SetGreedMinA, CB_GetGreedMinA, &GreedFilterMinA, " group='Greed_filter' label='min na' ");
@@ -3275,9 +3358,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						// 	F=true;}else{
 						// 		F=false;
 						// 	}
-						//F = true;
 						F =	(SpinFilter1 && ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ) ||
-							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )  ;													
+							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) ) ||
+							(SpinFilter3 && ((S[2]>=Sz_min3 && S[2]<=Sz_max3) && (phi>=phi_min3 && phi<=phi_max3)) ) ;													
 
 						if (F)
 						{
@@ -3441,9 +3524,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
 					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
 					//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
-					//F = true;
 					F =	(SpinFilter1 && ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ) ||
-						(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )  ;	
+						(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) ) ||
+						(SpinFilter3 && ((S[2]>=Sz_min3 && S[2]<=Sz_max3) && (phi>=phi_min3 && phi<=phi_max3)) ) ;
 
 					if (F)
 					{
@@ -3554,9 +3637,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
 						//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
 						//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
-						//F = true;
 						F =	(SpinFilter1 && ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ) ||
-							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )  ;	
+							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) ) ||
+							(SpinFilter3 && ((S[2]>=Sz_min3 && S[2]<=Sz_max3) && (phi>=phi_min3 && phi<=phi_max3)) ) ;
 						if (F)
 						{
 							N_filter++;
@@ -3644,9 +3727,9 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
 						//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
 						//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
-						//F = true;
 						F =	(SpinFilter1 && ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ) ||
-							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )  ;	
+							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) ) ||
+							(SpinFilter3 && ((S[2]>=Sz_min3 && S[2]<=Sz_max3) && (phi>=phi_min3 && phi<=phi_max3)) ) ;	
 						if (F)
 						{
 							N_filter++;
