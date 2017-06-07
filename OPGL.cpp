@@ -119,7 +119,7 @@ int SpinFilter=1;
 int PhiInvert1=0;
 int PhiInvert2=0;
 
-int theta_max1=90+5; //0.01;//
+int theta_max1=120+5; //0.01;//
 float Sz_min1=cos(theta_max1*PI/180.0);
 int theta_min1=90-5; //0;//   
 float Sz_max1=cos(theta_min1*PI/180.0);
