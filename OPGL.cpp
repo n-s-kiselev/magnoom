@@ -115,11 +115,12 @@ enSliceMode	    WhichSliceMode	= C_AXIS;	// CANE by default
 
 int   N_filter=0;
 
-int SpinFilter=1;
-int PhiInvert1=0;
-int PhiInvert2=0;
+int SpinFilter1=1;
+int SpinFilter2=0;
+// int PhiInvert1=0;
+// int PhiInvert2=0;
 
-int theta_max1=120+5; //0.01;//
+int theta_max1=90+5; //0.01;//
 float Sz_min1=cos(theta_max1*PI/180.0);
 int theta_min1=90-5; //0;//   
 float Sz_max1=cos(theta_min1*PI/180.0);
@@ -1216,12 +1217,21 @@ void TW_CALL CB_SetGreedFilterInvert(const void *value, void *clientData ){
     ChangeVectorMode(0);
 }
 
-void TW_CALL CB_GetSpinFilter(void *value, void *clientData){
-    *(bool *)value = SpinFilter; 
+void TW_CALL CB_GetSpinFilter1(void *value, void *clientData){
+    *(bool *)value = SpinFilter1; 
 }
 
-void TW_CALL CB_SetSpinFilter(const void *value, void *clientData ){
-	SpinFilter= *( bool *)value; 
+void TW_CALL CB_SetSpinFilter1(const void *value, void *clientData ){
+	SpinFilter1= *( bool *)value; 
+    ChangeVectorMode(0);
+}
+
+void TW_CALL CB_GetSpinFilter2(void *value, void *clientData){
+    *(bool *)value = SpinFilter2; 
+}
+
+void TW_CALL CB_SetSpinFilter2(const void *value, void *clientData ){
+	SpinFilter2= *( bool *)value; 
     ChangeVectorMode(0);
 }
 
@@ -1819,8 +1829,10 @@ void setupTweakBar()
 	TwAddVarCB(view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, &WhichSliceMode, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' group='Filters&Slices' ");
 	}
 
-	TwAddVarCB(view_bar, "Spin_filter", TW_TYPE_BOOL32, CB_SetSpinFilter, CB_GetSpinFilter, &SpinFilter, 
-		" label='Spin filter' true='On' false='Off' group='Filters&Slices' ");
+	TwAddVarCB(view_bar, "Spin_filter1", TW_TYPE_BOOL32, CB_SetSpinFilter1, CB_GetSpinFilter1, &SpinFilter1, 
+		" label='Spin filter N1' true='On' false='Off' group='Filters&Slices' ");
+	TwAddVarCB(view_bar, "Spin_filter2", TW_TYPE_BOOL32, CB_SetSpinFilter2, CB_GetSpinFilter2, &SpinFilter2, 
+		" label='Spin filter N2' true='On' false='Off' group='Filters&Slices' ");
 	TwAddVarCB(view_bar, "GreedFilter", TW_TYPE_BOOL32, CB_SetGreedFilter, CB_GetGreedFilter, &GreedFilter, 
 		" label='Greed filter' true='On' false='Off' group='Filters&Slices' ");
 
@@ -3245,24 +3257,27 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 						S[1] = Sy[N];
 						S[2] = Sz[N];
 						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
-					/*	if (SpinFilter){
-							if (!PhiInvert1 && !PhiInvert2){
-								F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) &&  (phi>=phi_min1 && phi<=phi_max1)) ||
-							      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) &&  (phi>=phi_min2 && phi<=phi_max2))  ;	
-							}else if (!PhiInvert1 && PhiInvert2){
-								F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) &&  (phi>=phi_min1 && phi<=phi_max1)) ||
-							      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && !(phi>=phi_min2 && phi<=phi_max2))  ;	
-							}else if ( PhiInvert1 && PhiInvert2){
-								F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) && !(phi>=phi_min1 && phi<=phi_max1)) ||
-							      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && !(phi>=phi_min2 && phi<=phi_max2))  ;									
-							}				
-						}else{F=true;}*/
+						// if (SpinFilter1){
+						// 	if (!PhiInvert1 && !PhiInvert2){
+						// 		F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) &&  (phi>=phi_min1 && phi<=phi_max1)) ||
+						// 	      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) &&  (phi>=phi_min2 && phi<=phi_max2))  ;	
+						// 	}else if (!PhiInvert1 && PhiInvert2){
+						// 		F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) &&  (phi>=phi_min1 && phi<=phi_max1)) ||
+						// 	      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && !(phi>=phi_min2 && phi<=phi_max2))  ;	
+						// 	}else if ( PhiInvert1 && PhiInvert2){
+						// 		F=((S[2]>=Sz_min1 && S[2]<=Sz_max1) && !(phi>=phi_min1 && phi<=phi_max1)) ||
+						// 	      ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && !(phi>=phi_min2 && phi<=phi_max2))  ;									
+						// 	}				
+						// }else{F=true;}
 
-						if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) ) 
-						{
-							F=true;}else{
-								F=false;
-							}
+						// if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) ) 
+						// {
+						// 	F=true;}else{
+						// 		F=false;
+						// 	}
+						//F = true;
+						F =	(SpinFilter1 && ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ) ||
+							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )  ;													
 
 						if (F)
 						{
@@ -3402,45 +3417,59 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			for (int an = 0; an<uABC[0]; an++) {
 			for (int bn = 0; bn<uABC[1]; bn++) {
 			for (int cn = 0; cn<uABC[2]; cn++) {	
-				S[0] = 0;
-				S[1] = 0;
-				S[2] = 0;
+				if (GreedFilter){
+						F =	(an>=GreedFilterMinA && an<=GreedFilterMaxA) &&
+							(bn>=GreedFilterMinB && bn<=GreedFilterMaxB) &&
+							(cn>=GreedFilterMinC && cn<=GreedFilterMaxC) ;
+						if (GreedFilterInvert) F=!F;					
+					}else{F=true;}
 
-				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
-				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				if (F)
 				{
-				    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
-	 
-					S[0]+= Sx[N];
-					S[1]+= Sy[N];
-					S[2]+= Sz[N];
-			    }
-				int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
-				//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
-				if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
-				{
-					N_filter++;
-				    (void)Unitf(S,S);
-				    HSVtoRGB( S, RGB, InvertValue, InvertHue);
-
-					j++;
-					for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
+					S[0] = 0;
+					S[1] = 0;
+					S[2] = 0;
+					n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
+					for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
-						i = j*Kinp + 3*k;	// vertex index
+					    N = atom + n*AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
+		 
+						S[0]+= Sx[N];
+						S[1]+= Sy[N];
+						S[2]+= Sz[N];
+				    }
+					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
+					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
+					//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
+					//F = true;
+					F =	(SpinFilter1 && ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ) ||
+						(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )  ;	
 
-						Vout[i+0] = (Vinp[3*k+0] + BPx[n])*Kind[N];
-						Vout[i+1] = (Vinp[3*k+1] + BPy[n])*Kind[N];
-						Vout[i+2] = (Vinp[3*k+2] + BPz[n])*Kind[N];	
+					if (F)
+					{
+						N_filter++;
+					    (void)Unitf(S,S);
+					    HSVtoRGB( S, RGB, InvertValue, InvertHue);
 
-						Nout[i+0] = Ninp[3*k+0];
-						Nout[i+1] = Ninp[3*k+1];
-						Nout[i+2] = Ninp[3*k+2];
+						j++;
+						for (int k=0; k<Kinp/3; k++) // k runs over vertices of the box 
+						{
+							i = j*Kinp + 3*k;	// vertex index
 
-						Cout[i+0] = RGB[0];			
-						Cout[i+1] = RGB[1];			
-						Cout[i+2] = RGB[2];	
-					}
-				}//if	
+							Vout[i+0] = (Vinp[3*k+0] + BPx[n])*Kind[N];
+							Vout[i+1] = (Vinp[3*k+1] + BPy[n])*Kind[N];
+							Vout[i+2] = (Vinp[3*k+2] + BPz[n])*Kind[N];	
+
+							Nout[i+0] = Ninp[3*k+0];
+							Nout[i+1] = Ninp[3*k+1];
+							Nout[i+2] = Ninp[3*k+2];
+
+							Cout[i+0] = RGB[0];			
+							Cout[i+1] = RGB[1];			
+							Cout[i+2] = RGB[2];	
+						}
+					}//if ( (S[2]>=...
+				}//if (F)	
 			}
 			}
 			}
@@ -3505,30 +3534,44 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			{
 			for (int cn = 0; cn<uABC[2]; cn++) // n runs over spins 
 			{
-				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
-				n = n*AtomsPerBlock;//index of the first spin in the block
-				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				if (GreedFilter){
+					F =	(an>=GreedFilterMinA && an<=GreedFilterMaxA) &&
+						(bn>=GreedFilterMinB && bn<=GreedFilterMaxB) &&
+						(cn>=GreedFilterMinC && cn<=GreedFilterMaxC) ;
+					if (GreedFilterInvert) F=!F;					
+				}else{F=true;}
+
+				if (F)
 				{
-					S[0] = Sx[n+atom];
-					S[1] = Sy[n+atom];
-					S[2] = Sz[n+atom];
-					vlength = Unitf(S,S);
-					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
-					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
-					if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
+					n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
+					n = n*AtomsPerBlock;//index of the first spin in the block
+					for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
-						N_filter++;
-				        HSVtoRGB( S, RGB, InvertValue, InvertHue);
-				        j++;
-						i = j*Kinp;			// index of first cane vertex 
-						Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
-						Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
-						Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
-						Cout[i+0] = RGB[0]*Kind[n+atom];	// x-component of vertex normal
-						Cout[i+1] = RGB[1]*Kind[n+atom];	// y-component of vertex normal
-						Cout[i+2] = RGB[2]*Kind[n+atom];	// z-component of vertex normal
-				    }
-				}	
+						S[0] = Sx[n+atom];
+						S[1] = Sy[n+atom];
+						S[2] = Sz[n+atom];
+						vlength = Unitf(S,S);
+						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
+						//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
+						//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
+						//F = true;
+						F =	(SpinFilter1 && ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ) ||
+							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )  ;	
+						if (F)
+						{
+							N_filter++;
+					        HSVtoRGB( S, RGB, InvertValue, InvertHue);
+					        j++;
+							i = j*Kinp;			// index of first cane vertex 
+							Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
+							Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
+							Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
+							Cout[i+0] = RGB[0]*Kind[n+atom];	// x-component of vertex normal
+							Cout[i+1] = RGB[1]*Kind[n+atom];	// y-component of vertex normal
+							Cout[i+2] = RGB[2]*Kind[n+atom];	// z-component of vertex normal
+					    }
+					}
+				}//if (F)
 			}
 			}
 			}
@@ -3581,45 +3624,59 @@ void UpdateVerticesNormalsColors (float * Vinp, float * Ninp, int Kinp,
 			{
 			for (int cn = cnini; cn<uABC[2]; cn++) // cn runs over slice along C_AXIS
 			{
-				n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
-				n = n*AtomsPerBlock;//index of the first spin in the block
-				for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
+				if (GreedFilter){
+					F =	(an>=GreedFilterMinA && an<=GreedFilterMaxA) &&
+						(bn>=GreedFilterMinB && bn<=GreedFilterMaxB) &&
+						(cn>=GreedFilterMinC && cn<=GreedFilterMaxC) ;
+					if (GreedFilterInvert) F=!F;					
+				}else{F=true;}
+
+				if (F)
 				{
-					S[0] = Sx[n+atom];
-					S[1] = Sy[n+atom];
-					S[2] = Sz[n+atom];
-					vlength = Unitf(S,S);
-					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
-					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
-					if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
+					n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
+					n = n*AtomsPerBlock;//index of the first spin in the block
+					for (int atom=0; atom<AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
-						N_filter++;
-				        HSVtoRGB( S, RGB, InvertValue, InvertHue);
-				        j++;
-						//i = (n-nini)*Kinp;							// index of ferst cane vertex 
-						i = j*Kinp;
-						Vout[i+0] = Kind[n+atom]*( S[0]*(1-Pivot)*Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
-						Vout[i+1] = Kind[n+atom]*( S[1]*(1-Pivot)*Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
-						Vout[i+2] = Kind[n+atom]*( S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
-						//i = n*Kinp/3*4;		// colors contains 4 floats
-						Cout[i+0] = RGB[0];					// x-component of vertex normal
-						Cout[i+1] = RGB[1];					// y-component of vertex normal
-						Cout[i+2] = RGB[2];					// z-component of vertex normal
-						//Cout[i+3] = 1.f;
-						//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
-						//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
-						i = j*Kinp+ 3*1;
-						Vout[i+0] = Kind[n+atom]*(-S[0]*(Pivot)*Scale*vlength + Px[n+atom]);		// new x-component of vertex + translation
-						Vout[i+1] = Kind[n+atom]*(-S[1]*(Pivot)*Scale*vlength + Py[n+atom]);		// new y-component of vertex + translation
-						Vout[i+2] = Kind[n+atom]*(-S[2]*(Pivot)*Scale*vlength + Pz[n+atom]);		// new z-component of vertex + translation
-						//i = n*Kinp/3*4+4;			// colors contains 4 floats
-						Cout[i+0] = RGB[0];//*Kind[n+atom];					// x-component of vertex normal
-						Cout[i+1] = RGB[1];//*Kind[n+atom];					// y-component of vertex normal
-						Cout[i+2] = RGB[2];//*Kind[n+atom];					// z-component of vertex normal
-						//Cout[i+3] = 1.f;
-						//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
+						S[0] = Sx[n+atom];
+						S[1] = Sy[n+atom];
+						S[2] = Sz[n+atom];
+						vlength = Unitf(S,S);
+						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
+						//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
+						//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
+						//F = true;
+						F =	(SpinFilter1 && ((S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1)) ) ||
+							(SpinFilter2 && ((S[2]>=Sz_min2 && S[2]<=Sz_max2) && (phi>=phi_min2 && phi<=phi_max2)) )  ;	
+						if (F)
+						{
+							N_filter++;
+					        HSVtoRGB( S, RGB, InvertValue, InvertHue);
+					        j++;
+							//i = (n-nini)*Kinp;							// index of ferst cane vertex 
+							i = j*Kinp;
+							Vout[i+0] = Kind[n+atom]*( S[0]*(1-Pivot)*Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
+							Vout[i+1] = Kind[n+atom]*( S[1]*(1-Pivot)*Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
+							Vout[i+2] = Kind[n+atom]*( S[2]*(1-Pivot)*Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
+							//i = n*Kinp/3*4;		// colors contains 4 floats
+							Cout[i+0] = RGB[0];					// x-component of vertex normal
+							Cout[i+1] = RGB[1];					// y-component of vertex normal
+							Cout[i+2] = RGB[2];					// z-component of vertex normal
+							//Cout[i+3] = 1.f;
+							//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
+							//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
+							i = j*Kinp+ 3*1;
+							Vout[i+0] = Kind[n+atom]*(-S[0]*(Pivot)*Scale*vlength + Px[n+atom]);		// new x-component of vertex + translation
+							Vout[i+1] = Kind[n+atom]*(-S[1]*(Pivot)*Scale*vlength + Py[n+atom]);		// new y-component of vertex + translation
+							Vout[i+2] = Kind[n+atom]*(-S[2]*(Pivot)*Scale*vlength + Pz[n+atom]);		// new z-component of vertex + translation
+							//i = n*Kinp/3*4+4;			// colors contains 4 floats
+							Cout[i+0] = RGB[0];//*Kind[n+atom];					// x-component of vertex normal
+							Cout[i+1] = RGB[1];//*Kind[n+atom];					// y-component of vertex normal
+							Cout[i+2] = RGB[2];//*Kind[n+atom];					// z-component of vertex normal
+							//Cout[i+3] = 1.f;
+							//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
+						}
 					}
-				}
+				}//if (F)
 			}
 			}
 			}
