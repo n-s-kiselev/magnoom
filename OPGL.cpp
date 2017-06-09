@@ -242,6 +242,7 @@ GLuint*		indices_PBC_C	= NULL; // array of indices for tatal vector field
 
 int			arrowFaces		= 6; // number of arrow faces, default number
 int			arrowFaces_H	= 30; // number of arrow faces for applied field vector
+int 		N_Multisample	= 16; // NUMBER OF MULTISAMPLE only in freeglut=Linux
 
 GLuint		vboIdV;   // ID of VBO for vertex arrays
 GLuint		vboIdN;   // ID of VBO for normal arrays
@@ -498,7 +499,7 @@ void setupOpenGL ()
 	glutInitWindowSize (window_width, window_height);
 	glutInitWindowPosition (0, 0);
 	#if !defined(__APPLE__)
-	glutSetOption(GLUT_MULTISAMPLE, 8);
+	glutSetOption(GLUT_MULTISAMPLE, N_Multisample);
 	#endif
     glutInitDisplayMode( GLUT_RGB|GLUT_DOUBLE|GLUT_DEPTH|GLUT_MULTISAMPLE|GLUT_ALPHA);
 	GLUT_window = glutCreateWindow (WINDOWTITLE);
@@ -615,6 +616,24 @@ void idle ()
 		glutPostRedisplay ();
 		frameCount++;
 	}
+}
+
+
+void TW_CALL CB_SetN_Multisample(const void *value, void *clientData )
+{
+	(void)clientData; // unused
+    N_Multisample = 16;//*( int *)value; // copy value to Pivot
+ //    #if !defined(__APPLE__)
+	// glutSetOption(GLUT_MULTISAMPLE, N_Multisample);
+	// glutInitDisplayMode( GLUT_RGB|GLUT_DOUBLE|GLUT_DEPTH|GLUT_MULTISAMPLE|GLUT_ALPHA);
+	// #endif
+	// ChangeVectorMode (0);
+}
+
+
+void TW_CALL CB_GetN_Multisample(void *value, void *clientData)
+{
+    *(int *)value = N_Multisample; // just copy Pivot to value
 }
 
 void TW_CALL CB_Set_Run( const void *value, void *clientData )
@@ -822,6 +841,9 @@ void TW_CALL CB_SetHfield(const void *value, void *clientData )
 	(void)clientData; // unused
     Hf = *( float *)value; // copy value to InvertValue
     if (Hf>1.1*fabs(Jij[0])) Hf=1.1*fabs(Jij[0]);
+    Bdc[0] = Hf * VHf[0];
+    Bdc[1] = Hf * VHf[1];
+    Bdc[2] = Hf * VHf[2];
 	UpdateVerticesNormalsColors_H(vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.6, Box[1][1]*0.6, Box[2][2]*0.6, VHf[0], VHf[1], VHf[2]);
 	UpdateVBO_H(&vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
 }
@@ -1815,6 +1837,8 @@ void setupTweakBar()
     TwDefine(" View size='220 530' color='100 100 70' alpha=200 "); // change default tweak bar size and color
     TwDefine(" View help='F2: show/hide View bar' "); // change default tweak bar size and color
 
+	TwAddVarCB(view_bar, "Multisampling", TW_TYPE_INT32, CB_SetN_Multisample, CB_GetN_Multisample, &N_Multisample, 
+	" label='Multisamples' min=1 max=32 step=1 help='Multisampling' group='Camera'");
 	{
 	TwEnumVal		enProjectionsTw[] = { {ORTHO, "Orthogonal"}, {PERSP, "Perspective"} };
 	TwType			TW_TYPE_PROJ = TwDefineEnum("ProjectionType", enProjectionsTw, 2);
