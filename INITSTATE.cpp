@@ -22,6 +22,38 @@ void CreatSkyrmion(float * px, float * py, float * pz, double * sx, double * sy,
 	}
 }
 
+void Rx(float T,double* sx, double* sy, double* sz)
+{
+	double sxp,syp,szp;
+	sxp = *sx;
+	syp = *sy * cos(T) - *sz * sin(T);
+	szp = *sy * sin(T) + *sz * cos(T);
+	*sx = sxp;
+	*sy = syp;
+	*sz = szp;
+}
+
+void Ry(float T, double* sx, double* sy, double* sz)
+{
+	double sxp,syp,szp;
+	sxp = *sx * cos(T) + *sz * sin(T);
+	syp = *sy;
+	szp =-*sx * sin(T) + *sz * cos(T);
+	*sx = sxp;
+	*sy = syp;
+	*sz = szp;
+}
+
+void Rz(float T, double* sx, double* sy, double* sz)
+{
+	double sxp,syp,szp;
+	sxp = *sx * cos(T) - *sy * sin(T);
+	syp = *sx * sin(T) - *sy * cos(T);
+	szp = *sz;
+	*sx = sxp;
+	*sy = syp;
+	*sz = szp;
+}
 
 void CreatBobber(float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Bob_R ,float tx, float ty, int Loc_B)
 {
@@ -291,32 +323,32 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 10: // hopfion H=1
-		// if(chSize!=0)
-		// {
-		// 	float tmp;
-		// 	for (int n=0; n<NOS; n++)
-		// 	{	
-		// 		r = sqrt(px[n]*px[n]+py[n]*py[n]+pz[n]*pz[n]);
-		// 		if (r==0){
-		// 			T = 0;
-		// 		}else{
-		// 			T = pz[n]/r; // angle with respect to the main axis of toroid [0,0,1]
-		// 		}
-		// 		T = acos(T);
-		// 		t = r/chSize;
-		// 		t = 1.0 + 4.22/(t*t);
-		// 		tmp = PI*(1.0-1.0/sqrt(t));
-		// 		t = sin(tmp)*sin(T);
-		// 		t = acos(1.0-2.0*t*t);
-		// 		F = atan2(py[n],px[n]);
-		// 		f = F + atan2( 1.0/(tan(tmp)),cos(T) );
-		// 		Sx[n] = sin(t)*cos(f)*Kind[n];
-		// 		Sy[n] = sin(t)*sin(f)*Kind[n];
-		// 		Sz[n] = cos(t)*Kind[n];
-		// 	}
-		// }
-	CreatBobber(px, py, pz, sx, sy, sz, chSize, -20, 0, 1);
-	CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,20,0);
+		if(chSize!=0)
+		{
+			float tmp;
+			for (int n=0; n<NOS; n++)
+			{	
+				r = sqrt(px[n]*px[n]+py[n]*py[n]+pz[n]*pz[n]);
+				if (r==0){
+					T = 0;
+				}else{
+					T = pz[n]/r; // angle with respect to the main axis of toroid [0,0,1]
+				}
+				T = acos(T);
+				t = r/chSize;
+				t = 1.0 + 4.22/(t*t);
+				tmp = PI*(1.0-1.0/sqrt(t));
+				t = sin(tmp)*sin(T);
+				t = acos(1.0-2.0*t*t);
+				F = atan2(py[n],px[n]);
+				f = F + atan2( 1.0/(tan(tmp)),cos(T) );
+				Sx[n] = sin(t)*cos(f)*Kind[n];
+				Sy[n] = sin(t)*sin(f)*Kind[n];
+				Sz[n] = cos(t)*Kind[n];
+			}
+		}
+	// CreatBobber(px, py, pz, sx, sy, sz, chSize, -20, 0, 1);
+	// CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,20,0);
 	break;
 
 	case 11: // spiral
@@ -432,6 +464,42 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 					// Sy[n] = 0;
 					// Sz[n] = 1;						
 				}
+			}
+		}
+	break;
+
+	case 14: // 3D lattice of Bloch points
+		if(chSize!=0)
+		{
+			float T1 = 0.f;
+			float T2 = 0.f;
+			float F1 = 0.f;
+			float F2 = 0.f;
+			float rx=0.0f;
+			float ry=0.0f;
+			float rz=0.0f;
+
+			for (int n=0; n<NOS; n++)
+			{	
+				rx = px[n];
+				ry = py[n];
+				rz = pz[n];
+				T1 = (rx+ry) * TPI / chSize;
+				T2 = (ry-rx) * TPI / chSize;
+				F1 = (rx) * TPI / chSize;
+				F2 = (ry) * TPI / chSize;
+				Sx[n] = sin(ry * TPI / chSize)+cos(rz * TPI / chSize);
+				Sy[n] = sin(rz * TPI / chSize)+cos(rx * TPI / chSize);
+				Sz[n] = sin(rx * TPI / chSize)+cos(ry * TPI / chSize);
+				//Rz(T1,&Sx[n],&Sy[n],&Sz[n]);
+				//Rx(T1,&Sx[n],&Sy[n],&Sz[n]);
+
+				//Ry(T2,&Sx[n],&Sy[n],&Sz[n]);
+				//Rz(PI/4,&Sx[n],&Sy[n],&Sz[n]);
+				//Ry(T2,&Sx[n],&Sy[n],&Sz[n]);
+				// Sx[n] = (sin(T1)+sin(T2)) * (cos(F1-F2)) * Kind[n];
+				// Sy[n] = (sin(T1)+sin(T2)) * (sin(F1+F2)) * Kind[n];
+				// Sz[n] = (cos(T1)-cos(T2)) * Kind[n];
 			}
 		}
 	break;

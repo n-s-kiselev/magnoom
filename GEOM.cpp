@@ -148,7 +148,7 @@ float			Block[][3] = {
 int			uABC[3] = {50,50,2};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {6,6,6};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {80,80,20};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
-int			Boundary[3] = {1, 1, 1};// boundary conditions along a, b, c translation vectors
+int			Boundary[3] = {1, 1, 0};// boundary conditions along a, b, c translation vectors
 
 int			ShellNumber = 1;
 int			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
@@ -383,9 +383,9 @@ SetExch1( float abc[][3], float block[][3], int arrSize,
 		XYZ1[0]-=XYZ0[0];//r1=r1-r0 /x
 		XYZ1[1]-=XYZ0[1];//r1=r1-r0 /y
 		XYZ1[2]-=XYZ0[2];//r1=r1-r0 /z
-		//Cross(norm, XYZ1, XYZ0); (void)Unit( XYZ0, XYZ0);//interface induced DMI -- skyrmions of Neel type.
+		Cross(norm, XYZ1, XYZ0); (void)Unit( XYZ0, XYZ0);//interface induced DMI -- skyrmions of Neel type.
 
-		(void)Unit( XYZ1, XYZ0);//Bloch skyrmion
+		//(void)Unit( XYZ1, XYZ0);//Bloch skyrmion
 		Dx[i] = XYZ0[0];
 		Dy[i] = XYZ0[1];
 		Dz[i] = XYZ0[2];

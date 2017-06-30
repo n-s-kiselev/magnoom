@@ -27,7 +27,8 @@ float			PerspSet[4]		= {60.0, asp_rat, 0.01, 50000}; // {Setings: Field of view 
 typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projections
 enProjections	WhichProjection = PERSP; // PERSP by default 	
 
-typedef enum	{RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B, HOPFION1, SPIRAL, SKYRMION_L, GLOBULA} enIniState; // which mode
+typedef enum	{RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B, 
+HOPFION1, SPIRAL, SKYRMION_L, GLOBULA, MultyQ} enIniState; // which mode
 enIniState		WhichInitialState = RND;	// RND by default 
 
 typedef enum 	{DEFAULT_G, CILINDER_G, SPHERE_G} enGeom; // which mode
@@ -158,7 +159,7 @@ int GreedFilterMaxC=uABC[2]-1;// redefined in readConfigFile()
 int GreedFilterMinC=0;
 
 // Parameters for initial state 
-float			chSize = 37; // characteristic size of initial state in units of "a"
+float			chSize = 10; // characteristic size of initial state in units of "a"
 float			chDir[3] = {0,1,0}; // characteristic size of initial state in units of "a"
 GLuint 			iStart;
 GLuint 			iNum;
@@ -2104,13 +2105,14 @@ void setupTweakBar()
 										{BOBBER_L,	"Bobber lattice"	    }, 
 										{BOBBER_L_T,"Bobber latt. top"	    },  
 										{BOBBER_L_B,"Bobber latt. bottom"	}, 
-										//{HOPFION1, 	"Hopfion"		        }, 
-										{HOPFION1, 	"Bobber+Skyrmio"		        },
+										{HOPFION1, 	"Hopfion"		        }, 
+										//{HOPFION1, 	"Bobber+Skyrmio"		        },
 										{SPIRAL, 	"Spiral"		        }, 
 										{SKYRMION_L,"Sk. lattice"	        },
-										{GLOBULA,   "Globula"	            }
+										{GLOBULA,   "Globula"	            },
+										{MultyQ,    "Multy-Q"}
 									};
-	TwType			TV_TYPE_INI_STATE = TwDefineEnum("IniState", enIniStateTw, 14);
+	TwType			TV_TYPE_INI_STATE = TwDefineEnum("IniState", enIniStateTw, 15);
 	TwAddVarRW(initial_bar, "Choose ini. state", TV_TYPE_INI_STATE, &WhichInitialState, "help='Choose initial spin configuration'");
 	}
 

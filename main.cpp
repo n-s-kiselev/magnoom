@@ -274,13 +274,13 @@ float		VHf[]={ 0.0 , 0.0, 1.0 };
 float 		VHtheta=0;
 float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
-float		Hf=0.017;//0.01632;
+float		Hf=0.01632;//0.01632;
 float       Bdc[]={ Hf*VHf[0] , Hf*VHf[1], Hf*VHf[2] };
 //AC applied H-field:
-float		VHac[]={ 0.0 , 0.0, 1.0 };
-float		Hac=0.0;//001632;
+float		VHac[]={ 1.0 , 0.0, 0.0 };
+float		Hac=0.001;//001632;
 float       Bac[]={ 0.0 , 0.0, 0.0 };//Bac is components of external field for info panel only.
-float		Period_dc=180.168;
+float		Period_dc=244.994;
 float		Omega_dc=TPI/Period_dc;
 float 		GPulseWidth=20.0;
 float 		t_offset=80;
@@ -510,7 +510,7 @@ main (int argc, char **argv)
 	GetBox(abc, uABC, Box);
 	UpdateSpinPositions(abc, uABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
 	UpdateKind(Kind, Px, Py, Pz, NOS, NOSK);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 12 );
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 14 );
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
     //  Set OpenGL context initial state.
