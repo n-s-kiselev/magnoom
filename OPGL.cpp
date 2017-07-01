@@ -191,7 +191,7 @@ float angle = 0.8f;
 // float g_MatDiffuse[] = { 1.0f, 1.0f, 0.0f, 1.0f };
 // Light parameter
 float g_LightMultiplier = 1.0f;
-float g_LightDirection[] = { -0.2f, 1.0f, 0.0f };
+float g_LightDirection[] = { 0.2f, 0.1f, -1.0f };
 int   Light_On=1;
 
 
@@ -454,14 +454,24 @@ void Display (void)
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+    glEnable(GL_NORMALIZE);
 	float v[4]; 
     v[0] = v[1] = v[2] = g_LightMultiplier*0.4f; v[3] = 1.0f;
     glLightfv(GL_LIGHT0, GL_AMBIENT, v);
     v[0] = v[1] = v[2] = g_LightMultiplier*0.8f; v[3] = 1.0f;
     glLightfv(GL_LIGHT0, GL_DIFFUSE, v);
-    v[0] = -g_LightDirection[0]; v[1] = -g_LightDirection[1]; v[2] = -g_LightDirection[2]; v[3] = 0.0f;
-    glLightfv(GL_LIGHT0, GL_POSITION, v);
 
+	//Add ambient light
+	// GLfloat lightPos0[] = {CameraEye[0], CameraEye[1], CameraEye[2], 1.0f}; //Positioned at (4, 0, 8)
+	// glLightfv(GL_LIGHT0, GL_POSITION, lightPos0);
+	v[0] = -g_LightDirection[0]; v[1] = -g_LightDirection[1]; v[2] = -g_LightDirection[2]; v[3] = 0.0f;
+	glLightfv(GL_LIGHT0, GL_POSITION, v);
+	
+	//Add directed light
+	// GLfloat lightColor1[] = {0.2f, 0.2f, 0.2f, 1.0f}; //Color (0.5, 0.2, 0.2)
+	// glLightfv(GL_LIGHT1, GL_DIFFUSE, lightColor1);
+	// v[0] = -g_LightDirection[0]; v[1] = -g_LightDirection[1]; v[2] = -g_LightDirection[2]; v[3] = 0.0f;
+	// glLightfv(GL_LIGHT1, GL_POSITION, v);
 	// translate the scene:
 	glTranslatef( (GLfloat)TransXYZ[0], (GLfloat)TransXYZ[1], -(GLfloat)TransXYZ[2] );
 	// rotate the scene:
@@ -552,8 +562,12 @@ void setupOpenGL ()
 	setupTweakBar();
 
 	glEnable(GL_DEPTH_TEST);
-
-	glShadeModel (GL_SMOOTH); //set the shader to smooth shader GL_SMOOTH/GL_FLAT
+	glEnable(GL_COLOR_MATERIAL);
+	glEnable(GL_LIGHTING); //Enable lighting
+	glEnable(GL_LIGHT0); //Enable light #0
+	glEnable(GL_LIGHT1); //Enable light #1
+	glEnable(GL_NORMALIZE); //Automatically normalize normals
+	//glShadeModel(GL_SMOOTH); //Enable smooth shading
 
 	glEnable(GL_COLOR_MATERIAL);
 	glCullFace(GL_FRONT);//GL_FRONT//GL_FRONT_AND_BACK
@@ -565,7 +579,7 @@ void setupOpenGL ()
 	// glEnable(GL_LINE_SMOOTH);               
 	// glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
-	// glEnable(GL_POLYGON_SMOOTH);
+	//glEnable(GL_POLYGON_SMOOTH);
 	// glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 	glEnable(GL_MULTISAMPLE);
 }
@@ -2950,12 +2964,12 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 	//     H    / \           ^                //             O v1(x1,y1,z1)                      // 
 	//     e   /   \          |                //            /                                    //
 	//     a  /     \         |                //           /                                     //
-	//     d /__R/2__\____    H    Z           //          / GL_LINE                              //
+	//     d /__R*2__\____    H    Z           //          / GL_LINE                              //
 	//       T|     |    ^    |    ^           //         /                                       //
 	//	     a|     |    h    |    |           //        /                                        //
 	//       i|     |    |    |    |           //       /                                         //
 	//       l|_____|____v____v_   o --- > X   //      o v0(x0,y0,z0)                             //
-	//          r/2                            //                                                 //
+	//          r*2                            //                                                 //
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	i = -1; // vertex component index
@@ -2969,32 +2983,33 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 		{
 			cosF1 = R*cos(dF*n); cosF2 = R*cos(dF*(n+1)); 
 			sinF1 = R*sin(dF*n); sinF2 = R*sin(dF*(n+1));
+			tmp0[0] = R*R/sqrt((H-h)*(H-h) + R*R);
 
-/*			i++; V[i] = 0.f;   N[i] = 0;	
+			i++; V[i] = 0.f;   N[i] = 0;	
 			i++; V[i] = 0.f;   N[i] = 0;	
 			i++; V[i] = H-P;   N[i] = 0;	
 
 			i++; V[i] = cosF2; N[i] = cosF2;	
 			i++; V[i] = sinF2; N[i] = sinF2;	
-			i++; V[i] = h-P;   N[i] = 0;
+			i++; V[i] = h-P;   N[i] = tmp0[0];
 
 			i++; V[i] = cosF1; N[i] = cosF1;
 			i++; V[i] = sinF1; N[i] = sinF1;	 
-			i++; V[i] = h-P;   N[i] = 0;*/	
+			i++; V[i] = h-P;   N[i] = tmp0[0];	
 
-			i++; V[i] = tmp0[0] = 0.f;	
-			i++; V[i] = tmp0[1] = 0.f;	
-			i++; V[i] = tmp0[2] = H-P;	
+			// i++; V[i] = tmp0[0] = 0.f;	
+			// i++; V[i] = tmp0[1] = 0.f;	
+			// i++; V[i] = tmp0[2] = H-P;	
 
-			i++; V[i] = tmp2[0] = cosF2;	
-			i++; V[i] = tmp2[1] = sinF2;
-			i++; V[i] = tmp2[2] = h-P;
+			// i++; V[i] = tmp2[0] = cosF2;	
+			// i++; V[i] = tmp2[1] = sinF2;
+			// i++; V[i] = tmp2[2] = h-P;
 
-			i++; V[i] = tmp1[0] = cosF1; N[i] = cosF1;
-			i++; V[i] = tmp1[1] = sinF1; N[i] = sinF1;	 
-			i++; V[i] = tmp1[2] = h-P;	 N[i] = 0;	
+			// i++; V[i] = tmp1[0] = cosF1; N[i] = cosF1;
+			// i++; V[i] = tmp1[1] = sinF1; N[i] = sinF1;	 
+			// i++; V[i] = tmp1[2] = h-P;	 N[i] = 0;	
 
-     		Enorm( tmp0, tmp1, tmp2, tmp3);
+     		//Enorm( tmp0, tmp1, tmp2, tmp3);
 
 			N[i-8] = N[i-5] = N[i-2] = tmp3[0] ; // nx
 			N[i-7] = N[i-4] = N[i-1] = tmp3[1] ; // ny
@@ -3034,20 +3049,36 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 			cosF1 = r*cos(dF*n); 		sinF1 = r*sin(dF*n);		// for v1,v2
 			cosF2 = r*cos(dF*(n+1)); 	sinF2 = r*sin(dF*(n+1));	// for v3,v4
 			//v1
-			i++; V[i] = cosF1;	N[i] = cosF0;
-			i++; V[i] = sinF1;	N[i] = sinF0;
+			// i++; V[i] = cosF1;	N[i] = cosF0;
+			// i++; V[i] = sinF1;	N[i] = sinF0;
+			// i++; V[i] = 0.f-P; 	N[i] = 0.f;
+			// //v2
+			// i++; V[i] = cosF1;	N[i] = cosF0;
+			// i++; V[i] = sinF1;	N[i] = sinF0;
+			// i++; V[i] = h - P;	N[i] = 0.f;
+			// //v3
+			// i++; V[i] = cosF2;	N[i] = cosF0;
+			// i++; V[i] = sinF2;	N[i] = sinF0;
+			// i++; V[i] = 0.f-P; 	N[i] = 0.f;
+			// //v4
+			// i++; V[i] = cosF2;	N[i] = cosF0;
+			// i++; V[i] = sinF2;	N[i] = sinF0;
+			// i++; V[i] = h-P; 	N[i] = 0.f;
+			//v1
+			i++; V[i] = cosF1;	N[i] = cosF1;
+			i++; V[i] = sinF1;	N[i] = sinF1;
 			i++; V[i] = 0.f-P; 	N[i] = 0.f;
 			//v2
-			i++; V[i] = cosF1;	N[i] = cosF0;
-			i++; V[i] = sinF1;	N[i] = sinF0;
+			i++; V[i] = cosF1;	N[i] = cosF1;
+			i++; V[i] = sinF1;	N[i] = sinF1;
 			i++; V[i] = h - P;	N[i] = 0.f;
 			//v3
-			i++; V[i] = cosF2;	N[i] = cosF0;
-			i++; V[i] = sinF2;	N[i] = sinF0;
+			i++; V[i] = cosF2;	N[i] = cosF2;
+			i++; V[i] = sinF2;	N[i] = sinF2;
 			i++; V[i] = 0.f-P; 	N[i] = 0.f;
 			//v4
-			i++; V[i] = cosF2;	N[i] = cosF0;
-			i++; V[i] = sinF2;	N[i] = sinF0;
+			i++; V[i] = cosF2;	N[i] = cosF2;
+			i++; V[i] = sinF2;	N[i] = sinF2;
 			i++; V[i] = h-P; 	N[i] = 0.f;
 		}
 
@@ -3086,20 +3117,33 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 		{
 			cosF1 = R*cos(dF*n); cosF2 = R*cos(dF*(n+1)); 
 			sinF1 = R*sin(dF*n); sinF2 = R*sin(dF*(n+1));
+			tmp0[0] = R*R/sqrt(H*H + R*R);
 
-			i++; V[i] = tmp0[0] = 0.f;		
-			i++; V[i] = tmp0[1] = 0.f;		
-			i++; V[i] = tmp0[2] = H-P;		
+			i++; V[i] = 0.f;   N[i] = 0;	
+			i++; V[i] = 0.f;   N[i] = 0;	
+			i++; V[i] = H-P;   N[i] = 0;	
 
-			i++; V[i] = tmp2[0] = cosF2;	
-			i++; V[i] = tmp2[1] = sinF2;	
-			i++; V[i] = tmp2[2] = - P;	
+			i++; V[i] = cosF2; N[i] = cosF2;	
+			i++; V[i] = sinF2; N[i] = sinF2;	
+			i++; V[i] = -P;   N[i] = tmp0[0];
 
-			i++; V[i] = tmp1[0] = cosF1;	
-			i++; V[i] = tmp1[1] = sinF1;	 
-			i++; V[i] = tmp1[2] = - P;		
+			i++; V[i] = cosF1; N[i] = cosF1;
+			i++; V[i] = sinF1; N[i] = sinF1;	 
+			i++; V[i] = -P;   N[i] = tmp0[0];
 
-			Enorm( tmp0, tmp1, tmp2, tmp3);
+			// i++; V[i] = tmp0[0] = 0.f;		
+			// i++; V[i] = tmp0[1] = 0.f;		
+			// i++; V[i] = tmp0[2] = H-P;		
+
+			// i++; V[i] = tmp2[0] = cosF2;	
+			// i++; V[i] = tmp2[1] = sinF2;	
+			// i++; V[i] = tmp2[2] = - P;	
+
+			// i++; V[i] = tmp1[0] = cosF1;	
+			// i++; V[i] = tmp1[1] = sinF1;	 
+			// i++; V[i] = tmp1[2] = - P;		
+
+			// Enorm( tmp0, tmp1, tmp2, tmp3);
 
 			N[i-8] = N[i-5] = N[i-2] = tmp3[0] ; // nx
 			N[i-7] = N[i-4] = N[i-1] = tmp3[1] ; // ny

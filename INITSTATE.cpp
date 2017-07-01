@@ -484,19 +484,26 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 				rx = px[n];
 				ry = py[n];
 				rz = pz[n];
-				T1 = (rx+ry) * TPI / chSize;
-				T2 = (ry-rx) * TPI / chSize;
+				T1 = (rx) * TPI / chSize;
+				T2 = (ry) * TPI / chSize;
 				F1 = (rx) * TPI / chSize;
 				F2 = (ry) * TPI / chSize;
+				Sx[n] = 0;
+				Sy[n] = 0;
+				Sz[n] = 1;
+				//kanazawa
 				Sx[n] = sin(ry * TPI / chSize)+cos(rz * TPI / chSize);
 				Sy[n] = sin(rz * TPI / chSize)+cos(rx * TPI / chSize);
 				Sz[n] = sin(rx * TPI / chSize)+cos(ry * TPI / chSize);
-				//Rz(T1,&Sx[n],&Sy[n],&Sz[n]);
-				//Rx(T1,&Sx[n],&Sy[n],&Sz[n]);
 
-				//Ry(T2,&Sx[n],&Sy[n],&Sz[n]);
-				//Rz(PI/4,&Sx[n],&Sy[n],&Sz[n]);
-				//Ry(T2,&Sx[n],&Sy[n],&Sz[n]);
+				rx=sqrt(Sx[n]*Sx[n]+Sy[n]*Sy[n]+Sz[n]*Sz[n]);
+				Sx[n] = Sx[n]/rx;
+				Sy[n] = Sy[n]/rx;
+				Sz[n] = Sz[n]/rx;
+				// Rx(T1,&Sx[n],&Sy[n],&Sz[n]);
+				// Ry(T2,&Sx[n],&Sy[n],&Sz[n]);
+				// Rz(rz * TPI / chSize,&Sx[n],&Sy[n],&Sz[n]);
+
 				// Sx[n] = (sin(T1)+sin(T2)) * (cos(F1-F2)) * Kind[n];
 				// Sy[n] = (sin(T1)+sin(T2)) * (sin(F1+F2)) * Kind[n];
 				// Sz[n] = (cos(T1)-cos(T2)) * Kind[n];
