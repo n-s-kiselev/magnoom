@@ -621,6 +621,13 @@ void *CALC_THREAD(void *void_ptr)
 			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
 			sem_wait(sem_in[threadindex]);
+
+			MAX_TORQUE=0;
+			for (int i=0;i<THREADS_NUMBER;i++){
+				if (Max_torque[i] > MAX_TORQUE) MAX_TORQUE = Max_torque[i];
+				Max_torque[i] = 0;
+			}
+			
 			ITERATION++;
 			//normalize all spins every 100 iterations
 			if (ITERATION%100==0) 
@@ -679,11 +686,7 @@ void *CALC_THREAD(void *void_ptr)
 			sem_wait(sem_out[threadindex]);
 
 		}else{
-			MAX_TORQUE=0;
-			for (int i=0;i<THREADS_NUMBER;i++){
-				if (Max_torque[i] > MAX_TORQUE) MAX_TORQUE = Max_torque[i];
-				Max_torque[i] = 0;
-			}
+
 
 			//SyncAllThreads();
 			

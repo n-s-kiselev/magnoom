@@ -130,7 +130,7 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 int		ENGINE_MUTEX=WAIT;
 int		DATA_TRANSFER_MUTEX=WAIT_DATA;
 
-#define THREADS_NUMBER 3 
+#define THREADS_NUMBER 3
 semaphore_ref	sem_in[THREADS_NUMBER];
 semaphore_ref	sem_out[THREADS_NUMBER];
 
