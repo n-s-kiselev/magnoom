@@ -28,7 +28,7 @@ typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projecti
 enProjections	WhichProjection = PERSP; // PERSP by default 	
 
 typedef enum	{RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B, 
-HOPFION1, SPIRAL, SKYRMION_L, GLOBULA, MultyQ} enIniState; // which mode
+HOPFION1, SPIRAL, SKYRMION_L, GLOBULA, MultyQ, NORM} enIniState; // which mode
 enIniState		WhichInitialState = RND;	// RND by default 
 
 typedef enum 	{DEFAULT_G, CILINDER_G, SPHERE_G} enGeom; // which mode
@@ -1571,7 +1571,7 @@ int ReadHeaderLine(FILE * fp, char * line){
 	if ((pos==0 || line[0]!='#') && c != EOF){
 		return ReadHeaderLine(fp, line);// recursive call for ReadHeaderLine if the current line is empty
 	} 
-	return pos-1;// the last simbol is the line end simbol
+	return pos-1;// the last symbol is the line end symbol
 }
 
 void ReadDataLine(FILE * fp, char * line){
@@ -1677,7 +1677,6 @@ void TW_CALL CB_ReadOVF( void *clientData )
 				// }
 				if(fread(&bSx[0],binType,1,FilePointer)) {
 				//printf("%f \n",bSx[0]);	
-
 					for (int k=0; k<znodes; k++){
 						for (int j=0; j<ynodes; j++){
 							for (int i=0; i<xnodes; i++){
@@ -2148,9 +2147,10 @@ void setupTweakBar()
 										{SPIRAL, 	"Spiral"		        }, 
 										{SKYRMION_L,"Sk. lattice"	        },
 										{GLOBULA,   "Globula"	            },
-										{MultyQ,    "Multy-Q"}
+										{MultyQ,    "Multy-Q"				},
+										{NORM,      "Normalize all"			},
 									};
-	TwType			TV_TYPE_INI_STATE = TwDefineEnum("IniState", enIniStateTw, 15);
+	TwType			TV_TYPE_INI_STATE = TwDefineEnum("IniState", enIniStateTw, 16);
 	TwAddVarRW(initial_bar, "Choose ini. state", TV_TYPE_INI_STATE, &WhichInitialState, "help='Choose initial spin configuration'");
 	}
 

@@ -510,5 +510,16 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			}
 		}
 	break;
+	
+	case 15: // Normalize all spins
+	float inv_abs_S;
+	for (int n=0; n<NOS; n++)
+			{	
+				inv_abs_S=1.0f/sqrt(Sx[n]*Sx[n]+Sy[n]*Sy[n]+Sz[n]*Sz[n]);
+				Sx[n] = Sx[n]*inv_abs_S;
+				Sy[n] = Sy[n]*inv_abs_S;
+				Sz[n] = Sz[n]*inv_abs_S;
+			}
+	break;
 	}	
 }
