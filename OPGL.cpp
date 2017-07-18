@@ -2472,6 +2472,16 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 				//TransXYZ[0]+=1;	
 				break;
 
+			case 'T':
+			case 't':
+				TransXYZ[2]-=1;	
+			break;
+
+			case 'G':
+			case 'g':
+				TransXYZ[2]+=1;	
+			break;
+
 			case 'x':
 			case 'X':
 				Buttons( XUP );
