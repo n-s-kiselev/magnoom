@@ -93,7 +93,11 @@ int				InvertValue=0; //n_z=+1 (white), -1 (black). For InvertHue=1 vice versa
 int				ActiveButton;	// current mous button that is down
 int				Xmouse, Ymouse;	// mouse values
 float			Rot[3]={0,0,0};	// rotation angles in degrees
-float			TransXYZ[3]={0,0,0};	// set by glui translation widgets
+float			dRot[3]={0,0,0};// rotation angles +
+float 			RotSpeed=0.5;// rotation speed
+float			TransXYZ[3]={0,0,0};// set by glui translation widgets
+float			dTransXYZ[3]={0,0,0};
+float			TransSpeed=0.5;
 const int       NumCamPosSave=5;
 int             CurrentCameraPositionBank=0;
 float           CameraPosition[NumCamPosSave][7];// array which contains camera positions 
@@ -299,7 +303,8 @@ void			ChangeVectorMode( int );
 void			ChangeColorMap( int );
 void			ChangeInitialState( int );
 void			Buttons( int );
-void			Keyboard( unsigned char, int, int );
+void			keyboardDown( unsigned char, int, int );
+void			keyboardUp( unsigned char, int, int );
 void			KeyboardAdd( int, int, int );
 void			MouseButton( int, int, int, int );
 void			MouseMotion( int, int );
@@ -474,8 +479,14 @@ void Display (void)
 	// v[0] = -g_LightDirection[0]; v[1] = -g_LightDirection[1]; v[2] = -g_LightDirection[2]; v[3] = 0.0f;
 	// glLightfv(GL_LIGHT1, GL_POSITION, v);
 	// translate the scene:
+	TransXYZ[0]+=dTransXYZ[0];
+	TransXYZ[1]+=dTransXYZ[1];
+	TransXYZ[2]+=dTransXYZ[2];
 	glTranslatef( (GLfloat)TransXYZ[0], (GLfloat)TransXYZ[1], -(GLfloat)TransXYZ[2] );
 	// rotate the scene:
+	Rot[0]+=dRot[0];//NSK
+	Rot[1]+=dRot[1];//NSK
+	Rot[2]+=dRot[2];//NSK
 	glRotatef( (GLfloat)Rot[0], 1., 0., 0. ); //@X
 	glRotatef( (GLfloat)Rot[1], 0., 1., 0. ); //@Y
 	glRotatef( (GLfloat)Rot[2], 0., 0., 1. ); //@Z
@@ -532,7 +543,8 @@ void setupOpenGL ()
 	// Set the GLUT callback functions
 	glutDisplayFunc( Display );// DisplayFunc -- redraws the OpenGl main window
 	glutReshapeFunc( Resize );// ReshapeFunc -- handles the user resizing the window
-	glutKeyboardFunc( Keyboard );// KeyboardFunc -- handles a keyboard input
+	glutKeyboardFunc(keyboardDown);// KeyboardFunc -- handles a keyboard input
+	glutKeyboardUpFunc(keyboardUp);
 	glutSpecialFunc( KeyboardAdd );// SpecialFunc -- handle special keys on the keyboard e.g. F1, Num+...
 	glutMouseFunc( MouseButton );// MouseFunc -- handle the mouse button going down or up
 	glutMotionFunc( MouseMotion );// MotionFunc -- handle the mouse moving with a button down
@@ -1722,6 +1734,197 @@ void TW_CALL CB_ReadOVF( void *clientData )
 	ChangeVectorMode(1);
 }
 
+void TW_CALL CB_Save_OVF_b8( void *clientData )
+{
+	char ovf_filename[64] = "";
+	strncpy(ovf_filename, outputfilename, strcspn (outputfilename, "."));
+	strcat(ovf_filename, ".ovf");
+	if(strncmp(ovf_filename, ".ovf",4)==0){
+		printf("Enter the file name. It cannot be empty!");
+	}else{
+		FILE * pFile = fopen (ovf_filename,"wb");
+		if(pFile!=NULL) {	
+			fputs ("# OOMMF OVF 2.0\n",pFile);
+			fputs ("# Segment count: 1\n",pFile);
+			fputs ("# Begin: Segment\n",pFile);
+			fputs ("# Begin: Header\n",pFile);
+			fputs ("# Title: m\n",pFile);
+			fputs ("# meshtype: rectangular\n",pFile);
+			fputs ("# meshunit: m\n",pFile);
+			fputs ("# xmin: 0\n",pFile);
+			fputs ("# ymin: 0\n",pFile);
+			fputs ("# zmin: 0\n",pFile);
+			snprintf(shortBufer,80,"# xmax: %f\n",uABC[0]*1e-9);
+			fputs (shortBufer,pFile);
+			snprintf(shortBufer,80,"# ymax: %f\n",uABC[1]*1e-9);
+			fputs (shortBufer,pFile);
+			snprintf(shortBufer,80,"# ymax: %f\n",uABC[2]*1e-9);
+			fputs (shortBufer,pFile);
+			fputs ("# valuedim: 3\n",pFile);
+			fputs ("# valuelabels: m_x m_y m_z\n",pFile);
+			fputs ("# valueunits: 1 1 1\n",pFile);
+			fputs ("# Desc: Total simulation time:  0  s\n",pFile);
+			fputs ("# xbase: 6.171875e-10\n",pFile);
+			fputs ("# ybase: 7.126667385309444e-10\n",pFile);
+			fputs ("# zbase: 5e-08\n",pFile);
+			snprintf(shortBufer,80,"# xnodes: %d\n",uABC[0]);
+			fputs (shortBufer,pFile);
+			snprintf(shortBufer,80,"# ynodes: %d\n",uABC[1]);
+			fputs (shortBufer,pFile);
+			snprintf(shortBufer,80,"# znodes: %d\n",uABC[2]);
+			fputs (shortBufer,pFile);
+			fputs ("# xstepsize: 1.234375e-09\n",pFile);
+			fputs ("# ystepsize: 1.4253334770618889e-09\n",pFile);
+			fputs ("# zstepsize: 1e-07\n",pFile);
+			fputs ("# End: Header\n",pFile);
+			fputs ("# Begin: Data Binary 8\n",pFile);
+			double Temp1[]= {123456789012345.0};
+			fwrite (Temp1, sizeof(double), 1, pFile);
+			for (int cn = 0; cn<uABC[2]; cn++) {
+				for (int bn = 0; bn<uABC[1]; bn++) {
+					for (int an = 0; an<uABC[0]; an++) {
+						int n = an+bn*uABC[0]+cn*uABC[0]*uABC[1];// index of the block
+						n = n*AtomsPerBlock;//index of the first spin in the block
+						for (int atom=0; atom<AtomsPerBlock; atom++){
+						    int N = n + atom;
+						    double Temp[]= {bSx[N], bSy[N], bSz[N]}; 
+						    fwrite (Temp , sizeof(double), 3, pFile);
+						}
+					}
+				}
+			}
+			fputs ("# End: Data Binary 4\n",pFile);
+			fputs ("# End: Segment\n",pFile);
+			fclose (pFile);
+		}
+		printf("Done!");
+	}
+/*	
+    FILE * FilePointer = fopen (outputfilename,"w");
+	if(FilePointer!=NULL) {	
+		lineLength=ReadHeaderLine(FilePointer, line);//read and check the first nonempty line which starts with '#'
+		if (lineLength==-1) {// if there are no one line which starts with '#'
+			printf("%s has a wrong file format! \n", inputfilename);
+		}else{
+		    sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
+		    if(strncmp(keyW1, "OOMMF",5)!=0 || strncmp(keyW2, "OVF",  3)!=0 || strncmp(keyW3, "2.0",  3)!=0){
+		        //if the first line isn't "OOMMF OFV 2.0"
+		    	printf("%s has wrong header of wrong file format! \n", inputfilename);
+		    	lineLength=-1;
+		    }
+		}
+		//READING HEADER
+		if (lineLength!=-1){
+			do{
+				lineLength = ReadHeaderLine(FilePointer, line);
+				sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
+				//printf("%s %s %s\n", keyW1, keyW2, keyW3);
+				if (strncmp(keyW1, "valuedim:",9)==0) {
+					sscanf(keyW2, "%d", &valuedim );
+					printf("valuedim=%d\n", valuedim);					
+				}else if (strncmp(keyW1, "xnodes:",7)==0) {
+					sscanf(keyW2, "%d", &xnodes );
+					printf("xnodes=%d\n", xnodes);
+				}else if (strncmp(keyW1, "ynodes:",7)==0) {
+					sscanf(keyW2, "%d", &ynodes );
+					printf("ynodes=%d\n", ynodes);					
+				}else if (strncmp(keyW1, "znodes:",7)==0) {
+					sscanf(keyW2, "%d", &znodes );
+					printf("znodes=%d\n", znodes);					
+				} 
+			}while(!(strncmp(keyW1, "Begin:",6)==0 && strncmp(keyW2, "Data",4)==0) && lineLength != -1 );
+		}
+        //READING DATA
+		if (valuedim!=0 && xnodes!=0 && ynodes!=0 && znodes!=0){
+			sscanf(line, "#%*s %s %s %s", keyW1, keyW2, keyW3 );
+			//int imax,jmax,kmax;
+			//if (xnodes>uABC[0]) {imax = uABC[0];}else{imax = xnodes;}
+			//if (ynodes>uABC[1]) {jmax = uABC[1];}else{jmax = ynodes;}
+			//if (znodes>uABC[2]) {kmax = uABC[2];}else{kmax = znodes;}
+			int n;
+			if (strncmp(keyW2, "Text",4)==0){
+				//Text data format
+				printf("...reading data in text format: %s \n", inputfilename);
+				for (int k=0; k<znodes; k++){
+					for (int j=0; j<ynodes; j++){
+						for (int i=0; i<xnodes; i++){
+							ReadDataLine(FilePointer, line);
+							if (k<uABC[2] && j<uABC[1] && i<uABC[0]){
+								n = i + j*uABC[0] + k*uABC[0]*uABC[1];
+								sscanf(line, "%lf %lf %lf", &bSx[n],&bSy[n],&bSz[n]);
+								Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
+							}
+						}
+					}
+				}
+			}else if (strncmp(keyW2, "Binary",6)==0){
+				if(strncmp(keyW3, "4",1)==0){
+					binType = 4;
+				}else if (strncmp(keyW3, "8",1)==0){
+					binType = 8;
+				}
+				//Binary data format
+				printf("...reading data of binary (%d) format: %s \n", binType, inputfilename);
+				// fread (&bSx[0],binType,1,FilePointer);
+				// //printf("%f\n",nx[0]);
+				// for (int k=0; k<znodes; k++){
+				// 	for (int j=0; j<ynodes; j++){
+				// 		for (int i=0; i<xnodes; i++){
+				// 			int n = i + j*xnodes + k*xnodes*ynodes;
+				// 			fread (&bSx[n],binType,1,FilePointer);
+				// 			fread (&bSy[n],binType,1,FilePointer);
+				// 			fread (&bSz[n],binType,1,FilePointer);
+				// 			Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
+				// 		}
+				// 	}
+				// }
+				if(fread(&bSx[0],binType,1,FilePointer)) {
+				//printf("%f \n",bSx[0]);	
+					for (int k=0; k<znodes; k++){
+						for (int j=0; j<ynodes; j++){
+							for (int i=0; i<xnodes; i++){
+								if (k<uABC[2] && j<uABC[1] && i<uABC[0]){
+									n = i + j*xnodes + k*xnodes*ynodes; //index of the block!
+									//printf("n=%d\n", n);
+									if (binType==4){
+										if(!fread(&temp4_x,binType,1,FilePointer)) break;
+										if(!fread(&temp4_y,binType,1,FilePointer)) break;
+										if(!fread(&temp4_z,binType,1,FilePointer)) break;
+										for (int t=0; t<AtomsPerBlock; t++){
+											int I=n*AtomsPerBlock+t;
+											Sx[I]=bSx[I]=(double)temp4_x; 
+											Sy[I]=bSy[I]=(double)temp4_y;
+											Sz[I]=bSz[I]=(double)temp4_z;		
+										}
+									}else{
+										if(!fread(&temp8_x,binType,1,FilePointer)) break;
+										if(!fread(&temp8_y,binType,1,FilePointer)) break;
+										if(!fread(&temp8_z,binType,1,FilePointer)) break;
+										for (int t=0; t<AtomsPerBlock; t++){
+											int I=n*AtomsPerBlock+t;
+											Sx[I]=bSx[I]=temp8_x; 
+											Sy[I]=bSy[I]=temp8_y;
+											Sz[I]=bSz[I]=temp8_z;		
+										}
+									}
+								}	
+							}
+						}
+					}
+				}else{printf("problem\n");}
+			}else{
+				printf("Do not know what to do with \"%s\" data format in %s\n", keyW2, inputfilename);
+			}
+		}else{
+			printf("%s has wrong data format or dimentionality!\n", inputfilename);
+		}       
+		// when everything is done
+		printf("Done!\n");
+		fclose(FilePointer);
+	}else{printf("Cannot open file: %s \n", inputfilename);}
+	*/
+}
+
 void readConfigFile()
 {
 	char  configfilename[64] = "magnoom.cfg";
@@ -1873,6 +2076,11 @@ void setupTweakBar()
 	" label='turn around y' min=-360 max=360 help='rotate camera around Y-axis' group='Camera'");
 	TwAddVarRW(view_bar, "RotZ", TW_TYPE_FLOAT, &Rot[2], 
 	" label='turn around z' min=-360 max=360 help='rotate camera around Z-axis' group='Camera'");
+	TwAddVarRW(view_bar, "RotSpeed", TW_TYPE_FLOAT, &RotSpeed, 
+	" label='rotation speed' min=0 max=2 step=0.01 help='speed of rotation around any axis' group='Camera'");
+	TwAddVarRW(view_bar, "TransSpeed", TW_TYPE_FLOAT, &TransSpeed, 
+	" label='rotation speed' min=0 max=2 step=0.01 help='speed of translation along any axis' group='Camera'");
+
 	TwDefine(" View/Camera opened=false ");
 
 	TwAddVarRW(view_bar, "CamBank", TW_TYPE_INT32, &CurrentCameraPositionBank, 
@@ -2190,7 +2398,8 @@ void setupTweakBar()
 	TwAddVarRW(initial_bar, "Averaging mode", TV_TYPE_AVERAGE_MODE, &WhichAverageMode, "help='Choose type of average mode'");}
 
 	TwAddVarRW(initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(outputfilename)), outputfilename, ""); 
-	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='write to *.csv file' ");		
+	TwAddButton(initial_bar, "Write to CSV", CB_SaveCSV, NULL, "label='write to *.csv file' ");	
+	TwAddButton(initial_bar, "Write to OVF", CB_Save_OVF_b8, NULL, "label='write to *.ovf file' ");		
 
 /*  AC field F5 */
 	ac_field_bar = TwNewBar("AC_Field");
@@ -2368,14 +2577,14 @@ if( !TwEventMouseMotionGLUT(x, y) )  // send event to AntTweakBar
 }
 
 // the keyboard callback:
-void Keyboard( unsigned char c, int x, int y )
+void keyboardDown( unsigned char key, int x, int y )
 {
-if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar 
+if( !TwEventKeyboardGLUT(key, x, y) )  // send event to AntTweakBar 
   { // event has not been handled by AntTweakBar
     // your code here to handle the event	
 	// if( false ) fprintf( stderr, "Keyboard: '%c' (0x%0x)\n", c, c );
 
-		switch( c )
+		switch( key )
 		{
 			case '<':
 				switch(WhichSliceMode)
@@ -2443,43 +2652,44 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 
 			case 'q':
 			case 'Q':
-				Rot[2] -= 0.75;
+				dRot[2] = - RotSpeed;
 			break;
 
 			case 'e':
 			case 'E':
-				Rot[2] += 0.75;
+				dRot[2] = RotSpeed;
 			break;
 
 			case 'w':
 			case 'W':
-				Rot[0] -= 0.25;
+				//Rot[0] -= 0.25;//NSK
+			    dRot[0] = - RotSpeed;
 				//TransXYZ[2]-=0.5;
 				break;
 			case 's':
 			case 'S':
-				Rot[0] += 0.25;
+				dRot[0] = RotSpeed;
 				//TransXYZ[2]+=0.5;
 				break;
 			case 'a':
 			case 'A':
-				Rot[1] -= 0.25;
+				dRot[1] = - RotSpeed;
 				//TransXYZ[0]-=1;	
 				break;
 			case 'd':
 			case 'D':
-				Rot[1] += 0.25;
+				dRot[1] = RotSpeed;
 				//TransXYZ[0]+=1;	
 				break;
 
-			case 'T':
-			case 't':
-				TransXYZ[2]-=1;	
-			break;
-
 			case 'G':
 			case 'g':
-				TransXYZ[2]+=1;	
+				dTransXYZ[2] = -TransSpeed;	
+			break;
+
+			case 'T':
+			case 't':
+				dTransXYZ[2] = TransSpeed;
 			break;
 
 			case 'x':
@@ -2508,6 +2718,56 @@ if( !TwEventKeyboardGLUT(c, x, y) )  // send event to AntTweakBar
 	}
 }
 
+
+void keyboardUp( unsigned char key, int x, int y )
+{
+		switch( key )
+		{			
+
+			case 'q':
+			case 'Q':
+				dRot[2] = 0.0f;
+			break;
+
+			case 'e':
+			case 'E':
+				dRot[2] = 0.0f;
+			break;
+
+			case 'w':
+			case 'W':
+				//Rot[0] -= 0.25;//NSK
+			    dRot[0] = 0.0f;
+				//TransXYZ[2]-=0.5;
+				break;
+			case 's':
+			case 'S':
+				dRot[0] = 0.0f;
+				//TransXYZ[2]+=0.5;
+				break;
+			case 'a':
+			case 'A':
+				dRot[1] = 0.0f;
+				//TransXYZ[0]-=1;	
+				break;
+			case 'd':
+			case 'D':
+				dRot[1] = 0.0f;
+				//TransXYZ[0]+=1;	
+				break;
+
+			case 'G':
+			case 'g':
+				dTransXYZ[2] = 0.0f;
+			break;
+
+
+			case 'T':
+			case 't':
+				dTransXYZ[2] = 0.0f;	
+			break;
+		}
+}
 
 
 void KeyboardAdd( int key, int x, int y ){
