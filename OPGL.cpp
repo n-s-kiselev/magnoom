@@ -9,6 +9,9 @@ float			CameraEye[3]	= { 0.0, 0.0, 150.0}; // "camera position"
 float			CameraC[3]		= { 0.0, 0.0,  0.0}; // "look at point"
 float			CameraUp[3]		= { 0.0, 1.0,  0.0}; // "where is up direction"
 
+float           axisX[] = { 1, 0, 0 };
+float           axisY[] = { 0, 1, 0 };
+float           axisZ[] = { 0, 0, 1 };
 // light parameters
 GLfloat			light_ambient[]  = {0.1, 0.1, 0.1, 1.0};
 GLfloat			light_diffuse[]  = {0.9, 0.9, 0.9, 1.0};
@@ -92,12 +95,18 @@ int				InvertValue=0; //n_z=+1 (white), -1 (black). For InvertHue=1 vice versa
 // non-constant global variables:
 int				ActiveButton;	// current mous button that is down
 int				Xmouse, Ymouse;	// mouse values
+
+float 			RotAxis[3]={0,0,0};//NSK
+// Shape orientation (stored as a quaternion)
+float 			q_Rotation[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+
 float			Rot[3]={0,0,0};	// rotation angles in degrees
 float			dRot[3]={0,0,0};// rotation angles +
-float 			RotSpeed=0.5;// rotation speed
+float 			RotSpeed=1;// rotation speed
 float			TransXYZ[3]={0,0,0};// set by glui translation widgets
 float			dTransXYZ[3]={0,0,0};
-float			TransSpeed=0.5;
+float			TransSpeed=3;
 const int       NumCamPosSave=5;
 int             CurrentCameraPositionBank=0;
 float           CameraPosition[NumCamPosSave][7];// array which contains camera positions 
@@ -335,6 +344,124 @@ void			drawVBO_PBC_B();
 void			drawVBO_PBC_C();
 void			idle();
 void			setupTweakBar();
+
+// Routine to set a quaternion from a rotation axis and angle
+// ( input axis = float[3] angle = float  output: quat = float[4] )
+void SetQuaternionFromAxisAngle(float *axis, float angle, float *quat)
+{
+    float sina2, norm;
+    sina2 = (float)sin(0.5f * angle);
+    norm = (float)sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
+    quat[0] = sina2 * axis[0] / norm;
+    quat[1] = sina2 * axis[1] / norm;
+    quat[2] = sina2 * axis[2] / norm;
+    quat[3] = (float)cos(0.5f * angle);
+}
+
+void SetQuaternionFromVector(float *vector, float *quat)
+{
+    quat[0] = vector[0];//i
+    quat[1] = vector[1];//j
+    quat[2] = vector[2];//k
+    quat[3] = 0;//Re
+}
+
+void GetVectorFromQuaternion(float *quat, float *vector)
+{
+    vector[0] = quat[0];
+    vector[1] = quat[1];
+    vector[2] = quat[2];
+}
+
+void GetEulerFromQuaternion(float *quat, float *vector)
+{
+    vector[0] = R2D*atan2(2*quat[0]*quat[3]-2*quat[1]*quat[2] , 1 - 2*quat[0]*quat[0] - 2*quat[2]*quat[2]);
+    // bank = atan2(2*qx*qw-2*qy*qz , 1 - 2*qx^2 - 2*qz^2)
+    vector[1] = R2D*atan2(2*quat[1]*q_Rotation[3]-2*quat[0]*quat[2] , 1 - 2*quat[1]*quat[1] - 2*quat[2]*quat[2]);
+    //heading = atan2(2*qy*qw                      -2*qx*qz , 1 - 2*qy^2 - 2*qz^2)
+    vector[2] = R2D*asin(2*quat[0]*quat[1]+2*quat[2]*quat[3]);
+}
+
+void GetQuaternionFromEuler(float *q, float *Rot)
+{
+    // Assuming the angles are in radians.
+    float c1 = cos(0.5 * D2R * Rot[1]);//heading
+    float s1 = sin(0.5 * D2R * Rot[1]);//heading
+    float c2 = cos(0.5 * D2R * Rot[2]);//attitude
+    float s2 = sin(0.5 * D2R * Rot[2]);//attitude
+    float c3 = cos(0.5 * D2R * Rot[0]);//bank
+    float s3 = sin(0.5 * D2R * Rot[0]);//bank
+    float c1c2 = c1*c2;
+    float s1s2 = s1*s2;
+    q[3] = c1c2*c3 - s1s2*s3;
+    q[0] = c1c2*s3 + s1s2*c3;
+    q[1] = s1*c2*c3 + c1*s2*s3;
+    q[2] = c1*s2*c3 - s1*c2*s3;
+}
+
+// Routine to convert a quaternion to a 4x4 matrix
+// ( input: quat = float[4]  output: mat = float[4*4] )
+void ConvertQuaternionToMatrix(float *quat, float *mat)
+{
+    float yy2 = 2.0f * quat[1] * quat[1];
+    float xy2 = 2.0f * quat[0] * quat[1];
+    float xz2 = 2.0f * quat[0] * quat[2];
+    float yz2 = 2.0f * quat[1] * quat[2];
+    float zz2 = 2.0f * quat[2] * quat[2];
+    float wz2 = 2.0f * quat[3] * quat[2];
+    float wy2 = 2.0f * quat[3] * quat[1];
+    float wx2 = 2.0f * quat[3] * quat[0];
+    float xx2 = 2.0f * quat[0] * quat[0];
+    mat[0*4+0] = - yy2 - zz2 + 1.0f;
+    mat[0*4+1] = xy2 + wz2;
+    mat[0*4+2] = xz2 - wy2;
+    mat[0*4+3] = 0;
+    mat[1*4+0] = xy2 - wz2;
+    mat[1*4+1] = - xx2 - zz2 + 1.0f;
+    mat[1*4+2] = yz2 + wx2;
+    mat[1*4+3] = 0;
+    mat[2*4+0] = xz2 + wy2;
+    mat[2*4+1] = yz2 - wx2;
+    mat[2*4+2] = - xx2 - yy2 + 1.0f;
+    mat[2*4+3] = 0;
+    mat[3*4+0] = mat[3*4+1] = mat[3*4+2] = 0;
+    mat[3*4+3] = 1;
+}
+
+void RotateVectorByQuaternion(float *v, float *q)
+{
+    float x=v[0];
+    float y=v[1];
+    float z=v[2];
+    //
+    float qxqx=q[0]*q[0];
+    float qyqy=q[1]*q[1];
+    float qzqz=q[2]*q[2];
+    float qwqw=q[3]*q[3];
+    //
+    float qxqy=q[0]*q[1];
+    float qxqz=q[0]*q[2];
+    float qyqz=q[1]*q[2];
+    float qwqx=q[3]*q[0];
+    float qwqy=q[3]*q[1];
+    float qwqz=q[3]*q[2];
+
+    v[0] = x*(   qxqx +   qwqw-qyqy- qzqz) + y*(2*qxqy- 2*qwqz) + z*(2*qxqz+ 2*qwqy);
+    v[1] = x*( 2*qwqz + 2*qxqy) + y*(  qwqw - qxqx + qyqy - qzqz)+ z*(-2*qwqx+ 2*qyqz);
+    v[2] = x*(-2*qwqy + 2*qxqz) + y*(2*qwqx + 2*qyqz) + z*(qwqw - qxqx- qyqy+ qzqz);
+}
+// Routine to multiply 2 quaternions (ie, compose rotations)
+// ( input q1 = float[4] q2 = float[4]  output: qout = float[4] )
+void MultiplyQuaternions(float *q1, float *q2, float *qout)
+{
+    float qr[4];
+	qr[0] = q1[3]*q2[0] + q1[0]*q2[3] + q1[1]*q2[2] - q1[2]*q2[1];
+	qr[1] = q1[3]*q2[1] + q1[1]*q2[3] + q1[2]*q2[0] - q1[0]*q2[2];
+	qr[2] = q1[3]*q2[2] + q1[2]*q2[3] + q1[0]*q2[1] - q1[1]*q2[0];
+	qr[3]  = q1[3]*q2[3] - (q1[0]*q2[0] + q1[1]*q2[1] + q1[2]*q2[2]);
+    qout[0] = qr[0]; qout[1] = qr[1]; qout[2] = qr[2]; qout[3] = qr[3];
+}
+
 // return the number of seconds since the start of the program:
 float ElapsedSeconds( )	{
 	int ms = glutGet( GLUT_ELAPSED_TIME );	// get # of milliseconds since the start of the program
@@ -352,24 +479,36 @@ void Resize( int window_width, int window_height) // called when user resizes th
     TwWindowSize(window_width, window_height);
 }
 
-void Xup( )
-{
-	Rot[1] = 0.;
-	Rot[0] = Rot[2] = 270.;
-	TransXYZ[0] = TransXYZ[1] = 0.;
-}
-
-void Yup( )
-{
-	Rot[2] = 180;
-	Rot[0] = 270.;
-	TransXYZ[0] = TransXYZ[1] = 0.;
-}
-
 void Zup( )
 {
-	Rot[0] = Rot[1] = Rot[2] = TransXYZ[0] = TransXYZ[1] = 0.;
+    q_Rotation[0]=q_Rotation[1]=q_Rotation[2]=0.;
+    q_Rotation[3]=1.;
+    Rot[0] = Rot[1] = Rot[2] = TransXYZ[0] = TransXYZ[1] = 0.;
 }
+
+void Xup( )
+{   float quat1[4];
+    Zup( );
+    SetQuaternionFromAxisAngle(axisZ, -D2R*90, quat1);
+    MultiplyQuaternions( quat1, q_Rotation, q_Rotation);
+    SetQuaternionFromAxisAngle(axisX, -D2R*90, quat1);
+    MultiplyQuaternions( quat1, q_Rotation, q_Rotation);
+    GetEulerFromQuaternion(q_Rotation, Rot);
+    TransXYZ[0] = TransXYZ[1] = 0.;
+}
+
+void Yup( )//metka
+{   float quat1[4];
+    Zup( );
+    SetQuaternionFromAxisAngle(axisZ, D2R*180, quat1);
+    MultiplyQuaternions( quat1, q_Rotation, q_Rotation);
+    SetQuaternionFromAxisAngle(axisX, -D2R*90, quat1);
+    MultiplyQuaternions( quat1, q_Rotation, q_Rotation);
+    GetEulerFromQuaternion(q_Rotation, Rot);
+	TransXYZ[0] = TransXYZ[1] = 0.;
+}
+
+
 
 // use glut to display a string of characters using a raster font:
 void
@@ -431,6 +570,14 @@ void ChangeBoxSize(int Na, int Nb, int Nc){
 
 void Display (void)
 {
+	float mat[4*4]; // rotation matrix
+    float   axisX[] = { 1, 0, 0 };
+    float   axisY[] = { 0, 1, 0 };
+    float   axisZ[] = { 0, 0, 1 };
+    float   quat1[4];//NSK
+    float   quat2[4];//NSK 
+    float   quat3[4];//NSK 
+
 	GLdouble Hight;
 	float Vtemp[3];
 
@@ -452,7 +599,10 @@ void Display (void)
 	//         (     left,          right,      bottom,   top,       near,        far     )
 	}
 	// place the objects into the scene:
-	glMatrixMode( GL_MODELVIEW ); glLoadIdentity( );
+
+	//NSK glMatrixMode( GL_MODELVIEW ); glLoadIdentity( );
+
+
 	// set the eye position, look-at position, and up-vector:
 	gluLookAt(	CameraEye[0],	CameraEye[1],	CameraEye[2],   // position  
 				CameraC[0],		CameraC[1],		CameraC[2],     // look at
@@ -482,14 +632,27 @@ void Display (void)
 	TransXYZ[0]+=dTransXYZ[0];
 	TransXYZ[1]+=dTransXYZ[1];
 	TransXYZ[2]+=dTransXYZ[2];
+
 	glTranslatef( (GLfloat)TransXYZ[0], (GLfloat)TransXYZ[1], -(GLfloat)TransXYZ[2] );
-	// rotate the scene:
-	Rot[0]+=dRot[0];//NSK
-	Rot[1]+=dRot[1];//NSK
-	Rot[2]+=dRot[2];//NSK
-	glRotatef( (GLfloat)Rot[0], 1., 0., 0. ); //@X
-	glRotatef( (GLfloat)Rot[1], 0., 1., 0. ); //@Y
-	glRotatef( (GLfloat)Rot[2], 0., 0., 1. ); //@Z
+    //new value for the Euler angles due to mose rotation:
+    GetEulerFromQuaternion(q_Rotation, Rot); 
+    //new directions of Cartesian axes:
+    RotateVectorByQuaternion(axisX, q_Rotation);
+    RotateVectorByQuaternion(axisY, q_Rotation);
+    RotateVectorByQuaternion(axisZ, q_Rotation);
+    //adding the rotation about each axes (from keyboard), to the rotation by mouse:
+    SetQuaternionFromAxisAngle(axisX, D2R*dRot[0], quat1);
+    SetQuaternionFromAxisAngle(axisY, D2R*dRot[1], quat2);
+    SetQuaternionFromAxisAngle(axisZ, D2R*dRot[2], quat3);
+    //combining all rotations by means of quaternion multiplication:
+    MultiplyQuaternions( quat2, q_Rotation, q_Rotation);
+    MultiplyQuaternions( quat3, q_Rotation, q_Rotation);
+    MultiplyQuaternions( quat1, q_Rotation, q_Rotation);
+    //
+	ConvertQuaternionToMatrix(q_Rotation, mat);
+    //
+    glMultMatrixf(mat);
+
 
 	drawVBO(); // Draw VBO for spins
 	drawVBO_H(); // Draw VBO for vector representing the firld direction 
@@ -503,6 +666,9 @@ void Display (void)
 	}
 	// possibly draw the axes:
 	if( AxesOn != 0 ) drawVBO_BASIS();//glCallList( AxesList );//
+
+	glPopMatrix();//NSK
+
     // Draw tweak bars
     TwDraw();
     // Present frame buffer
@@ -685,6 +851,44 @@ void TW_CALL CB_Set_Run( const void *value, void *clientData )
 void TW_CALL CB_Get_Run(void *value, void *clientData)
 {
     *(float *)value = Play; // just copy Scale to value
+}
+
+
+void TW_CALL CB_SetRotX(const void *value, void *clientData )
+{
+    GetEulerFromQuaternion(q_Rotation, Rot); 
+    Rot[0] = *( float *)value;
+    GetQuaternionFromEuler(q_Rotation, Rot);
+}
+
+void TW_CALL CB_GetRotX(void *value, void *clientData)
+{
+    *(float *)value = Rot[0];
+}
+
+
+void TW_CALL CB_SetRotY(const void *value, void *clientData )
+{
+    GetEulerFromQuaternion(q_Rotation, Rot); 
+    Rot[1] = *( float *)value;
+    GetQuaternionFromEuler(q_Rotation, Rot);
+}
+
+void TW_CALL CB_GetRotY(void *value, void *clientData)
+{
+    *(float *)value = Rot[1];
+}
+
+void TW_CALL CB_SetRotZ(const void *value, void *clientData )
+{
+    GetEulerFromQuaternion(q_Rotation, Rot); 
+    Rot[2] = *( float *)value;
+    GetQuaternionFromEuler(q_Rotation, Rot);
+}
+
+void TW_CALL CB_GetRotZ(void *value, void *clientData)
+{
+    *(float *)value = Rot[2];
 }
 
 void TW_CALL CB_SetScale(const void *value, void *clientData )
@@ -1736,6 +1940,11 @@ void TW_CALL CB_ReadOVF( void *clientData )
 
 void TW_CALL CB_Save_OVF_b8( void *clientData )
 {
+	float temp0 = 0;
+	float temp1 = 0;
+	float temp2 = 0;
+	float temp3 = 0;
+	float a_lattice = 1.0e-9; 
 	char ovf_filename[64] = "";
 	strncpy(ovf_filename, outputfilename, strcspn (outputfilename, "."));
 	strcat(ovf_filename, ".ovf");
@@ -1754,28 +1963,57 @@ void TW_CALL CB_Save_OVF_b8( void *clientData )
 			fputs ("# xmin: 0\n",pFile);
 			fputs ("# ymin: 0\n",pFile);
 			fputs ("# zmin: 0\n",pFile);
-			snprintf(shortBufer,80,"# xmax: %f\n",uABC[0]*1e-9);
+
+			temp0  = abc[0][0]*abc[0][0];
+			temp0 += abc[0][1]*abc[0][1];
+			temp0 += abc[0][2]*abc[0][2];
+			temp1 = sqrt(temp0);
+			snprintf(shortBufer,80,"# xmax: %f\n",uABC[0]*temp1*a_lattice);
 			fputs (shortBufer,pFile);
-			snprintf(shortBufer,80,"# ymax: %f\n",uABC[1]*1e-9);
+
+			temp0  = abc[1][0]*abc[1][0];
+			temp0 += abc[1][1]*abc[1][1];
+			temp0 += abc[1][2]*abc[1][2];
+			temp2 = sqrt(temp0);
+			snprintf(shortBufer,80,"# ymax: %f\n",uABC[1]*temp2*a_lattice);
 			fputs (shortBufer,pFile);
-			snprintf(shortBufer,80,"# ymax: %f\n",uABC[2]*1e-9);
+
+			temp0  = abc[2][0]*abc[2][0];
+			temp0 += abc[2][1]*abc[2][1];
+			temp0 += abc[2][2]*abc[2][2];
+			temp3 = sqrt(temp0);			
+			snprintf(shortBufer,80,"# ymax: %f\n",uABC[2]*temp3*a_lattice);
 			fputs (shortBufer,pFile);
 			fputs ("# valuedim: 3\n",pFile);
 			fputs ("# valuelabels: m_x m_y m_z\n",pFile);
 			fputs ("# valueunits: 1 1 1\n",pFile);
 			fputs ("# Desc: Total simulation time:  0  s\n",pFile);
-			fputs ("# xbase: 6.171875e-10\n",pFile);
-			fputs ("# ybase: 7.126667385309444e-10\n",pFile);
-			fputs ("# zbase: 5e-08\n",pFile);
+
+			snprintf(shortBufer,80,"# xbase: %f\n",temp1*0.5*a_lattice);
+			fputs (shortBufer,pFile);			
+
+			snprintf(shortBufer,80,"# ybase: %f\n",temp2*0.5*a_lattice);
+			fputs (shortBufer,pFile);
+
+			snprintf(shortBufer,80,"# zbase: %f\n",temp3*0.5*a_lattice);
+			fputs (shortBufer,pFile);
+
 			snprintf(shortBufer,80,"# xnodes: %d\n",uABC[0]);
 			fputs (shortBufer,pFile);
 			snprintf(shortBufer,80,"# ynodes: %d\n",uABC[1]);
 			fputs (shortBufer,pFile);
 			snprintf(shortBufer,80,"# znodes: %d\n",uABC[2]);
 			fputs (shortBufer,pFile);
-			fputs ("# xstepsize: 1.234375e-09\n",pFile);
-			fputs ("# ystepsize: 1.4253334770618889e-09\n",pFile);
-			fputs ("# zstepsize: 1e-07\n",pFile);
+
+			snprintf(shortBufer,80,"# xstepsize:  %f\n",temp1*a_lattice);
+			fputs (shortBufer,pFile);			
+
+			snprintf(shortBufer,80,"# ystepsize: %f\n",temp2*a_lattice);
+			fputs (shortBufer,pFile);
+
+			snprintf(shortBufer,80,"# zstepsize: %f\n",temp3*a_lattice);
+			fputs (shortBufer,pFile);			
+
 			fputs ("# End: Header\n",pFile);
 			fputs ("# Begin: Data Binary 8\n",pFile);
 			double Temp1[]= {123456789012345.0};
@@ -1799,130 +2037,6 @@ void TW_CALL CB_Save_OVF_b8( void *clientData )
 		}
 		printf("Done!");
 	}
-/*	
-    FILE * FilePointer = fopen (outputfilename,"w");
-	if(FilePointer!=NULL) {	
-		lineLength=ReadHeaderLine(FilePointer, line);//read and check the first nonempty line which starts with '#'
-		if (lineLength==-1) {// if there are no one line which starts with '#'
-			printf("%s has a wrong file format! \n", inputfilename);
-		}else{
-		    sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
-		    if(strncmp(keyW1, "OOMMF",5)!=0 || strncmp(keyW2, "OVF",  3)!=0 || strncmp(keyW3, "2.0",  3)!=0){
-		        //if the first line isn't "OOMMF OFV 2.0"
-		    	printf("%s has wrong header of wrong file format! \n", inputfilename);
-		    	lineLength=-1;
-		    }
-		}
-		//READING HEADER
-		if (lineLength!=-1){
-			do{
-				lineLength = ReadHeaderLine(FilePointer, line);
-				sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
-				//printf("%s %s %s\n", keyW1, keyW2, keyW3);
-				if (strncmp(keyW1, "valuedim:",9)==0) {
-					sscanf(keyW2, "%d", &valuedim );
-					printf("valuedim=%d\n", valuedim);					
-				}else if (strncmp(keyW1, "xnodes:",7)==0) {
-					sscanf(keyW2, "%d", &xnodes );
-					printf("xnodes=%d\n", xnodes);
-				}else if (strncmp(keyW1, "ynodes:",7)==0) {
-					sscanf(keyW2, "%d", &ynodes );
-					printf("ynodes=%d\n", ynodes);					
-				}else if (strncmp(keyW1, "znodes:",7)==0) {
-					sscanf(keyW2, "%d", &znodes );
-					printf("znodes=%d\n", znodes);					
-				} 
-			}while(!(strncmp(keyW1, "Begin:",6)==0 && strncmp(keyW2, "Data",4)==0) && lineLength != -1 );
-		}
-        //READING DATA
-		if (valuedim!=0 && xnodes!=0 && ynodes!=0 && znodes!=0){
-			sscanf(line, "#%*s %s %s %s", keyW1, keyW2, keyW3 );
-			//int imax,jmax,kmax;
-			//if (xnodes>uABC[0]) {imax = uABC[0];}else{imax = xnodes;}
-			//if (ynodes>uABC[1]) {jmax = uABC[1];}else{jmax = ynodes;}
-			//if (znodes>uABC[2]) {kmax = uABC[2];}else{kmax = znodes;}
-			int n;
-			if (strncmp(keyW2, "Text",4)==0){
-				//Text data format
-				printf("...reading data in text format: %s \n", inputfilename);
-				for (int k=0; k<znodes; k++){
-					for (int j=0; j<ynodes; j++){
-						for (int i=0; i<xnodes; i++){
-							ReadDataLine(FilePointer, line);
-							if (k<uABC[2] && j<uABC[1] && i<uABC[0]){
-								n = i + j*uABC[0] + k*uABC[0]*uABC[1];
-								sscanf(line, "%lf %lf %lf", &bSx[n],&bSy[n],&bSz[n]);
-								Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
-							}
-						}
-					}
-				}
-			}else if (strncmp(keyW2, "Binary",6)==0){
-				if(strncmp(keyW3, "4",1)==0){
-					binType = 4;
-				}else if (strncmp(keyW3, "8",1)==0){
-					binType = 8;
-				}
-				//Binary data format
-				printf("...reading data of binary (%d) format: %s \n", binType, inputfilename);
-				// fread (&bSx[0],binType,1,FilePointer);
-				// //printf("%f\n",nx[0]);
-				// for (int k=0; k<znodes; k++){
-				// 	for (int j=0; j<ynodes; j++){
-				// 		for (int i=0; i<xnodes; i++){
-				// 			int n = i + j*xnodes + k*xnodes*ynodes;
-				// 			fread (&bSx[n],binType,1,FilePointer);
-				// 			fread (&bSy[n],binType,1,FilePointer);
-				// 			fread (&bSz[n],binType,1,FilePointer);
-				// 			Sx[n]=bSx[n]; Sy[n]=bSy[n];Sz[n]=bSz[n];
-				// 		}
-				// 	}
-				// }
-				if(fread(&bSx[0],binType,1,FilePointer)) {
-				//printf("%f \n",bSx[0]);	
-					for (int k=0; k<znodes; k++){
-						for (int j=0; j<ynodes; j++){
-							for (int i=0; i<xnodes; i++){
-								if (k<uABC[2] && j<uABC[1] && i<uABC[0]){
-									n = i + j*xnodes + k*xnodes*ynodes; //index of the block!
-									//printf("n=%d\n", n);
-									if (binType==4){
-										if(!fread(&temp4_x,binType,1,FilePointer)) break;
-										if(!fread(&temp4_y,binType,1,FilePointer)) break;
-										if(!fread(&temp4_z,binType,1,FilePointer)) break;
-										for (int t=0; t<AtomsPerBlock; t++){
-											int I=n*AtomsPerBlock+t;
-											Sx[I]=bSx[I]=(double)temp4_x; 
-											Sy[I]=bSy[I]=(double)temp4_y;
-											Sz[I]=bSz[I]=(double)temp4_z;		
-										}
-									}else{
-										if(!fread(&temp8_x,binType,1,FilePointer)) break;
-										if(!fread(&temp8_y,binType,1,FilePointer)) break;
-										if(!fread(&temp8_z,binType,1,FilePointer)) break;
-										for (int t=0; t<AtomsPerBlock; t++){
-											int I=n*AtomsPerBlock+t;
-											Sx[I]=bSx[I]=temp8_x; 
-											Sy[I]=bSy[I]=temp8_y;
-											Sz[I]=bSz[I]=temp8_z;		
-										}
-									}
-								}	
-							}
-						}
-					}
-				}else{printf("problem\n");}
-			}else{
-				printf("Do not know what to do with \"%s\" data format in %s\n", keyW2, inputfilename);
-			}
-		}else{
-			printf("%s has wrong data format or dimentionality!\n", inputfilename);
-		}       
-		// when everything is done
-		printf("Done!\n");
-		fclose(FilePointer);
-	}else{printf("Cannot open file: %s \n", inputfilename);}
-	*/
 }
 
 void readConfigFile()
@@ -2061,6 +2175,10 @@ void setupTweakBar()
 	TwType			TW_TYPE_PROJ = TwDefineEnum("ProjectionType", enProjectionsTw, 2);
 	TwAddVarRW(view_bar, "Projection", TW_TYPE_PROJ, &WhichProjection, "keyIncr='p' help='Type of 3D projection' group='Camera'");
 	}
+
+    TwAddVarRW(view_bar, "ObjRotation", TW_TYPE_QUAT4F, &q_Rotation, 
+               " label='Scene rotation' opened=true help='Change the 3D scene orientation.' ");
+
 	TwAddVarRW(view_bar, "CamAng", TW_TYPE_FLOAT, &PerspSet[0], 
 	" label='camera angle' min=1 max=120 help='camera angle' group='Camera'");
 	TwAddVarRW(view_bar, "PosX", TW_TYPE_FLOAT, &TransXYZ[0], 
@@ -2070,16 +2188,16 @@ void setupTweakBar()
 	TwAddVarRW(view_bar, "PosZ", TW_TYPE_FLOAT, &TransXYZ[2], 
 	" label='position in z' min=-1000 max=1000 help='camera position along Z-axis' group='Camera'");
 
-	TwAddVarRW(view_bar, "RotX", TW_TYPE_FLOAT, &Rot[0], 
-	" label='turn around x' min=-360 max=360 help='rotate camera around X-axis' group='Camera'");
-	TwAddVarRW(view_bar, "RotY", TW_TYPE_FLOAT, &Rot[1], 
-	" label='turn around y' min=-360 max=360 help='rotate camera around Y-axis' group='Camera'");
-	TwAddVarRW(view_bar, "RotZ", TW_TYPE_FLOAT, &Rot[2], 
-	" label='turn around z' min=-360 max=360 help='rotate camera around Z-axis' group='Camera'");
+    TwAddVarCB(view_bar, "RotX", TW_TYPE_FLOAT, CB_SetRotX, CB_GetRotX, &Rot[0], " label='turn around X' help='rotate camera around X-axis' group='Camera'");
+
+    TwAddVarCB(view_bar, "RotY", TW_TYPE_FLOAT, CB_SetRotY, CB_GetRotY, &Rot[1], " label='turn around Y' help='rotate camera around Y-axis' group='Camera'");
+
+    TwAddVarCB(view_bar, "RotZ", TW_TYPE_FLOAT, CB_SetRotZ, CB_GetRotZ, &Rot[2], " label='turn around Z' help='rotate camera around Z-axis' group='Camera'");
+
 	TwAddVarRW(view_bar, "RotSpeed", TW_TYPE_FLOAT, &RotSpeed, 
-	" label='rotation speed' min=0 max=2 step=0.01 help='speed of rotation around any axis' group='Camera'");
+	" label='rotation speed' min=0 max=10 step=1 help='speed of rotation around any axis' group='Camera'");
 	TwAddVarRW(view_bar, "TransSpeed", TW_TYPE_FLOAT, &TransSpeed, 
-	" label='rotation speed' min=0 max=2 step=0.01 help='speed of translation along any axis' group='Camera'");
+	" label='translation speed' min=0 max=10 step=1 help='speed of translation along any axis' group='Camera'");
 
 	TwDefine(" View/Camera opened=false ");
 
@@ -2545,15 +2663,28 @@ if( !TwEventMouseButtonGLUT(button, state, x, y) )  // send event to AntTweakBar
 
 void MouseMotion( int x, int y ) // called when the mouse moves while a button is down
 {
-	int dx = x - Xmouse;		// change in mouse coords
-	int dy = y - Ymouse;
+	const int 	dx = x - Xmouse;// change in mouse coords
+	const int 	dy = y - Ymouse;
+	float 	quat1[4];//NSK
+	float 	quat2[4];//NSK
 if( !TwEventMouseMotionGLUT(x, y) )  // send event to AntTweakBar
     { // event has not been handled by AntTweakBar
       // your code here to handle the event
       if( ( ActiveButton & LEFT ) != 0 )
 		{
-			Rot[2] += ( dx )*0.1f;
-			Rot[0] += ( dy )*0.1f;
+			// Rot[2] += ( dx )*0.1f;
+			// Rot[0] += ( dy )*0.1f;
+			// RotAxis[0] = dy;
+			// RotAxis[1] = dx;
+			if (angle!=0){
+			// SetQuaternionFromAxisAngle(axis, angle, quat);
+			// MultiplyQuaternions(q_Rotation, quat, q_Rotation);
+			SetQuaternionFromAxisAngle(axisY, dx*0.01, quat2);
+			SetQuaternionFromAxisAngle(axisX, dy*0.01, quat1);
+			MultiplyQuaternions(quat2, quat1, quat1);
+			MultiplyQuaternions( quat1, q_Rotation, q_Rotation);
+            //metka1 GetEulerFromQuaternion(q_Rotation, Rot);
+			}		
 		}
 
 		if( ( ActiveButton & MIDDLE ) != 0 )
@@ -2578,7 +2709,7 @@ if( !TwEventMouseMotionGLUT(x, y) )  // send event to AntTweakBar
 
 // the keyboard callback:
 void keyboardDown( unsigned char key, int x, int y )
-{
+{   
 if( !TwEventKeyboardGLUT(key, x, y) )  // send event to AntTweakBar 
   { // event has not been handled by AntTweakBar
     // your code here to handle the event	
@@ -2652,44 +2783,42 @@ if( !TwEventKeyboardGLUT(key, x, y) )  // send event to AntTweakBar
 
 			case 'q':
 			case 'Q':
-				dRot[2] = - RotSpeed;
+				dRot[2] = - RotSpeed*0.5;
 			break;
 
 			case 'e':
 			case 'E':
-				dRot[2] = RotSpeed;
+				dRot[2] = RotSpeed*0.5;
 			break;
 
 			case 'w':
 			case 'W':
-				//Rot[0] -= 0.25;//NSK
-			    dRot[0] = - RotSpeed;
-				//TransXYZ[2]-=0.5;
+			    dRot[0] = - RotSpeed*0.5;
 				break;
 			case 's':
 			case 'S':
-				dRot[0] = RotSpeed;
+				dRot[0] = RotSpeed*0.5;
 				//TransXYZ[2]+=0.5;
 				break;
 			case 'a':
 			case 'A':
-				dRot[1] = - RotSpeed;
+				dRot[1] = - RotSpeed*0.5;
 				//TransXYZ[0]-=1;	
 				break;
 			case 'd':
 			case 'D':
-				dRot[1] = RotSpeed;
+				dRot[1] = RotSpeed*0.5;
 				//TransXYZ[0]+=1;	
 				break;
 
 			case 'G':
 			case 'g':
-				dTransXYZ[2] = -TransSpeed;	
+				dTransXYZ[2] = -TransSpeed*0.1;	
 			break;
 
 			case 'T':
 			case 't':
-				dTransXYZ[2] = TransSpeed;
+				dTransXYZ[2] = TransSpeed*0.1;
 			break;
 
 			case 'x':
