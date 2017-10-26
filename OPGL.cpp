@@ -25,7 +25,7 @@ GLfloat			material_ambient[]  = {0.8, 0.8, 0.8, 1.0};
 GLfloat			material_diffuse[]  = {0.2, 0.2, 0.2, 1.0};
 GLfloat			material_specular[] = {0.0, 0.0, 0.0, 1.0};
 
-float			PerspSet[4]		= {60.0, asp_rat, 0.01, 50000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
+float			PerspSet[4]		= {60.0, asp_rat, 0.1, 1000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
 
 typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projections
 enProjections	WhichProjection = PERSP; // PERSP by default 	
@@ -384,19 +384,56 @@ void GetEulerFromQuaternion(float *quat, float *vector)
 
 void GetQuaternionFromEuler(float *q, float *Rot)
 {
+    const float D2R2=0.008726646255;//0.5*Pi/180 degrees to radians
     // Assuming the angles are in radians.
-    float c1 = cos(0.5 * D2R * Rot[1]);//heading
-    float s1 = sin(0.5 * D2R * Rot[1]);//heading
-    float c2 = cos(0.5 * D2R * Rot[2]);//attitude
-    float s2 = sin(0.5 * D2R * Rot[2]);//attitude
-    float c3 = cos(0.5 * D2R * Rot[0]);//bank
-    float s3 = sin(0.5 * D2R * Rot[0]);//bank
+    float c1 = cos(D2R2 * Rot[1]);//heading
+    float s1 = sin(D2R2 * Rot[1]);//heading
+    float c2 = cos(D2R2 * Rot[2]);//attitude
+    float s2 = sin(D2R2 * Rot[2]);//attitude
+    float c3 = cos(D2R2 * Rot[0]);//bank
+    float s3 = sin(D2R2 * Rot[0]);//bank
     float c1c2 = c1*c2;
     float s1s2 = s1*s2;
     q[3] = c1c2*c3 - s1s2*s3;
     q[0] = c1c2*s3 + s1s2*c3;
     q[1] = s1*c2*c3 + c1*s2*s3;
     q[2] = c1*s2*c3 - s1*c2*s3;
+}
+//metka
+void GetNormQuaternion(float *q, float *qout)
+{
+float magnitude = sqrt(q[0]*q[0]+q[1]*q[1]+q[2]*q[2]+q[3]*q[3]);
+qout[0] = q[0] / magnitude;
+qout[1] = q[1] / magnitude;
+qout[2] = q[2] / magnitude;
+qout[3] = q[3] / magnitude;
+}
+
+void GetQuaternionFromTwoVectors(float *q, float *V0, float *V1)
+{
+        float ex[3]={1,0,0};
+        float ey[3]={0,1,0};
+        float vt[3]={0,0,0};
+        float dot = Dotf(V0, V1);
+        if (dot < -0.999999) {
+            Crossf(V0, ex, vt);
+            if (vt[0]*vt[0]+vt[1]*vt[1]+vt[2]*vt[2] < 1e-12)
+                Crossf(V0, ey, vt);
+            Unitf( vt, vt );
+            SetQuaternionFromAxisAngle(vt, PI, q);
+        } else if (dot > 0.999999) {
+            q[0] = 0;
+            q[1] = 0;
+            q[2] = 0;
+            q[3] = 1;
+        } else {
+            Crossf(V0, V1, vt);
+            q[0] = vt[0];
+            q[1] = vt[1];
+            q[2] = vt[2];
+            q[3] = 1 + dot;
+            GetNormQuaternion(q, q);
+        }
 }
 
 // Routine to convert a quaternion to a 4x4 matrix
@@ -895,8 +932,6 @@ void TW_CALL CB_SetScale(const void *value, void *clientData )
 {
 	(void)clientData; // unused
     Scale = *( float *)value; // copy value to Scale
-// if(WhichVectorMode==ARROW1||WhichVectorMode==CONE1) 
-//    {UpdatePrototypeVerNorInd(vertexProto, normalProto, indicesProto, arrowFaces, WhichVectorMode,0);}
 	ChangeVectorMode (0);
 }
 
