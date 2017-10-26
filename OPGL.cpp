@@ -25,7 +25,7 @@ GLfloat			material_ambient[]  = {0.8, 0.8, 0.8, 1.0};
 GLfloat			material_diffuse[]  = {0.2, 0.2, 0.2, 1.0};
 GLfloat			material_specular[] = {0.0, 0.0, 0.0, 1.0};
 
-float			PerspSet[4]		= {60.0, asp_rat, 0.1, 1000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
+float			PerspSet[4]		= {60.0, asp_rat, 1, 1000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
 
 typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projections
 enProjections	WhichProjection = PERSP; // PERSP by default 	
@@ -875,12 +875,14 @@ void TW_CALL CB_Set_Run( const void *value, void *clientData )
 		// TwDefine(" Parameters&Controls/Run  label='STOP simulation' ");
 		pthread_mutex_lock(&culc_mutex);
 			ENGINE_MUTEX=DO_IT;
+            SleepTime=100;
 		pthread_mutex_unlock(&culc_mutex);
 	}else{
 		// Play=0; 
 		// TwDefine(" Parameters&Controls/Run  label='RUN simulation' ");
 		pthread_mutex_lock(&culc_mutex);
 			ENGINE_MUTEX=WAIT;
+            SleepTime=3000;
 		pthread_mutex_unlock(&culc_mutex);	
 	}
 }

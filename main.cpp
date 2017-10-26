@@ -319,7 +319,7 @@ unsigned int 	rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
 char			BuferString[80];//for output file table
 double 			outputEtotal;
 double 			outputMtotal[3];
-
+int 			SleepTime=1000;
 #include "MATH.cpp"/*All mathematical fuctions*/
 #include "GEOM.cpp"/*All functions salculating size and neighbors*/
 //#include "NEW_ENGINE.cpp"/*CALC THREAD:LLG solver*/

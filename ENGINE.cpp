@@ -602,7 +602,7 @@ void *CALC_THREAD(void *void_ptr)
 
 	while(true)
 	{
-		while(ENGINE_MUTEX != DO_IT){ usleep(10);}
+		while(ENGINE_MUTEX != DO_IT){ usleep(SleepTime);}
 		HacTime = GetACfield(WhichACField);
 		if (threadindex==0 && Temperature > 0) GetFluctuations(RNx, RNy, RNz, NOS );
 		StochasticLLG( 	Sx, 	Sy, 	Sz, 
