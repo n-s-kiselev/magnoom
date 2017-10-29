@@ -13,17 +13,17 @@ float           axisX[] = { 1, 0, 0 };
 float           axisY[] = { 0, 1, 0 };
 float           axisZ[] = { 0, 0, 1 };
 // light parameters
-GLfloat			light_ambient[]  = {0.1, 0.1, 0.1, 1.0};
-GLfloat			light_diffuse[]  = {0.9, 0.9, 0.9, 1.0};
-GLfloat			light_specular[] = {0.0, 0.0, 0.0, 1.0};
+// GLfloat			light_ambient[]  = {0.1, 0.1, 0.1, 1.0};
+// GLfloat			light_diffuse[]  = {0.9, 0.9, 0.9, 1.0};
+// GLfloat			light_specular[] = {0.0, 0.0, 0.0, 1.0};
 
-GLfloat			light_position[] = {0.0, 0.0, 1000.0, 0.0};
-GLfloat			light_direction[] = {0.0, 0.0, 10.0, 0.0};
+
 
 // material parameters
-GLfloat			material_ambient[]  = {0.8, 0.8, 0.8, 1.0};
-GLfloat			material_diffuse[]  = {0.2, 0.2, 0.2, 1.0};
-GLfloat			material_specular[] = {0.0, 0.0, 0.0, 1.0};
+GLfloat ambient[] = {0.33, 0.22, 0.03, 0.0};
+GLfloat diffuse[] = {0.78, 0.57, 0.11, 1.0};
+GLfloat specular[] = {0.1, 0.1, 0.08, 1.0};
+GLfloat shininess = 20.0;
 
 float			PerspSet[4]		= {60.0, asp_rat, 1, 1000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
 
@@ -199,12 +199,9 @@ TwBar *info_bar; // Pointer to the tweak bar with widgets controling generation 
 float axis[] = { 0.7f, 0.7f, 0.0f }; // initial model rotation
 float angle = 0.8f;
 
-// Shapes material
-// float g_MatAmbient[] = { 0.5f, 0.0f, 0.0f, 1.0f };
-// float g_MatDiffuse[] = { 1.0f, 1.0f, 0.0f, 1.0f };
 // Light parameter
 float g_LightMultiplier = 1.0f;
-float g_LightDirection[] = { 0.2f, 0.1f, -1.0f };
+float g_LightDirection[] = { 0.5f, 0.5f, -0.5f };
 int   Light_On=1;
 
 
@@ -665,6 +662,12 @@ void Display (void)
 	// glLightfv(GL_LIGHT1, GL_DIFFUSE, lightColor1);
 	// v[0] = -g_LightDirection[0]; v[1] = -g_LightDirection[1]; v[2] = -g_LightDirection[2]; v[3] = 0.0f;
 	// glLightfv(GL_LIGHT1, GL_POSITION, v);
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+
 	// translate the scene:
 	TransXYZ[0]+=dTransXYZ[0];
 	TransXYZ[1]+=dTransXYZ[1];
@@ -781,9 +784,9 @@ void setupOpenGL ()
 	glEnable(GL_COLOR_MATERIAL);
 	glEnable(GL_LIGHTING); //Enable lighting
 	glEnable(GL_LIGHT0); //Enable light #0
-	glEnable(GL_LIGHT1); //Enable light #1
-	glEnable(GL_NORMALIZE); //Automatically normalize normals
-	//glShadeModel(GL_SMOOTH); //Enable smooth shading
+	//glEnable(GL_LIGHT1); //Enable light #1
+	//glEnable(GL_NORMALIZE); //Automatically normalize normals
+	glShadeModel(GL_SMOOTH); //Enable smooth shading
 
 	glEnable(GL_COLOR_MATERIAL);
 	glCullFace(GL_FRONT);//GL_FRONT//GL_FRONT_AND_BACK
@@ -3445,31 +3448,31 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 			sinF1 = R*sin(dF*n); sinF2 = R*sin(dF*(n+1));
 			tmp0[0] = R*R/sqrt((H-h)*(H-h) + R*R);
 
-			i++; V[i] = 0.f;   N[i] = 0;	
-			i++; V[i] = 0.f;   N[i] = 0;	
-			i++; V[i] = H-P;   N[i] = 1;	
+			// i++; V[i] = 0.f;   N[i] = 0;	
+			// i++; V[i] = 0.f;   N[i] = 0;	
+			// i++; V[i] = H-P;   N[i] = 1;	
 
-			i++; V[i] = cosF2; N[i] = cosF2;	
-			i++; V[i] = sinF2; N[i] = sinF2;	
-			i++; V[i] = h-P;   N[i] = tmp0[0];
+			// i++; V[i] = cosF2; N[i] = cosF2;	
+			// i++; V[i] = sinF2; N[i] = sinF2;	
+			// i++; V[i] = h-P;   N[i] = tmp0[0];
 
-			i++; V[i] = cosF1; N[i] = cosF1;
-			i++; V[i] = sinF1; N[i] = sinF1;	 
-			i++; V[i] = h-P;   N[i] = tmp0[0];	
+			// i++; V[i] = cosF1; N[i] = cosF1;
+			// i++; V[i] = sinF1; N[i] = sinF1;	 
+			// i++; V[i] = h-P;   N[i] = tmp0[0];	
 
-			// i++; V[i] = tmp0[0] = 0.f;	
-			// i++; V[i] = tmp0[1] = 0.f;	
-			// i++; V[i] = tmp0[2] = H-P;	
+			i++; V[i] = tmp0[0] = 0.f;	
+			i++; V[i] = tmp0[1] = 0.f;	
+			i++; V[i] = tmp0[2] = H-P;	
 
-			// i++; V[i] = tmp2[0] = cosF2;	
-			// i++; V[i] = tmp2[1] = sinF2;
-			// i++; V[i] = tmp2[2] = h-P;
+			i++; V[i] = tmp2[0] = cosF2;	
+			i++; V[i] = tmp2[1] = sinF2;
+			i++; V[i] = tmp2[2] = h-P;
 
-			// i++; V[i] = tmp1[0] = cosF1; N[i] = cosF1;
-			// i++; V[i] = tmp1[1] = sinF1; N[i] = sinF1;	 
-			// i++; V[i] = tmp1[2] = h-P;	 N[i] = 0;	
+			i++; V[i] = tmp1[0] = cosF1; N[i] = cosF1;
+			i++; V[i] = tmp1[1] = sinF1; N[i] = sinF1;	 
+			i++; V[i] = tmp1[2] = h-P;	 N[i] = 0;	
 
-     		//Enorm( tmp0, tmp1, tmp2, tmp3);
+     		Enorm( tmp0, tmp1, tmp2, tmp3);
 
 			N[i-8] = N[i-5] = N[i-2] = tmp3[0] ; // nx
 			N[i-7] = N[i-4] = N[i-1] = tmp3[1] ; // ny
@@ -3509,37 +3512,37 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 			cosF1 = r*cos(dF*n); 		sinF1 = r*sin(dF*n);		// for v1,v2
 			cosF2 = r*cos(dF*(n+1)); 	sinF2 = r*sin(dF*(n+1));	// for v3,v4
 			//v1
-			// i++; V[i] = cosF1;	N[i] = cosF0;
-			// i++; V[i] = sinF1;	N[i] = sinF0;
-			// i++; V[i] = 0.f-P; 	N[i] = 0.f;
-			// //v2
-			// i++; V[i] = cosF1;	N[i] = cosF0;
-			// i++; V[i] = sinF1;	N[i] = sinF0;
-			// i++; V[i] = h - P;	N[i] = 0.f;
-			// //v3
-			// i++; V[i] = cosF2;	N[i] = cosF0;
-			// i++; V[i] = sinF2;	N[i] = sinF0;
-			// i++; V[i] = 0.f-P; 	N[i] = 0.f;
-			// //v4
-			// i++; V[i] = cosF2;	N[i] = cosF0;
-			// i++; V[i] = sinF2;	N[i] = sinF0;
-			// i++; V[i] = h-P; 	N[i] = 0.f;
-			//v1
-			i++; V[i] = cosF1;	N[i] = cosF1;
-			i++; V[i] = sinF1;	N[i] = sinF1;
+			i++; V[i] = cosF1;	N[i] = cosF0;
+			i++; V[i] = sinF1;	N[i] = sinF0;
 			i++; V[i] = 0.f-P; 	N[i] = 0.f;
 			//v2
-			i++; V[i] = cosF1;	N[i] = cosF1;
-			i++; V[i] = sinF1;	N[i] = sinF1;
+			i++; V[i] = cosF1;	N[i] = cosF0;
+			i++; V[i] = sinF1;	N[i] = sinF0;
 			i++; V[i] = h - P;	N[i] = 0.f;
 			//v3
-			i++; V[i] = cosF2;	N[i] = cosF2;
-			i++; V[i] = sinF2;	N[i] = sinF2;
+			i++; V[i] = cosF2;	N[i] = cosF0;
+			i++; V[i] = sinF2;	N[i] = sinF0;
 			i++; V[i] = 0.f-P; 	N[i] = 0.f;
 			//v4
-			i++; V[i] = cosF2;	N[i] = cosF2;
-			i++; V[i] = sinF2;	N[i] = sinF2;
+			i++; V[i] = cosF2;	N[i] = cosF0;
+			i++; V[i] = sinF2;	N[i] = sinF0;
 			i++; V[i] = h-P; 	N[i] = 0.f;
+			// //v1
+			// i++; V[i] = cosF1;	N[i] = cosF1;
+			// i++; V[i] = sinF1;	N[i] = sinF1;
+			// i++; V[i] = 0.f-P; 	N[i] = 0.f;
+			// //v2
+			// i++; V[i] = cosF1;	N[i] = cosF1;
+			// i++; V[i] = sinF1;	N[i] = sinF1;
+			// i++; V[i] = h - P;	N[i] = 0.f;
+			// //v3
+			// i++; V[i] = cosF2;	N[i] = cosF2;
+			// i++; V[i] = sinF2;	N[i] = sinF2;
+			// i++; V[i] = 0.f-P; 	N[i] = 0.f;
+			// //v4
+			// i++; V[i] = cosF2;	N[i] = cosF2;
+			// i++; V[i] = sinF2;	N[i] = sinF2;
+			// i++; V[i] = h-P; 	N[i] = 0.f;
 		}
 
 		for (int n=0; n<faces; n++) // n face index+faces+1
