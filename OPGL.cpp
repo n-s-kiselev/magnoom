@@ -3020,7 +3020,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" View iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F3:
+			case  GLUT_KEY_F4:
 				TwGetParam(control_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Parameters&Controls iconified=false ");				
@@ -3028,7 +3028,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Parameters&Controls iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F4:
+			case  GLUT_KEY_F6:
 				TwGetParam(initial_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Initial_State iconified=false ");				
