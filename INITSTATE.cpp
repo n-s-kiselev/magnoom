@@ -66,7 +66,7 @@ void CreatBobber(float * px, float * py, float * pz, double * sx, double * sy, d
 	float Bob_D = 2*Bob_R;
 	float rx=0.0f;
 	float ry=0.0f;
-	if(chSize!=0)
+	if(chSize>0)
 	{
 		if (Bob_D>top) { Bob_D = 0.75*top;}
 
@@ -97,6 +97,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	float f = 0.f;
 	// t, f are theta and phi for spin components 
 	float r = 0.f;
+
 	switch (id)
 	{
 
@@ -124,14 +125,14 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 2: // skyrmion Q=1
-		if(chSize!=0)
+		if(chSize>0)
 		{
 			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,0,0);	
 		}
 	break;
 
 	case 3: // skyrmion Q=2
-		if(chSize!=0)
+		if(chSize>0)
 		{
 			for (int n=0; n<NOS; n++)
 			{	
@@ -158,7 +159,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 4: // skyrmion Q=3
-		if(chSize!=0)
+		if(chSize>0)
 		{
 			for (int n=0; n<NOS; n++)
 			{	
@@ -185,7 +186,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 5: // bobber_top
-		if(chSize!=0)
+		if(chSize>0)
 		
 		{
 			CreatBobber(px, py, pz, sx, sy, sz, chSize, 0, 0, 1);	
@@ -193,7 +194,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 6: // bobber_bottom
-		if(chSize!=0)
+		if(chSize>0)
 		
 		{
 			CreatBobber(px, py, pz, sx, sy, sz, chSize, 0, 0, -1);				
@@ -201,7 +202,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 7: // bobber_lattice
-		if(chSize!=0 && !(chDir[0]==0&&chDir[1]==0) )
+		if(chSize>0 && !(chDir[0]==0&&chDir[1]==0) )
 		{
 
 			float PerBobLat=chSize;
@@ -245,7 +246,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 8: // bobber_lattice_top
-		if(chSize!=0 && !(chDir[0]==0&&chDir[1]==0) )
+		if(chSize>0 && !(chDir[0]==0&&chDir[1]==0) )
 		{
 
 			float PerBobLat=chSize;
@@ -284,7 +285,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 9: // bobber_lattice_bottom
-		if(chSize!=0 && !(chDir[0]==0&&chDir[1]==0) )
+		if(chSize>0 && !(chDir[0]==0&&chDir[1]==0) )
 		{
 
 			float PerBobLat=chSize;
@@ -323,7 +324,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 10: // hopfion H=1
-		if(chSize!=0)
+		if(chSize>0)
 		{
 			float tmp;
 			for (int n=0; n<NOS; n++)
@@ -400,7 +401,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 12: // skyrmion Lattice
-		if(chSize!=0 && !(chDir[0]==0&&chDir[1]==0) )
+		if(chSize>0 && !(chDir[0]==0&&chDir[1]==0) )
 		{
 
 			float PerSkirmLat=chSize;
@@ -436,40 +437,46 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	break;
 
 	case 13: // globula
-		if(chSize!=0)
 		{
 			float T = 0.f;
 			float F = 0.f;
+			float F0 = PI/2;
+			float P = TPI*Jij[0]/Dij[0];
+			float KZ = 0.f;
+			float Theta = acos(Hf*Jij[0]/(Dij[0]*Dij[0]));
 			float r1,r2;
 			float rx=0.0f;
 			float ry=0.0f;
 			float rz=0.0f;
+			float b=Jij[0]/(Dij[0]*sin(F0));
 
 			for (int n=0; n<NOS; n++)
 			{
 				rx=px[n];
 				ry=py[n];
-				rz=pz[n];
+				rz=pz[n]-(uABC[2]*0.5-chSize);
 				r1 = sqrt(rx*rx+ry*ry);
 				r2 = sqrt(rx*rx+ry*ry+rz*rz);
-				if (r2<chSize*0.5)
-				{
-					T=PI*exp(-2*r1/chSize);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
-					F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
-					Sx[n] = sin(T)*cos(F)*Kind[n];
-					Sy[n] = sin(T)*sin(F)*Kind[n];
-					Sz[n] = cos(T)*Kind[n];			
-				}else{
-					// Sx[n] = 0;
-					// Sy[n] = 0;
-					// Sz[n] = 1;						
-				}
+				KZ = 2*PI*rz/P;	
+				
+				F = atan2(ry,rx)+F0;
+				//T = 2*atan(1/(r2/chSize+1)/tan(acos(rz/r2)/2));
+				T = 2*atan(chDir[0]/(r2/b+1)/tan(acos(rz/r2)/2));
+
+				rx = sin(T)*cos(F);
+				ry = sin(T)*sin(F);
+				rz = cos(T);
+
+								
+				Sx[n] = ((cos(KZ)*cos(KZ)+cos(Theta)*sin(KZ)*sin(KZ))*rx+sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*ry+sin(KZ)*sin(Theta)*rz)*Kind[n];
+				Sy[n] = (sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*rx+(cos(KZ)*cos(KZ)*cos(Theta)+sin(KZ)*sin(KZ))*ry-cos(KZ)*sin(Theta)*rz)*Kind[n];
+				Sz[n] = (-sin(KZ)*sin(Theta)*rx+cos(KZ)*sin(Theta)*ry+cos(Theta)*rz)*Kind[n];
 			}
 		}
 	break;
 
 	case 14: // 3D lattice of Bloch points
-		if(chSize!=0)
+		if(chSize>0)
 		{
 			float T1 = 0.f;
 			float T2 = 0.f;

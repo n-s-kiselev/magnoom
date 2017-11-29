@@ -23,9 +23,9 @@ float           axisZ[] = { 0, 0, 1 };
 GLfloat ambient[] = {0.33, 0.22, 0.03, 0.0};
 GLfloat diffuse[] = {0.78, 0.57, 0.11, 1.0};
 GLfloat specular[] = {0.1, 0.1, 0.08, 1.0};
-GLfloat shininess = 20.0;
+GLfloat shininess = 200.0;
 
-float			PerspSet[4]		= {60.0, asp_rat, 1, 1000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
+float			PerspSet[4]		= {60.0, asp_rat, 0.01, 1000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
 
 typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projections
 enProjections	WhichProjection = PERSP; // PERSP by default 	
@@ -37,7 +37,7 @@ enIniState		WhichInitialState = RND;	// RND by default
 typedef enum 	{DEFAULT_G, CILINDER_G, SPHERE_G} enGeom; // which mode
 enGeom         WhichGeometry = DEFAULT_G;
 
-float			chSizeG = 50; // characteristic size of initial state in units of "a"
+float			chSizeG = 50; // characteristic size of simulated domain in units of "a"
 
 // what the glui package defines as true and false:
 const int 		GLUITRUE  = { true  };
@@ -236,6 +236,11 @@ GLfloat*	normals_BASIS	= NULL; // array of normals for tatal vector field
 GLfloat*	colors_BASIS	= NULL; // array of colors 
 GLuint*		indices_BASIS	= NULL; // array of indices for tatal vector field
 
+GLfloat*    vertices_AC_phase  = NULL; // 
+GLfloat*    colors_AC_phase    = NULL; // 
+GLuint*     indices_AC_phase   = NULL; // 
+
+
 GLfloat*	vertices_PBC_A	= NULL; // array of vertexes for tatal vector field 
 GLfloat*	normals_PBC_A	= NULL; // array of normals for tatal vector field
 GLfloat*	colors_PBC_A	= NULL; // array of colors 
@@ -275,6 +280,10 @@ GLuint		vboIdN_BASIS;   // ID of VBO for normal arrays
 GLuint		vboIdC_BASIS;   // ID of VBO for color arrays
 GLuint		iboIdI_BASIS;   // ID of IBO for index arrays
 
+GLuint      vboIdV_AC_phase;   // ID of VBO for vertex arrays
+GLuint      vboIdC_AC_phase;   // ID of VBO for color arrays
+GLuint      iboIdI_AC_phase;   // ID of IBO for index arrays
+
 GLuint		vboIdV_PBC_A, vboIdV_PBC_B, vboIdV_PBC_C;   // ID of VBO for vertex arrays
 GLuint		vboIdN_PBC_A, vboIdN_PBC_B, vboIdN_PBC_C;   // ID of VBO for normal arrays
 GLuint		vboIdC_PBC_A, vboIdC_PBC_B, vboIdC_PBC_C;   // ID of VBO for color arrays
@@ -296,6 +305,9 @@ int			VCNum_BOX;
 
 int			IdNum_BASIS;
 int			VCNum_BASIS;
+
+int         IdNum_AC_phase;
+int         VCNum_AC_phase;
 
 int			IdNum_PBC;
 int			VCNum_PBC;
@@ -336,6 +348,7 @@ void			drawVBO();
 void			drawVBO_H();
 void			drawVBO_BOX();
 void 			drawVBO_BASIS();
+void            drawVBO_AC_phase();
 void			drawVBO_PBC_A();
 void			drawVBO_PBC_B();
 void			drawVBO_PBC_C();
@@ -709,6 +722,19 @@ void Display (void)
 
 	glPopMatrix();//NSK
 
+glDisable(GL_LIGHTING);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+    glMatrixMode( GL_MODELVIEW);
+    glLoadIdentity();
+    
+//drawVBO_AC_phase();//metka
+//glViewport(0, 0, window_width, window_height);
+
+
     // Draw tweak bars
     TwDraw();
     // Present frame buffer
@@ -792,14 +818,14 @@ void setupOpenGL ()
 	glCullFace(GL_FRONT);//GL_FRONT//GL_FRONT_AND_BACK
 	glEnable(GL_CULL_FACE);
 
-	// glEnable(GL_POINT_SMOOTH);
-	// glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_POINT_SMOOTH);
+	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
 
-	// glEnable(GL_LINE_SMOOTH);               
-	// glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_LINE_SMOOTH);               
+	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
-	//glEnable(GL_POLYGON_SMOOTH);
-	// glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_POLYGON_SMOOTH);
+	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 	glEnable(GL_MULTISAMPLE);
 }
 
@@ -823,6 +849,8 @@ void idle ()
 				mtot[0] = Mtot[0]/NOS;
 				mtot[1] = Mtot[1]/NOS;
 				mtot[2] = Mtot[2]/NOS;
+                int  k=123;
+                mtot[2] = sqrt(bSx[k]*bSx[k]+bSy[k]*bSy[k]+bSz[k]*bSz[k]);//metka
 				perSpEnergy = totalEnergy/NOS;
 				totalEnergyFerro = GetTotalEnergyFerro( VHf[0], VHf[1], VHf[2], 
 							NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
@@ -831,7 +859,7 @@ void idle ()
 				perSpEnergyMinusFerro = perSpEnergy - totalEnergyFerro;
 				SpecialEvent=0;
 			}
-			if (timeInterval > 1000){//~1 second
+			if (timeInterval > 500){//~0.5 second
 				FPS = frameCount / (timeInterval * 0.002f);
 				previousTime = currentTime;
 				frameCount = 0;	
@@ -2521,7 +2549,7 @@ void setupTweakBar()
 	}
 
 	TwAddVarRW(initial_bar, "chSize", TW_TYPE_FLOAT,  &chSize, 
-	" min=0 max=100000 step=0.5 help='characteristic size of modulated state: Skyrmion diameter or spiral period' ");
+	" min=-100000 max=100000 step=0.5 help='characteristic size of modulated state: Skyrmion diameter or spiral period' ");
 
 	TwAddVarRW(initial_bar, "chDir", TW_TYPE_DIR3F,  &chDir, 
 	" help='direction of modulations e.g. k-vector of the spin spiral.' ");
@@ -3363,6 +3391,16 @@ void ReallocateArrayDrawing_BASIS()
 	normals_BASIS	= (float  *)malloc(VCNum_BASIS * sizeof( float  ));
 	colors_BASIS	= (float  *)malloc(VCNum_BASIS * sizeof( float  ));
 	indices_BASIS	= (GLuint *)malloc(IdNum_BASIS * sizeof( GLuint ));				
+}
+
+void ReallocateArrayDrawing_AC_phase()
+{
+    free(vertices_AC_phase); free(colors_AC_phase); free(indices_AC_phase);         
+    IdNum_AC_phase = 2; // number of indixes
+    VCNum_AC_phase = 3*2; // metka
+    vertices_AC_phase  = (float  *)malloc(VCNum_AC_phase * sizeof( float  ));
+    colors_AC_phase    = (float  *)malloc(VCNum_AC_phase * sizeof( float  ));
+    indices_AC_phase   = (GLuint *)malloc(IdNum_AC_phase * sizeof( GLuint ));             
 }
 
 void ReallocateArrayDrawing_PBC()
@@ -4654,6 +4692,41 @@ void UpdateVerticesNormalsColors_BASIS(float * vertices, float * normals, float 
 
 }
 
+void UpdateVerticesNormalsColors_AC_phase(float * vertices, float * colors, GLuint * indices)
+{
+    int i=-1;
+    int j=-1;
+    vertices[++i]=0; colors[i]=1;
+    vertices[++i]=0; colors[i]=1;
+    vertices[++i]=0; colors[i]=1;
+    indices[++j]=0;
+
+    vertices[++i]=200; colors[i]=1;
+    vertices[++i]=100; colors[i]=1;
+    vertices[++i]=0;   colors[i]=1;
+    indices[++j]=1;
+
+    // float   d = WireWidth;
+    // float   cube[3][3] = {
+    //             {   1.0f, 0.0f, 0.0f }, // a
+    //             {   0.0f, 1.0f, 0.0f }, // b
+    //             {   0.0f, 0.0f, 1.0f }};// c
+    // float tr[3] = {-d/2, -d/2, -d/2};
+    // float length = 20*d;
+    // float colorR[3]={1, 0, 0};
+    // float colorG[3]={0, 1, 0};
+    // float colorB[3]={0, 0, 1};
+    // float color0[3]={0.1,0.1,0.1};
+    
+    // parallelepiped( cube, tr, length, d, d, colorR, 0, vertices, normals, colors, indices );//X
+    // parallelepiped( cube, tr, d, length, d, colorG, 1, vertices, normals, colors, indices );//Y
+    // parallelepiped( cube, tr, d, d, length, colorB, 2, vertices, normals, colors, indices );//Z
+    // d *= 1.5; tr[0]=-d/2; tr[1]=-d/2; tr[2]=-d/2;
+
+    // parallelepiped( cube, tr, d, d, d, color0, 3, vertices, normals, colors, indices );//O
+
+}
+
 void UpdateVerticesNormalsColors_PBC(int K0, float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
 {
 	float 	d = WireWidth;
@@ -4818,6 +4891,12 @@ void CreateNewVBO_BASIS( ){
 	glGenBuffers(1, &iboIdI_BASIS);
 }
 
+void CreateNewVBO_AC_phase( ){
+    glGenBuffers(1, &vboIdV_AC_phase);
+    glGenBuffers(1, &vboIdC_AC_phase);
+    glGenBuffers(1, &iboIdI_AC_phase);
+}
+
 void CreateNewVBO_PBC( ){
 	glGenBuffers(1, &vboIdV_PBC_A);
 	glGenBuffers(1, &vboIdN_PBC_A);
@@ -4947,6 +5026,22 @@ void UpdateVBO_BASIS(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum_BASIS * sizeof(GLuint), ind);
 }
 
+void UpdateVBO_AC_phase(GLuint * V, GLuint * C, GLuint * I, float * ver, float * col, GLuint * ind)
+{//metka   
+    int VCNum=3*2;
+    glBindBuffer(GL_ARRAY_BUFFER, *V);
+    glBufferData(GL_ARRAY_BUFFER, VCNum * sizeof(float), 0, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum * sizeof(float), ver); 
+    // for cane and point modes we do not need normals  
+    glBindBuffer(GL_ARRAY_BUFFER, *C);
+    glBufferData(GL_ARRAY_BUFFER, VCNum * sizeof(float), 0, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, VCNum * sizeof(float), col);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, IdNum * sizeof(GLuint), 0, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, IdNum * sizeof(GLuint), ind);
+    }
+
 void UpdateVBO_PBC(GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
 {	
 	glBindBuffer(GL_ARRAY_BUFFER, *V);
@@ -5022,7 +5117,7 @@ void drawVBO()
 			glEnable(GL_LIGHTING);
 		break;
 
-		case CANE: // CANE is default vector mode
+		case CANE: 
 		default:
 			glDisable(GL_LIGHTING);
 			glBindBuffer(GL_ARRAY_BUFFER, vboIdC);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
@@ -5128,6 +5223,46 @@ void drawVBO_BASIS()
 
 	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+}
+
+void drawVBO_AC_phase()
+{
+    glDisable(GL_LIGHTING);
+    glBindBuffer(GL_ARRAY_BUFFER, vboIdC_AC_phase);      glColorPointer(3, GL_FLOAT, 0, (void*)0);
+    glBindBuffer(GL_ARRAY_BUFFER, vboIdV_AC_phase);      glVertexPointer(3, GL_FLOAT, 0, (void*)0);  
+
+    glEnableClientState(GL_COLOR_ARRAY);        // enable color arrays
+    glEnableClientState(GL_VERTEX_ARRAY);       // enable vertex arrays 
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_AC_phase);
+    
+    glLineWidth(5.0f);
+    //glDrawElements(GL_LINES, iNum, GL_UNSIGNED_INT, (void*)(iStart*sizeof(GLuint)));// draw a stick VCNum
+    glDrawElements(GL_LINES, IdNum, GL_UNSIGNED_INT, (void*)0);// draw a stick VCNum
+
+    glDisableClientState(GL_VERTEX_ARRAY);      // disable vertex arrays
+    glDisableClientState(GL_COLOR_ARRAY);       // disable normal arrays
+
+    glBindBuffer(GL_ARRAY_BUFFER,           0); // disable vertex arrays
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,   0); // disable normal arrays
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboIdC_AC_phase);      glColorPointer(3, GL_FLOAT, 6*sizeof(float), (void*)0);
+    glBindBuffer(GL_ARRAY_BUFFER, vboIdV_AC_phase);      glVertexPointer(3, GL_FLOAT, 6*sizeof(float), (void*)0);
+
+    glEnableClientState(GL_COLOR_ARRAY);        // enable normal arrays
+    glEnableClientState(GL_VERTEX_ARRAY);       // enable vertex arrays     
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboIdI_AC_phase);
+    
+    glPointSize(10.5f*Scale);
+    glDrawElements(GL_POINTS, IdNum_AC_phase/2, GL_UNSIGNED_INT, (void*)0);// draw a ball (point at the end of the stick)
+
+    glDisableClientState(GL_VERTEX_ARRAY);      // disable vertex arrays
+    glDisableClientState(GL_COLOR_ARRAY);       // disable normal arrays
+
+    glBindBuffer(GL_ARRAY_BUFFER,           0); // disable vertex arrays
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,   0); // disable normal arrays
+    glEnable(GL_LIGHTING);
 }
 
 void drawVBO_PBC_A()

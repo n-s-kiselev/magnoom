@@ -541,9 +541,13 @@ main (int argc, char **argv)
 	UpdateVBO_BOX(&vboIdV_BOX, &vboIdN_BOX, &vboIdC_BOX, &iboIdI_BOX, vertices_BOX, normals_BOX, colors_BOX, indices_BOX);
 
 	ReallocateArrayDrawing_BASIS();
+	ReallocateArrayDrawing_AC_phase();
 	UpdateVerticesNormalsColors_BASIS(vertices_BASIS, normals_BASIS, colors_BASIS, indices_BASIS, Box);
+	UpdateVerticesNormalsColors_AC_phase(vertices_AC_phase, colors_AC_phase, indices_AC_phase);
 	CreateNewVBO_BASIS();
+	CreateNewVBO_AC_phase();
 	UpdateVBO_BASIS(&vboIdV_BASIS, &vboIdN_BASIS, &vboIdC_BASIS, &iboIdI_BASIS, vertices_BASIS, normals_BASIS, colors_BASIS, indices_BASIS);
+	UpdateVBO_AC_phase(&vboIdV_AC_phase, &vboIdC_AC_phase, &iboIdI_AC_phase, vertices_AC_phase, colors_AC_phase, indices_AC_phase);
 
 
 	ReallocateArrayDrawing_PBC();
