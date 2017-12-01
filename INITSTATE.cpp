@@ -443,7 +443,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			float F0 = PI/2;
 			float P = TPI*Jij[0]/Dij[0];
 			float KZ = 0.f;
-			float Theta = acos(Hf*Jij[0]/(Dij[0]*Dij[0]));
+			float Theta = 0;
 			float r1,r2;
 			float rx=0.0f;
 			float ry=0.0f;
@@ -457,20 +457,29 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 				rz=pz[n]-(uABC[2]*0.5-chSize);
 				r1 = sqrt(rx*rx+ry*ry);
 				r2 = sqrt(rx*rx+ry*ry+rz*rz);
-				KZ = 2*PI*rz/P;	
-				
-				F = atan2(ry,rx)+F0;
+				KZ = 2*PI*rz/P;
+
+				//F = atan2(ry,rx)+F0;
 				//T = 2*atan(1/(r2/chSize+1)/tan(acos(rz/r2)/2));
+				if(rz>0){
+					F = atan2(ry,rx) + F0 + chDir[2]*rz*exp((rz-chSize)/chSize)/chSize;			
+				}else{
+					F = atan2(ry,rx)+F0;				
+				}
+
 				T = 2*atan(chDir[0]/(r2/b+1)/tan(acos(rz/r2)/2));
+				Theta = acos(Hf*Jij[0]/(Dij[0]*Dij[0])) * (1-T/PI) * exp(-T*chDir[1]);
 
 				rx = sin(T)*cos(F);
 				ry = sin(T)*sin(F);
 				rz = cos(T);
-
-								
-				Sx[n] = ((cos(KZ)*cos(KZ)+cos(Theta)*sin(KZ)*sin(KZ))*rx+sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*ry+sin(KZ)*sin(Theta)*rz)*Kind[n];
+				Sx[n] = ((cos(KZ)*cos(KZ)+cos(Theta)*sin(KZ)*sin(KZ))*rx + sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*ry + sin(KZ)*sin(Theta)*rz)*Kind[n];
 				Sy[n] = (sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*rx+(cos(KZ)*cos(KZ)*cos(Theta)+sin(KZ)*sin(KZ))*ry-cos(KZ)*sin(Theta)*rz)*Kind[n];
 				Sz[n] = (-sin(KZ)*sin(Theta)*rx+cos(KZ)*sin(Theta)*ry+cos(Theta)*rz)*Kind[n];
+
+				// Sx[n] = sin(T)*cos(F);
+				// Sy[n] = sin(T)*sin(F);
+				// Sz[n] = cos(T);
 			}
 		}
 	break;

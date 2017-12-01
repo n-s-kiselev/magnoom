@@ -849,8 +849,8 @@ void idle ()
 				mtot[0] = Mtot[0]/NOS;
 				mtot[1] = Mtot[1]/NOS;
 				mtot[2] = Mtot[2]/NOS;
-                int  k=123;
-                mtot[2] = sqrt(bSx[k]*bSx[k]+bSy[k]*bSy[k]+bSz[k]*bSz[k]);//metka
+                // int  k=123;
+                // mtot[2] = sqrt(bSx[k]*bSx[k]+bSy[k]*bSy[k]+bSz[k]*bSz[k]);//metka
 				perSpEnergy = totalEnergy/NOS;
 				totalEnergyFerro = GetTotalEnergyFerro( VHf[0], VHf[1], VHf[2], 
 							NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
@@ -1295,8 +1295,20 @@ void TW_CALL CB_RotateAllSpins( void *clientData )
 {	
 	if(fabs(chDir[0])+fabs(chDir[1])+fabs(chDir[2])!=0)
 	{
-		double tmp[3];
+        double tmp[3];
+        // float rx= 0.0f;
+        // float ry= 0.0f;
+        // float rz= 0.0f;
+        // float F = 0.0f;
+        // float T = 10;//180/PI*Dij[0]*Dij[0]/Jij[0];
+        // float P = TPI*Jij[0]/Dij[0];
 		for (int i=0; i<NOS; i++) {
+                // rx=Px[i];
+                // ry=Py[i];
+                // rz=Pz[i];
+                // F = 360*rz/P;
+                // RotateVector(Sx[i],   Sy[i],  Sz[i], 1, 0, 0, T, tmp);
+                // RotateVector(tmp[0], tmp[1], tmp[2], 0, 0, 1, F, tmp);
 			RotateVector(Sx[i], Sy[i], Sz[i], chDir[0], chDir[1], chDir[2], RotateAllSpins, tmp);
 			bSx[i] = Sx[i] = tmp[0];
 			bSy[i] = Sy[i] = tmp[1];

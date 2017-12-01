@@ -258,7 +258,7 @@ float		Bij[]={		// Bij[shell]
 			};
 //Dzyaloshinskii-Moriya Interaction
 float		Dij[]={	// Dij[shell] abs value for DMI vector 
-			0.18,//0.0369138485,	// first shell
+			0.41887902,//0.0369138485,	// first shell
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
@@ -274,7 +274,7 @@ float		VHf[]={ 0.0 , 0.0, 1.0 };
 float 		VHtheta=0;
 float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
-float		Hf=0.01632;//0.01632;
+float		Hf=0.005;//0.01632;
 float       Bdc[]={ Hf*VHf[0] , Hf*VHf[1], Hf*VHf[2] };
 //AC applied H-field:
 float		VHac[]={ 1.0 , 0.0, 0.0 };
