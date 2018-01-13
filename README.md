@@ -9,7 +9,7 @@ Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://githu
 
 ### Contributors:
   1. [Filipp N. Rybakov](http://www.hopfion.com) (Implementation for Windows OS and alternative threads semaphores)
-  2. [Jonathan Chico](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Chico_J.html?nn=758466)
+  2. [Andriy S. Savchenko](https://www.researchgate.net/profile/A_Savchenko) (Implementation of a variety of initial states)
 
 ### Main features:
   * platform independent code writen in C/C++
