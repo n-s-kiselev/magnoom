@@ -509,9 +509,9 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					Hz = Heffz[i]-detMi*inz[i];
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;
-					// bSx[i]=inx[i];
-					// bSy[i]=iny[i];
-					// bSz[i]=inz[i];
+					bSx[i]=inx[i];
+					bSy[i]=iny[i];
+					bSz[i]=inz[i];
 				}
 			}
 		}
@@ -603,7 +603,7 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
-	//final step of midpoint solver:
+	//corrector step:
 	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
@@ -647,6 +647,153 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 					inx[i] = nx * detMi;
 					iny[i] = ny * detMi;
 					inz[i] = nz * detMi;
+
+					//find max torque
+					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
+					Hx = Heffx[i]-detMi*inx[i];
+					Hy = Heffy[i]-detMi*iny[i];	
+					Hz = Heffz[i]-detMi*inz[i];
+					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
+					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;
+					bSx[i]=inx[i];
+					bSy[i]=iny[i];
+					bSz[i]=inz[i];
+				}
+			}
+		}
+	}	
+}
+
+
+
+void
+StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector field
+				double* tnx,		double* tny,		double* tnz,		// temporal storage
+				double* heffx,	double* heffy,	double* heffz,	// effective field
+				float* rx,		float* ry,		float* rz,		// random numbers 
+				int nos,		float alpha, 	float h,		// number of spins, damping, time step
+				float temperature, 	int thread,					
+				int naini, 	int nafin,
+				int nbini, 	int nbfin,
+				int ncini, 	int ncfin)
+
+{
+	double rh=sqrt(h);// h = \delta t
+	double nx, ny, nz;// components of the unit vector
+	double Hx, Hy, Hz;// components of the effective field
+	float Cx, Cy, Cz;// spin-torque term
+	float Rx, Ry, Rz;// random variables - thermal fluctuations
+	double Fx, Fy, Fz;// total matrix
+	double detMi;	 // detMi = 1/detM
+	double D = sqrt(2.0 * alpha / (1.0 + alpha * alpha) * temperature);
+	double Alpha_d = alpha / (1.0 + alpha * alpha * Precession);
+	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
+
+	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
+	//electric DC current vector (VCu) and density (Cu)
+	Cx = VCu[0] * Cu;
+	Cy = VCu[1] * Cu;
+	Cz = VCu[2] * Cu;
+	GetEffectiveField( 	inx, iny, inz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);
+	//k1:
+	int Na = uABC[0];
+	int Nb = uABC[1];
+	int nb1, nc1;
+	int i;
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
+
+					// deterministic terms of Landau–Lifshitz equation:
+					Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
+					Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
+					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
+
+					// Spin-torque term
+					if (Cu!=0) {
+						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
+						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
+					}
+
+					// stochastic terms of Landau–Lifshitz equation:
+					if (temperature>0) {
+						Fx = Fx + rh * D * ( Alpha_p * Rx + Alpha_d * (ny * Rz - nz * Ry) );
+						Fy = Fy + rh * D * ( Alpha_p * Ry + Alpha_d * (nz * Rx - nx * Rz) );
+						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
+					}
+					
+					tnx[i] = nx - 0.5*h * (ny * Fz - nz * Fy);
+					tny[i] = ny - 0.5*h * (nz * Fx - nx * Fz);
+					tnz[i] = nz - 0.5*h * (nx * Fy - ny * Fx);
+				}
+			}
+		}
+	}
+
+	GetEffectiveField( 	tnx, tny, tnz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);
+
+	//corrector step:
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
+					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
+
+					// deterministic terms of Landau–Lifshitz equation:
+					Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
+					Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
+					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
+
+					// Spin-torque term
+					if (Cu!=0) {
+						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
+						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
+					}
+
+					// stochastic terms of Landau–Lifshitz equation:
+					if (temperature>0) {
+						Fx = Fx + rh * D * ( Alpha_p * Rx + Alpha_d * (ny * Rz - nz * Ry) );
+						Fy = Fy + rh * D * ( Alpha_p * Ry + Alpha_d * (nz * Rx - nx * Rz) );
+						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
+					}
+					//(Cx,Cy,Cz here are used as temp variables)
+					Cx = inx[i] - h * (ny * Fz - nz * Fy);
+					Cy = iny[i] - h * (nz * Fx - nx * Fz);
+					Cz = inz[i] - h * (nx * Fy - ny * Fx);
+
+					//normalize spin
+					detMi = 1.0 / sqrt(Cx*Cx + Cy*Cy + Cz*Cz);
+					inx[i] = Cx * detMi;
+					iny[i] = Cy * detMi;
+					inz[i] = Cz * detMi;
 
 					//find max torque
 					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
@@ -770,7 +917,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
 					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -801,9 +948,9 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					t2Sy[i]+= Cy/3.0;
 					t2Sz[i]+= Cz/3.0;
 					//y_n+k2/2 will be used on the next step
-					tnx[i] = nx + Cx*0.5;
-					tny[i] = ny + Cy*0.5;
-					tnz[i] = nz + Cz*0.5;						
+					tnx[i] = inx[i] + Cx*0.5;
+					tny[i] = iny[i] + Cy*0.5;
+					tnz[i] = inz[i] + Cz*0.5;						
 				}
 			}
 		}
@@ -825,7 +972,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
 					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -856,9 +1003,9 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					t2Sy[i]+= Cy/3.0;
 					t2Sz[i]+= Cz/3.0;
 					//y_n+k3 will be used on the next step
-					tnx[i] = nx + Cx;
-					tny[i] = ny + Cy;
-					tnz[i] = nz + Cz;						
+					tnx[i] = inx[i] + Cx;
+					tny[i] = iny[i] + Cy;
+					tnz[i] = inz[i] + Cz;							
 				}
 			}
 		}
@@ -880,7 +1027,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
 					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -911,9 +1058,9 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					t2Sy[i]+= Cy/6.0;
 					t2Sz[i]+= Cz/6.0;
 					//y_{n+1}=y_n+k1/6+k2/3+k3/3+k4/6 - final step:
-					inx[i] = nx + t2Sx[i];
-					iny[i] = ny + t2Sy[i];
-					inz[i] = nz + t2Sz[i];
+					inx[i]+= t2Sx[i];
+					iny[i]+= t2Sy[i];
+					inz[i]+= t2Sz[i];
 					nx = inx[i];	ny = iny[i];	nz = inz[i];
 					//normalize spin
 					detMi = 1.0 / sqrt(nx*nx + ny*ny + nz*nz);
@@ -1037,8 +1184,9 @@ void *CALC_THREAD(void *void_ptr)
 		HacTime = GetACfield(WhichACField);
 		if (threadindex==0 && Temperature > 0) GetFluctuations(RNx, RNy, RNz, NOS );
 		//StochasticLLG( 	Sx, 	Sy, 	Sz, 
-		StochasticLLG_Heun( 	Sx, 	Sy, 	Sz, 
-		//StochasticLLG_RK45( 	Sx, 	Sy, 	Sz, 
+		//StochasticLLG_Heun( 	Sx, 	Sy, 	Sz, 
+		//StochasticLLG_RK23( 	Sx, 	Sy, 	Sz,
+		StochasticLLG_RK45( 	Sx, 	Sy, 	Sz, 
 						tSx,	tSy, 	tSz, 
 						Heffx, 	Heffy, 	Heffz, 
 						RNx, 	RNy, 	RNz, 
@@ -1062,6 +1210,19 @@ void *CALC_THREAD(void *void_ptr)
 			}
 			
 			ITERATION++;
+			if (ITERATION==Max_Numb_Iteration){
+			    Play=0;
+			    currentIteration=ITERATION;
+			    for (int i=0;i<NOS;i++){
+					bSx[i]=Sx[i];
+					bSy[i]=Sy[i];
+					bSz[i]=Sz[i];
+				}
+				pthread_mutex_lock(&culc_mutex);
+		            ENGINE_MUTEX=WAIT;
+		            SleepTime=3000;
+				pthread_mutex_unlock(&culc_mutex);
+			}
 			//normalize all spins every 100 iterations
 			// if (ITERATION%100==0) 
 			// {
@@ -1088,18 +1249,19 @@ void *CALC_THREAD(void *void_ptr)
 				// BigDataBank[3][recordsCounter] = outputMtotal[2]*iNOS;
 				// BigDataBank[4][recordsCounter] = outputEtotal;
 				//metka text LLG
-				BigDataBank[0][recordsCounter] = (float)ITERATION;
+				BigDataBank[0][recordsCounter] = ITERATION*t_step;
 				BigDataBank[1][recordsCounter] = bSx[0];
 				BigDataBank[2][recordsCounter] = bSy[0];
 				BigDataBank[3][recordsCounter] = bSz[1];
 				BigDataBank[4][recordsCounter] = bSx[1];
-				recordsCounter++;
-				if (recordsCounter==1000){
+				BigDataBank[5][recordsCounter] = bSy[1];
+				BigDataBank[6][recordsCounter] = bSz[1];				recordsCounter++;
+				if (recordsCounter==100){
 					if (outFile!=NULL){
 						for (int i=0; i<recordsCounter; i++){
 							//snprintf(BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i],BigDataBank[0][i]*t_step,BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i]);
 							//metka test LLG
-							snprintf(BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i]*t_step,BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i],BigDataBank[4][i]);
+							snprintf(BuferString,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i],BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i],BigDataBank[5][i],BigDataBank[6][i]);
 							fputs(BuferString,outFile);  							
 						}
 					}
