@@ -312,10 +312,6 @@ int         VCNum_AC_phase;
 int			IdNum_PBC;
 int			VCNum_PBC;
 
-int			Play=0;
-int			SpecialEvent=1;
-
-int			DataTransfer=1;
 
 void			ChangeVectorMode( int );
 void			ChangeColorMap( int );
