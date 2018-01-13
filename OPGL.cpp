@@ -25,7 +25,7 @@ GLfloat diffuse[] = {0.78, 0.57, 0.11, 1.0};
 GLfloat specular[] = {0.1, 0.1, 0.08, 1.0};
 GLfloat shininess = 200.0;
 
-float			PerspSet[4]		= {60.0, asp_rat, 0.01, 1000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
+float			PerspSet[4]		= {60.0, asp_rat, 0.1, 1000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
 
 typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projections
 enProjections	WhichProjection = PERSP; // PERSP by default 	
@@ -845,7 +845,7 @@ void idle ()
 				case 1:
 				totalEnergy = GetTotalEnergy( 	bSx, bSy, bSz, 
 							NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-							Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, Mtot, NOS );
+							Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Etot, Mtot, NOS );
 				mtot[0] = Mtot[0]/NOS;
 				mtot[1] = Mtot[1]/NOS;
 				mtot[2] = Mtot[2]/NOS;
@@ -854,7 +854,7 @@ void idle ()
 				perSpEnergy = totalEnergy/NOS;
 				totalEnergyFerro = GetTotalEnergyFerro( VHf[0], VHf[1], VHf[2], 
 							NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-							Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot, NOS );
+							Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Etot, NOS );
 				totalEnergyFerro = totalEnergyFerro/NOS;	
 				perSpEnergyMinusFerro = perSpEnergy - totalEnergyFerro;
 				SpecialEvent=0;
@@ -2465,14 +2465,22 @@ void setupTweakBar()
 	TwAddSeparator(control_bar, "control_sep2", NULL);
 
 
-	TwAddVarRW(control_bar, "KudDir", TW_TYPE_DIR3F, &VKu, 
-	"label='Ku axis' opened=true help='The axis of uniaxial anisotropy' ");
+	TwAddVarRW(control_bar, "Kud1Dir", TW_TYPE_DIR3F, &VKu1, 
+	"label='Ku1 axis' opened=true help='The axis of the 1-st uniaxial anisotropy' ");
 	temp_color[0] = 55;
 	temp_color[1] = 155;
 	temp_color[2] = 55;
-	TwSetParam(control_bar, "KudDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
-	TwAddVarRW(control_bar, "Ku", TW_TYPE_FLOAT, &Ku, 
-	"label='Ku' help='The value of uniaxial anisotropy' ");
+	TwSetParam(control_bar, "Kud1Dir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
+	TwAddVarRW(control_bar, "Ku", TW_TYPE_FLOAT, &Ku1, 
+	"label='Ku1' help='The value of uniaxial anisotropy' ");
+    //////////////////////////////////////////
+    TwAddSeparator(control_bar, "sepbetweenKu1Ku2", NULL);
+    //////////////////////////////////////////
+    TwAddVarRW(control_bar, "Kud2Dir", TW_TYPE_DIR3F, &VKu2, 
+    "label='Ku2 axis' opened=true help='The axis of the 2-nd uniaxial anisotropy' ");
+    TwSetParam(control_bar, "Kud2Dir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
+    TwAddVarRW(control_bar, "Ku1", TW_TYPE_FLOAT, &Ku2, 
+    "label='Ku2' help='The value of the 2-nd uniaxial anisotropy' ");
 
 	//////////////////////////////////////////
 	TwAddSeparator(control_bar, "sep0", NULL);

@@ -180,6 +180,10 @@ double*		tSx; // temporal array of spin x-component
 double*		tSy; // temporal array of spin y-component
 double*		tSz; // temporal array of spin z-component
 
+double*		t2Sx; // temporal array of spin x-component  RK45
+double*		t2Sy; // temporal array of spin y-component  RK45
+double*		t2Sz; // temporal array of spin z-component  RK45
+
 double*		bSx; // buffer array for data transfer for visulaization
 double*		bSy; // buffer array for data transfer for visulaization
 double*		bSz; // buffer array for data transfer for visulaization
@@ -258,7 +262,7 @@ float		Bij[]={		// Bij[shell]
 			};
 //Dzyaloshinskii-Moriya Interaction
 float		Dij[]={	// Dij[shell] abs value for DMI vector 
-			0.41887902,//0.0369138485,	// first shell
+			0.18,//0.41887902,//0.0369138485,	// first shell
 			0.0,//0.1,	// second shell
 			0.0,//0.085,	// third shell
 			0.0,//0.024,	// fourth shell
@@ -266,15 +270,17 @@ float		Dij[]={	// Dij[shell] abs value for DMI vector
 			0.0
 			};
 //Magnetocrystalline anisotropy:
-float		VKu[]={	0.0 , 0.0, 1.0 }; // uniaxial anisotropy vector
-float		Ku = 0.0;//uniaxial anisotropy constant
+float		VKu1[]={	0.0 , 0.0, 1.0 }; // uniaxial anisotropy vector
+float		VKu2[]={	0.0 , 0.0, 1.0 }; // easy plane anisotropy vector
+float		Ku1 = 0.0;//uniaxial anisotropy constant
+float		Ku2 = 0.0;//uniaxial anisotropy constant
 float		Kc = 0;//cubic anisotropy constant 
 //DC applied H-field:
 float		VHf[]={ 0.0 , 0.0, 1.0 };
 float 		VHtheta=0;
 float       VHphi=0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
-float		Hf=0.005;//0.01632;
+float		Hf=0.01782;//0.01632;
 float       Bdc[]={ Hf*VHf[0] , Hf*VHf[1], Hf*VHf[2] };
 //AC applied H-field:
 float		VHac[]={ 1.0 , 0.0, 0.0 };
@@ -301,7 +307,7 @@ int         Precession=1;
 //damping parameter:
 float		damping=1.0;
 //timestep
-float		t_step=0.1;
+float		t_step=0.1;//1.0/16.0;
 //temperature
 float		Temperature=0.0;
 
@@ -316,7 +322,7 @@ int				currentIteration=0;
 float			FPS, IPS;
 FILE*			outFile;//table output file
 unsigned int 	rec_iteration=1;//each rec_iteration one puts into sxsysz.csv file
-char			BuferString[80];//for output file table
+char			BuferString[800];//for output file table// metka 80 -> 800 test LLG
 double 			outputEtotal;
 double 			outputMtotal[3];
 int 			SleepTime=1000;
@@ -348,6 +354,10 @@ void ReallocateMemoryForAllOther(int NOS){
 	tSx = (double *)calloc(NOS, sizeof(double));
 	tSy = (double *)calloc(NOS, sizeof(double));
 	tSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
+
+	t2Sx = (double *)calloc(NOS, sizeof(double));
+	t2Sy = (double *)calloc(NOS, sizeof(double));
+	t2Sz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
 
 	bSx = (double *)calloc(NOS, sizeof(double));
 	bSy = (double *)calloc(NOS, sizeof(double));
@@ -510,7 +520,7 @@ main (int argc, char **argv)
 	GetBox(abc, uABC, Box);
 	UpdateSpinPositions(abc, uABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
 	UpdateKind(Kind, Px, Py, Pz, NOS, NOSK);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 14 );
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 1);
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
     //  Set OpenGL context initial state.

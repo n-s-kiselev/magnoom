@@ -1,7 +1,7 @@
 void
 GetEffectiveField(	double* sx, double* sy, double* sz, 
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
+					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* heffx, double* heffy, double* heffz, int N, 
 					int naini, 	int nafin,
 					int nbini, 	int nbfin,
@@ -32,11 +32,16 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 					heffx[i] = Hfield*VHfield[0]+AC_FIELD_ON*HacTime*VHac[0];
 					heffy[i] = Hfield*VHfield[1]+AC_FIELD_ON*HacTime*VHac[1];
 					heffz[i] = Hfield*VHfield[2]+AC_FIELD_ON*HacTime*VHac[2];
-					//uniaxial anisotropy:
-					tmp0 = sx[i]*vku[0] + sy[i]*vku[1] + sz[i]*vku[2];
-					heffx[i]+= 2 * ku * vku[0] * tmp0;
-					heffy[i]+= 2 * ku * vku[1] * tmp0;
-					heffz[i]+= 2 * ku * vku[2] * tmp0;
+					//uniaxial anisotropy1:
+					tmp0 = sx[i]*vku1[0] + sy[i]*vku1[1] + sz[i]*vku1[2];
+					heffx[i]+= 2 * ku1 * vku1[0] * tmp0;
+					heffy[i]+= 2 * ku1 * vku1[1] * tmp0;
+					heffz[i]+= 2 * ku1 * vku1[2] * tmp0;
+					//uniaxial anisotropy2:
+					tmp0 = sx[i]*vku2[0] + sy[i]*vku2[1] + sz[i]*vku2[2];
+					heffx[i]+= 2 * ku2 * vku2[0] * tmp0;
+					heffy[i]+= 2 * ku2 * vku2[1] * tmp0;
+					heffz[i]+= 2 * ku2 * vku2[2] * tmp0;
 					//cubic anisotropy:
 					heffx[i]+= 4 * kc * sx[i]*sx[i]*sx[i];
 					heffy[i]+= 4 * kc * sy[i]*sy[i]*sy[i];
@@ -130,7 +135,7 @@ GetTotalEnergyMoment(	double* sx, double* sy, double* sz, double* Hx, double* Hy
 double
 GetTotalEnergyFerro(double sx, double sy, double sz, 
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
+					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* Etot, int N)
 {
 	double tmp0=1.0/sqrt(sx*sx+sy*sy+sz*sz);
@@ -144,9 +149,12 @@ GetTotalEnergyFerro(double sx, double sy, double sz,
 	//H-field (Zeeman energy):
 	//Etot[i] =-Hfield*(VHfield[0]*sx+VHfield[1]*sy+VHfield[2]*sz);
 	Etot[i] =-Hfield*((VHfield[0]+AC_FIELD_ON*HacTime*VHac[0])*sx+(VHfield[1]+AC_FIELD_ON*HacTime*VHac[1])*sy+(VHfield[2]+AC_FIELD_ON*HacTime*VHac[2])*sz);
-	//uniaxial anisotropy:
-	tmp0 = sx*vku[0] + sy*vku[1] + sz*vku[2];
-	Etot[i]-= ku * tmp0 * tmp0;
+	//uniaxial anisotropy1:
+	tmp0 = sx*vku1[0] + sy*vku1[1] + sz*vku1[2];
+	Etot[i]-= ku1 * tmp0 * tmp0;
+	//uniaxial anisotropy2:
+	tmp0 = sx*vku2[0] + sy*vku2[1] + sz*vku2[2];
+	Etot[i]-= ku2 * tmp0 * tmp0;
 	//cubic anisotropy:
 	Etot[i]-= kc * (sx*sx*sx*sx + sy*sy*sy*sy + sz*sz*sz*sz);	
 	}
@@ -212,7 +220,7 @@ GetTotalEnergyFerro(double sx, double sy, double sz,
 double
 GetTotalEnergy(	double* sx, double* sy, double* sz, 
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku, float ku, float kc, float* VHfield, float Hfield,
+					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* Etot,double* Mtot, int N)
 {
 	double tmp0=0;
@@ -225,8 +233,11 @@ GetTotalEnergy(	double* sx, double* sy, double* sz,
 	//H-field (Zeeman energy):
 	Etot[i] =-Hfield*((VHfield[0]+AC_FIELD_ON*HacTime*VHac[0])*sx[i]+(VHfield[1]+AC_FIELD_ON*HacTime*VHac[1])*sy[i]+(VHfield[2]+AC_FIELD_ON*HacTime*VHac[2])*sz[i]);
 	//uniaxial anisotropy:
-	tmp0 = sx[i]*vku[0] + sy[i]*vku[1] + sz[i]*vku[2];
-	Etot[i]-= ku * tmp0 * tmp0;
+	tmp0 = sx[i]*vku1[0] + sy[i]*vku1[1] + sz[i]*vku1[2];
+	Etot[i]-= ku1 * tmp0 * tmp0;
+	//uniaxial anisotropy:
+	tmp0 = sx[i]*vku2[0] + sy[i]*vku2[1] + sz[i]*vku2[2];
+	Etot[i]-= ku2 * tmp0 * tmp0;
 	//cubic anisotropy:
 	Etot[i]-= kc * (sx[i]*sx[i]*sx[i]*sx[i] + sy[i]*sy[i]*sy[i]*sy[i] + sz[i]*sz[i]*sz[i]*sz[i]);	
 	Mtot[0] = Mtot[0] + sx[i];
@@ -363,7 +374,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 	Cz = VCu[2] * Cu;
 	GetEffectiveField( 	inx, iny, inz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
 	int Na = uABC[0];
@@ -441,7 +452,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 
 	GetEffectiveField( 	tnx, tny, tnz, 
 						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS, 
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//final step of midpoint solver:
@@ -506,6 +517,426 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 		}
 	}	
 }
+
+
+void
+StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector field
+				double* tnx,		double* tny,		double* tnz,		// temporal storage
+				double* heffx,	double* heffy,	double* heffz,	// effective field
+				float* rx,		float* ry,		float* rz,		// random numbers 
+				int nos,		float alpha, 	float h,		// number of spins, damping, time step
+				float temperature, 	int thread,					
+				int naini, 	int nafin,
+				int nbini, 	int nbfin,
+				int ncini, 	int ncfin)
+
+{
+	double rh=sqrt(h);// h = \delta t
+	double nx, ny, nz;// components of the unit vector
+	double Hx, Hy, Hz;// components of the effective field
+	float Cx, Cy, Cz;// spin-torque term
+	float Rx, Ry, Rz;// random variables - thermal fluctuations
+	double Fx, Fy, Fz;// total matrix
+	double detMi;	 // detMi = 1/detM
+	double D = sqrt(2.0 * alpha / (1.0 + alpha * alpha) * temperature);
+	double Alpha_d = alpha / (1.0 + alpha * alpha * Precession);
+	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
+
+	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
+	//electric DC current vector (VCu) and density (Cu)
+	Cx = VCu[0] * Cu;
+	Cy = VCu[1] * Cu;
+	Cz = VCu[2] * Cu;
+	GetEffectiveField( 	inx, iny, inz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);
+	//Predictor step:
+	int Na = uABC[0];
+	int Nb = uABC[1];
+	int nb1, nc1;
+	int i;
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
+
+					// deterministic terms of Landau–Lifshitz equation:
+					Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
+					Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
+					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
+
+					// Spin-torque term
+					if (Cu!=0) {
+						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
+						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
+					}
+
+					// stochastic terms of Landau–Lifshitz equation:
+					if (temperature>0) {
+						Fx = Fx + rh * D * ( Alpha_p * Rx + Alpha_d * (ny * Rz - nz * Ry) );
+						Fy = Fy + rh * D * ( Alpha_p * Ry + Alpha_d * (nz * Rx - nx * Rz) );
+						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
+					}
+					
+					tnx[i] = nx - h * (ny * Fz - nz * Fy);
+					tny[i] = ny - h * (nz * Fx - nx * Fz);
+					tnz[i] = nz - h * (nx * Fy - ny * Fx);
+				}
+			}
+		}
+	}
+
+	GetEffectiveField( 	tnx, tny, tnz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);
+
+	//final step of midpoint solver:
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
+					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
+
+					// deterministic terms of Landau–Lifshitz equation:
+					Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
+					Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
+					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
+
+					// Spin-torque term
+					if (Cu!=0) {
+						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
+						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
+					}
+
+					// stochastic terms of Landau–Lifshitz equation:
+					if (temperature>0) {
+						Fx = Fx + rh * D * ( Alpha_p * Rx + Alpha_d * (ny * Rz - nz * Ry) );
+						Fy = Fy + rh * D * ( Alpha_p * Ry + Alpha_d * (nz * Rx - nx * Rz) );
+						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
+					}
+					
+					nx = 0.5 * ( nx + inx[i] - h * (ny * Fz - nz * Fy) );
+					ny = 0.5 * ( ny + iny[i] - h * (nz * Fx - nx * Fz) );
+					nz = 0.5 * ( nz + inz[i] - h * (nx * Fy - ny * Fx) );
+
+					//normalize spin
+					detMi = 1.0 / sqrt(nx*nx + ny*ny + nz*nz);
+					inx[i] = nx * detMi;
+					iny[i] = ny * detMi;
+					inz[i] = nz * detMi;
+
+					//find max torque
+					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
+					Hx = Heffx[i]-detMi*inx[i];
+					Hy = Heffy[i]-detMi*iny[i];	
+					Hz = Heffz[i]-detMi*inz[i];
+					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
+					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;
+					bSx[i]=inx[i];
+					bSy[i]=iny[i];
+					bSz[i]=inz[i];
+				}
+			}
+		}
+	}	
+}
+
+
+void
+StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector field
+				double* tnx,		double* tny,		double* tnz,		// temporal storage
+				double* heffx,	double* heffy,	double* heffz,	// effective field
+				float* rx,		float* ry,		float* rz,		// random numbers 
+				int nos,		float alpha, 	float h,		// number of spins, damping, time step
+				float temperature, 	int thread,					
+				int naini, 	int nafin,
+				int nbini, 	int nbfin,
+				int ncini, 	int ncfin)
+{
+	double rh=sqrt(h);// h = \delta t
+	double nx, ny, nz;// components of the unit vector
+	double Hx, Hy, Hz;// components of the effective field
+	float Cx, Cy, Cz;// spin-torque term
+	float Rx, Ry, Rz;// random variables - thermal fluctuations
+	double Fx, Fy, Fz;// total matrix
+	double detMi;	 // detMi = 1/detM
+	double D = sqrt(2.0 * alpha / (1.0 + alpha * alpha) * temperature);
+	double Alpha_d = alpha / (1.0 + alpha * alpha * Precession);
+	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
+
+	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
+	//electric DC current vector (VCu) and density (Cu)
+	Cx = VCu[0] * Cu;
+	Cy = VCu[1] * Cu;
+	Cz = VCu[2] * Cu;
+	GetEffectiveField( 	inx, iny, inz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);
+	//Predictor step:
+	int Na = uABC[0];
+	int Nb = uABC[1];
+	int nb1, nc1;
+	int i;
+
+	//k1:
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
+
+					// deterministic terms of Landau–Lifshitz equation:
+					Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
+					Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
+					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
+
+					// Spin-torque term
+					if (Cu!=0) {
+						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
+						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
+					}
+
+					// stochastic terms of Landau–Lifshitz equation:
+					if (temperature>0) {
+						Fx = Fx + rh * D * ( Alpha_p * Rx + Alpha_d * (ny * Rz - nz * Ry) );
+						Fy = Fy + rh * D * ( Alpha_p * Ry + Alpha_d * (nz * Rx - nx * Rz) );
+						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
+					}
+					//k1 (Cx,Cy,Cz here are used as temp variables)
+					Cx = - h * (ny * Fz - nz * Fy);
+					Cy = - h * (nz * Fx - nx * Fz);
+					Cz = - h * (nx * Fy - ny * Fx);
+					//save k1/6 in global temp array
+					t2Sx[i] = Cx/6.0;
+					t2Sy[i] = Cy/6.0;
+					t2Sz[i] = Cz/6.0;
+					//y_n+k1/2 will be used on the next step
+					tnx[i] = nx + Cx*0.5;
+					tny[i] = ny + Cy*0.5;
+					tnz[i] = nz + Cz*0.5;				
+				}
+			}
+		}
+	}
+	//Heff(y_n+k1/2):
+	GetEffectiveField( 	tnx, tny, tnz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);
+
+	//k2:
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
+
+					// deterministic terms of Landau–Lifshitz equation:
+					Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
+					Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
+					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
+
+					// Spin-torque term
+					if (Cu!=0) {
+						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
+						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
+					}
+
+					// stochastic terms of Landau–Lifshitz equation:
+					if (temperature>0) {
+						Fx = Fx + rh * D * ( Alpha_p * Rx + Alpha_d * (ny * Rz - nz * Ry) );
+						Fy = Fy + rh * D * ( Alpha_p * Ry + Alpha_d * (nz * Rx - nx * Rz) );
+						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
+					}
+					//k2 (Cx,Cy,Cz here are used as temp variables)
+					Cx = - h * (ny * Fz - nz * Fy);
+					Cy = - h * (nz * Fx - nx * Fz);
+					Cz = - h * (nx * Fy - ny * Fx);
+					//save k2/3 in global temp array
+					t2Sx[i]+= Cx/3.0;
+					t2Sy[i]+= Cy/3.0;
+					t2Sz[i]+= Cz/3.0;
+					//y_n+k2/2 will be used on the next step
+					tnx[i] = nx + Cx*0.5;
+					tny[i] = ny + Cy*0.5;
+					tnz[i] = nz + Cz*0.5;						
+				}
+			}
+		}
+	}
+	//Heff(y_n+k2/2):
+	GetEffectiveField( 	tnx, tny, tnz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);	
+	//k3:
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
+
+					// deterministic terms of Landau–Lifshitz equation:
+					Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
+					Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
+					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
+
+					// Spin-torque term
+					if (Cu!=0) {
+						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
+						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
+					}
+
+					// stochastic terms of Landau–Lifshitz equation:
+					if (temperature>0) {
+						Fx = Fx + rh * D * ( Alpha_p * Rx + Alpha_d * (ny * Rz - nz * Ry) );
+						Fy = Fy + rh * D * ( Alpha_p * Ry + Alpha_d * (nz * Rx - nx * Rz) );
+						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
+					}
+					//k3 (Cx,Cy,Cz here are used as temp variables)
+					Cx = - h * (ny * Fz - nz * Fy);
+					Cy = - h * (nz * Fx - nx * Fz);
+					Cz = - h * (nx * Fy - ny * Fx);
+					//save k2/3 in global temp array
+					t2Sx[i]+= Cx/3.0;
+					t2Sy[i]+= Cy/3.0;
+					t2Sz[i]+= Cz/3.0;
+					//y_n+k3 will be used on the next step
+					tnx[i] = nx + Cx;
+					tny[i] = ny + Cy;
+					tnz[i] = nz + Cz;						
+				}
+			}
+		}
+	}
+	//Heff(y_n+k3):
+	GetEffectiveField( 	tnx, tny, tnz, 
+						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
+						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+						naini, nafin, nbini, nbfin, ncini, ncfin);	
+	//k4:
+	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
+			{
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
+				{
+					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
+
+					// deterministic terms of Landau–Lifshitz equation:
+					Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
+					Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
+					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
+
+					// Spin-torque term
+					if (Cu!=0) {
+						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
+						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
+						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
+					}
+
+					// stochastic terms of Landau–Lifshitz equation:
+					if (temperature>0) {
+						Fx = Fx + rh * D * ( Alpha_p * Rx + Alpha_d * (ny * Rz - nz * Ry) );
+						Fy = Fy + rh * D * ( Alpha_p * Ry + Alpha_d * (nz * Rx - nx * Rz) );
+						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
+					}
+					//k4 (Cx,Cy,Cz here are used as temp variables)
+					Cx = - h * (ny * Fz - nz * Fy);
+					Cy = - h * (nz * Fx - nx * Fz);
+					Cz = - h * (nx * Fy - ny * Fx);
+					//save k4/6 in global temp array
+					t2Sx[i]+= Cx/6.0;
+					t2Sy[i]+= Cy/6.0;
+					t2Sz[i]+= Cz/6.0;
+					//y_{n+1}=y_n+k1/6+k2/3+k3/3+k4/6 - final step:
+					inx[i] = nx + t2Sx[i];
+					iny[i] = ny + t2Sy[i];
+					inz[i] = nz + t2Sz[i];
+					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					//normalize spin
+					detMi = 1.0 / sqrt(nx*nx + ny*ny + nz*nz);
+					inx[i] = nx * detMi;
+					iny[i] = ny * detMi;
+					inz[i] = nz * detMi;
+
+					//find max torque
+					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
+					Hx = Heffx[i]-detMi*inx[i];
+					Hy = Heffy[i]-detMi*iny[i];	
+					Hz = Heffz[i]-detMi*inz[i];
+					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
+					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;	
+					bSx[i]=inx[i];
+					bSy[i]=iny[i];
+					bSz[i]=inz[i];					
+				}
+			}
+		}
+	}
+}
+
 
 void
 SimpleMinimizer(double* inx,		double* iny,		double* inz,		// input vector field
@@ -605,7 +1036,9 @@ void *CALC_THREAD(void *void_ptr)
 		while(ENGINE_MUTEX != DO_IT){ usleep(SleepTime);}
 		HacTime = GetACfield(WhichACField);
 		if (threadindex==0 && Temperature > 0) GetFluctuations(RNx, RNy, RNz, NOS );
-		StochasticLLG( 	Sx, 	Sy, 	Sz, 
+		//StochasticLLG( 	Sx, 	Sy, 	Sz, 
+		StochasticLLG_Heun( 	Sx, 	Sy, 	Sz, 
+		//StochasticLLG_RK45( 	Sx, 	Sy, 	Sz, 
 						tSx,	tSy, 	tSz, 
 						Heffx, 	Heffy, 	Heffz, 
 						RNx, 	RNy, 	RNz, 
@@ -630,18 +1063,18 @@ void *CALC_THREAD(void *void_ptr)
 			
 			ITERATION++;
 			//normalize all spins every 100 iterations
-			if (ITERATION%100==0) 
-			{
-				for (int i=0;i<NOS;i++)
-				{
-					if (Kind[i]!=0){
-					double absS = 1.0f/sqrt(Sx[i]*Sx[i]+Sy[i]*Sy[i]+Sz[i]*Sz[i]);
-					Sx[i] = Sx[i] * absS;
-					Sy[i] = Sy[i] * absS;
-					Sz[i] = Sz[i] * absS;
-					}		
-				}
-			}
+			// if (ITERATION%100==0) 
+			// {
+			// 	for (int i=0;i<NOS;i++)
+			// 	{
+			// 		if (Kind[i]!=0){
+			// 		double absS = 1.0f/sqrt(Sx[i]*Sx[i]+Sy[i]*Sy[i]+Sz[i]*Sz[i]);
+			// 		Sx[i] = Sx[i] * absS;
+			// 		Sy[i] = Sy[i] * absS;
+			// 		Sz[i] = Sz[i] * absS;
+			// 		}		
+			// 	}
+			// }
 
 			//save to file if recording is on
 			if (Record!=0 && ITERATION%rec_iteration == 0){
@@ -649,17 +1082,25 @@ void *CALC_THREAD(void *void_ptr)
 				// 	NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
 				// 	Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu, Ku, Kc, VHf, Hf, Etot0, outputMtotal, NOS );
 				outputEtotal = GetTotalEnergyMoment( bSx, bSy, bSz, Heffx, 	Heffy, 	Heffz, Etot0, outputMtotal, NOS);
+				// BigDataBank[0][recordsCounter] = (float)ITERATION;
+				// BigDataBank[1][recordsCounter] = outputMtotal[0]*iNOS;
+				// BigDataBank[2][recordsCounter] = outputMtotal[1]*iNOS;
+				// BigDataBank[3][recordsCounter] = outputMtotal[2]*iNOS;
+				// BigDataBank[4][recordsCounter] = outputEtotal;
+				//metka text LLG
 				BigDataBank[0][recordsCounter] = (float)ITERATION;
-				BigDataBank[1][recordsCounter] = outputMtotal[0]*iNOS;
-				BigDataBank[2][recordsCounter] = outputMtotal[1]*iNOS;
-				BigDataBank[3][recordsCounter] = outputMtotal[2]*iNOS;
-				BigDataBank[4][recordsCounter] = outputEtotal;
+				BigDataBank[1][recordsCounter] = bSx[0];
+				BigDataBank[2][recordsCounter] = bSy[0];
+				BigDataBank[3][recordsCounter] = bSz[1];
+				BigDataBank[4][recordsCounter] = bSx[1];
 				recordsCounter++;
 				if (recordsCounter==1000){
 					if (outFile!=NULL){
 						for (int i=0; i<recordsCounter; i++){
-							snprintf(BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i],BigDataBank[0][i]*t_step,BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i]);
-							fputs (BuferString,outFile);  							
+							//snprintf(BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i],BigDataBank[0][i]*t_step,BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i]);
+							//metka test LLG
+							snprintf(BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i]*t_step,BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i],BigDataBank[4][i]);
+							fputs(BuferString,outFile);  							
 						}
 					}
 					printf("%s\n", "Recording to file table.csv is done!");

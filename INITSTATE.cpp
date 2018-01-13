@@ -121,7 +121,15 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			Sx[n] = chDir[0]*Kind[n];
 			Sy[n] = chDir[1]*Kind[n];
 			Sz[n] = chDir[2]*Kind[n];	
-		}	
+		}
+		//test LLG integrator //metka
+			// Sx[0] = -sin(PI/4);
+			// Sy[0] = 0;
+			// Sz[0] = cos(PI/4);
+			// Sx[1] =  sin(PI/4);
+			// Sy[1] = 0;
+			// Sz[1] = cos(PI/4);
+		//	
 	break;
 
 	case 2: // skyrmion Q=1
@@ -438,49 +446,94 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 
 	case 13: // globula
 		{
+			for (int n=0; n<NOS; n++)
+			{	
+				Sx[n] = 0;
+				Sy[n] = 0;
+				Sz[n] = 1;	
+			}
+			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,-uABC[1]/2);
+			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,-uABC[1]/2);
+			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[1]/2);
+			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[1]/2);
+			for (int n=0; n<NOS; n++)
+			{
+				if ((pz[n]<chSize/2) & (pz[n]>-chSize/2)){
+					Sx[n] = 0;
+					Sy[n] = 0;
+					Sz[n] = 1;						
+				}
+			}
+
 			float T = 0.f;
 			float F = 0.f;
-			float F0 = PI/2;
-			float P = TPI*Jij[0]/Dij[0];
-			float KZ = 0.f;
-			float Theta = 0;
 			float r1,r2;
 			float rx=0.0f;
 			float ry=0.0f;
 			float rz=0.0f;
-			float b=Jij[0]/(Dij[0]*sin(F0));
 
 			for (int n=0; n<NOS; n++)
 			{
 				rx=px[n];
 				ry=py[n];
-				rz=pz[n]-(uABC[2]*0.5-chSize);
+				rz=pz[n];
 				r1 = sqrt(rx*rx+ry*ry);
 				r2 = sqrt(rx*rx+ry*ry+rz*rz);
-				KZ = 2*PI*rz/P;
-
-				//F = atan2(ry,rx)+F0;
-				//T = 2*atan(1/(r2/chSize+1)/tan(acos(rz/r2)/2));
-				if(rz>0){
-					F = atan2(ry,rx) + F0 + chDir[2]*rz*exp((rz-chSize)/chSize)/chSize;			
+				if (r2<chSize*0.5)
+				{
+					T=PI*exp(-2*r1/chSize);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
+					F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
+					Sx[n] = sin(T)*cos(F)*Kind[n];
+					Sy[n] = sin(T)*sin(F)*Kind[n];
+					Sz[n] = cos(T)*Kind[n];			
 				}else{
-					F = atan2(ry,rx)+F0;				
+					// Sx[n] = 0;
+					// Sy[n] = 0;
+					// Sz[n] = 1;
 				}
-
-				T = 2*atan(chDir[0]/(r2/b+1)/tan(acos(rz/r2)/2));
-				Theta = acos(Hf*Jij[0]/(Dij[0]*Dij[0])) * (1-T/PI) * exp(-T*chDir[1]);
-
-				rx = sin(T)*cos(F);
-				ry = sin(T)*sin(F);
-				rz = cos(T);
-				Sx[n] = ((cos(KZ)*cos(KZ)+cos(Theta)*sin(KZ)*sin(KZ))*rx + sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*ry + sin(KZ)*sin(Theta)*rz)*Kind[n];
-				Sy[n] = (sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*rx+(cos(KZ)*cos(KZ)*cos(Theta)+sin(KZ)*sin(KZ))*ry-cos(KZ)*sin(Theta)*rz)*Kind[n];
-				Sz[n] = (-sin(KZ)*sin(Theta)*rx+cos(KZ)*sin(Theta)*ry+cos(Theta)*rz)*Kind[n];
-
-				// Sx[n] = sin(T)*cos(F);
-				// Sy[n] = sin(T)*sin(F);
-				// Sz[n] = cos(T);
 			}
+
+
+
+
+
+			//CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,0,0);	
+			// float F0 = PI/2;
+			// float P = TPI*Jij[0]/Dij[0];
+			// float KZ = 0.f;
+			// float Theta = 0;
+			// float b=Jij[0]/(Dij[0]*sin(F0));
+			// for (int n=0; n<NOS; n++)
+			// {
+			// 	rx=px[n];
+			// 	ry=py[n];
+			// 	rz=pz[n]-(uABC[2]*0.5-chSize);
+			// 	r1 = sqrt(rx*rx+ry*ry);
+			// 	r2 = sqrt(rx*rx+ry*ry+rz*rz);
+			// 	KZ = 2*PI*rz/P;
+
+			// 	//F = atan2(ry,rx)+F0;
+			// 	//T = 2*atan(1/(r2/chSize+1)/tan(acos(rz/r2)/2));
+			// 	if(rz>0){
+			// 		F = atan2(ry,rx) + F0 + chDir[2]*rz*exp((rz-chSize)/chSize)/chSize;			
+			// 	}else{
+			// 		F = atan2(ry,rx)+F0;				
+			// 	}
+
+			// 	T = 2*atan(chDir[0]/(r2/b+1)/tan(acos(rz/r2)/2));
+			// 	Theta = acos(Hf*Jij[0]/(Dij[0]*Dij[0])) * (1-T/PI) * exp(-T*chDir[1]);
+
+			// 	rx = sin(T)*cos(F);
+			// 	ry = sin(T)*sin(F);
+			// 	rz = cos(T);
+			// 	Sx[n] = ((cos(KZ)*cos(KZ)+cos(Theta)*sin(KZ)*sin(KZ))*rx + sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*ry + sin(KZ)*sin(Theta)*rz)*Kind[n];
+			// 	Sy[n] = (sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*rx+(cos(KZ)*cos(KZ)*cos(Theta)+sin(KZ)*sin(KZ))*ry-cos(KZ)*sin(Theta)*rz)*Kind[n];
+			// 	Sz[n] = (-sin(KZ)*sin(Theta)*rx+cos(KZ)*sin(Theta)*ry+cos(Theta)*rz)*Kind[n];
+
+			// 	// Sx[n] = sin(T)*cos(F);
+			// 	// Sy[n] = sin(T)*sin(F);
+			// 	// Sz[n] = cos(T);
+			// }
 		}
 	break;
 
