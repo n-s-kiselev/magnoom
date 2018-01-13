@@ -305,18 +305,24 @@ float		Cu = 0.0;
 //on/off precession term
 int         Precession=1;
 //damping parameter:
-float		damping=1.0;
+float		damping=0.0;
 //timestep
-float		t_step=0.1;//1.0/16.0;
+float		t_step=1.0/16.0;
 //temperature
 float		Temperature=0.0;
+
+//GUI control
+int				Play=0;
+int				SpecialEvent=1;
+int				DataTransfer=1;//metka possibly to delete
+unsigned int	ITERATION=0; 
+unsigned int 	Max_Numb_Iteration=10000000;
 
 // FPS & IPS
 int				currentTime=0;
 int				previousTime=0;
 int				frameCount=0;
 int				timeInterval=0;
-unsigned int	ITERATION=0; 
 int				previousIteration=0; 
 int				currentIteration=0;
 float			FPS, IPS;

@@ -2420,10 +2420,9 @@ void setupTweakBar()
 
 	//TwAddButton(control_bar, "Run", CB_Run, NULL, "key='r' label='RUN simulation' ");
 	TwAddVarCB(control_bar, "Run", TW_TYPE_BOOL32, CB_Set_Run, CB_Get_Run, &Play, " keyIncr='r' true='On' false='Off' label='RUN simulation' ");
-	TwAddVarRW(control_bar, "Record", TW_TYPE_BOOL32, &Record, 
-	"label='Recording' true='On' false='Off' help='Recording <sx>, <sy>, <sz> in each iteration'");
-	TwAddVarRW(control_bar, "Rec_Iteration", TW_TYPE_INT32, &rec_iteration, 
-	"label='Every iteration' min=1 max=1000 step=1 ");
+	TwAddVarRW(control_bar, "Record", TW_TYPE_BOOL32, &Record, "label='Recording' true='On' false='Off' help='Recording <sx>, <sy>, <sz> in each iteration'");
+	TwAddVarRW(control_bar, "Rec_Iteration", TW_TYPE_INT32, &rec_iteration, "label='Every iteration' min=1 max=1000 step=1 ");
+    TwAddVarRW(control_bar, "Max_Iteration", TW_TYPE_INT32, &Max_Numb_Iteration, "label='Max. Iteration' min=1 max=100000000 step=100 ");
 	TwAddButton(control_bar, "Clean the record", CB_CleanSxSySzFile, NULL, "label= 'Clean the record' help='clean the output file with <sx>, <sy>, <sz>' ");
 	TwAddButton(control_bar, "Reset iterations", CB_ResetIterations, NULL, "label='Reset iterations' ");
 
