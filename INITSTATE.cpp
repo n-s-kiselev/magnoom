@@ -22,6 +22,33 @@ void CreatSkyrmion(float * px, float * py, float * pz, double * sx, double * sy,
 	}
 }
 
+void CreatGlobule(float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Sk_R, float tx, float ty, float tz)
+{
+	float T = 0.f;
+	float F = 0.f;
+	float rx=0.0f;
+	float ry=0.0f;
+	float rz=0.0f;
+	float r1,r2;
+
+	for (int n=0; n<NOS; n++)
+	{
+		rx=px[n]-tx;
+		ry=py[n]-ty;
+		rz=pz[n]-tz;
+		r1 = sqrt(rx*rx+ry*ry);
+		r2 = sqrt(rx*rx+ry*ry+rz*rz);
+		if (r2<chSize*0.5)
+		{
+			T=PI*exp(-2*r1/chSize);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
+			F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
+			Sx[n] = sin(T)*cos(F)*Kind[n];
+			Sy[n] = sin(T)*sin(F)*Kind[n];
+			Sz[n] = cos(T)*Kind[n];			
+		}
+	}
+}
+
 void Rx(float T,double* sx, double* sy, double* sz)
 {
 	double sxp,syp,szp;
@@ -452,52 +479,58 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 				Sy[n] = 0;
 				Sz[n] = 1;	
 			}
-			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,-uABC[1]/2);
-			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,-uABC[1]/2);
-			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[1]/2);
-			CreatSkyrmion(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[1]/2);
-			for (int n=0; n<NOS; n++)
-			{
-				if ((pz[n]<chSize/2) & (pz[n]>-chSize/2)){
-					Sx[n] = 0;
-					Sy[n] = 0;
-					Sz[n] = 1;						
-				}
-			}
+			//hex Lx/Ly=sqrt(3)
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,-uABC[1]/2,-uABC[2]/2);
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,-uABC[1]/2,-uABC[2]/2);
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[1]/2,-uABC[2]/2);
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[1]/2,-uABC[2]/2);
 
-			float T = 0.f;
-			float F = 0.f;
-			float r1,r2;
-			float rx=0.0f;
-			float ry=0.0f;
-			float rz=0.0f;
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize,         0,         0,-uABC[2]/2);
 
-			for (int n=0; n<NOS; n++)
-			{
-				rx=px[n];
-				ry=py[n];
-				rz=pz[n];
-				r1 = sqrt(rx*rx+ry*ry);
-				r2 = sqrt(rx*rx+ry*ry+rz*rz);
-				if (r2<chSize*0.5)
-				{
-					T=PI*exp(-2*r1/chSize);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
-					F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
-					Sx[n] = sin(T)*cos(F)*Kind[n];
-					Sy[n] = sin(T)*sin(F)*Kind[n];
-					Sz[n] = cos(T)*Kind[n];			
-				}else{
-					// Sx[n] = 0;
-					// Sy[n] = 0;
-					// Sz[n] = 1;
-				}
-			}
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,-uABC[1]/2, uABC[2]/2);
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,-uABC[1]/2, uABC[2]/2);
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[1]/2, uABC[2]/2);
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[1]/2, uABC[2]/2);
+
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize,         0,         0, uABC[2]/2);
+
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize,         0,-uABC[0]*sqrt(3)/3, 0);
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[0]*sqrt(3)/6, 0);
+			CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[0]*sqrt(3)/6, 0);
+
+			//bcc
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,-uABC[1]/2,-uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,-uABC[1]/2,-uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[1]/2,-uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[1]/2,-uABC[2]/2);
+
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,-uABC[1]/2, uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,-uABC[1]/2, uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[1]/2, uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[1]/2, uABC[2]/2);
+
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,         0,         0,         0);
 
 
+			//fcc	
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,-uABC[1]/2,-uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,-uABC[1]/2,-uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[1]/2,-uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[1]/2,-uABC[2]/2);
 
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,-uABC[1]/2, uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,-uABC[1]/2, uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2, uABC[1]/2, uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2, uABC[1]/2, uABC[2]/2);
 
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,-uABC[0]/2,         0,         0);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize, uABC[0]/2,         0,         0);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,         0, uABC[1]/2,         0);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,         0,-uABC[1]/2,         0);
 
-			//CreatSkyrmion(px, py, pz, sx, sy, sz, chSize,0,0);	
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,         0,         0, uABC[2]/2);
+			// CreatGlobule(px, py, pz, sx, sy, sz, chSize,         0,         0,-uABC[2]/2);
+
 			// float F0 = PI/2;
 			// float P = TPI*Jij[0]/Dij[0];
 			// float KZ = 0.f;

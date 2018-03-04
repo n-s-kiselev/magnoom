@@ -59,9 +59,9 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 	{
 		Ip= aidxBlock[ni];//index I^prime of spin in the block
 		I = nidxBlock[ni];//index I of neghbor spin in the block
-		J = nidxGridA[ni];//relative index J of block along a-vector for neghbor I
-		K = nidxGridB[ni];//relative index K of block along b-vector for neghbor I
-		L = nidxGridC[ni];//relative index L of block along c-vector for neghbor I
+		J = nidxGridA[ni];//relative index J of the block along a-vector for neghbor I
+		K = nidxGridB[ni];//relative index K of the block along b-vector for neghbor I
+		L = nidxGridC[ni];//relative index L of the block along c-vector for neghbor I
 		S = shellIdx[ni];
 		Je= Jij[S];//Comapre to the expression for the total energy
 		//Je= Jij[S]*Jexc[ni];
@@ -89,16 +89,16 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 					nb1 = Na * ((Nb + nb + K)%Nb);
 					nc1 = Na * Nb * ((Nc + nc + L)%Nc);					
 					j = I  + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
-					//Symmetric Heisenberg exchange:
+					// Symmetric Heisenberg exchange:
 					// heffx[i]+= Je * sx[j] * bc_f;
 					// heffy[i]+= Je * sy[j] * bc_f;
 					// heffz[i]+= Je * sz[j] * bc_f;
-					// //bi-quadratic exchange:
+					// Bi-quadratic exchange:
 					// tmp0 = (sx[i]*sx[j] + sy[i]*sy[j] + sz[i]*sz[j]) * bc_f;
 					// heffx[i]+= 2 * Bq * sx[j] * tmp0;
 					// heffy[i]+= 2 * Bq * sy[j] * tmp0;
 					// heffz[i]+= 2 * Bq * sz[j] * tmp0;
-					// //Dzyaloshinskii-Moriya interaction (antisymmetric exchange):
+					// Dzyaloshinskii-Moriya interaction (antisymmetric exchange):
 					// heffx[i]+= DM*(sy[j]*dz - sz[j]*dy) * bc_f;
 					// heffy[i]+= DM*(sz[j]*dx - sx[j]*dz) * bc_f;
 					// heffz[i]+= DM*(sx[j]*dy - sy[j]*dx) * bc_f;	
@@ -502,7 +502,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					iny[i] = ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
 					inz[i] = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
 
-					//find max torque
+					// find max torque:
 					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
 					Hx = Heffx[i]-detMi*inx[i];
 					Hy = Heffy[i]-detMi*iny[i];	
@@ -1125,6 +1125,7 @@ void *CALC_THREAD(void *void_ptr)
     int dNa=0;
     int dNb=0;
     int dNc=0;
+
     if (uABC[0]%THREADS_NUMBER==0){
     		dNa = uABC[0]/THREADS_NUMBER;
     }else{	dNa = (int)uABC[0]/THREADS_NUMBER+1;}
@@ -1154,8 +1155,8 @@ void *CALC_THREAD(void *void_ptr)
     	nbini = 0; nbfin = uABC[1];
     	ncini = 0; ncfin = uABC[2];
     }else if (uABC[2]>=uABC[0]&&uABC[2]>=uABC[1]){//c-axis is the longest side of the box
-    	ncini = dNa*threadindex; 
-    	if (dNc*(threadindex+1)<uABC[2]){
+    	ncini = dNc*threadindex; 
+    	if ( (dNc*(threadindex+1))<uABC[2]){
     		ncfin = dNc*(threadindex+1);
     	}else{
     		ncfin = uABC[2];
@@ -1173,20 +1174,21 @@ void *CALC_THREAD(void *void_ptr)
     	ncini = 0; ncfin = uABC[2];    	
     }
     // printf("thread[%d]\n",threadindex );
+    // printf("dNa = %d, dNb = %d, dNc = %d\n",dNa, dNb, dNc);
     // printf("naini = %d, nafin = %d\n",naini, nafin);
     // printf("nbini = %d, nbfin = %d\n",nbini, nbfin);
     // printf("ncini = %d, ncfin = %d\n",ncini, ncfin);
-
+    // printf("*************************************\n");
 
 	while(true)
 	{
 		while(ENGINE_MUTEX != DO_IT){ usleep(SleepTime);}
 		HacTime = GetACfield(WhichACField);
 		if (threadindex==0 && Temperature > 0) GetFluctuations(RNx, RNy, RNz, NOS );
-		//StochasticLLG( 	Sx, 	Sy, 	Sz, 
+		StochasticLLG( 	Sx, 	Sy, 	Sz, 
 		//StochasticLLG_Heun( 	Sx, 	Sy, 	Sz, 
 		//StochasticLLG_RK23( 	Sx, 	Sy, 	Sz,
-		StochasticLLG_RK45( 	Sx, 	Sy, 	Sz, 
+		//StochasticLLG_RK45( 	Sx, 	Sy, 	Sz, 
 						tSx,	tSy, 	tSz, 
 						Heffx, 	Heffy, 	Heffz, 
 						RNx, 	RNy, 	RNz, 
@@ -1289,9 +1291,6 @@ void *CALC_THREAD(void *void_ptr)
 			sem_wait(sem_out[threadindex]);
 
 		}else{
-
-
-			//SyncAllThreads();
 			
 			//all other calculation threads
 			sem_wait(sem_in[threadindex]);

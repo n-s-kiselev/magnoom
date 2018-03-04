@@ -152,7 +152,7 @@ float			Block[][3] = {
 int			uABC[3] = {50,50,2};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {6,6,6};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
 //int			uABC[3] = {80,80,20};//Grid dimensionality along translation vectors a, b, c; uABC[i]>0 
-int			Boundary[3] = {1, 1, 1};// boundary conditions along a, b, c translation vectors
+
 
 int			ShellNumber = 1;
 int			AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
