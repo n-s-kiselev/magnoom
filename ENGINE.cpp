@@ -1185,10 +1185,10 @@ void *CALC_THREAD(void *void_ptr)
 		while(ENGINE_MUTEX != DO_IT){ usleep(SleepTime);}
 		HacTime = GetACfield(WhichACField);
 		if (threadindex==0 && Temperature > 0) GetFluctuations(RNx, RNy, RNz, NOS );
-		StochasticLLG( 	Sx, 	Sy, 	Sz, 
+		//StochasticLLG( 	Sx, 	Sy, 	Sz, 
 		//StochasticLLG_Heun( 	Sx, 	Sy, 	Sz, 
 		//StochasticLLG_RK23( 	Sx, 	Sy, 	Sz,
-		//StochasticLLG_RK45( 	Sx, 	Sy, 	Sz, 
+		StochasticLLG_RK45( 	Sx, 	Sy, 	Sz, 
 						tSx,	tSy, 	tSz, 
 						Heffx, 	Heffy, 	Heffz, 
 						RNx, 	RNy, 	RNz, 

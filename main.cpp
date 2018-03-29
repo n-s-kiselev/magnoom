@@ -322,7 +322,7 @@ main (int argc, char **argv)
 	GetBox(abc, uABC, Box);
 	UpdateSpinPositions(abc, uABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
 	UpdateKind(Kind, Px, Py, Pz, NOS, NOSK);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0);
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 11);
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
     // Set OpenGL context initial state.
