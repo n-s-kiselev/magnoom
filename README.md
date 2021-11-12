@@ -8,8 +8,9 @@ Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://githu
   [Nikolai S. Kiselev](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Kiselev_N.html?nn=758466) 
 
 ### Contributors:
-  1. [Filipp N. Rybakov](http://www.hopfion.com) (Implementation for Windows OS and alternative threads semaphores)
-  2. [Andriy S. Savchenko](https://www.researchgate.net/profile/A_Savchenko) (Implementation of a variety of initial states)
+  1. [Vladyslav M. Kuchkin](https://www.researchgate.net/profile/Vladyslav-Kuchkin)
+  2. [Andriy S. Savchenko](https://www.researchgate.net/profile/A_Savchenko) 
+  3. [Filipp N. Rybakov](http://www.quantumandclassical.com/excalibur/)
 
 ### Main features:
   * platform independent code writen in C/C++
@@ -20,7 +21,7 @@ Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://githu
   * advanced visualisation and post processing tools:
     - slicing 
     - filters
-  * reading vector field from [OVF files](http://math.nist.gov/oommf/doc/userguide11b2/userguide/vectorfieldformat.html) ([OOMMF](http://math.nist.gov/oommf/) and [MuMax3](http://mumax.github.io/))  
+  * impor/export in different file format [OVF files](http://math.nist.gov/oommf/doc/userguide11b2/userguide/vectorfieldformat.html) ([OOMMF](http://math.nist.gov/oommf/) and [MuMax3](http://mumax.github.io/))  
   
 
 
@@ -36,7 +37,7 @@ Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://githu
     - Windows: [Microsoft Visual Studio Community 12.0] (https://www.visualstudio.com/vs/community/)
   * install [AntTweakBar](http://anttweakbar.sourceforge.net/) library and its header files such that gcc (or Windows VS) can find them, for detail see [likn](http://anttweakbar.sourceforge.net/doc/tools:anttweakbar:download#contact)
   * compile with 
-    - Ubuntu:`g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL`
+    - Ubuntu:`g++ main.cpp -o magnoom -pthread -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL`
     - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL -Wno-deprecated-declarations`
     - Windows: via System Preferences add the path to the `vcvars64.bat`, for example `"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\amd64\vcvars64.bat"`, then compile with: `cl main.cpp -o magnoom /O3`
     
