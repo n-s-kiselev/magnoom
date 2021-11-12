@@ -46,6 +46,7 @@
 //    pi@raspberrypi: sudo apt-get install libgl1-mesa-dev libgles2-mesa-dev libglew-dev:armhf libglewmx-dev:armhf libglib2.0-dev libglu1-mesa-dev
 //    pi@raspberrypi: g++ main.cpp -o magnoom -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL
 //
+//    sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev libglew-dev
 //    Ubuntu   :  
 //    $ g++ main.cpp -o magnoom -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL 
 //    $ sudo export PATH="/usr/bin:$PATH" {/usr/local/bin/ld: this linker was not configured to use sysroots}
@@ -93,8 +94,6 @@
 #include <string.h>
 #include <stdio.h> //I like printf( )!
 #include <time.h>
-#include "stereomath.h"
-// struct timespec tw = {0,100000000};// delay for 0 s and 10^8 ns =0.1s
 
 #if defined(_WIN32)
 	#include <windows.h>
@@ -123,6 +122,8 @@
 	#define semaphore_ref sem_t*
 #endif
 
+#define ABS(x) ((x)<0?-(x):(x))
+
 pthread_mutex_t  culc_mutex, show_mutex;
 
 enum engine_mutex_flags{DO_IT,WAIT};
@@ -135,34 +136,32 @@ int		DATA_TRANSFER_MUTEX=WAIT_DATA;
 semaphore_ref	sem_in[THREADS_NUMBER];
 semaphore_ref	sem_out[THREADS_NUMBER];
 
-//Alternative version of semaphores
-/*
-semaphore_ref	sem_A1;
-semaphore_ref   sem_A2;
-
-void SyncAllThreads()
-	{
-	if ( sem_trywait(sem_A1)==0 )
-		{
-		sem_wait(sem_A2);
-		} else
-		{
-		for (int i=0;i<(THREADS_NUMBER-1);++i)
-			{sem_post(sem_A1);}
-		for (int i=0;i<(THREADS_NUMBER-1);++i)
-			{sem_post(sem_A2);}
-		}
-	};
-*/
-
+#include "bitmap_image.hpp"
 #include "global.h"		/*All global variables and constants*/
+#include "linmath.h"		/*All global variables and constants*/
+
+void ReallocateMemoryForImages(int NumImages, int NOS){
+    Image_x = (double **) calloc(NumImages, sizeof(double *));
+    for(int i=0;i<NumImages;i++) Image_x[i] = (double *) calloc(NOS, sizeof(double));
+    Image_y = (double **) calloc(NumImages, sizeof(double *));
+    for(int i=0;i<NumImages;i++) Image_y[i] = (double *) calloc(NOS, sizeof(double));
+    Image_z = (double **) calloc(NumImages, sizeof(double *));
+    for(int i=0;i<NumImages;i++) Image_z[i] = (double *) calloc(NOS, sizeof(double));
+
+    dImage_x = (double **) calloc(NumImages, sizeof(double *));
+    for(int i=0;i<NumImages;i++) dImage_x[i] = (double *) calloc(NOS, sizeof(double));
+    dImage_y = (double **) calloc(NumImages, sizeof(double *));
+    for(int i=0;i<NumImages;i++) dImage_y[i] = (double *) calloc(NOS, sizeof(double));
+    dImage_z = (double **) calloc(NumImages, sizeof(double *));
+    for(int i=0;i<NumImages;i++) dImage_z[i] = (double *) calloc(NOS, sizeof(double));
+}
+
 #include "MATH.cpp"		/*All mathematical fuctions*/
 #include "GEOM.cpp"		/*All functions salculating size and neighbors*/
 #include "ENGINE.cpp"	/*CALC THREAD:LLG solver*/
 #include "OPGL.cpp"		/*VISUAL THREAD: All Visualization Functions*/
 #include "INITSTATE.cpp"/*Set of functions for initial states*/
 #include <fcntl.h> 		/* For O_CREAT and other O_**** constants */
-
 
 void ReallocateMemoryForSpins(int NOS){
 	Sx = (double *)calloc(NOS, sizeof(double));
@@ -179,6 +178,10 @@ void ReallocateMemoryForAllOther(int NOS){
 	t2Sx = (double *)calloc(NOS, sizeof(double));
 	t2Sy = (double *)calloc(NOS, sizeof(double));
 	t2Sz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
+
+	t3Sx = (double *)calloc(NOS, sizeof(double));
+	t3Sy = (double *)calloc(NOS, sizeof(double));
+	t3Sz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
 
 	bSx = (double *)calloc(NOS, sizeof(double));
 	bSy = (double *)calloc(NOS, sizeof(double));
@@ -204,6 +207,9 @@ void ReallocateMemoryForAllOther(int NOS){
 	Etot0= (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
 	// For 100x100x100x10^6 spins total allocated memory is about 6*12 = 72 Mega Byte
 	// and possibly may reach up to 100 Mb in total with all other variables.
+
+	Proj = (bool *)calloc(NOS, sizeof(bool));
+
 }
 
 void RestartCalcThreads(pthread_t * thread_id, int * thread_args){
@@ -220,8 +226,8 @@ void RestartCalcThreads(pthread_t * thread_id, int * thread_args){
 /*************************************************************************/
 
 int 
-main (int argc, char **argv)
-{		
+main (int argc, char **argv){
+		
 	for (int i=0; i<THREADS_NUMBER; i++){
 		char name[10]; 
 		snprintf(name,10,"inDoor%d\n",i);
@@ -234,6 +240,7 @@ main (int argc, char **argv)
 		//sem_getvalue(sem_in[i], &value); //Function not implemented on Mac OS X!!!
 		Max_torque[i]=0;
 	} 
+
 
 	////////////////////////////////////////////////
 	srand ( time(NULL) );//init random number seed//
@@ -311,10 +318,11 @@ main (int argc, char **argv)
 
 	ReallocateMemoryForSpins(NOS);
 	ReallocateMemoryForAllOther(NOS);
+	ReallocateMemoryForImages(num_images, NOS);
+	
 
 	pthread_mutex_init(&culc_mutex,0);
 	pthread_mutex_init(&show_mutex,0);
-
 	pthread_t thread_id[THREADS_NUMBER];
 	int thread_args[THREADS_NUMBER];
 	RestartCalcThreads(thread_id, thread_args);
@@ -322,7 +330,7 @@ main (int argc, char **argv)
 	GetBox(abc, uABC, Box);
 	UpdateSpinPositions(abc, uABC, Block, AtomsPerBlock, Box, Px, Py, Pz);
 	UpdateKind(Kind, Px, Py, Pz, NOS, NOSK);
-	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 11);
+	InitSpinComponents( Px, Py, Pz, Sx, Sy, Sz, 0);
 	for (int i=0;i<NOS;i++) { bSx[i]=Sx[i]; bSy[i]=Sy[i]; bSz[i]=Sz[i];}
 
     // Set OpenGL context initial state.
@@ -384,6 +392,7 @@ main (int argc, char **argv)
 	free(tSx);   			free(tSy);   			free(tSz);
 	free(bSx);   			free(bSy);   			free(bSz);
 	free(t2Sx);  			free(t2Sy);  			free(t2Sz);
+	free(t3Sx);  			free(t3Sy);  			free(t3Sz);
 	free(Heffx); 			free(Heffy); 			free(Heffz);
 	free(RNx);   			free(RNy);   			free(RNz);
 	free(Px);    			free(Py);    			free(Pz);
@@ -400,19 +409,9 @@ main (int argc, char **argv)
 	free(RadiusOfShell);
 	free(NeighborsPerAtom);
 
-	fclose (outFile);
-/*
-	for (int i=0; i<THREADS_NUMBER; i++){
-		if (sem_close(sem_in[i]) == -1) {
-		    perror("sem_close");
-		    exit(EXIT_FAILURE);
-		}
-		if (sem_close(sem_out[i]) == -1) {
-		    perror("sem_close");
-		    exit(EXIT_FAILURE);
-		}
+	free(Proj);
 
-	}
-*/
+	fclose (outFile);
+
 	return 0;    
 }
