@@ -74,15 +74,15 @@ Unitf( float vin[3], float vout[3] )
 void
 Enorm( float v1[3], float v2[3], float v3[3], float vout[3] )
 {// normal vector to the element based on three vertexes v1, v2, v3	
-	float tmp1[3];
-	float tmp2[3];
-	tmp1[0]=v2[0]-v1[0];
-	tmp1[1]=v2[1]-v1[1];
-	tmp1[2]=v2[2]-v1[2];
+	float tmp1[3]={v2[0]-v1[0],v2[1]-v1[1],v2[2]-v1[2]};
+	float tmp2[3]={v3[0]-v1[0],v3[1]-v1[1],v3[2]-v1[2]};
+	// tmp1[0]=v2[0]-v1[0];
+	// tmp1[1]=v2[1]-v1[1];
+	// tmp1[2]=v2[2]-v1[2];
 
-	tmp2[0]=v3[0]-v1[0];
-	tmp2[1]=v3[1]-v1[1];
-	tmp2[2]=v3[2]-v1[2];
+	// tmp2[0]=v3[0]-v1[0];
+	// tmp2[1]=v3[1]-v1[1];
+	// tmp2[2]=v3[2]-v1[2];
 	//Crossf( tmp1, tmp2, tmp3 );
 	vout[0] = (tmp1[1]*tmp2[2] - tmp1[2]*tmp2[1]);
 	vout[1] = (tmp1[2]*tmp2[0] - tmp1[0]*tmp2[2]);
@@ -194,4 +194,159 @@ float atan2int( float y, float x )
     // Translate it to the proper quadrant
     uint32_t uatan_2q = (ux_s ^ uy_s) | (uint32_t &)atan_1q;
     return (q + (float &)uatan_2q)*90.f; // Pi/2*180/Pi=90;
+}
+
+
+// Routine to set a quaternion from a rotation axis and angle
+// ( input axis = float[3] angle = float  output: quat = float[4] )
+void SetQuaternionFromAxisAngle(float *axis, float angle, float *quat)
+{
+    float sina2, norm;
+    sina2 = (float)sin(0.5f * angle);
+    norm = (float)sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
+    quat[0] = sina2 * axis[0] / norm;
+    quat[1] = sina2 * axis[1] / norm;
+    quat[2] = sina2 * axis[2] / norm;
+    quat[3] = (float)cos(0.5f * angle);
+}
+
+void SetQuaternionFromVector(float *vector, float *quat)
+{
+    quat[0] = vector[0];//i
+    quat[1] = vector[1];//j
+    quat[2] = vector[2];//k
+    quat[3] = 0;//Re
+}
+
+void GetVectorFromQuaternion(float *quat, float *vector)
+{
+    vector[0] = quat[0];
+    vector[1] = quat[1];
+    vector[2] = quat[2];
+}
+
+void GetEulerFromQuaternion(float *quat, float *vector)
+{
+    vector[0] = R2D*atan2(2*quat[0]*quat[3]-2*quat[1]*quat[2] , 1 - 2*quat[0]*quat[0] - 2*quat[2]*quat[2]);
+    // bank = atan2(2*qx*qw-2*qy*qz , 1 - 2*qx^2 - 2*qz^2)
+    vector[1] = R2D*atan2(2*quat[1]*quat[3]-2*quat[0]*quat[2] , 1 - 2*quat[1]*quat[1] - 2*quat[2]*quat[2]);
+    //heading = atan2(2*qy*qw                      -2*qx*qz , 1 - 2*qy^2 - 2*qz^2)
+    vector[2] = R2D*asin(2*quat[0]*quat[1]+2*quat[2]*quat[3]);
+}
+
+void GetQuaternionFromEuler(float *q, float *Rot)
+{
+    const float D2R2=0.008726646255;//0.5*Pi/180 degrees to radians
+    // Assuming the angles are in radians.
+    float c1 = cos(D2R2 * Rot[1]);//heading
+    float s1 = sin(D2R2 * Rot[1]);//heading
+    float c2 = cos(D2R2 * Rot[2]);//attitude
+    float s2 = sin(D2R2 * Rot[2]);//attitude
+    float c3 = cos(D2R2 * Rot[0]);//bank
+    float s3 = sin(D2R2 * Rot[0]);//bank
+    float c1c2 = c1*c2;
+    float s1s2 = s1*s2;
+    q[3] = c1c2*c3 - s1s2*s3;
+    q[0] = c1c2*s3 + s1s2*c3;
+    q[1] = s1*c2*c3 + c1*s2*s3;
+    q[2] = c1*s2*c3 - s1*c2*s3;
+}
+//metka
+void GetNormQuaternion(float *q, float *qout)
+{
+float magnitude = sqrt(q[0]*q[0]+q[1]*q[1]+q[2]*q[2]+q[3]*q[3]);
+qout[0] = q[0] / magnitude;
+qout[1] = q[1] / magnitude;
+qout[2] = q[2] / magnitude;
+qout[3] = q[3] / magnitude;
+}
+
+void GetQuaternionFromTwoVectors(float *q, float *V0, float *V1)
+{
+        float ex[3]={1,0,0};
+        float ey[3]={0,1,0};
+        float vt[3]={0,0,0};
+        float dot = Dotf(V0, V1);
+        if (dot < -0.999999) {
+            Crossf(V0, ex, vt);
+            if (vt[0]*vt[0]+vt[1]*vt[1]+vt[2]*vt[2] < 1e-12)
+                Crossf(V0, ey, vt);
+            Unitf( vt, vt );
+            SetQuaternionFromAxisAngle(vt, PI, q);
+        } else if (dot > 0.999999) {
+            q[0] = 0;
+            q[1] = 0;
+            q[2] = 0;
+            q[3] = 1;
+        } else {
+            Crossf(V0, V1, vt);
+            q[0] = vt[0];
+            q[1] = vt[1];
+            q[2] = vt[2];
+            q[3] = 1 + dot;
+            GetNormQuaternion(q, q);
+        }
+}
+
+// Routine to convert a quaternion to a 4x4 matrix
+// ( input: quat = float[4]  output: mat = float[4*4] )
+void ConvertQuaternionToMatrix(float *quat, float *mat)
+{
+    float yy2 = 2.0f * quat[1] * quat[1];
+    float xy2 = 2.0f * quat[0] * quat[1];
+    float xz2 = 2.0f * quat[0] * quat[2];
+    float yz2 = 2.0f * quat[1] * quat[2];
+    float zz2 = 2.0f * quat[2] * quat[2];
+    float wz2 = 2.0f * quat[3] * quat[2];
+    float wy2 = 2.0f * quat[3] * quat[1];
+    float wx2 = 2.0f * quat[3] * quat[0];
+    float xx2 = 2.0f * quat[0] * quat[0];
+    mat[0*4+0] = - yy2 - zz2 + 1.0f;
+    mat[0*4+1] = xy2 + wz2;
+    mat[0*4+2] = xz2 - wy2;
+    mat[0*4+3] = 0;
+    mat[1*4+0] = xy2 - wz2;
+    mat[1*4+1] = - xx2 - zz2 + 1.0f;
+    mat[1*4+2] = yz2 + wx2;
+    mat[1*4+3] = 0;
+    mat[2*4+0] = xz2 + wy2;
+    mat[2*4+1] = yz2 - wx2;
+    mat[2*4+2] = - xx2 - yy2 + 1.0f;
+    mat[2*4+3] = 0;
+    mat[3*4+0] = mat[3*4+1] = mat[3*4+2] = 0;
+    mat[3*4+3] = 1;
+}
+
+void RotateVectorByQuaternion(float *v, float *q)
+{
+    float x=v[0];
+    float y=v[1];
+    float z=v[2];
+    //
+    float qxqx=q[0]*q[0];
+    float qyqy=q[1]*q[1];
+    float qzqz=q[2]*q[2];
+    float qwqw=q[3]*q[3];
+    //
+    float qxqy=q[0]*q[1];
+    float qxqz=q[0]*q[2];
+    float qyqz=q[1]*q[2];
+    float qwqx=q[3]*q[0];
+    float qwqy=q[3]*q[1];
+    float qwqz=q[3]*q[2];
+
+    v[0] = x*(   qxqx +   qwqw-qyqy- qzqz) + y*(2*qxqy- 2*qwqz) + z*(2*qxqz+ 2*qwqy);
+    v[1] = x*( 2*qwqz + 2*qxqy) + y*(  qwqw - qxqx + qyqy - qzqz)+ z*(-2*qwqx+ 2*qyqz);
+    v[2] = x*(-2*qwqy + 2*qxqz) + y*(2*qwqx + 2*qyqz) + z*(qwqw - qxqx- qyqy+ qzqz);
+}
+// Routine to multiply 2 quaternions (ie, compose rotations)
+// ( input q1 = float[4] q2 = float[4]  output: qout = float[4] )
+void MultiplyQuaternions(float *q1, float *q2, float *qout)
+{
+    float qr[4];
+    qr[0] = q1[3]*q2[0] + q1[0]*q2[3] + q1[1]*q2[2] - q1[2]*q2[1];
+    qr[1] = q1[3]*q2[1] + q1[1]*q2[3] + q1[2]*q2[0] - q1[0]*q2[2];
+    qr[2] = q1[3]*q2[2] + q1[2]*q2[3] + q1[0]*q2[1] - q1[1]*q2[0];
+    qr[3] = q1[3]*q2[3] -(q1[0]*q2[0] + q1[1]*q2[1] + q1[2]*q2[2]);
+    qout[0] = qr[0]; qout[1] = qr[1]; qout[2] = qr[2]; qout[3] = qr[3];
 }
