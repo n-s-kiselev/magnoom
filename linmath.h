@@ -170,6 +170,15 @@ static inline void mat4x4_mul_vec4(vec4 r, mat4x4 M, vec4 v)
 			r[j] += M[i][j] * v[i];
 	}
 }
+static inline void mat4x4_mul_vec3(vec3 r, mat4x4 M, vec3 v)
+{
+	int i, j;
+	for(j=0; j<3; ++j) {
+		r[j] = 0.f;
+		for(i=0; i<3; ++i)
+			r[j] += M[i][j] * v[i];
+	}
+}
 static inline void mat4x4_translate(mat4x4 T, float x, float y, float z)
 {
 	mat4x4_identity(T);
