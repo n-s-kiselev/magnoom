@@ -36,6 +36,8 @@ Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://githu
     - MacOSX: [link] (https://developer.apple.com/xcode/download/)
     - Windows: [Microsoft Visual Studio Community 12.0] (https://www.visualstudio.com/vs/community/)
   * install [AntTweakBar](http://anttweakbar.sourceforge.net/) library and its header files such that gcc (or Windows VS) can find them, for detail see [likn](http://anttweakbar.sourceforge.net/doc/tools:anttweakbar:download#contact)
+  * One can take the compiled library form the AntTweakBar.zip and copy the header file and the dynamic libraries in corresponding folders.
+    - Ububtu: `sudo cp AntTweakBar.h /usr/include/` and `sudo cp libAntTweakBar.so /usr/bin/` and `sudo cp libAntTweakBar.so.1 /usr/bin/`
   * compile with 
     - Ubuntu:`g++ main.cpp -o magnoom -pthread -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL`
     - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL -Wno-deprecated-declarations`
