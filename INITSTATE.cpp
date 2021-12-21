@@ -317,9 +317,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	case 1: //homogeneous
 		for (int n=0; n<NOS; n++)
 		{	
-			// Sx[n] = chDir[0]*Kind[n];
-			// Sy[n] = chDir[1]*Kind[n];
-			// Sz[n] = chDir[2]*Kind[n];	
+			Sx[n] = chDir[0]*Kind[n];
+			Sy[n] = chDir[1]*Kind[n];
+			Sz[n] = chDir[2]*Kind[n];	
 
 			//tilted FM
 			// Sx[n] = sin(VHtheta*PI/180)*cos(VHphi*PI/180);
@@ -327,9 +327,9 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 			// Sz[n] = cos(VHtheta*PI/180);	
 
 			//cone
-			Sx[n] = sin(acos(Hf/(Dij[0]*Dij[0])))*cos(pz[n]*2*PI/64);
-			Sy[n] = sin(acos(Hf/(Dij[0]*Dij[0])))*sin(pz[n]*2*PI/64);
-			Sz[n] = Hf/(Dij[0]*Dij[0]);	
+			// Sx[n] = sin(acos(Hf/(Dij[0]*Dij[0])))*cos(pz[n]*2*PI/64);
+			// Sy[n] = sin(acos(Hf/(Dij[0]*Dij[0])))*sin(pz[n]*2*PI/64);
+			// Sz[n] = Hf/(Dij[0]*Dij[0]);	
 			// int kz = n%(uABC[0]*uABC[1]);
 			// Sx[n] = sin(acos(0.7975))*cos(pz[n]*2*PI/128);
 			// Sy[n] = sin(acos(0.7975))*sin(pz[n]*2*PI/128);
