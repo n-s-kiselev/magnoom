@@ -41,6 +41,7 @@ Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://githu
   * compile with 
     - Ubuntu:`g++ main.cpp -o magnoom -pthread -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL`
     - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL -Wno-deprecated-declarations`
+    - MacOSX (static linking, AntTweakBar.h and libAntTweakBar.a must be located in the magnoom folder): `g++ main.cpp -o magnoom -O3 -Wall -I. -L. -lAntTweakBar-framework OpenGL -framework GLUT -framework Cocoa -framework Foundation -pthread -Wno-deprecated-declarations -x objective-c++`
     - Windows: via System Preferences add the path to the `vcvars64.bat`, for example `"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\amd64\vcvars64.bat"`, then compile with: `cl main.cpp -o magnoom /O3`
     
 ### Contributing:
