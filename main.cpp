@@ -41,7 +41,13 @@
 //    % g++ main.cpp -o magnoom -O3 -Wall -fno-strict-aliasing -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
 //    Note, in OS X: https://lukecyca.com/2008/glui-235-framework-for-mac-os-x.html
 //    DYLD_LIBRARY_PATH=DYLD_LIBRARY_PATH=/usr/local/opt/gcc/lib/gcc/6/    
-//
+
+/* Mac OS X Apple silicon M1-M4 (static linking with AntTweakBar.a):
+g++ main.cpp -o magnoom -O3 -Wall -I. -L. -lAntTweakBar \
+-framework OpenGL -framework GLUT -framework Cocoa -framework Foundation \
+-pthread -Wno-deprecated-declarations -x objective-c++
+*/
+
 //    Raspberry Pi3:
 //    pi@raspberrypi: sudo apt-get install libgl1-mesa-dev libgles2-mesa-dev libglew-dev:armhf libglewmx-dev:armhf libglib2.0-dev libglu1-mesa-dev
 //    pi@raspberrypi: g++ main.cpp -o magnoom -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL
