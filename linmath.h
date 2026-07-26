@@ -397,9 +397,8 @@ static inline void mat4x4_perspective(mat4x4 m, float y_fov, float aspect, float
 }
 static inline void mat4x4_look_at(mat4x4 m, vec3 eye, vec3 center, vec3 up)
 {
-	/* Adapted from Android's OpenGL Matrix.java.                        */
-	/* See the OpenGL GLUT documentation for gluLookAt for a description */
-	/* of the algorithm. We implement it in a straightforward way:       */
+	/* Adapted from Android's OpenGL Matrix.java. We construct the view   */
+	/* matrix from an eye, target, and up vector in a straightforward way. */
 
 	/* TODO: The negation of of can be spared by swapping the order of
 	 *       operands in the following cross products in the right way. */

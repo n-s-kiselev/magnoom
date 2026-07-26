@@ -58,15 +58,15 @@ The complete source for the application dependencies is stored under [`vendor`](
 
 AntTweakBar's example programs are intentionally not included. GLFW and GLAD are built directly from the vendored source, so no system installation of GLFW, GLAD, or AntTweakBar is needed. Magnoom uses an OpenGL compatibility context because its renderer uses the fixed-function API.
 
-The remaining platform dependencies provide the compiler, system OpenGL/GLU libraries, native window-system headers, and threading support:
+The remaining platform dependencies provide the compiler, system OpenGL libraries, native window-system headers, and threading support:
 
 ### Linux
 
-A C/C++ compiler, `ar`, OpenGL, GLU, X11, and XRandR development files are required. On Debian-based Linux:
+A C/C++ compiler, `ar`, OpenGL, X11, and XRandR development files are required. On Debian-based Linux:
 
 ```sh
 sudo apt update
-sudo apt install build-essential libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev
+sudo apt install build-essential libgl1-mesa-dev libx11-dev libxrandr-dev
 ```
 
 ### macOS
@@ -83,7 +83,7 @@ CoreVideo frameworks. No Homebrew packages are required.
 ### Windows
 
 Use a MinGW-w64 toolchain that provides `gcc`, `g++`, and `ar`. The build
-links against the Windows OpenGL, GLU, GDI, and multimedia system libraries.
+links against the Windows OpenGL, GDI, and multimedia system libraries.
 Run the bootstrap and build commands from a MinGW-compatible terminal.
 
 Supported platforms are Linux, macOS, and Windows with MinGW. The current

@@ -438,8 +438,11 @@ void Display (void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
 	glMatrixMode( GL_PROJECTION ); glLoadIdentity( );
 
-	if( WhichProjection == PERSP )
-	gluPerspective(PerspSet[0], asp_rat, PerspSet[2], PerspSet[3]);	
+	if( WhichProjection == PERSP ) {
+		mat4x4 projection;
+		mat4x4_perspective(projection, D2R*PerspSet[0], asp_rat, PerspSet[2], PerspSet[3]);
+		glMultMatrixf(&projection[0][0]);
+	}
 	else{
 		Vtemp[0] = CameraEye[0] - CameraC[0];
 		Vtemp[1] = CameraEye[1] - CameraC[0];
@@ -455,9 +458,9 @@ void Display (void)
 
 
 	// set the eye position, look-at position, and up-vector:
-	gluLookAt(	CameraEye[0],	CameraEye[1],	CameraEye[2],   // position  
-				CameraC[0],		CameraC[1],		CameraC[2],     // look at
-				CameraUp[0],	CameraUp[1],	CameraUp[2]);   // up
+	mat4x4 view;
+	mat4x4_look_at(view, CameraEye, CameraC, CameraUp);
+	glMultMatrixf(&view[0][0]);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);

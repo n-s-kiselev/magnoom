@@ -10,13 +10,6 @@
 #include <AntTweakBar.h>
 #include "vendor/glfw2/TwGLFW2.h"
 
-#ifdef __APPLE__
-    #define GL_SILENCE_DEPRECATION
-    #include <OpenGL/glu.h>
-#else
-    #include <GL/glu.h>
-#endif
-
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

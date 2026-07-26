@@ -126,9 +126,9 @@ static bool build_magnoom(void)
                    "-framework", "CoreVideo", "-pthread",
                    "-Wno-deprecated-declarations", "-lobjc");
 #elif defined(_WIN32)
-    nob_cmd_append(&cmd, "-lopengl32", "-lglu32", "-lgdi32", "-lwinmm");
+    nob_cmd_append(&cmd, "-lopengl32", "-lgdi32", "-lwinmm");
 #else
-    nob_cmd_append(&cmd, "-lGLU", "-lGL", "-lX11", "-lXrandr", "-lpthread", "-ldl", "-lm");
+    nob_cmd_append(&cmd, "-lGL", "-lX11", "-lXrandr", "-lpthread", "-ldl", "-lm");
 #endif
     return nob_cmd_run(&cmd);
 }
