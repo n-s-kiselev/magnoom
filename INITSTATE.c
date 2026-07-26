@@ -273,7 +273,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 	switch (id)
 	{
 
-	case 0: //random spins
+	case 0:; //random spins
 		double rnd[3];
 		for (int n=0; n<NOS; n++)
 		// for (int n=0; n<uABC[0]; n++)//metka
@@ -970,7 +970,7 @@ void InitSpinComponents(float * px, float * py, float * pz, double * sx, double 
 		printf("spin0x=%f",px[0]);
 	break;
 	
-	case 15: // Normalize all spins
+	case 15:; // Normalize all spins
 	double inv_abs_S;
 	for (int n=0; n<NOS; n++)
 			{	

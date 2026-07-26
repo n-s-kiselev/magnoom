@@ -4,12 +4,12 @@ double
 Dot(double* V0, double* V1)
 	{
 	return (V0[0]*V1[0] + V0[1]*V1[1] + V0[2]*V1[2]);
-	};
+	}
 
 float  Dotf(float* V0, float* V1)
 	{
 	return (V0[0]*V1[0] + V0[1]*V1[1] + V0[2]*V1[2]);
-	};
+	}
 
 void 
 Cross(double* V0, double* V1, double* R)
@@ -17,7 +17,7 @@ Cross(double* V0, double* V1, double* R)
 	R[0] = (V0[1]*V1[2] - V0[2]*V1[1]);
 	R[1] = (V0[2]*V1[0] - V0[0]*V1[2]);
 	R[2] = (V0[0]*V1[1] - V0[1]*V1[0]);
-	};
+	}
 
 void 
 Crossf(float* V0, float* V1, float* R)
@@ -25,7 +25,7 @@ Crossf(float* V0, float* V1, float* R)
 	R[0] = (V0[1]*V1[2] - V0[2]*V1[1]);
 	R[1] = (V0[2]*V1[0] - V0[0]*V1[2]);
 	R[2] = (V0[0]*V1[1] - V0[1]*V1[0]);
-	};
+	}
 
 double
 Unit( double vin[3], double vout[3] )
@@ -180,8 +180,12 @@ float atan2int( float y, float x )
     static const uint32_t sign_mask = 0x80000000;
 
     // Extract the sign bits
-    uint32_t ux_s  = sign_mask & (uint32_t &)x;
-    uint32_t uy_s  = sign_mask & (uint32_t &)y;
+    uint32_t ux;
+    uint32_t uy;
+    memcpy(&ux, &x, sizeof(ux));
+    memcpy(&uy, &y, sizeof(uy));
+    uint32_t ux_s  = sign_mask & ux;
+    uint32_t uy_s  = sign_mask & uy;
 
     // Determine the quadrant offset
     float q = (float)( ( ~ux_s & uy_s ) >> 29 | ux_s >> 30 ); 
@@ -192,8 +196,12 @@ float atan2int( float y, float x )
     float atan_1q =  num / ( x * x + bxy_a + num );
 
     // Translate it to the proper quadrant
-    uint32_t uatan_2q = (ux_s ^ uy_s) | (uint32_t &)atan_1q;
-    return (q + (float &)uatan_2q)*90.f; // Pi/2*180/Pi=90;
+    uint32_t uatan_1q;
+    memcpy(&uatan_1q, &atan_1q, sizeof(uatan_1q));
+    uint32_t uatan_2q = (ux_s ^ uy_s) | uatan_1q;
+    float atan_2q;
+    memcpy(&atan_2q, &uatan_2q, sizeof(atan_2q));
+    return (q + atan_2q)*90.f; // Pi/2*180/Pi=90;
 }
 
 

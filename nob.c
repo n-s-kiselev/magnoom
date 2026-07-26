@@ -13,6 +13,7 @@
 #define GLFW_INCLUDE "vendor/glfw2/include/"
 #define GLFW_SOURCE "vendor/glfw2/glfw2_unity.c"
 #define GLFW_OBJECT BUILD_DIR "glfw2.o"
+#define MAGNOOM_OBJECT BUILD_DIR "magnoom.o"
 #define OUTPUT BUILD_DIR "magnoom"
 #define NOB_HEADER "vendor/nob/nob.h"
 
@@ -106,21 +107,31 @@ static bool build_glfw(void)
     return nob_cmd_run(&cmd);
 }
 
-static bool build_magnoom(void)
+static bool build_magnoom_object(void)
 {
     const char *inputs[] = {
-        "main.cpp", "ENGINE.cpp", "GEOM.cpp", "INITSTATE.cpp", "MATH.cpp", "OPGL.cpp",
+        "main.c", "ENGINE.c", "GEOM.c", "INITSTATE.c", "MATH.c", "OPGL.c",
         "global.h", "linmath.h", ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
         "vendor/stb/stb_image_write.h",
         "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,
     };
+    if (!build_needed(MAGNOOM_OBJECT, inputs, NOB_ARRAY_LEN(inputs))) return true;
+
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, "cc", "-std=c99", "-O3", "-Wall", "-fno-strict-aliasing", "-DTW_STATIC",
+                   "-I" ATB_INCLUDE, "-I" GLAD_INCLUDE, "-I" GLFW_INCLUDE,
+                   "-c", "main.c", "-o", MAGNOOM_OBJECT);
+    return nob_cmd_run(&cmd);
+}
+
+static bool build_magnoom(void)
+{
+    const char *inputs[] = { MAGNOOM_OBJECT, ATB_LIB, GLAD_OBJECT, GLFW_OBJECT };
     const char *output = OUTPUT EXE_EXT;
     if (!build_needed(output, inputs, NOB_ARRAY_LEN(inputs))) return true;
 
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "c++", "-O3", "-Wall", "-fno-strict-aliasing", "-DTW_STATIC",
-                   "-I" ATB_INCLUDE, "-I" GLAD_INCLUDE, "-I" GLFW_INCLUDE,
-                   "main.cpp", GLAD_OBJECT, ATB_LIB, GLFW_OBJECT, "-o", output);
+    nob_cmd_append(&cmd, "c++", MAGNOOM_OBJECT, GLAD_OBJECT, ATB_LIB, GLFW_OBJECT, "-o", output);
 #if defined(__APPLE__)
     nob_cmd_append(&cmd, "-framework", "OpenGL", "-framework", "Cocoa",
                    "-framework", "AppKit", "-framework", "Foundation", "-framework", "IOKit",
@@ -153,6 +164,7 @@ static bool clean(void)
     if (nob_file_exists(ATB_LIB)) ok = nob_delete_file(ATB_LIB) && ok;
     if (nob_file_exists(GLAD_OBJECT)) ok = nob_delete_file(GLAD_OBJECT) && ok;
     if (nob_file_exists(GLFW_OBJECT)) ok = nob_delete_file(GLFW_OBJECT) && ok;
+    if (nob_file_exists(MAGNOOM_OBJECT)) ok = nob_delete_file(MAGNOOM_OBJECT) && ok;
     if (nob_file_exists(OUTPUT EXE_EXT)) ok = nob_delete_file(OUTPUT EXE_EXT) && ok;
     if (nob_file_exists(BUILD_DIR)) ok = nob_delete_file(BUILD_DIR) && ok;
     return ok;
@@ -180,7 +192,8 @@ int main(int argc, char **argv)
     }
 
     if (!nob_mkdir_if_not_exists(BUILD_DIR) || !nob_mkdir_if_not_exists(ATB_BUILD_DIR)) return 1;
-    if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() || !build_magnoom()) return 1;
+    if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() ||
+        !build_magnoom_object() || !build_magnoom()) return 1;
     nob_log(NOB_INFO, "built %s", OUTPUT EXE_EXT);
     return 0;
 }

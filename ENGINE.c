@@ -454,7 +454,7 @@ void
 GetFluctuations( float* rx, float* ry, float* rz, int N ){
 	for (int i=0; i<N; i++){
 		float r[3];
-		float A=sqrt(2*abs(log(t_step)));
+		float A=sqrt(2*fabs(log(t_step)));
 		for(int j=0; j<3; j++){
 			float U = rand() / (float)RAND_MAX;
 			float V = rand() / (float)RAND_MAX;

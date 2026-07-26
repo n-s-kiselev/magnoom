@@ -85,13 +85,13 @@ typedef struct CTwBar TwBar; // structure CTwBar is not exposed.
 
 TW_API TwBar *      TW_CALL TwNewBar(const char *barName);
 TW_API int          TW_CALL TwDeleteBar(TwBar *bar);
-TW_API int          TW_CALL TwDeleteAllBars();
+TW_API int          TW_CALL TwDeleteAllBars(void);
 TW_API int          TW_CALL TwSetTopBar(const TwBar *bar);
-TW_API TwBar *      TW_CALL TwGetTopBar();
+TW_API TwBar *      TW_CALL TwGetTopBar(void);
 TW_API int          TW_CALL TwSetBottomBar(const TwBar *bar);
-TW_API TwBar *      TW_CALL TwGetBottomBar();
+TW_API TwBar *      TW_CALL TwGetBottomBar(void);
 TW_API const char * TW_CALL TwGetBarName(const TwBar *bar);
-TW_API int          TW_CALL TwGetBarCount();
+TW_API int          TW_CALL TwGetBarCount(void);
 TW_API TwBar *      TW_CALL TwGetBarByIndex(int barIndex);
 TW_API TwBar *      TW_CALL TwGetBarByName(const char *barName);
 TW_API int          TW_CALL TwRefreshBar(TwBar *bar);
@@ -201,13 +201,13 @@ typedef enum ETwGraphAPI
 } TwGraphAPI;
 
 TW_API int      TW_CALL TwInit(TwGraphAPI graphAPI, void *device);
-TW_API int      TW_CALL TwTerminate();
+TW_API int      TW_CALL TwTerminate(void);
 
-TW_API int      TW_CALL TwDraw();
+TW_API int      TW_CALL TwDraw(void);
 TW_API int      TW_CALL TwWindowSize(int width, int height);
 
 TW_API int      TW_CALL TwSetCurrentWindow(int windowID); // multi-windows support
-TW_API int      TW_CALL TwGetCurrentWindow();
+TW_API int      TW_CALL TwGetCurrentWindow(void);
 TW_API int      TW_CALL TwWindowExists(int windowID);
 
 typedef enum ETwKeyModifier
@@ -274,7 +274,7 @@ TW_API int      TW_CALL TwMouseButton(TwMouseAction action, TwMouseButtonID butt
 TW_API int      TW_CALL TwMouseMotion(int mouseX, int mouseY);
 TW_API int      TW_CALL TwMouseWheel(int pos);
 
-TW_API const char * TW_CALL TwGetLastError();
+TW_API const char * TW_CALL TwGetLastError(void);
 typedef void (TW_CALL * TwErrorHandler)(const char *errorMessage);
 TW_API void     TW_CALL TwHandleErrors(TwErrorHandler errorHandler);
 

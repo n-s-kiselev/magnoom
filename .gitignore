@@ -34,6 +34,12 @@ magnoom
 
 # Output files
 *.csv
+*.png
 
 # Platform metadata
 .DS_Store
+
+AGENTS.md
+CLAUDE.md
+PLANS.md
+/docs

@@ -11,6 +11,8 @@
 #include "vendor/glfw2/TwGLFW2.h"
 
 #include <math.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h> //I like printf( )!
@@ -19,7 +21,6 @@
 #if defined(_WIN32)
 	#include <windows.h>
 	#include <process.h>
-	#define uint32_t  unsigned long int
 	#define usleep(t)  Sleep( (DWORD)((t)*0.001f) )
 	#define snprintf _snprintf			
 	#define SEM_VALUE_MAX 32767
@@ -81,11 +82,48 @@ void ReallocateMemoryForImages(int NumImages, int NOS){
     for(int i=0;i<NumImages;i++) dImage_z[i] = (double *) calloc(NOS, sizeof(double));
 }
 
-#include "MATH.cpp"		/*All mathematical fuctions*/
-#include "GEOM.cpp"		/*All functions salculating size and neighbors*/
-#include "ENGINE.cpp"	/*CALC THREAD:LLG solver*/
-#include "OPGL.cpp"		/*VISUAL THREAD: All Visualization Functions*/
-#include "INITSTATE.cpp"/*Set of functions for initial states*/
+#include "MATH.c"		/*All mathematical fuctions*/
+#include "GEOM.c"		/*All functions salculating size and neighbors*/
+#include "ENGINE.c"	/*CALC THREAD:LLG solver*/
+#include "OPGL.c"		/*VISUAL THREAD: All Visualization Functions*/
+#include "INITSTATE.c"/*Set of functions for initial states*/
+
+static bool InitializeGlobalState(void)
+{
+	Bdc[0] = Hf*VHf[0];
+	Bdc[1] = Hf*VHf[1];
+	Bdc[2] = Hf*VHf[2];
+	Hac = Hf*(float)sin(PI/180.0);
+	Period_dc = TPI/Omega_dc;
+
+	RadiusOfShell = (float *)calloc((size_t)ShellNumber, sizeof(float));
+	NeighborsPerAtom = (int *)calloc((size_t)AtomsPerBlock, sizeof(int));
+	if (RadiusOfShell == NULL || NeighborsPerAtom == NULL) return false;
+
+	NOS = AtomsPerBlock*uABC[0]*uABC[1]*uABC[2];
+	NOS_AL = AtomsPerBlock*uABC[1]*uABC[2];
+	NOS_BL = AtomsPerBlock*uABC[0]*uABC[2];
+	NOS_CL = AtomsPerBlock*uABC[0]*uABC[1];
+	iNOS = 1.0/NOS;
+	NOB = uABC[0]*uABC[1]*uABC[2];
+	NOB_AL = uABC[1]*uABC[2];
+	NOB_BL = uABC[0]*uABC[2];
+	NOB_CL = uABC[0]*uABC[1];
+
+	asp_rat = (float)window_width/(float)window_height;
+	asp_rat_inv = (float)window_height/(float)window_width;
+	PerspSet[1] = asp_rat;
+	Sz_min1 = (float)cos(theta_max1*PI/180.0);
+	Sz_max1 = (float)cos(theta_min1*PI/180.0);
+	Sz_min2 = (float)cos(theta_max2*PI/180.0);
+	Sz_max2 = (float)cos(theta_min2*PI/180.0);
+	Sz_min3 = (float)cos(theta_max3*PI/180.0);
+	Sz_max3 = (float)cos(theta_min3*PI/180.0);
+	GreedFilterMaxA = uABC[0]-1;
+	GreedFilterMaxB = uABC[1]-1;
+	GreedFilterMaxC = uABC[2]-1;
+	return true;
+}
 #include <fcntl.h> 		/* For O_CREAT and other O_**** constants */
 
 void ReallocateMemoryForSpins(int NOS){
@@ -152,6 +190,10 @@ void RestartCalcThreads(pthread_t * thread_id, int * thread_args){
 
 int 
 main (int argc, char **argv){
+	if (!InitializeGlobalState()) {
+		fprintf(stderr, "Unable to initialize Magnoom data.\n");
+		return 1;
+	}
 		
 	for (int i=0; i<THREADS_NUMBER; i++){
 		char name[10]; 

@@ -11,8 +11,8 @@ enum WindowSpecialKey {
 const char *	WINDOWTITLE = { "Magnoom v1.0" };
 int				window_width	= 1400;//1024;//400;//
 int				window_height	= 800;//768;//300;//
-float 			asp_rat			= (float)( ((double)window_width)/((double)window_height) );
-float 			asp_rat_inv		= (float)( ((double)window_height)/((double)window_width) );
+float 			asp_rat			= 0.0f;
+float 			asp_rat_inv		= 0.0f;
 
 float			CameraEye[3]	= { 0.0, 0.0, 150.0}; // "camera position"
 float			CameraC[3]		= { 0.0, 0.0,  0.0}; // "look at point"
@@ -34,7 +34,7 @@ GLfloat diffuse[] = {0.78, 0.57, 0.11, 1.0};
 GLfloat specular[] = {0.1, 0.1, 0.08, 1.0};
 GLfloat shininess = 200.0;
 
-float			PerspSet[4]		= {60.0, asp_rat, 1, 5000}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}  
+float			PerspSet[4]		= {60.0f, 0.0f, 1.0f, 5000.0f}; // {Setings: Field of view vertical, apect ratio, zNear, zFar}
 
 typedef enum	{ORTHO,	PERSP} enProjections;	// declare new enum type for projections
 enProjections	WhichProjection = PERSP; // PERSP by default 	
@@ -129,19 +129,19 @@ int SpinFilter3=0;
 // int PhiInvert2=0;
 
 int theta_max1 = 90+5; //0.01;//
-float  Sz_min1 = cos(theta_max1*PI/180.0);
+float  Sz_min1 = 0.0f;
 int theta_min1 = 90-5; //0;//   
-float  Sz_max1 = cos(theta_min1*PI/180.0);
+float  Sz_max1 = 0.0f;
 
 int theta_max2 = 180; //0.01;//
-float  Sz_min2 = cos(theta_max2*PI/180.0);
+float  Sz_min2 = 0.0f;
 int theta_min2 = 160; //0;//   
-float  Sz_max2 = cos(theta_min2*PI/180.0);
+float  Sz_max2 = 0.0f;
 
 int theta_max3 = 10; //0.01;//
-float  Sz_min3 = cos(theta_max3*PI/180.0);
+float  Sz_min3 = 0.0f;
 int theta_min3 = 0; //0;//   
-float  Sz_max3 = cos(theta_min3*PI/180.0);
+float  Sz_max3 = 0.0f;
 
 int phi_max1=360;
 int phi_min1=0;
@@ -155,13 +155,13 @@ int phi_min3=0;
 int GreedFilter=0;
 int GreedFilterInvert=0;
 
-int GreedFilterMaxA=uABC[0]-1;// redefined in readConfigFile()
+int GreedFilterMaxA=0;// redefined in readConfigFile()
 int GreedFilterMinA=0;
 
-int GreedFilterMaxB=uABC[1]-1;// redefined in readConfigFile()
+int GreedFilterMaxB=0;// redefined in readConfigFile()
 int GreedFilterMinB=0;
 
-int GreedFilterMaxC=uABC[2]-1;// redefined in readConfigFile()
+int GreedFilterMaxC=0;// redefined in readConfigFile()
 int GreedFilterMinC=0;
 
 // Parameters for initial state 
@@ -326,13 +326,13 @@ void			CreateNewVBO();
 void			UpdateVBO(GLuint * , GLuint * , GLuint * , GLuint * , float * , float * , float * , GLuint * );
 void			UpdateVBO_H(GLuint * , GLuint * , GLuint * , GLuint * , float * , float * , float * , GLuint * );
 void			UpdateSpinComponents(float * , float * , float * , int);
-void			UpdateSpinPositions(float[][3], int[3], float[][3], int, float[3][3], float*, float*, float*);
+void			UpdateSpinPositions(float[][3], int[3], float[][3], int, float[][3], float*, float*, float*);
 void			InitSpinComponents(float * , float * , float * , double * , double * , double * , int N);
 void			UpdateIndices(GLuint * , int, GLuint *, int, int);
 void			UpdateVerticesNormalsColors(float *, float *, int, float *, float *, float *, int, float * , float * , float *, double * , double * , double *, int);
 void 			UpdateVerticesNormalsColors_H(float *, float *, int Kinp, float *, float *, float *, float, float, float, float, float, float);
 // drawing functions
-void			GetBox(float[][3], int[3], float[4][3]);
+void			GetBox(float[][3], int[3], float[3][3]);
 void			drawVBO();
 void			drawVBO_H();
 void			drawVBO_BOX();
@@ -1107,7 +1107,7 @@ void TW_CALL CB_InvertZ( void *clientData ){
 }
 
 void TW_CALL CB_CleanSxSySzFile( void *clientData ){
-  fclose (outFile);//outFile is a global variable - pointer FILE* see also CALC_THREAD in ENGINE.cpp
+  fclose (outFile);//outFile is a global variable - pointer FILE* see also CALC_THREAD in ENGINE.c
 	outFile = fopen ("table.csv","w");
 
 	
@@ -3235,7 +3235,7 @@ void UpdatePrototypeVerNorInd(float * V, float * N, GLuint * I, int faces, int m
 {
 	int   i, j;
 	float H = 1.00f;	// total length
-	float dF=D2R*360.f/float(faces);
+	float dF=D2R*360.f/(float)faces;
 	float R = H*0.20f;	// big radius
 	float r = H*0.06f;	// small radius 
 	float h = H*0.40f;	// H - head

@@ -183,18 +183,18 @@ float           VHphi= 0;
 // float*      VHf=(float *)calloc(3, sizeof(float));
 float           Hf= 0.0;//0.0134936;//0.006149226;//0.006264886;//0.00607212;//0.02428848;////0.65*Dij[0]*Dij[0]/Jij[0];
                 //Theta=3 degree Hf= 0.016342396686686
-float           Bdc[]={ Hf*VHf[0] , Hf*VHf[1], Hf*VHf[2] };
+float           Bdc[]={ 0.0f, 0.0f, 0.0f };
 //AC applied H-field:
 float           VHac[]={ 0.0 , 0.0, 1.0 };
-float           Hac=Hf*sin(1*PI/180);//0.1;//001632;
+float           Hac=0.0f;//0.1;//001632;
 double          Bac[]={ 0.0 , 0.0, 0.0 };//Bac is components of external field for info panel only.
 double          Omega_dc=0.005;//0.029481249;//0.014141413;
-double          Period_dc=TPI/Omega_dc;
+double          Period_dc=0.0;
 float           GPulseWidth=20.0;
 float           t_offset=0.0;
 float           HacTime=0.0;//time (iteration) dependent value of ac field
-enum            enACField{SIN_FIELD, GAUSSIAN_FIELD, SINC_FIELD, CIRCULAR_FIELD} ; // which mode
-enACField       WhichACField = SIN_FIELD;  
+typedef enum    {SIN_FIELD, GAUSSIAN_FIELD, SINC_FIELD, CIRCULAR_FIELD} enACField; // which mode
+enACField       WhichACField = SIN_FIELD;
 
 enum            IntegrationScheme{HEUN,SIB,RK23,RK45,RELAX};
 int             WhichIntegrationScheme = SIB;
@@ -275,7 +275,7 @@ char            outputfilename[64] = "output.csv";
 float Block[2*3] = 
     { 0.0f, 0.0f, 0.0f, 
       0.5f, 0.5f, 0.5f, 
-    };
+    }
  */
 
 
@@ -421,22 +421,22 @@ float           Block[][3] = {
 int             uABC[3] = {10,10,10};//Grid dimensionality along translation vectors a, b, c; uABC[i]>=1 
 int             ShellNumber = 1;
 int             AtomsPerBlock = sizeof(Block)/sizeof(float)/3;
-float*          RadiusOfShell = (float *)calloc(ShellNumber , sizeof(float));  
-int*            NeighborsPerAtom = (int *)calloc(AtomsPerBlock, sizeof(int));
+float*          RadiusOfShell = NULL;
+int*            NeighborsPerAtom = NULL;
 // total number of neighbour pairs per whole map of neighbours
-int             NOS=AtomsPerBlock*uABC[0]*uABC[1]*uABC[2]; // number of spins
-int             NOS_AL=AtomsPerBlock*uABC[1]*uABC[2]; // number of spins per A layer
-int             NOS_BL=AtomsPerBlock*uABC[0]*uABC[2]; // number of spins per B layer
-int             NOS_CL=AtomsPerBlock*uABC[0]*uABC[1]; // number of spins per C layer
+int             NOS=0; // number of spins
+int             NOS_AL=0; // number of spins per A layer
+int             NOS_BL=0; // number of spins per B layer
+int             NOS_CL=0; // number of spins per C layer
 
 int             NOSK = 0;
 
-double          iNOS = 1.0/NOS;
+double          iNOS = 0.0;
 
-int             NOB=uABC[0]*uABC[1]*uABC[2]; // number of Blocks
-int             NOB_AL=uABC[1]*uABC[2]; // number of blocks per A layer
-int             NOB_BL=uABC[0]*uABC[2]; // number of blocks per B layer
-int             NOB_CL=uABC[0]*uABC[1]; // number of blocks per C layer
+int             NOB=0; // number of Blocks
+int             NOB_AL=0; // number of blocks per A layer
+int             NOB_BL=0; // number of blocks per B layer
+int             NOB_CL=0; // number of blocks per C layer
 
 /////////////////////////////////////////////Functions//////////////////////////////
 
@@ -471,7 +471,7 @@ float color_function(float H ){
 
 
 void HSVtoRGB(float Vec[3], float rgb[3], int inV, int inH ){
-    // int H = inH*359+(1-2*inH)*((int) atan2int (Vec[1]+0.01,Vec[0])); //it's fast atan function [int deg], see MATH.cpp
+    // int H = inH*359+(1-2*inH)*((int) atan2int (Vec[1]+0.01,Vec[0])); //it's fast atan function [int deg], see MATH.c
     float S=sqrt(Vec[0]*Vec[0]+Vec[1]*Vec[1]+Vec[2]*Vec[2]);
     float F = atan2(Vec[1]/S,Vec[0]/S);
     float H = inH*360+(1-2*inH)*(F > 0 ? F : (TPI + F))*R2D;
@@ -888,29 +888,21 @@ void Save_VTS_ascii(double* Sx, double* Sy, double* Sz, float * Px, float * Py, 
 }
 
 /// Swap endianness of a value
-float end_swap(const float val, const int size)
+float end_swap_float(const float val, const int size)
     {
     float ret = 0;
     for(int i = 0; i < size; ++i)
         ((char*)&ret)[size-1-i] = ((char*)&val)[i];
     return ret;
-    };
+    }
 
-double end_swap(const double val, const int size)
+double end_swap_double(const double val, const int size)
     {
     double ret = 0;
     for(int i = 0; i < size; ++i)
         ((char*)&ret)[size-1-i] = ((char*)&val)[i];
     return ret;
-    };
-
-int end_swap(const int val, const int size)
-    {
-    int ret = 0;
-    for(int i = 0; i < size; ++i)
-        ((char*)&ret)[size-1-i] = ((char*)&val)[i];
-    return ret;
-    };
+    }
 
 void Save_VTK(double* Sx, double* Sy, double* Sz, const int mode, char vtk_filename[64])
 {
@@ -974,9 +966,9 @@ void Save_VTK(double* Sx, double* Sy, double* Sz, const int mode, char vtk_filen
         //             temp1 = temp1/AtomsPerBlock;
         //             temp2 = temp2/AtomsPerBlock;
         //             if (mode==0){
-        //                 temp0 = end_swap(temp0, sizeof(temp0));
-        //                 temp1 = end_swap(temp1, sizeof(temp1));
-        //                 temp2 = end_swap(temp2, sizeof(temp2));
+        //                 temp0 = end_swap_float(temp0, sizeof(temp0));
+        //                 temp1 = end_swap_float(temp1, sizeof(temp1));
+        //                 temp2 = end_swap_float(temp2, sizeof(temp2));
         //                 fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
         //                 fwrite ((const char*)&temp1, sizeof(float), 1, pFile);
         //                 fwrite ((const char*)&temp2, sizeof(float), 1, pFile);
@@ -1021,9 +1013,9 @@ void Save_VTK(double* Sx, double* Sy, double* Sz, const int mode, char vtk_filen
                     temp1 = temp1/AtomsPerBlock;
                     temp2 = temp2/AtomsPerBlock;
                     if (mode==0){
-                        temp0 = end_swap(temp0, sizeof(temp0));
-                        temp1 = end_swap(temp1, sizeof(temp1));
-                        temp2 = end_swap(temp2, sizeof(temp2));
+                        temp0 = end_swap_float(temp0, sizeof(temp0));
+                        temp1 = end_swap_float(temp1, sizeof(temp1));
+                        temp2 = end_swap_float(temp2, sizeof(temp2));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp1, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp2, sizeof(float), 1, pFile);
@@ -1060,7 +1052,7 @@ void Save_VTK(double* Sx, double* Sy, double* Sz, const int mode, char vtk_filen
                         temp2 = temp2/temp3;
                         temp0 = atan2(temp1,temp0) * 180 / PI;
                     if (mode==0){
-                        temp0 = end_swap(temp0, sizeof(temp0));
+                        temp0 = end_swap_float(temp0, sizeof(temp0));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                     }else{
                         snprintf(shortBufer,80,"%.6g ",temp0);
@@ -1095,7 +1087,7 @@ void Save_VTK(double* Sx, double* Sy, double* Sz, const int mode, char vtk_filen
                         temp2 = temp2/temp3;
                         temp0 = atan2(temp1,-temp0) * 180 / PI;
                     if (mode==0){
-                        temp0 = end_swap(temp0, sizeof(temp0));
+                        temp0 = end_swap_float(temp0, sizeof(temp0));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                     }else{
                         snprintf(shortBufer,80,"%.6g ",temp0);
@@ -1119,7 +1111,7 @@ void Save_VTK(double* Sx, double* Sy, double* Sz, const int mode, char vtk_filen
         //             }
         //             temp0 = temp0/AtomsPerBlock;
         //             if (mode==0){
-        //                 temp0 = end_swap(temp0, sizeof(temp0));
+        //                 temp0 = end_swap_float(temp0, sizeof(temp0));
         //                 fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
         //             }else{
         //                 snprintf(shortBufer,80,"%.6g ",temp0);
@@ -1194,9 +1186,9 @@ void Save_VTK_6(double* Sx, double* Sy, double* Sz,
                     temp1 = temp1/AtomsPerBlock;
                     temp2 = temp2/AtomsPerBlock;
                     if (mode==0){
-                        temp0 = end_swap(temp0, sizeof(temp0));
-                        temp1 = end_swap(temp1, sizeof(temp1));
-                        temp2 = end_swap(temp2, sizeof(temp2));
+                        temp0 = end_swap_float(temp0, sizeof(temp0));
+                        temp1 = end_swap_float(temp1, sizeof(temp1));
+                        temp2 = end_swap_float(temp2, sizeof(temp2));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp1, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp2, sizeof(float), 1, pFile);
@@ -1229,9 +1221,9 @@ void Save_VTK_6(double* Sx, double* Sy, double* Sz,
                     temp1 = temp1/AtomsPerBlock;
                     temp2 = temp2/AtomsPerBlock;
                     if (mode==0){
-                        temp0 = end_swap(temp0, sizeof(temp0));
-                        temp1 = end_swap(temp1, sizeof(temp1));
-                        temp2 = end_swap(temp2, sizeof(temp2));
+                        temp0 = end_swap_float(temp0, sizeof(temp0));
+                        temp1 = end_swap_float(temp1, sizeof(temp1));
+                        temp2 = end_swap_float(temp2, sizeof(temp2));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp1, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp2, sizeof(float), 1, pFile);
@@ -1272,7 +1264,7 @@ void Save_VTK_6(double* Sx, double* Sy, double* Sz,
                         temp2 = temp2/temp3;
                         temp0 = atan2(temp1,temp0) * 180 / PI;
                     if (mode==0){
-                        temp0 = end_swap(temp0, sizeof(temp0));
+                        temp0 = end_swap_float(temp0, sizeof(temp0));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                     }else{
                         snprintf(shortBufer,80,"%.6g ",temp0);
@@ -1307,7 +1299,7 @@ void Save_VTK_6(double* Sx, double* Sy, double* Sz,
                         temp2 = temp2/temp3;
                         temp0 = atan2(temp1,-temp0) * 180 / PI;
                     if (mode==0){
-                        temp0 = end_swap(temp0, sizeof(temp0));
+                        temp0 = end_swap_float(temp0, sizeof(temp0));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                     }else{
                         snprintf(shortBufer,80,"%.6g ",temp0);
@@ -1425,9 +1417,9 @@ if(FilePointer!=NULL) {
                                     if(!fread(&temp4_z,binType,1,FilePointer)) break;
                                     for (int t=0; t<AtomsPerBlock; t++){
                                         int I=n*AtomsPerBlock+t;
-                                        temp4_x = end_swap(temp4_x, sizeof(temp4_x));
-                                        temp4_y = end_swap(temp4_y, sizeof(temp4_y));
-                                        temp4_z = end_swap(temp4_z, sizeof(temp4_z));
+                                        temp4_x = end_swap_float(temp4_x, sizeof(temp4_x));
+                                        temp4_y = end_swap_float(temp4_y, sizeof(temp4_y));
+                                        temp4_z = end_swap_float(temp4_z, sizeof(temp4_z));
                                         Sx[I]=bSx[I]=(double)temp4_x; 
                                         Sy[I]=bSy[I]=(double)temp4_y;
                                         Sz[I]=bSz[I]=(double)temp4_z;      
@@ -1438,9 +1430,9 @@ if(FilePointer!=NULL) {
                                     if(!fread(&temp8_z,binType,1,FilePointer)) break;
                                     for (int t=0; t<AtomsPerBlock; t++){
                                         int I=n*AtomsPerBlock+t;
-                                        temp8_x = end_swap(temp8_x, sizeof(temp8_x));
-                                        temp8_y = end_swap(temp8_y, sizeof(temp8_y));
-                                        temp8_z = end_swap(temp8_z, sizeof(temp8_z));
+                                        temp8_x = end_swap_double(temp8_x, sizeof(temp8_x));
+                                        temp8_y = end_swap_double(temp8_y, sizeof(temp8_y));
+                                        temp8_z = end_swap_double(temp8_z, sizeof(temp8_z));
                                         Sx[I]=bSx[I]=temp8_x; 
                                         Sy[I]=bSy[I]=temp8_y;
                                         Sz[I]=bSz[I]=temp8_z;       

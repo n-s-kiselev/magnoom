@@ -6,7 +6,7 @@ Magnoom is software for atomistic spin-dynamics simulations with real-time OpenG
 
 ## Main features
 
-- Portable C/C++ code for Linux, macOS, and Windows (MinGW)
+- Portable C99 application code for Linux, macOS, and Windows (MinGW)
 - Multithreaded spin-dynamics calculations
 - Real-time parameter control through AntTweakBar
 - OpenGL visualization and post-processing tools, including slicing and filtering
@@ -43,6 +43,8 @@ The build produces:
 - `build/libAntTweakBar.a` — the statically linked AntTweakBar library
 - intermediate objects under `build/`
 
+Magnoom's application sources are compiled as C99. The vendored AntTweakBar implementation remains C++, so the final executable is linked with the C++ compiler driver.
+
 The `nob` executable automatically rebuilds itself when `nob.c` or its vendored `nob.h` changes. All normal build products are contained in `build/`, except for the bootstrapped `nob` executable itself.
 
 `nob.c` is the only build system for this repository. No CMake, Makefile, Visual Studio project, package-manager build, or dependency download is required.
@@ -63,7 +65,7 @@ The remaining platform dependencies provide the compiler, system OpenGL librarie
 
 ### Linux
 
-A C/C++ compiler, `ar`, OpenGL, X11, and XRandR development files are required. On Debian-based Linux:
+A C99 compiler, a C++ compiler for AntTweakBar, `ar`, OpenGL, X11, and XRandR development files are required. On Debian-based Linux:
 
 ```sh
 sudo apt update
