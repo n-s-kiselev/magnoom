@@ -23,11 +23,17 @@
 *.a
 *.lib
 
-# Executables
+# Executables and build output
 *.exe
 *.out
 *.app
 magnoom
+/nob
+/nob.old
+/build/
 
 # Output files
 *.csv
+
+# Platform metadata
+.DS_Store

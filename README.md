@@ -1,53 +1,133 @@
-![Alt text](https://github.com/n-s-kiselev/magnoom/blob/master/MagnoomWiki/TitleImage.png)
+![Magnoom](https://github.com/n-s-kiselev/magnoom/blob/master/MagnoomWiki/TitleImage.png)
 
 # Magnoom
 
-Advanced software for Atomistic Spin Dynamics (see also [Wikipage](https://github.com/n-s-kiselev/magnoom/wiki) )
+Magnoom is software for atomistic spin-dynamics simulations with real-time
+OpenGL visualization and interactive parameter control. See the
+[project wiki](https://github.com/n-s-kiselev/magnoom/wiki) for additional
+documentation and examples.
 
-### Developer:
-  [Nikolai S. Kiselev](http://www.fz-juelich.de/SharedDocs/Personen/PGI/PGI-1/EN/Kiselev_N.html?nn=758466) 
+## Main features
 
-### Contributors:
-  1. [Vladyslav M. Kuchkin](https://www.researchgate.net/profile/Vladyslav-Kuchkin)
-  2. [Andriy S. Savchenko](https://www.researchgate.net/profile/A_Savchenko) 
-  3. [Filipp N. Rybakov](http://www.quantumandclassical.com/excalibur/)
+- Portable C/C++ code for Linux, macOS, and Windows (MinGW)
+- Multithreaded spin-dynamics calculations
+- Real-time parameter control through AntTweakBar
+- OpenGL visualization and post-processing tools, including slicing and
+  filtering
+- Import and export support for formats used by
+  [OOMMF](https://math.nist.gov/oommf/) and
+  [MuMax3](https://mumax.github.io/), including OVF
 
-### Main features:
-  * platform independent code writen in C/C++
-  * efficiently CPU parallelized, multithreading code
-  * minimal dependencies on external libraries
-  * real time control of the parameters
-  * GUI entirely based on OpenGL 
-  * advanced visualisation and post processing tools:
-    - slicing 
-    - filters
-  * impor/export in different file format [OVF files](http://math.nist.gov/oommf/doc/userguide11b2/userguide/vectorfieldformat.html) ([OOMMF](http://math.nist.gov/oommf/) and [MuMax3](http://mumax.github.io/))  
-  
+## Building
 
+Magnoom uses a single cross-platform
+[`nob.c`](https://github.com/tsoding/nob.h) build program. Bootstrap it once
+from the repository root:
 
-### Dependencies:
-  * gcc >=4.8.1 (possibly can be compiled also with earlier versions of gcc)
-  * OpenGL >= 2.1 (On Ubuntu and MacOS check your version of OpenGL with `glxinfo | grep "OpenGL version"`
-  * [AntTweakBar](http://anttweakbar.sourceforge.net/) by Philippe Decaudin wich is cool C/C++ library allowing graphical user interface in OpenGL applications 
+```sh
+cc nob.c -o nob
+```
 
-### Building from source:
-  * install a C compiler
-    - Ubuntu: `sudo apt-get install gcc`
-    - MacOSX: [link] (https://developer.apple.com/xcode/download/)
-    - Windows: [Microsoft Visual Studio Community 12.0] (https://www.visualstudio.com/vs/community/)
-  * install [AntTweakBar](http://anttweakbar.sourceforge.net/) library and its header files such that gcc (or Windows VS) can find them, for detail see [likn](http://anttweakbar.sourceforge.net/doc/tools:anttweakbar:download#contact)
-  * One can take the compiled library form the AntTweakBar.zip and copy the header file and the dynamic libraries in corresponding folders.
-    - Ububtu: `sudo cp AntTweakBar.h /usr/include/` and `sudo cp libAntTweakBar.so /usr/bin/` and `sudo cp libAntTweakBar.so.1 /usr/bin/`
-  * compile with 
-    - Ubuntu:`g++ main.cpp -o magnoom -pthread -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL`
-    - MacOSX: `g++ main.cpp -o magnoom -pthread -O3 -lAntTweakBar -framework GLUT  -framework OpenGL -Wno-deprecated-declarations`
-    - MacOSX (static linking, AntTweakBar.h and libAntTweakBar.a must be located in the magnoom folder): `g++ main.cpp -o magnoom -O3 -Wall -I. -L. -lAntTweakBar-framework OpenGL -framework GLUT -framework Cocoa -framework Foundation -pthread -Wno-deprecated-declarations -x objective-c++`
-    - Windows: via System Preferences add the path to the `vcvars64.bat`, for example `"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\amd64\vcvars64.bat"`, then compile with: `cl main.cpp -o magnoom /O3`
-    
-### Contributing:
+Then run:
 
-Contributions are welcome!!! 
+```sh
+./nob          # build Magnoom and its vendored dependencies
+./nob -clean   # remove all generated build output
+./nob -help    # list the supported options
+```
 
-To contribute to the code development:
-  - [__fork__](https://help.github.com/articles/fork-a-repo/) our repository on github
-  - send a [__pull request__](https://help.github.com/articles/about-pull-requests/) when your corrections are done and tested.
+On Windows with MinGW, use:
+
+```sh
+gcc nob.c -o nob.exe
+./nob.exe
+```
+
+The build produces:
+
+- `build/magnoom` (`build/magnoom.exe` on Windows) — the application
+- `build/libAntTweakBar.a` — the statically linked AntTweakBar library
+- intermediate objects under `build/`
+
+The `nob` executable automatically rebuilds itself when `nob.c` or its
+vendored `nob.h` changes. All normal build products are contained in
+`build/`, except for the bootstrapped `nob` executable itself.
+
+`nob.c` is the only build system for this repository. No CMake, Makefile,
+Visual Studio project, package-manager build, or dependency download is
+required.
+
+## Dependencies
+
+The complete source for the application dependencies is stored under
+[`vendor`](vendor):
+
+- [AntTweakBar Legacy](https://github.com/n-s-kiselev/AntTweakBar-Legacy) —
+  the real-time OpenGL parameter interface, trimmed to the source needed by
+  Magnoom and built as a static library from `vendor/AntTweakBar-Legacy`
+- GLFW 2.7.9 — window creation, input, and the event loop, built from
+  `vendor/glfw2`
+- [GLAD](https://glad.dav1d.de/) — OpenGL function loading, built from
+  `vendor/glad`
+- [`nob.h`](https://github.com/tsoding/nob.h) — build-system implementation,
+  stored in `vendor/nob`
+
+AntTweakBar's example programs are intentionally not included. GLFW and GLAD
+are built directly from the vendored source, so no system GLFW, GLAD,
+AntTweakBar, or GLUT installation is needed. Magnoom uses an OpenGL
+compatibility context because its renderer still uses the fixed-function API
+and GLU.
+
+The remaining platform dependencies provide the compiler, system OpenGL/GLU
+libraries, native window-system headers, and threading support:
+
+### Linux
+
+A C/C++ compiler, `ar`, OpenGL, GLU, X11, and XRandR development files are
+required. On Ubuntu or Debian:
+
+```sh
+sudo apt update
+sudo apt install build-essential libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev
+```
+
+### macOS
+
+Install the Xcode Command Line Tools:
+
+```sh
+xcode-select --install
+```
+
+The build uses the system OpenGL, Cocoa, AppKit, Foundation, IOKit, and
+CoreVideo frameworks. No Homebrew packages are required.
+
+### Windows
+
+Use a MinGW-w64 toolchain that provides `gcc`, `g++`, and `ar`. The build
+links against the Windows OpenGL, GLU, GDI, and multimedia system libraries.
+Run the bootstrap and build commands from a MinGW-compatible terminal.
+
+Supported platforms are Linux, macOS, and Windows with MinGW. The current
+build has been verified directly on macOS ARM64; the Linux and Windows paths
+are implemented but have not yet been verified in this repository.
+
+## Authors
+
+Developer: [Nikolai S. Kiselev](https://github.com/n-s-kiselev)
+
+Contributors:
+
+1. [Vladyslav M. Kuchkin](https://www.researchgate.net/profile/Vladyslav-Kuchkin)
+2. [Andriy S. Savchenko](https://www.researchgate.net/profile/A_Savchenko)
+3. [Filipp N. Rybakov](http://www.quantumandclassical.com/excalibur/)
+
+## Contributing
+
+Contributions are welcome. Fork the repository and submit a pull request with
+the proposed changes.
+
+## License
+
+See [`LICENSE`](LICENSE). AntTweakBar and the other vendored components retain
+their own license files in their respective directories under [`vendor`](vendor).

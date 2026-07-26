@@ -1550,9 +1550,10 @@ void *CALC_THREAD(void *void_ptr)
     	ncini = 0; ncfin = uABC[2];    	
     }
 
-	while(true)
+	while(!EngineShutdown)
 	{
-		while(ENGINE_MUTEX != DO_IT){ usleep(SleepTime);}
+		while(ENGINE_MUTEX != DO_IT && !EngineShutdown){ usleep(SleepTime);}
+		if (EngineShutdown) break;
 		HacTime = GetACfield(WhichACField);
 		
 		switch (WhichIntegrationScheme){
@@ -1762,6 +1763,9 @@ void *CALC_THREAD(void *void_ptr)
 			}
 
 
+			// All workers leave together after completing the current iteration.
+			if (EngineShutdownRequested) EngineShutdown = true;
+
 			// now it opens the second (out) door in the next (second) thread
 			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
@@ -1781,7 +1785,6 @@ void *CALC_THREAD(void *void_ptr)
 		}
 
 }
-fclose (outFile);
 /* the function must return something - NULL will do */
 return NULL;
 }

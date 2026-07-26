@@ -5,95 +5,17 @@
 //  Created      : April 2016
 //  Modified     : October 2016
 //  
-//  Compilation  : 
-//    Windows7   :  ???
-//
-// The standard gcc available on OS X through XCode and Clang doesn't support OpenMP. To install the Homebrew version of gcc with OpenMP support you need to install it with
-// install brew: ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-// brew doctor
-// sudo chown -R $(whoami):admin /usr/local
-//
-// brew install gcc --without-multilib
-// or as pointed out by @Mark Setchell
-
-// brew reinstall gcc --without-multilib
-// This will install it to the /usr/local/bin directory. Homebrew will install it as gcc-<version>so as not to clobber the gcc bundled with XCode. The current gcc version available from Homebrew will install as gcc-4.9. You can compile programs with OpenMP support using it via
-
-// gcc-4.9 -fopenmp hello.c
-// Alternatively you could put an alias in your .bashrcfile as
-
-// alias gcc='gcc-4.9'
-// and then compile using
-
-// gcc -fopenmp hello.c
-//
-//
-//    Mac OS X   :  
-//    Before you can use a dynamic library as a dependent library, 
-//    the library and its header files must be installed on your computer. 
-//    The standard locations for header files are ~/include, /usr/local/include and /usr/include. 
-//    The standard locations for dynamic libraries are ~/lib, /usr/local/lib, and /usr/lib.
-//    % g++ main.cpp -o magnoom -O3 -Wall -fno-strict-aliasing -I ./include/ -L ./lib -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
-//    % echo "" | gcc -xc - -v -E
-//    % sudo cp ~/Documents/Nick/AntTweakBar/lib/libAntTweakBar.dylib /usr/local/lib
-//    % sudo cp ~/Documents/Nick/AntTweakBar/include/AntTweakBar.h /usr/local/include/
-//    % sudo cp -r ~/Documents/Nick/AntTweakBar /usr/local/
-//    % g++ main.cpp -o magnoom -O3 -Wall -fno-strict-aliasing -lAntTweakBar -framework GLUT -pthread -framework OpenGL -Wno-deprecated-declarations
-//    Note, in OS X: https://lukecyca.com/2008/glui-235-framework-for-mac-os-x.html
-//    DYLD_LIBRARY_PATH=DYLD_LIBRARY_PATH=/usr/local/opt/gcc/lib/gcc/6/    
-
-/* Mac OS X Apple silicon M1-M4 (static linking with AntTweakBar.a):
-g++ main.cpp -o magnoom -O3 -Wall -I. -L. -lAntTweakBar \
--framework OpenGL -framework GLUT -framework Cocoa -framework Foundation \
--pthread -Wno-deprecated-declarations -x objective-c++
-*/
-
-//    Raspberry Pi3:
-//    pi@raspberrypi: sudo apt-get install libgl1-mesa-dev libgles2-mesa-dev libglew-dev:armhf libglewmx-dev:armhf libglib2.0-dev libglu1-mesa-dev
-//    pi@raspberrypi: g++ main.cpp -o magnoom -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL
-//
-//    sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev libglew-dev
-//    Ubuntu   :  
-//    $ g++ main.cpp -o magnoom -pthread -O3 -Wall -fno-strict-aliasing -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL 
-//    $ sudo export PATH="/usr/bin:$PATH" {/usr/local/bin/ld: this linker was not configured to use sysroots}
-//    CentOS   : 
-//    $ g++ JS2v7.cpp -o JS2v7 -pthread -O3 -Wall -fno-strict-aliasing -I ./include -L ./lib -lAntTweakBar -lpthread  -lglut -lGLU -lGLEW -lGL
-//			LD_LIBRARY_PATH=~/Desktop/JSpinx4/lib/
-//			LD_LIBRARY_PATH=~/Desktop/JSpinx4/include/
-//*****************************************************************************
-//
-//    Arch Linux:
-//    you would need instal: sudo pacman -S mesa glu freeglut 
-//    the rest works the same as on Ubuntu 
-//
-
-//	Windows 32bit + MSVC
-// 	$ "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\vcvars32.bat"
-//	$ cl main.cpp /O2
-
-//	Windows 64bit + MSVC
-// 	$ "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\amd64\vcvars64.bat"
-//	$ cl main.cpp /O2
-
-
+//  Build with the repository's nob.c build system (see README.md).
+#include <glad/glad.h>
+#include <AntTweakBar.h>
+#include "vendor/glfw2/TwGLFW2.h"
 
 #ifdef __APPLE__
-    #include "TargetConditionals.h"
-    #ifdef TARGET_OS_MAC
-        #include <unistd.h>
-        #include <GLUT/glut.h>
-        #include <OpenGL/OpenGL.h>
-    #endif
+    #define GL_SILENCE_DEPRECATION
+    #include <OpenGL/glu.h>
 #else
-	#if defined(_WIN32)
-		#pragma comment(lib, "glew32.lib")
-		#pragma comment(lib, "freeglut.lib")
-	#endif
-	#include <GL/glew.h>
-	#include <GL/freeglut.h>
+    #include <GL/glu.h>
 #endif
-
-#include <AntTweakBar.h>
 
 #include <math.h>
 #include <stdlib.h>
@@ -121,6 +43,7 @@ g++ main.cpp -o magnoom -O3 -Wall -I. -L. -lAntTweakBar \
 	#define pthread_mutex_init(mutex_ptr,num) InitializeCriticalSection(mutex_ptr)
 	#define pthread_mutex_lock(mutex_ptr) EnterCriticalSection(mutex_ptr)
 	#define pthread_mutex_unlock(mutex_ptr) LeaveCriticalSection(mutex_ptr)
+	#define pthread_join(thread,retval) (WaitForSingleObject((thread), INFINITE), CloseHandle(thread), 0)
 #else
 	#include <unistd.h>
 	#include <pthread.h>
@@ -137,6 +60,8 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 
 int		ENGINE_MUTEX=WAIT;
 int		DATA_TRANSFER_MUTEX=WAIT_DATA;
+volatile bool EngineShutdown=false;
+volatile bool EngineShutdownRequested=false;
 
 #define THREADS_NUMBER 3
 semaphore_ref	sem_in[THREADS_NUMBER];
@@ -380,8 +305,19 @@ main (int argc, char **argv){
     UpdateVBO_PBC(&vboIdV_PBC_B, &vboIdN_PBC_B, &vboIdC_PBC_B, &iboIdI_PBC_B, vertices_PBC_B, normals_PBC_B, colors_PBC_B, indices_PBC_B);
     UpdateVBO_PBC(&vboIdV_PBC_C, &vboIdN_PBC_C, &vboIdC_PBC_C, &iboIdI_PBC_C, vertices_PBC_C, normals_PBC_C, colors_PBC_C, indices_PBC_C);
 
-  	// Start GLUT event processing loop
-	glutMainLoop();
+	// Explicit GLFW loop, matching the AntTweakBar Legacy examples.
+	while (!glfwWindowShouldClose(MainWindow)) {
+		idle();
+		Display();
+		glfwSwapBuffers(MainWindow);
+		glfwPollEvents();
+	}
+
+	EngineShutdownRequested = true;
+	ENGINE_MUTEX = DO_IT;
+	for (int i = 0; i < THREADS_NUMBER; ++i) pthread_join(thread_id[i], NULL);
+	TwTerminate();
+	glfwTerminate();
 
 	// Deallocate memory before closing the program:
 	free(AIdxBlock);

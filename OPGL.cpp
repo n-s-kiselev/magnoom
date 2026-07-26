@@ -1,4 +1,13 @@
-GLuint 			GLUT_window;
+GLFWwindow *MainWindow = NULL;
+double MouseScaleX = 1.0, MouseScaleY = 1.0;
+int MouseWheelPosition = 0;
+
+enum WindowMouseButton { WINDOW_MOUSE_LEFT, WINDOW_MOUSE_MIDDLE, WINDOW_MOUSE_RIGHT };
+enum WindowButtonState { WINDOW_BUTTON_DOWN, WINDOW_BUTTON_UP };
+enum WindowSpecialKey {
+	WINDOW_KEY_UP = 1, WINDOW_KEY_DOWN, WINDOW_KEY_F1, WINDOW_KEY_F2,
+	WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6, WINDOW_KEY_F11
+};
 const char *	WINDOWTITLE = { "Magnoom v1.0" };
 int				window_width	= 1400;//1024;//400;//
 int				window_height	= 800;//768;//300;//
@@ -241,7 +250,7 @@ GLuint*		indices_PBC_C	= NULL; // array of indices for tatal vector field
 
 int			arrowFaces		= 6; // number of arrow faces, default number
 int			arrowFaces_H	= 30; // number of arrow faces for applied field vector
-int 		N_Multisample	= 16; // NUMBER OF MULTISAMPLE only in freeglut=Linux
+int 		N_Multisample	= 16;
 
 GLuint		vboIdV;   // ID of VBO for vertex arrays
 GLuint		vboIdN;   // ID of VBO for normal arrays
@@ -334,13 +343,18 @@ void			drawVBO_PBC_B();
 void			drawVBO_PBC_C();
 void			idle();
 void			setupTweakBar();
+void            GLFWKey(GLFWwindow *, int, int, int, int);
+void            GLFWChar(GLFWwindow *, unsigned int);
+void            GLFWMouseButton(GLFWwindow *, int, int, int);
+void            GLFWMouseMotion(GLFWwindow *, double, double);
+void            GLFWMouseWheel(GLFWwindow *, double, double);
+void            GLFWResize(GLFWwindow *, int, int);
 
 
 
 // return the number of seconds since the start of the program:
 float ElapsedSeconds( )	{
-	int ms = glutGet( GLUT_ELAPSED_TIME );	// get # of milliseconds since the start of the program
-	return (float)ms / 1000.0f;				// convert it to seconds:
+	return (float)glfwGetTime();
 }
 
 void Resize( int window_width, int window_height) // called when user resizes the window
@@ -348,7 +362,6 @@ void Resize( int window_width, int window_height) // called when user resizes th
 	asp_rat     = (float)((   ((double)window_width)/((double)window_height)   ));
 	asp_rat_inv = (float)((   ((double)window_height)/((double)window_width)   ));
 
-	glutSetWindow( GLUT_window );
 	glViewport(0, 0, window_width, window_height);
 	    // Send the new window size to AntTweakBar
     TwWindowSize(window_width, window_height);
@@ -385,40 +398,6 @@ void Yup( )//metka
 
 
 
-// use glut to display a string of characters using a raster font:
-void DoRasterString( float x, float y, float z, char const *s )
-{
-	char const *c;			// one character to print
-
-	glRasterPos3f( (GLfloat)x, (GLfloat)y, (GLfloat)z );
-	for( c=s; *c; c++ )
-	{
-		glutBitmapCharacter( GLUT_BITMAP_8_BY_13, *c );
-		//GLUT_BITMAP_8_BY_13
-		//GLUT_BITMAP_9_BY_15
-		//GLUT_BITMAP_TIMES_ROMAN_10
-		//GLUT_BITMAP_TIMES_ROMAN_24
-		//GLUT_BITMAP_HELVETICA_10
-		//GLUT_BITMAP_HELVETICA_12
-	}
-}
-
-// use glut to display a string of characters using a stroke font:
-void DoStrokeString( float x, float y, float z, float ht, char const *s )
-{
-	char const *c;			// one character to print
-	glLineWidth(1.0f);
-	glPushMatrix( );
-		glTranslatef( (GLfloat)x, (GLfloat)y, (GLfloat)z );
-		float sf = ht /( 119.05 + 33.33 );
-		glScalef( (GLfloat)sf, (GLfloat)sf, (GLfloat)sf );
-		for( c=s; *c; c++ )
-		{
-			glutStrokeCharacter( GLUT_STROKE_ROMAN, *c );
-		}
-	glPopMatrix( );
-}
-
 void GetBox(float abc[][3], int uABC[3], float box[3][3])
 {
 	//origine of the box is (0,0,0)
@@ -454,7 +433,6 @@ void Display (void)
 	GLdouble Hight;
 	float Vtemp[3];
 
-	glutSetWindow( GLUT_window );// set which window we want to do the graphics into
 	glClearColor( BackgroundColors[WhichBackgroundColor][0], BackgroundColors[WhichBackgroundColor][1], BackgroundColors[WhichBackgroundColor][2], 0. );// setup the clear values
 	glDrawBuffer( GL_BACK );// erase the background
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
@@ -559,29 +537,27 @@ void Display (void)
     
     // Draw tweak bars
     TwDraw();
-    // Present frame buffer
-    glutSwapBuffers();
-    // Recall Display at next frame
-    glutPostRedisplay();
 }
 
 void setupOpenGL ()
 {
-	//  Connect to the windowing system + create a window
-	//  with the specified dimensions and position
-	//  + set the display mode + specify the window title.
-	int glutArgc = 0;
-	glutInit(&glutArgc, NULL); //glutInit(&argc, argv);
-	glutInitWindowSize (window_width, window_height);
-	glutInitWindowPosition (0, 0);
-	#if !defined(__APPLE__)
-	glutSetOption(GLUT_MULTISAMPLE, N_Multisample);
-	#endif
-    glutInitDisplayMode( GLUT_RGB|GLUT_DOUBLE|GLUT_DEPTH|GLUT_MULTISAMPLE|GLUT_ALPHA);
-	GLUT_window = glutCreateWindow (WINDOWTITLE);
-	#if !defined(__APPLE__)
-	glewInit();
-	#endif
+	if (!glfwInit()) {
+		fprintf(stderr, "GLFW initialization failed\n");
+		exit(1);
+	}
+	glfwOpenWindowHint(GLFW_FSAA_SAMPLES, N_Multisample);
+	MainWindow = glfwCreateWindow(window_width, window_height, WINDOWTITLE, NULL, NULL);
+	if (!MainWindow) {
+		fprintf(stderr, "Cannot open GLFW window\n");
+		glfwTerminate();
+		exit(1);
+	}
+	glfwMakeContextCurrent(MainWindow);
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+		fprintf(stderr, "Failed to initialize GLAD\n");
+		glfwTerminate();
+		exit(1);
+	}
 
 	for (int i=0;i<NumCamPosSave;i++){
 		CameraPosition[i][0]=0;
@@ -593,39 +569,27 @@ void setupOpenGL ()
 		CameraPosition[i][6]=PerspSet[0];
 	}
 
-	// InitRGB(RHue, GHue, BHue, HueMapRGB);
-	// Set the GLUT callback functions
-	glutDisplayFunc( Display );// DisplayFunc -- redraws the OpenGl main window
-	glutReshapeFunc( Resize );// ReshapeFunc -- handles the user resizing the window
-	glutKeyboardFunc(keyboardDown);// KeyboardFunc -- handles a keyboard input
-	glutKeyboardUpFunc(keyboardUp);
-	glutSpecialFunc( KeyboardAdd );// SpecialFunc -- handle special keys on the keyboard e.g. F1, Num+...
-	glutMouseFunc( MouseButton );// MouseFunc -- handle the mouse button going down or up
-	glutMotionFunc( MouseMotion );// MotionFunc -- handle the mouse moving with a button down
-	glutPassiveMotionFunc((GLUTmousemotionfun)TwEventMouseMotionGLUT);
-	// glutKeyboardFunc((GLUTkeyboardfun)TwEventKeyboardGLUT);
-	// glutMouseFunc((GLUTmousebuttonfun)TwEventMouseButtonGLUT);
-	// glutMotionFunc((GLUTmousemotionfun)TwEventMouseMotionGLUT);
-	// glutSpecialFunc((GLUTspecialfun)TwEventSpecialGLUT);
-	// glutVisibilityFunc( Visibility );// VisibilityFunc -- handle a change in window visibility
-	// glutPassiveMotionFunc( NULL );// PassiveMotionFunc -- handle the mouse moving with a button up
-	// glutEntryFunc( NULL );// EntryFunc	-- handle the cursor entering or leaving the window
-	// glutSpaceballMotionFunc( NULL );// SpaceballMotionFunc -- handle spaceball translation
-	// glutSpaceballRotateFunc( NULL );// SpaceballRotateFunc -- handle spaceball rotation
-	// glutSpaceballButtonFunc( NULL );// SpaceballButtonFunc -- handle spaceball button hits
-	// glutButtonBoxFunc( NULL );// ButtonBoxFunc -- handle button box hits
-	// glutDialsFunc( NULL );// DialsFunc -- handle dial rotations
-	// glutTabletMotionFunc( NULL );// TabletMotionFunc -- handle digitizing tablet motion
-	// glutTabletButtonFunc( NULL );// TabletButtonFunc -- handle digitizing tablet button hits
-	// glutMenuStateFunc( NULL );// MenuStateFunc -- declare when a pop-up menu is in use
-	//glutTimerFunc( 40, idle, 0 );// TimerFunc -- trigger something to happen a certain time from now
-	glutIdleFunc( idle );// IdleFunc -- what to do when nothing else is going on
+	glfwSetKeyCallback(MainWindow, GLFWKey);
+	glfwSetCharCallback(MainWindow, GLFWChar);
+	glfwSetMouseButtonCallback(MainWindow, GLFWMouseButton);
+	glfwSetCursorPosCallback(MainWindow, GLFWMouseMotion);
+	glfwSetScrollCallback(MainWindow, GLFWMouseWheel);
+	glfwSetFramebufferSizeCallback(MainWindow, GLFWResize);
 
 	// Initialize AntTweakBar
-    TwInit(TW_OPENGL, NULL);
-    // - Send 'glutGetModifers' function pointer to AntTweakBar;
-    //   required because the GLUT key event functions do not report key modifiers states.
-    TwGLUTModifiersFunc(glutGetModifiers);
+	float xscale = 1.0f, yscale = 1.0f;
+	glfwGetWindowContentScale(MainWindow, &xscale, &yscale);
+	char fontScalingDef[64];
+	snprintf(fontScalingDef, sizeof(fontScalingDef), "GLOBAL fontscaling=%g", (double)xscale);
+	TwDefine(fontScalingDef);
+	if (!TwInit(TW_OPENGL, NULL)) {
+		fprintf(stderr, "TwInit failed: %s\n", TwGetLastError());
+		glfwTerminate();
+		exit(1);
+	}
+	int framebufferWidth = 0, framebufferHeight = 0;
+	glfwGetFramebufferSize(MainWindow, &framebufferWidth, &framebufferHeight);
+	GLFWResize(MainWindow, framebufferWidth, framebufferHeight);
 	setupTweakBar();
 
 	glEnable(GL_DEPTH_TEST);
@@ -653,7 +617,7 @@ void setupOpenGL ()
 
 void idle ()
 {  
-	currentTime = glutGet(GLUT_ELAPSED_TIME);
+	currentTime = (int)(glfwGetTime() * 1000.0);
 	timeInterval = currentTime - previousTime;
 
 	if((timeInterval > 40 && Play!=0)||SpecialEvent!=0)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
@@ -697,8 +661,6 @@ void idle ()
 			pthread_mutex_unlock( &show_mutex);
 		} 
 
-		glutSetWindow (GLUT_window);
-		glutPostRedisplay ();
 		frameCount++;
 	}
 }
@@ -709,10 +671,6 @@ void TW_CALL CB_SetN_Multisample(const void *value, void *clientData )
 	// (void)clientData; // unused
     // N_Multisample = 16;//*( int *)value;
     // N_Multisample = *( int *)value;
-    // #if !defined(__APPLE__)
-	// glutSetOption(GLUT_MULTISAMPLE, N_Multisample);
-	// glutInitDisplayMode( GLUT_RGB|GLUT_DOUBLE|GLUT_DEPTH|GLUT_MULTISAMPLE|GLUT_ALPHA);
-	// #endif
 	// ChangeVectorMode (0);
 }
 
@@ -2067,16 +2025,21 @@ void setupTweakBar()
 	TwDefine(" GLOBAL iconpos=topleft "); // icons go to top-left corner of the window
 	TwDefine(" GLOBAL iconalign=horizontal "); // icons will be aligned horizontally
 	TwDefine(" GLOBAL contained=true "); // bars cannot move outside of the window
-	TwDefine(" GLOBAL iconmargin='1 8'  "); // icons will be displayed at 1 and 16 pixels from the horizontal and vertical window borders respectively
+	char iconMarginDef[64];
+	snprintf(iconMarginDef, sizeof(iconMarginDef), "GLOBAL iconmargin='%d %d'",
+	         (int)(MouseScaleX + 0.5), (int)(8.0 * MouseScaleY + 0.5));
+	TwDefine(iconMarginDef);
 /*  Help Bar F1 */
 	help_bar = TwGetBarByIndex(0);
-	TwDefine(" TW_HELP size='440 530' color='70 100 100'");
+	TwDefine(" TW_HELP color='70 100 100'");
+	tw_glfw2_set_bar_size(help_bar, 440, 530);
 	TwDefine(" TW_HELP help='F1: show/hide (this) Help bar' "); // change default tweak bar size and color
 
 /*  View Bar F2 */
     view_bar = TwNewBar("View");
     TwDefine(" View iconified=true "); 
-    TwDefine(" View size='220 530' color='100 100 70' alpha=200 "); // change default tweak bar size and color
+    TwDefine(" View color='100 100 70' alpha=200 "); // change default tweak bar color
+    tw_glfw2_set_bar_size(view_bar, 220, 530);
     TwDefine(" View help='F2: show/hide View bar' "); // change default tweak bar size and color
 
 	// TwAddVarCB(view_bar, "Multisampling", TW_TYPE_INT32, CB_SetN_Multisample, CB_GetN_Multisample, &N_Multisample, " label='Multisamples' min=1 max=32 step=1 help='Multisampling' group='Camera'");
@@ -2228,7 +2191,8 @@ void setupTweakBar()
 /*  Hamiltonian parameters&controls F3 */
 	control_bar = TwNewBar("Parameters&Controls");
     TwDefine(" Parameters&Controls iconified=true "); 
-    TwDefine(" Parameters&Controls size='220 530' color='100 70 100' alpha=200 "); // change default tweak bar size and color
+    TwDefine(" Parameters&Controls color='100 70 100' alpha=200 "); // change default tweak bar color
+    tw_glfw2_set_bar_size(control_bar, 220, 530);
     TwDefine(" Parameters&Controls help='F3: show/hide Control bar' "); // change default tweak bar size and color
 
 	//TwAddButton(control_bar, "Run", CB_Run, NULL, "key='r' label='RUN simulation' ");
@@ -2340,7 +2304,8 @@ void setupTweakBar()
 /*  Initial state F4 */
 	initial_bar = TwNewBar("Initial_State");
 	TwDefine(" Initial_State iconified=true "); 
-	TwDefine(" Initial_State size='220 530' color='70 70 100'  alpha=200"); // change default tweak bar size and color
+	TwDefine(" Initial_State color='70 70 100' alpha=200"); // change default tweak bar color
+	tw_glfw2_set_bar_size(initial_bar, 220, 530);
 	TwDefine(" Initial_State help='F4: show/hide Initial state bar' "); // change default tweak bar size and color
 /*	{
 	TwEnumVal		enGeomTw[] = { 	{DEFAULT_G, 	"Default"		    }, 
@@ -2431,7 +2396,8 @@ void setupTweakBar()
 /*  AC field F5 */
 	ac_field_bar = TwNewBar("AC_Field");
 	TwDefine(" AC_Field iconified=true "); 
-	TwDefine(" AC_Field size='220 530' color='100 70 70'  alpha=200"); // change default tweak bar size and color
+	TwDefine(" AC_Field color='100 70 70' alpha=200"); // change default tweak bar color
+	tw_glfw2_set_bar_size(ac_field_bar, 220, 530);
 	TwDefine(" AC_Field help='F5: show/hide AC Field bar' "); // change default tweak bar size and color
 	TwAddVarRW(ac_field_bar, "AC field on/off", TW_TYPE_BOOL32, &AC_FIELD_ON, "keyIncr='f' label='AC/DC on/off' true='on' false='off' help='On/off ac field'");
     TwAddVarRW(ac_field_bar, "Mode recording on/off", TW_TYPE_BOOL32, &AC_MODE_REC, "label='Mode Rec. on/off' true='on' false='off' help='On/Off recording dynamical mode'");
@@ -2471,7 +2437,9 @@ void setupTweakBar()
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
 	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
-	TwDefine(" Info position = '1 30' size ='170 620' valueswidth=130"); // change default tweak bar size and color
+	tw_glfw2_set_bar_size(info_bar, 170, 620);
+	tw_glfw2_set_bar_position(info_bar, 1, 30);
+	tw_glfw2_set_bar_values_width(info_bar, 130);
 	TwAddVarRO(info_bar, "Run/Stop", TW_TYPE_BOOL32,  &Play, "true='RUNING' false='STOPED' ");
 	TwAddVarRO(info_bar, "RECORD", TW_TYPE_BOOL32,  &Record, "true='On' false='Off' ");
 	TwAddSeparator(info_bar, "sep+21", NULL);
@@ -2525,22 +2493,106 @@ void setupTweakBar()
 	TwAddVarRO(info_bar, "Torque", TW_TYPE_DOUBLE, &MAX_TORQUE, " help='maximum torque acting on the spin' precision=10");
 }
 
+static int GLFWSpecialToWindowKey(int key)
+{
+	switch (key) {
+		case GLFW_KEY_UP: return WINDOW_KEY_UP;
+		case GLFW_KEY_DOWN: return WINDOW_KEY_DOWN;
+		case GLFW_KEY_F1: return WINDOW_KEY_F1;
+		case GLFW_KEY_F2: return WINDOW_KEY_F2;
+		case GLFW_KEY_F4: return WINDOW_KEY_F4;
+		case GLFW_KEY_F5: return WINDOW_KEY_F5;
+		case GLFW_KEY_F6: return WINDOW_KEY_F6;
+		case GLFW_KEY_F11: return WINDOW_KEY_F11;
+		default: return 0;
+	}
+}
+
+void GLFWKey(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+	(void)window;
+	(void)scancode;
+	if (TwEventKeyGLFW(key, action)) return;
+
+	int special = GLFWSpecialToWindowKey(key);
+	if (special && action != GLFW_RELEASE) {
+		KeyboardAdd(special, 0, 0);
+		return;
+	}
+	if (key == GLFW_KEY_ESCAPE && action != GLFW_RELEASE) {
+		keyboardDown(ESCAPE, 0, 0);
+		return;
+	}
+	if (action == GLFW_RELEASE && key >= 'A' && key <= 'Z') {
+		unsigned char character = (unsigned char)((mods & GLFW_MOD_SHIFT) ? key : key - 'A' + 'a');
+		keyboardUp(character, 0, 0);
+	}
+}
+
+void GLFWChar(GLFWwindow *window, unsigned int character)
+{
+	(void)window;
+	if (character > 255 || TwEventCharGLFW((int)character, GLFW_PRESS)) return;
+	keyboardDown((unsigned char)character, 0, 0);
+}
+
+void GLFWMouseButton(GLFWwindow *window, int button, int action, int mods)
+{
+	(void)mods;
+	if (TwEventMouseButtonGLFW(button, action)) return;
+	double x = 0.0, y = 0.0;
+	glfwGetCursorPos(window, &x, &y);
+	int windowButton = button == GLFW_MOUSE_BUTTON_LEFT ? WINDOW_MOUSE_LEFT
+	                 : button == GLFW_MOUSE_BUTTON_RIGHT ? WINDOW_MOUSE_RIGHT
+	                 : WINDOW_MOUSE_MIDDLE;
+	MouseButton(windowButton, action == GLFW_PRESS ? WINDOW_BUTTON_DOWN : WINDOW_BUTTON_UP,
+	            (int)(x * MouseScaleX), (int)(y * MouseScaleY));
+}
+
+void GLFWMouseMotion(GLFWwindow *window, double x, double y)
+{
+	(void)window;
+	int pixelX = (int)(x * MouseScaleX);
+	int pixelY = (int)(y * MouseScaleY);
+	if (TwEventMousePosGLFW(pixelX, pixelY)) return;
+	MouseMotion(pixelX, pixelY);
+}
+
+void GLFWMouseWheel(GLFWwindow *window, double xoffset, double yoffset)
+{
+	(void)window;
+	(void)xoffset;
+	MouseWheelPosition += (int)yoffset;
+	if (TwEventMouseWheelGLFW(MouseWheelPosition)) return;
+	TransXYZ[2] += (float)yoffset * 0.5f;
+}
+
+void GLFWResize(GLFWwindow *window, int width, int height)
+{
+	if (width < 1) width = 1;
+	if (height < 1) height = 1;
+	int windowWidth = width, windowHeight = height;
+	glfwGetWindowSize(window, &windowWidth, &windowHeight);
+	MouseScaleX = windowWidth > 0 ? (double)width / windowWidth : 1.0;
+	MouseScaleY = windowHeight > 0 ? (double)height / windowHeight : 1.0;
+	Resize(width, height);
+}
+
 
 void MouseButton( int button, int state, int x, int y ) // called when the mouse button transitions down or up
 {
 	int b = 0;			// LEFT, MIDDLE, or RIGHT
-if( !TwEventMouseButtonGLUT(button, state, x, y) )  // send event to AntTweakBar
-    { // event has not been handled by AntTweakBar
+	{
       // your code here to handle the event
 		switch( button )
 		{
-			case GLUT_LEFT_BUTTON:		// 0
+			case WINDOW_MOUSE_LEFT:		// 0
 				b = LEFT;		break;
 
-			case GLUT_MIDDLE_BUTTON:	// 1
+			case WINDOW_MOUSE_MIDDLE:	// 1
 				b = MIDDLE;		break;
 
-			case GLUT_RIGHT_BUTTON:		// 2
+			case WINDOW_MOUSE_RIGHT:		// 2
 				b = RIGHT;		break;
 
 			case 3:		                // scrol up
@@ -2555,7 +2607,7 @@ if( !TwEventMouseButtonGLUT(button, state, x, y) )  // send event to AntTweakBar
 		}
 
 		// button down sets the bit, up clears the bit:
-		if( state == GLUT_DOWN )
+		if( state == WINDOW_BUTTON_DOWN )
 		{
 			Xmouse = x;
 			Ymouse = y;
@@ -2573,8 +2625,7 @@ void MouseMotion( int x, int y ) // called when the mouse moves while a button i
 	const int 	dy = y - Ymouse;
 	float 	quat1[4];//NSK
 	float 	quat2[4];//NSK
-if( !TwEventMouseMotionGLUT(x, y) )  // send event to AntTweakBar
-    { // event has not been handled by AntTweakBar
+	{
       // your code here to handle the event
       if( ( ActiveButton & LEFT ) != 0 )
 		{
@@ -2612,8 +2663,7 @@ if( !TwEventMouseMotionGLUT(x, y) )  // send event to AntTweakBar
 // the keyboard callback:
 void keyboardDown( unsigned char key, int x, int y )
 {   
-    if( !TwEventKeyboardGLUT(key, x, y) )  // send event to AntTweakBar 
-    { // event has not been handled by AntTweakBar
+    {
       // your code here to handle the event	
 	  // if( false ) fprintf( stderr, "Keyboard: '%c' (0x%0x)\n", c, c );
 		switch( key )
@@ -2802,12 +2852,11 @@ void keyboardUp( unsigned char key, int x, int y )
 
 void KeyboardAdd( int key, int x, int y ){
 int isiconified;
-if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecialGLUT
-    { // event has not been handled by AntTweakBar
+    {
       // your code here to handle the event	
 		switch( key )
 		{
-			case GLUT_KEY_UP:
+			case WINDOW_KEY_UP:
 				switch (WhichSliceMode)
 				{case A_AXIS:
 					if (A_layer_max < uABC[0]) {A_layer_max+=1; A_layer_min+=1; ChangeVectorMode(1);}
@@ -2822,7 +2871,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 				 break;		 
 				}
 				break;
-			case GLUT_KEY_DOWN:
+			case WINDOW_KEY_DOWN:
 				switch (WhichSliceMode)
 				{case A_AXIS:
 					if (A_layer_min>1) {A_layer_min-=1; A_layer_max-=1; ChangeVectorMode(1);}
@@ -2837,7 +2886,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 				 break;
 				}
 				break;
-			case  GLUT_KEY_F1:
+			case  WINDOW_KEY_F1:
 				TwGetParam(help_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 			    	TwDefine(" TW_HELP iconified=false ");				
@@ -2845,7 +2894,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" TW_HELP iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F2:
+			case  WINDOW_KEY_F2:
 				TwGetParam(view_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" View iconified=false ");				
@@ -2853,7 +2902,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" View iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F4:
+			case  WINDOW_KEY_F4:
 				TwGetParam(control_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Parameters&Controls iconified=false ");				
@@ -2861,7 +2910,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Parameters&Controls iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F6:
+			case  WINDOW_KEY_F6:
 				TwGetParam(initial_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Initial_State iconified=false ");				
@@ -2869,7 +2918,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" Initial_State iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F5:
+			case  WINDOW_KEY_F5:
 				TwGetParam(ac_field_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" AC_Field iconified=false ");				
@@ -2877,7 +2926,7 @@ if( !TwEventSpecialGLUT(key, x, y) )  // send event to AntTweakBar TwEventSpecia
 					TwDefine(" AC_Field iconified=true ");
 				}
 				break;
-			case  GLUT_KEY_F11:
+			case  WINDOW_KEY_F11:
 				TwGetParam(info_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Info iconified=false ");				
@@ -2897,27 +2946,18 @@ void Buttons( int id )
 	{
 		case XUP:
 			Xup( );
-			glutSetWindow( GLUT_window );
-			glutPostRedisplay( );
 			break;
 
 		case YUP:
 			Yup( );
-			glutSetWindow( GLUT_window );
-			glutPostRedisplay( );
 			break;
 
 		case ZUP:
 			Zup( );
-			glutSetWindow( GLUT_window );
-			glutPostRedisplay( );
 			break;
 
 		case QUIT:
-			glutSetWindow( GLUT_window );	//
-			glFinish( );					// gracefully close out the graphics
-			glutDestroyWindow( GLUT_window );// gracefully close the graphics window
-			exit( 0 );						// gracefully exit the program
+			glfwSetWindowShouldClose(MainWindow, GLFW_TRUE);
 			break;
 
 		// default:
