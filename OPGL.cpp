@@ -1898,15 +1898,15 @@ void TW_CALL CB_Save_BIN( void *clientData )
     }
 }
 
-void TW_CALL CB_Save_BMP( void *clientData )
+void TW_CALL CB_Save_PNG( void *clientData )
 {
-    char bmp_filename[64] = "";
-    strncpy(bmp_filename, outputfilename, strcspn (outputfilename, "."));
-    strcat(bmp_filename, ".bmp");
-    if(strncmp(bmp_filename, ".bin",4)==0){
+    char png_filename[64] = "";
+    strncpy(png_filename, outputfilename, strcspn (outputfilename, "."));
+    strcat(png_filename, ".png");
+    if(strncmp(png_filename, ".png",4)==0){
         printf("Enter the file name. It cannot be empty!");
     }else{
-        SaveBmp(bSx, bSy, bSz, bmp_filename, WhichSliceMode, A_layer_min-1, B_layer_min-1, C_layer_min-1);//metka 0->1
+        SavePng(bSx, bSy, bSz, png_filename, WhichSliceMode, A_layer_min-1, B_layer_min-1, C_layer_min-1);//metka 0->1
     }
 }
 
@@ -2386,7 +2386,7 @@ void setupTweakBar()
 	TwAddButton(initial_bar, "Write to OVF", CB_Save_OVF_b8, NULL, "label='write to *.ovf file' ");	
     TwAddButton(initial_bar, "Write to VTK", CB_Save_VTK_b4, NULL, "label='write to *.vtk file' "); 
     TwAddButton(initial_bar, "Write to BIN", CB_Save_BIN, NULL, "label='write to *.bin file' "); 
-    TwAddButton(initial_bar, "Write to BMP", CB_Save_BMP, NULL, "label='write to *.bmp file' "); 
+    TwAddButton(initial_bar, "Write to PNG", CB_Save_PNG, NULL, "label='write to *.png file' ");
 
 
     TwAddSeparator(initial_bar, "sep_isoline", NULL);

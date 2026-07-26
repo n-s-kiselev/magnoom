@@ -54,6 +54,7 @@ The complete source for the application dependencies is stored under [`vendor`](
 - [AntTweakBar Legacy](https://github.com/n-s-kiselev/AntTweakBar-Legacy) — the real-time OpenGL parameter interface, trimmed to the source needed by Magnoom and built as a static library from `vendor/AntTweakBar-Legacy`
 - GLFW 2.7.9 — window creation, input, and the event loop, built from `vendor/glfw2`
 - [GLAD](https://glad.dav1d.de/) — OpenGL function loading, built from `vendor/glad`
+- [stb_image_write](https://github.com/nothings/stb) — PNG image export, stored in `vendor/stb`
 - [`nob.h`](https://github.com/tsoding/nob.h) — build-system implementation, stored in `vendor/nob`
 
 AntTweakBar's example programs are intentionally not included. GLFW and GLAD are built directly from the vendored source, so no system installation of GLFW, GLAD, or AntTweakBar is needed. Magnoom uses an OpenGL compatibility context because its renderer uses the fixed-function API.

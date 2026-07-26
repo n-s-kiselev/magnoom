@@ -60,7 +60,8 @@ volatile bool EngineShutdownRequested=false;
 semaphore_ref	sem_in[THREADS_NUMBER];
 semaphore_ref	sem_out[THREADS_NUMBER];
 
-#include "bitmap_image.hpp"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "vendor/stb/stb_image_write.h"
 #include "global.h"		/*All global variables and constants*/
 #include "linmath.h"		/*All global variables and constants*/
 

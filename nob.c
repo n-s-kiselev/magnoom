@@ -110,7 +110,8 @@ static bool build_magnoom(void)
 {
     const char *inputs[] = {
         "main.cpp", "ENGINE.cpp", "GEOM.cpp", "INITSTATE.cpp", "MATH.cpp", "OPGL.cpp",
-        "global.h", "bitmap_image.hpp", "linmath.h", ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
+        "global.h", "linmath.h", ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
+        "vendor/stb/stb_image_write.h",
         "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,
     };
     const char *output = OUTPUT EXE_EXT;

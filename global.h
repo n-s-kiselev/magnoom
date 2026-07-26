@@ -647,7 +647,7 @@ void SaveBin(double* Sx, double* Sy, double* Sz, char bin_filename[64]){
 }
 
 
-void SaveBmp(double* Sx, double* Sy, double* Sz, char bmp_filename[64], enSliceMode WhichSliceMode, int x1, int y1, int z1){
+void SavePng(double* Sx, double* Sy, double* Sz, char png_filename[64], enSliceMode WhichSliceMode, int x1, int y1, int z1){
   if (WhichSliceMode!=FILTER)
   {
     int scale = 10;
@@ -666,10 +666,14 @@ void SaveBmp(double* Sx, double* Sy, double* Sz, char bmp_filename[64], enSliceM
           break;      
     }
         
-    bitmap_image image(scale*N1,scale*N2);
-    // set background to black
-    image.set_all_channels(0, 0, 0);
-    // image_drawer draw(image);
+    int width = scale*N1;
+    int height = scale*N2;
+    unsigned char* image = (unsigned char*)calloc((size_t)width*height*3, sizeof(unsigned char));
+    if (image == NULL) {
+      printf("Unable to allocate memory for PNG image %s\n", png_filename);
+      return;
+    }
+
     float rgb[3],vec[3]; 
     for(int i = 0; i < N1; i++){
       for(int j = 0; j < N2; j++){
@@ -697,12 +701,21 @@ void SaveBmp(double* Sx, double* Sy, double* Sz, char bmp_filename[64], enSliceM
 
         int ii = scale*i;
         for(int k1 = 0;k1<scale;k1++)
-            for(int k2 = 0;k2<scale; k2++)
-                image.set_pixel(ii+k1,   scale*((N2-1)-j)+k2,   (unsigned char)rgb[0], (unsigned char)rgb[1], (unsigned char)rgb[2]);
+            for(int k2 = 0;k2<scale; k2++) {
+                int x = ii+k1;
+                int y = scale*((N2-1)-j)+k2;
+                size_t pixel = ((size_t)y*width+x)*3;
+                image[pixel+0] = (unsigned char)rgb[0];
+                image[pixel+1] = (unsigned char)rgb[1];
+                image[pixel+2] = (unsigned char)rgb[2];
+            }
       }
     }
-    image.save_image(bmp_filename);
-    printf("Image has been saved to %s\n",bmp_filename);
+    if (stbi_write_png(png_filename, width, height, 3, image, width*3))
+      printf("Image has been saved to %s\n",png_filename);
+    else
+      printf("Unable to save PNG image to %s\n",png_filename);
+    free(image);
   }
 }
 
