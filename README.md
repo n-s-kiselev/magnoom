@@ -2,27 +2,21 @@
 
 # Magnoom
 
-Magnoom is software for atomistic spin-dynamics simulations with real-time
-OpenGL visualization and interactive parameter control. See the
-[project wiki](https://github.com/n-s-kiselev/magnoom/wiki) for additional
-documentation and examples.
+Magnoom is software for atomistic spin-dynamics simulations with real-time OpenGL visualization and interactive parameter control. See the [project wiki](https://github.com/n-s-kiselev/magnoom/wiki) for additional documentation and examples.
 
 ## Main features
 
 - Portable C/C++ code for Linux, macOS, and Windows (MinGW)
 - Multithreaded spin-dynamics calculations
 - Real-time parameter control through AntTweakBar
-- OpenGL visualization and post-processing tools, including slicing and
-  filtering
+- OpenGL visualization and post-processing tools, including slicing and filtering
 - Import and export support for formats used by
   [OOMMF](https://math.nist.gov/oommf/) and
   [MuMax3](https://mumax.github.io/), including OVF
 
 ## Building
 
-Magnoom uses a single cross-platform
-[`nob.c`](https://github.com/tsoding/nob.h) build program. Bootstrap it once
-from the repository root:
+Magnoom uses a single cross-platform [`nob.c`](https://github.com/tsoding/nob.h) build program. Bootstrap it once from the repository root:
 
 ```sh
 cc nob.c -o nob
@@ -49,42 +43,26 @@ The build produces:
 - `build/libAntTweakBar.a` — the statically linked AntTweakBar library
 - intermediate objects under `build/`
 
-The `nob` executable automatically rebuilds itself when `nob.c` or its
-vendored `nob.h` changes. All normal build products are contained in
-`build/`, except for the bootstrapped `nob` executable itself.
+The `nob` executable automatically rebuilds itself when `nob.c` or its vendored `nob.h` changes. All normal build products are contained in `build/`, except for the bootstrapped `nob` executable itself.
 
-`nob.c` is the only build system for this repository. No CMake, Makefile,
-Visual Studio project, package-manager build, or dependency download is
-required.
+`nob.c` is the only build system for this repository. No CMake, Makefile, Visual Studio project, package-manager build, or dependency download is required.
 
 ## Dependencies
 
-The complete source for the application dependencies is stored under
-[`vendor`](vendor):
+The complete source for the application dependencies is stored under [`vendor`](vendor):
 
-- [AntTweakBar Legacy](https://github.com/n-s-kiselev/AntTweakBar-Legacy) —
-  the real-time OpenGL parameter interface, trimmed to the source needed by
-  Magnoom and built as a static library from `vendor/AntTweakBar-Legacy`
-- GLFW 2.7.9 — window creation, input, and the event loop, built from
-  `vendor/glfw2`
-- [GLAD](https://glad.dav1d.de/) — OpenGL function loading, built from
-  `vendor/glad`
-- [`nob.h`](https://github.com/tsoding/nob.h) — build-system implementation,
-  stored in `vendor/nob`
+- [AntTweakBar Legacy](https://github.com/n-s-kiselev/AntTweakBar-Legacy) — the real-time OpenGL parameter interface, trimmed to the source needed by Magnoom and built as a static library from `vendor/AntTweakBar-Legacy`
+- GLFW 2.7.9 — window creation, input, and the event loop, built from `vendor/glfw2`
+- [GLAD](https://glad.dav1d.de/) — OpenGL function loading, built from `vendor/glad`
+- [`nob.h`](https://github.com/tsoding/nob.h) — build-system implementation, stored in `vendor/nob`
 
-AntTweakBar's example programs are intentionally not included. GLFW and GLAD
-are built directly from the vendored source, so no system GLFW, GLAD,
-AntTweakBar, or GLUT installation is needed. Magnoom uses an OpenGL
-compatibility context because its renderer still uses the fixed-function API
-and GLU.
+AntTweakBar's example programs are intentionally not included. GLFW and GLAD are built directly from the vendored source, so no system installation of GLFW, GLAD, or AntTweakBar is needed. Magnoom uses an OpenGL compatibility context because its renderer uses the fixed-function API.
 
-The remaining platform dependencies provide the compiler, system OpenGL/GLU
-libraries, native window-system headers, and threading support:
+The remaining platform dependencies provide the compiler, system OpenGL/GLU libraries, native window-system headers, and threading support:
 
 ### Linux
 
-A C/C++ compiler, `ar`, OpenGL, GLU, X11, and XRandR development files are
-required. On Ubuntu or Debian:
+A C/C++ compiler, `ar`, OpenGL, GLU, X11, and XRandR development files are required. On Debian-based Linux:
 
 ```sh
 sudo apt update
@@ -122,10 +100,14 @@ Contributors:
 2. [Andriy S. Savchenko](https://www.researchgate.net/profile/A_Savchenko)
 3. [Filipp N. Rybakov](http://www.quantumandclassical.com/excalibur/)
 
-## Contributing
+## Citation
 
-Contributions are welcome. Fork the repository and submit a pull request with
-the proposed changes.
+If you use Magnoom in scientific research, please cite the following publication:
+
+A. S. Savchenko, V. M. Kuchkin, F. N. Rybakov, S. Blügel, and N. S. Kiselev,
+"Chiral standing spin waves in skyrmion lattice,"
+*APL Materials* **10**, 071111 (2022).
+[https://doi.org/10.1063/5.0097651](https://doi.org/10.1063/5.0097651)
 
 ## License
 
