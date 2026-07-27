@@ -1107,7 +1107,7 @@ void TW_CALL CB_InvertZ( void *clientData ){
 }
 
 void TW_CALL CB_CleanSxSySzFile( void *clientData ){
-  fclose (outFile);//outFile is a global variable - pointer FILE* see also CALC_THREAD in ENGINE.c
+  fclose (outFile);//outFile is a global variable - pointer FILE* see also CALC_THREAD in solvers.c
 	outFile = fopen ("table.csv","w");
 
 	

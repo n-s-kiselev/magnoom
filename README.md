@@ -6,17 +6,17 @@ Magnoom is software for atomistic spin-dynamics simulations with real-time OpenG
 
 ## Main features
 
+- Real-time parameter control through [AntTweakBar](https://github.com/n-s-kiselev/AntTweakBar-Legacy)
 - Portable C99 application code for Linux, macOS, and Windows (MinGW)
-- Multithreaded spin-dynamics calculations
-- Real-time parameter control through AntTweakBar
+- Multithreaded solvers
 - OpenGL visualization and post-processing tools, including slicing and filtering
 - Import and export support for formats used by
   [OOMMF](https://math.nist.gov/oommf/) and
-  [MuMax3](https://mumax.github.io/), including OVF
+  [MuMax3](https://mumax.github.io/), including [OVF](https://math.nist.gov/oommf/doc/userguide20b0/userguide/Vector_Field_File_Format_OV.html)
 
 ## Building
 
-Magnoom uses a single cross-platform [`nob.c`](https://github.com/tsoding/nob.h) build program. Bootstrap it once from the repository root:
+Magnoom uses a single cross-platform [nob.h](https://github.com/tsoding/nob.h) build system. Bootstrap it once from the repository root:
 
 ```sh
 cc nob.c -o nob
@@ -30,7 +30,7 @@ Then run:
 ./nob -help    # list the supported options
 ```
 
-On Windows with MinGW, use:
+On Windows with [MinGW](https://www.mingw-w64.org/), use:
 
 ```sh
 gcc nob.c -o nob.exe
@@ -53,13 +53,13 @@ The `nob` executable automatically rebuilds itself when `nob.c` or its vendored 
 
 The complete source for the application dependencies is stored under [`vendor`](vendor):
 
-- [AntTweakBar Legacy](https://github.com/n-s-kiselev/AntTweakBar-Legacy) — the real-time OpenGL parameter interface, trimmed to the source needed by Magnoom and built as a static library from `vendor/AntTweakBar-Legacy`
-- GLFW 2.7.9 — window creation, input, and the event loop, built from `vendor/glfw2`
+- [AntTweakBar](https://github.com/n-s-kiselev/AntTweakBar-Legacy) — the real-time OpenGL parameter interface, trimmed to the source needed by Magnoom and built as a static library from `vendor/AntTweakBar-Legacy`
+- [GLFW](https://www.glfw.org/) [v*2.7.9*](https://sourceforge.net/projects/glfw/files/glfw/2.7.9/) — window creation, input, and the event loop, built from `vendor/glfw2`
 - [GLAD](https://glad.dav1d.de/) — OpenGL function loading, built from `vendor/glad`
 - [stb_image_write](https://github.com/nothings/stb) — PNG image export, stored in `vendor/stb`
-- [`nob.h`](https://github.com/tsoding/nob.h) — build-system implementation, stored in `vendor/nob`
+- [nob.h](https://github.com/tsoding/nob.h) — build-system implementation, stored in `vendor/nob`
 
-AntTweakBar's example programs are intentionally not included. GLFW and GLAD are built directly from the vendored source, so no system installation of GLFW, GLAD, or AntTweakBar is needed. Magnoom uses an OpenGL compatibility context because its renderer uses the fixed-function API.
+Magnoom uses an OpenGL compatibility context because its renderer uses the fixed-function API (no shaders).
 
 The remaining platform dependencies provide the compiler, system OpenGL libraries, native window-system headers, and threading support:
 
@@ -80,18 +80,13 @@ Install the Xcode Command Line Tools:
 xcode-select --install
 ```
 
-The build uses the system OpenGL, Cocoa, AppKit, Foundation, IOKit, and
-CoreVideo frameworks. No Homebrew packages are required.
+The build uses the system OpenGL, Cocoa, AppKit, Foundation, IOKit, and CoreVideo frameworks. No Homebrew packages are required.
 
 ### Windows
 
-Use a MinGW-w64 toolchain that provides `gcc`, `g++`, and `ar`. The build
-links against the Windows OpenGL, GDI, and multimedia system libraries.
-Run the bootstrap and build commands from a MinGW-compatible terminal.
+Use a MinGW-w64 toolchain that provides `gcc`, `g++`, and `ar`. The build links against the Windows OpenGL, GDI, and multimedia system libraries. Run the bootstrap and build commands from a MinGW-compatible terminal.
 
-Supported platforms are Linux, macOS, and Windows with MinGW. The current
-build has been verified directly on macOS ARM64; the Linux and Windows paths
-are implemented but have not yet been verified in this repository.
+Supported platforms are Linux, macOS, and Windows with MinGW. The current build has been verified directly on macOS ARM64; the Linux and Windows paths are implemented but have not yet been verified in this repository.
 
 ## Authors
 
@@ -114,5 +109,4 @@ A. S. Savchenko, V. M. Kuchkin, F. N. Rybakov, S. Blügel, and N. S. Kiselev,
 
 ## License
 
-See [`LICENSE`](LICENSE). AntTweakBar and the other vendored components retain
-their own license files in their respective directories under [`vendor`](vendor).
+See [`LICENSE`](LICENSE). AntTweakBar and the other vendored components retain their own license files in their respective directories under [`vendor`](vendor).

@@ -63,7 +63,7 @@ semaphore_ref	sem_out[THREADS_NUMBER];
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "vendor/stb/stb_image_write.h"
-#include "global.h"		/*All global variables and constants*/
+#include "magnoom.h"		/*All global variables and constants*/
 #include "linmath.h"		/*All global variables and constants*/
 
 void ReallocateMemoryForImages(int NumImages, int NOS){
@@ -82,11 +82,11 @@ void ReallocateMemoryForImages(int NumImages, int NOS){
     for(int i=0;i<NumImages;i++) dImage_z[i] = (double *) calloc(NOS, sizeof(double));
 }
 
-#include "MATH.c"		/*All mathematical fuctions*/
-#include "GEOM.c"		/*All functions salculating size and neighbors*/
-#include "ENGINE.c"	/*CALC THREAD:LLG solver*/
-#include "OPGL.c"		/*VISUAL THREAD: All Visualization Functions*/
-#include "INITSTATE.c"/*Set of functions for initial states*/
+#include "math_utils.c"		/*All mathematical fuctions*/
+#include "lattice_geometry.c"	/*All functions salculating size and neighbors*/
+#include "solvers.c"		/*CALC THREAD: LLG solvers*/
+#include "visualization.c"	/*VISUAL THREAD: All Visualization Functions*/
+#include "initial_states.c"	/*Set of functions for initial states*/
 
 static bool InitializeGlobalState(void)
 {

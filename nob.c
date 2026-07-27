@@ -110,8 +110,9 @@ static bool build_glfw(void)
 static bool build_magnoom_object(void)
 {
     const char *inputs[] = {
-        "main.c", "ENGINE.c", "GEOM.c", "INITSTATE.c", "MATH.c", "OPGL.c",
-        "global.h", "linmath.h", ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
+        "magnoom.c", "solvers.c", "lattice_geometry.c", "initial_states.c",
+        "math_utils.c", "visualization.c", "magnoom.h", "linmath.h",
+        ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
         "vendor/stb/stb_image_write.h",
         "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,
     };
@@ -120,7 +121,7 @@ static bool build_magnoom_object(void)
     Nob_Cmd cmd = {0};
     nob_cmd_append(&cmd, "cc", "-std=c99", "-O3", "-Wall", "-fno-strict-aliasing", "-DTW_STATIC",
                    "-I" ATB_INCLUDE, "-I" GLAD_INCLUDE, "-I" GLFW_INCLUDE,
-                   "-c", "main.c", "-o", MAGNOOM_OBJECT);
+                   "-c", "magnoom.c", "-o", MAGNOOM_OBJECT);
     return nob_cmd_run(&cmd);
 }
 

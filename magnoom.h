@@ -471,7 +471,7 @@ float color_function(float H ){
 
 
 void HSVtoRGB(float Vec[3], float rgb[3], int inV, int inH ){
-    // int H = inH*359+(1-2*inH)*((int) atan2int (Vec[1]+0.01,Vec[0])); //it's fast atan function [int deg], see MATH.c
+    // int H = inH*359+(1-2*inH)*((int) atan2int (Vec[1]+0.01,Vec[0])); //it's fast atan function [int deg], see math_utils.c
     float S=sqrt(Vec[0]*Vec[0]+Vec[1]*Vec[1]+Vec[2]*Vec[2]);
     float F = atan2(Vec[1]/S,Vec[0]/S);
     float H = inH*360+(1-2*inH)*(F > 0 ? F : (TPI + F))*R2D;
