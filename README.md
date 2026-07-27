@@ -86,7 +86,7 @@ The build uses the system OpenGL, Cocoa, AppKit, Foundation, IOKit, and CoreVide
 
 Use a MinGW-w64 toolchain that provides `gcc`, `g++`, and `ar`. The build links against the Windows OpenGL, GDI, and multimedia system libraries. Run the bootstrap and build commands from a MinGW-compatible terminal.
 
-Supported platforms are Linux, macOS, and Windows with MinGW. The current build has been verified directly on macOS ARM64; the Linux and Windows paths are implemented but have not yet been verified in this repository.
+Supported platforms are Linux, macOS, and Windows with MinGW. The current build has been verified directly on macOS Intel and ARM64, on Debian Linux. The Windows paths are implemented but have not yet been verified in this repository.
 
 ## Authors
 
