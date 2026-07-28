@@ -258,7 +258,15 @@ void setupOpenGL (magnoom_ctx *ctx)
 		exit(1);
 	}
 	glfwMakeContextCurrent(ctx->MainWindow);
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+	// Not gladLoadGLLoader(glfwGetProcAddress): GLFW2's own glfwGetProcAddress
+	// (unlike GLFW3's) is a thin wglGetProcAddress() wrapper with no fallback
+	// to GetProcAddress() on opengl32.dll, so it fails to resolve OpenGL 1.1
+	// core functions on Windows (wglGetProcAddress is documented by Microsoft
+	// as unreliable for those). gladLoadGL() is self-contained and already
+	// has that fallback built in (see get_proc() in vendor/glad/src/glad.c) -
+	// same fix already applied and confirmed working in the standalone
+	// AntTweakBar-Legacy project's own GLFW examples.
+	if (!gladLoadGL()) {
 		fprintf(stderr, "Failed to initialize GLAD\n");
 		glfwTerminate();
 		exit(1);
