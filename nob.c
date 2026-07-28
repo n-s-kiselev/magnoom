@@ -209,6 +209,8 @@ static bool clean(void)
     if (nob_file_exists(GLFW_OBJECT)) ok = nob_delete_file(GLFW_OBJECT) && ok;
     if (nob_file_exists(MAGNOOM_OBJECT)) ok = nob_delete_file(MAGNOOM_OBJECT) && ok;
     if (nob_file_exists(OUTPUT EXE_EXT)) ok = nob_delete_file(OUTPUT EXE_EXT) && ok;
+    if (nob_file_exists(TEST_OBJECT)) ok = nob_delete_file(TEST_OBJECT) && ok;
+    if (nob_file_exists(TEST_OUTPUT EXE_EXT)) ok = nob_delete_file(TEST_OUTPUT EXE_EXT) && ok;
     if (nob_file_exists(BUILD_DIR)) ok = nob_delete_file(BUILD_DIR) && ok;
     return ok;
 }
