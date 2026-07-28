@@ -36,6 +36,9 @@ magnoom
 *.csv
 *.png
 
+# Archives (should not be vendored as opaque blobs; use source or a submodule)
+*.zip
+
 # Platform metadata
 .DS_Store
 
