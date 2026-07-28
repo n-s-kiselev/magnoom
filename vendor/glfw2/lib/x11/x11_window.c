@@ -32,6 +32,12 @@
 
 #include <limits.h>
 
+/* Declared in AntTweakBar.h; forward-declared here rather than including
+ * that header, so this vendored GLFW2 source doesn't need AntTweakBar's
+ * include path added to its own compile flags. Implemented in TwBar.cpp;
+ * answers X11 SelectionRequest/SelectionClear events so AntTweakBar's
+ * edit-in-place copy/paste can interoperate with the desktop clipboard. */
+extern int TwHandleX11SelectionRequest( void *xevent );
 
 /* Define GLX 1.4 FSAA tokens if not already defined */
 #ifndef GLX_VERSION_1_4
@@ -1409,6 +1415,19 @@ static GLboolean processSingleEvent( void )
                 _glfwPlatformShowMouseCursor();
             }
 
+            break;
+        }
+
+        // Another application is asking to read (SelectionRequest) or
+        // informing us we've lost (SelectionClear) the X11 CLIPBOARD/PRIMARY
+        // selection - forward to AntTweakBar so its edit-in-place copy/paste
+        // can interoperate with the desktop clipboard. GLFW2 itself has no
+        // concept of clipboard events, so this is the only place that can
+        // see them.
+        case SelectionRequest:
+        case SelectionClear:
+        {
+            TwHandleX11SelectionRequest( &event );
             break;
         }
 
