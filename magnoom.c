@@ -45,6 +45,9 @@
 	#define semaphore_ref sem_t*
 #endif
 
+static const char SOFTWARE_NAME[] = "Magnoom";
+static const char SOFTWARE_VERSION[] = "1.01";
+
 #define ABS(x) ((x)<0?-(x):(x))
 
 enum engine_mutex_flags{DO_IT,WAIT};
@@ -612,7 +615,9 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->EngineShutdownRequested = false;
 
 	/* visualization.c: window / GLFW / display state */
-	ctx->WINDOWTITLE = "Magnoom v1.0";
+	static char window_title[64];
+	snprintf(window_title, sizeof(window_title), "%s v%s", SOFTWARE_NAME, SOFTWARE_VERSION);
+	ctx->WINDOWTITLE = window_title;
 	ctx->window_width = 1400;
 	ctx->window_height = 800;
 	ctx->MouseScaleX = 1.0;
