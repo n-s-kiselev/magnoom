@@ -190,6 +190,29 @@ static bool clean(void)
     return ok;
 }
 
+static bool ensure_submodules(void)
+{
+    const char *marker = ATB_SRC "TwMgr.cpp";
+    if (nob_file_exists(marker)) return true;
+
+    if (!nob_file_exists(".git")) {
+        nob_log(NOB_ERROR, "%s is missing and this is not a git checkout (no .git found) - "
+                "fetch the vendor/AntTweakBar-Legacy submodule manually", marker);
+        return false;
+    }
+
+    nob_log(NOB_INFO, "vendor/AntTweakBar-Legacy submodule is not initialized, running `git submodule update --init`");
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, "git", "submodule", "update", "--init", ATB_ROOT);
+    if (!nob_cmd_run(&cmd)) return false;
+
+    if (!nob_file_exists(marker)) {
+        nob_log(NOB_ERROR, "%s is still missing after `git submodule update --init`", marker);
+        return false;
+    }
+    return true;
+}
+
 static void usage(const char *program)
 {
     printf("usage: %s [-clean] [-help]\n", program);
@@ -211,6 +234,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (!ensure_submodules()) return 1;
     if (!nob_mkdir_if_not_exists(BUILD_DIR) || !nob_mkdir_if_not_exists(ATB_BUILD_DIR)) return 1;
     if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() ||
         !build_magnoom_object() || !build_magnoom()) return 1;

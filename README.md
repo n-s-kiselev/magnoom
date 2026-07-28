@@ -22,6 +22,14 @@ Magnoom uses a single cross-platform [nob.h](https://github.com/tsoding/nob.h) b
 cc nob.c -o nob
 ```
 
+`vendor/AntTweakBar-Legacy` is a git submodule. If it isn't already initialized (e.g. after a plain `git clone` without `--recurse-submodules`), `./nob` initializes it automatically on the first build; no manual `git submodule` command is required. To initialize it yourself instead, either clone with:
+
+```sh
+git clone --recurse-submodules https://github.com/n-s-kiselev/magnoom.git
+```
+
+or run `git submodule update --init` in an existing checkout.
+
 Then run:
 
 ```sh
@@ -47,13 +55,13 @@ Magnoom's application sources are compiled as C99. The vendored AntTweakBar impl
 
 The `nob` executable automatically rebuilds itself when `nob.c` or its vendored `nob.h` changes. All normal build products are contained in `build/`, except for the bootstrapped `nob` executable itself.
 
-`nob.c` is the only build system for this repository. No CMake, Makefile, Visual Studio project, package-manager build, or dependency download is required.
+`nob.c` is the only build system for this repository. No CMake, Makefile, Visual Studio project, or package-manager build is required. The only network access a build may trigger is the one-time git submodule fetch described above; there is no package-manager dependency resolution.
 
 ## Dependencies
 
 The complete source for the application dependencies is stored under [`vendor`](vendor):
 
-- [AntTweakBar](https://github.com/n-s-kiselev/AntTweakBar-Legacy) — the real-time OpenGL parameter interface, trimmed to the source needed by Magnoom and built as a static library from `vendor/AntTweakBar-Legacy`
+- [AntTweakBar](https://github.com/n-s-kiselev/AntTweakBar-Legacy) — the real-time OpenGL parameter interface, included as a git submodule at `vendor/AntTweakBar-Legacy` and built as a static library from the subset of its sources Magnoom needs (see `nob.c`'s `atb_common_sources`)
 - [GLFW](https://www.glfw.org/) [v*2.7.9*](https://sourceforge.net/projects/glfw/files/glfw/2.7.9/) — window creation, input, and the event loop, built from `vendor/glfw2`
 - [GLAD](https://glad.dav1d.de/) — OpenGL function loading, built from `vendor/glad`
 - [stb_image_write](https://github.com/nothings/stb) — PNG image export, stored in `vendor/stb`

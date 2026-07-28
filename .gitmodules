@@ -1,0 +1,3 @@
+[submodule "vendor/AntTweakBar-Legacy"]
+	path = vendor/AntTweakBar-Legacy
+	url = https://github.com/n-s-kiselev/AntTweakBar-Legacy.git
