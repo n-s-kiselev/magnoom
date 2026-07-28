@@ -1689,7 +1689,6 @@ void RestartCalcThreads(magnoom_ctx *ctx, pthread_t * thread_id, calc_thread_arg
 /*                        Program Main Thread                            */
 /*************************************************************************/
 
-#ifndef MAGNOOM_TEST_BUILD
 int
 main (int argc, char **argv){
 	if (!magnoom_ctx_init(&mag_ctx)) {
@@ -1894,4 +1893,3 @@ main (int argc, char **argv){
 
 	return 0;
 }
-#endif /* MAGNOOM_TEST_BUILD */
