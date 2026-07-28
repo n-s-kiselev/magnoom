@@ -112,7 +112,17 @@ typedef struct magnoom_ctx {
 	int             C_layer_max;
 	enSliceMode     WhichSliceMode;
 
-	/* Cartesian components of spins */
+	/* Cartesian components of spins, interleaved (S[3*n+0..2] via VEC_X/Y/Z) */
+	double*         S;      /* main spin array, length 3*NOS                */
+	double*         bS;     /* backup/secondary spin array, length 3*NOS    */
+	double*         tS;     /* RK-integrator temporary, length 3*NOS        */
+	double*         t2S;    /* RK-integrator temporary, length 3*NOS        */
+	double*         t3S;    /* RK-integrator temporary, length 3*NOS        */
+	double*         Image;  /* flat snapshot block, IMAGE_COMPONENT-indexed */
+	double*         dImage; /* flat derivative-snapshot block, same layout  */
+	/* TODO(vec-migration): the per-component pointers below are being       */
+	/* replaced by the interleaved buffers above and will be deleted once    */
+	/* every consumer is converted (see docs/plans -- vector-field migration)*/
 	double*         Sx;
 	double*         Sy;
 	double*         Sz;
@@ -1628,6 +1638,14 @@ if(FilePointer!=NULL) {
 #include "linmath.h"		/*All global variables and constants*/
 
 void ReallocateMemoryForImages(magnoom_ctx *ctx, int NumImages, int NOS){
+    if ((size_t)NumImages > SIZE_MAX / 3 / (size_t)NOS / sizeof(double)) {
+        fprintf(stderr, "ReallocateMemoryForImages: NumImages*NOS*3 would overflow, aborting allocation.\n");
+        return;
+    }
+    size_t count = 3*(size_t)NumImages*(size_t)NOS;
+    ctx->Image  = (double *) calloc(count, sizeof(double));
+    ctx->dImage = (double *) calloc(count, sizeof(double));
+
     ctx->Image_x = (double **) calloc(NumImages, sizeof(double *));
     for(int i=0;i<NumImages;i++) ctx->Image_x[i] = (double *) calloc(NOS, sizeof(double));
     ctx->Image_y = (double **) calloc(NumImages, sizeof(double *));
@@ -1652,6 +1670,13 @@ void ReallocateMemoryForImages(magnoom_ctx *ctx, int NumImages, int NOS){
 #include <fcntl.h> 		/* For O_CREAT and other O_**** constants */
 
 void ReallocateMemoryForSpins(magnoom_ctx *ctx, int NOS){
+	if ((size_t)NOS > SIZE_MAX / 3 / sizeof(double)) {
+		fprintf(stderr, "ReallocateMemoryForSpins: NOS*3 would overflow, aborting allocation.\n");
+		return;
+	}
+	ctx->S  = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- for 10^6 spins allocated memory for ctx->S = 24 Mega Byte
+	ctx->bS = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
+
 	ctx->Sx = (double *)calloc(NOS, sizeof(double));
 	ctx->Sy = (double *)calloc(NOS, sizeof(double));
 	ctx->Sz = (double *)calloc(NOS, sizeof(double));	// <-- for 10^6 spins allocated memory for ctx->Sz,ctx->Sy,ctx->Sz = 12 Mega Byte
@@ -1659,6 +1684,14 @@ void ReallocateMemoryForSpins(magnoom_ctx *ctx, int NOS){
 }
 
 void ReallocateMemoryForAllOther(magnoom_ctx *ctx, int NOS){
+	if ((size_t)NOS > SIZE_MAX / 3 / sizeof(double)) {
+		fprintf(stderr, "ReallocateMemoryForAllOther: NOS*3 would overflow, aborting allocation.\n");
+		return;
+	}
+	ctx->tS  = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
+	ctx->t2S = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
+	ctx->t3S = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
+
 	ctx->tSx = (double *)calloc(NOS, sizeof(double));
 	ctx->tSy = (double *)calloc(NOS, sizeof(double));
 	ctx->tSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
@@ -1893,6 +1926,10 @@ main (int argc, char **argv){
 	free(mag_ctx.Jexc);  			free(mag_ctx.Bexc);  			free(mag_ctx.Dexc);
 	free(mag_ctx.VDMx);  			free(mag_ctx.VDMy);  			free(mag_ctx.VDMz);
 
+	free(mag_ctx.S);     			free(mag_ctx.bS);
+	free(mag_ctx.tS);    			free(mag_ctx.t2S);   			free(mag_ctx.t3S);
+	/* mag_ctx.Image/dImage intentionally not freed here, matching the       */
+	/* pre-existing (unfixed) leak of Image_x/Image_y/Image_z/dImage_* below.*/
 	free(mag_ctx.Sx);    			free(mag_ctx.Sy);    			free(mag_ctx.Sz);
 	free(mag_ctx.tSx);   			free(mag_ctx.tSy);   			free(mag_ctx.tSz);
 	free(mag_ctx.bSx);   			free(mag_ctx.bSy);   			free(mag_ctx.bSz);
