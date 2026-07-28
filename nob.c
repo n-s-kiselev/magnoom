@@ -111,7 +111,7 @@ static bool build_magnoom_object(void)
 {
     const char *inputs[] = {
         "magnoom.c", "solvers.c", "lattice_geometry.c", "initial_states.c",
-        "math_utils.c", "visualization.c", "magnoom.h", "linmath.h",
+        "math_utils.c", "visualization.c", "linmath.h",
         ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
         "vendor/stb/stb_image_write.h",
         "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,

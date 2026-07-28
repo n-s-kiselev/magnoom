@@ -1,5 +1,5 @@
 void
-GetEffectiveField(	double* sx, double* sy, double* sz, 
+GetEffectiveField(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* heffx, double* heffy, double* heffz, int N, 
@@ -12,11 +12,11 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 	int S;
 	float Je, Bq, dx, dy, dz, DM;
 	int i,j;
-	int na1, Na = uABC[0];
-	int nb1, Nb = uABC[1];
-	int nc1, Nc = uABC[2];
+	int na1, Na = ctx->uABC[0];
+	int nb1, Nb = ctx->uABC[1];
+	int nc1, Nc = ctx->uABC[2];
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
@@ -27,11 +27,11 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					//H-field (Zeeman energy):
-					heffx[i] = Hfield*VHfield[0]+AC_FIELD_ON*HacTime*VHac[0];
-					heffy[i] = Hfield*VHfield[1]+AC_FIELD_ON*HacTime*VHac[1];
-					heffz[i] = Hfield*VHfield[2]+AC_FIELD_ON*HacTime*VHac[2];
+					heffx[i] = Hfield*VHfield[0]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[0];
+					heffy[i] = Hfield*VHfield[1]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[1];
+					heffz[i] = Hfield*VHfield[2]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[2];
 					if(nc==0||nc==Nc-1){
 					heffx[i] /= 2;
 					heffy[i] /= 2;
@@ -79,22 +79,22 @@ GetEffectiveField(	double* sx, double* sy, double* sz,
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
-			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
+			bc_c = 1 - (1-ctx->Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
 			for (int nb=nbini; nb<nbfin; nb++)
 			{
-				bc_b = 1 - (1-Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
+				bc_b = 1 - (1-ctx->Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
 				for (int na=naini; na<nafin; na++)
 				{
-					bc_a = 1 - (1-Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
+					bc_a = 1 - (1-ctx->Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
 					bc_f = bc_a*bc_b*bc_c;
 					na1 = na;
 					nb1 = Na * nb;
 					nc1 = Na * Nb * nc;
-					i = Ip + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
 					na1 = (Na + na + J)%Na;
 					nb1 = Na * ((Nb + nb + K)%Nb);
 					nc1 = Na * Nb * ((Nc + nc + L)%Nc);					
-					j = I  + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
+					j = I  + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
 					// Symmetric Heisenberg exchange:
 					// heffx[i]+= Je * sx[j] * bc_f;
 					// heffy[i]+= Je * sy[j] * bc_f;
@@ -158,7 +158,7 @@ void fun4(double k1, double k2, double k3, double k4,
 
 
 double
-GetTotalEnergyMoment(	double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
+GetTotalEnergyMoment(	magnoom_ctx *ctx, double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
 {
 	double tmp0 = 0;
 	Mtot[0] = 0;
@@ -171,8 +171,8 @@ GetTotalEnergyMoment(	double* sx, double* sy, double* sz, double* Hx, double* Hy
 		// metka test stochastic LLG
 		double vtemp[3];
 		// opposite to the rotation of the vector of external field
-		RotateVector(sx[i],sy[i],sz[i],0,0,1,-VHphi,vtemp); //rotate about y by theta of the external field
-		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-VHtheta,vtemp); //rotate about z by phi of the external field
+		RotateVector(sx[i],sy[i],sz[i],0,0,1,-ctx->VHphi,vtemp); //rotate about y by theta of the external field
+		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-ctx->VHtheta,vtemp); //rotate about z by phi of the external field
 		Mtot[0] = Mtot[0] + vtemp[0];
 		Mtot[1] = Mtot[1] + vtemp[1];
 		Mtot[2] = Mtot[2] + vtemp[2];		
@@ -185,25 +185,25 @@ GetTotalEnergyMoment(	double* sx, double* sy, double* sz, double* Hx, double* Hy
 }
 
 double
-GetTotalEnergyMomentE0(	double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
+GetTotalEnergyMomentE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
 {
 	double tmp0 = 0;
 	Mtot[0] = 0;
 	Mtot[1] = 0;
 	Mtot[2] = 0;
-	double LD = 2*PI/Dij[0], HD = Dij[0]*Dij[0];
+	double LD = 2*PI/ctx->Dij[0], HD = ctx->Dij[0]*ctx->Dij[0];
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 
 	for (int i=0; i<N; i++)
 	{
 
 		// Etot[i] = -Hx[i]*sx[i] - Hy[i]*sy[i] - Hz[i]*sz[i];
-		Etot[i] = 4*PI*PI*(Hf/HD)*(1-sx[i]*sin(VHtheta*PI/180)*cos(VHphi*PI/180)-sy[i]*sin(VHtheta*PI/180)*sin(VHphi*PI/180)-sz[i]*cos(VHtheta*PI/180))/(LD*LD*LD);
+		Etot[i] = 4*PI*PI*(ctx->Hf/HD)*(1-sx[i]*sin(ctx->VHtheta*PI/180)*cos(ctx->VHphi*PI/180)-sy[i]*sin(ctx->VHtheta*PI/180)*sin(ctx->VHphi*PI/180)-sz[i]*cos(ctx->VHtheta*PI/180))/(LD*LD*LD);
 		// metka test stochastic LLG
 		double vtemp[3];
 		// opposite to the rotation of the vector of external field
-		RotateVector(sx[i],sy[i],sz[i],0,0,1,-VHphi,vtemp); //rotate about y by theta of the external field
-		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-VHtheta,vtemp); //rotate about z by phi of the external field
+		RotateVector(sx[i],sy[i],sz[i],0,0,1,-ctx->VHphi,vtemp); //rotate about y by theta of the external field
+		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-ctx->VHtheta,vtemp); //rotate about z by phi of the external field
 		Mtot[0] = Mtot[0] + vtemp[0];
 		Mtot[1] = Mtot[1] + vtemp[1];
 		Mtot[2] = Mtot[2] + vtemp[2];		
@@ -216,7 +216,7 @@ GetTotalEnergyMomentE0(	double* sx, double* sy, double* sz, double* Hx, double* 
 }
 
 double
-GetTotalEnergyFerro(double sx, double sy, double sz, 
+GetTotalEnergyFerro(magnoom_ctx *ctx, double sx, double sy, double sz,
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* Etot, int N)
@@ -231,7 +231,7 @@ GetTotalEnergyFerro(double sx, double sy, double sz,
 	{
 	//H-field (Zeeman energy):
 	//Etot[i] =-Hfield*(VHfield[0]*sx+VHfield[1]*sy+VHfield[2]*sz);
-	Etot[i] =-Hfield*((VHfield[0]+AC_FIELD_ON*HacTime*VHac[0])*sx+(VHfield[1]+AC_FIELD_ON*HacTime*VHac[1])*sy+(VHfield[2]+AC_FIELD_ON*HacTime*VHac[2])*sz);
+	Etot[i] =-Hfield*((VHfield[0]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[0])*sx+(VHfield[1]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[1])*sy+(VHfield[2]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[2])*sz);
 	//uniaxial anisotropy1:
 	tmp0 = sx*vku1[0] + sy*vku1[1] + sz*vku1[2];
 	Etot[i]-= ku1 * tmp0 * tmp0;
@@ -245,9 +245,9 @@ GetTotalEnergyFerro(double sx, double sy, double sz,
 	int Ip, J, K, L;
 	int S;
 	double Je, Bq, dx, dy, dz, DM;
-	int na1, Na = uABC[0];
-	int nb1, Nb = uABC[1];
-	int nc1, Nc = uABC[2];
+	int na1, Na = ctx->uABC[0];
+	int nb1, Nb = ctx->uABC[1];
+	int nc1, Nc = ctx->uABC[2];
 	int bc_a; // boundary condition along "a"
 	int bc_b; // boundary condition along "b"
 	int bc_c; // boundary condition along "c"
@@ -269,18 +269,18 @@ GetTotalEnergyFerro(double sx, double sy, double sz,
 		dz= VDMz[ni];// and if so, then DM (= Dij) should be set to 1.0
 		for (int nc=0; nc<Nc; nc++)
 		{
-			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
+			bc_c = 1 - (1-ctx->Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
 			for (int nb=0; nb<Nb; nb++)
 			{
-				bc_b = 1 - (1-Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
+				bc_b = 1 - (1-ctx->Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
 				for (int na=0; na<Na; na++)
 				{
-					bc_a = 1 - (1-Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
+					bc_a = 1 - (1-ctx->Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
 					bc_f = bc_a*bc_b*bc_c;
 					na1 = na;
 					nb1 = Na * nb;
 					nc1 = Na * Nb * nc;
-					int i = Ip + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
+					int i = Ip + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
 					// na1 = (Na + na + J)%Na;
 					// nb1 = Na * ((Nb + nb + K)%Nb);
 					// nc1 = Na * Nb * ((Nc + nc + L)%Nc);
@@ -292,7 +292,7 @@ GetTotalEnergyFerro(double sx, double sy, double sz,
 		}
 	}
 	tmp0=0;
-	for (int i=0;i<NOS;i++)
+	for (int i=0;i<ctx->NOS;i++)
 	{
 		tmp0 = tmp0 + Etot[i];
 	}
@@ -300,7 +300,7 @@ GetTotalEnergyFerro(double sx, double sy, double sz,
 }
 
 double
-GetTotalEnergy(	double* sx, double* sy, double* sz, 
+GetTotalEnergy(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* Etot,double* Mtot, int N)
@@ -313,7 +313,7 @@ GetTotalEnergy(	double* sx, double* sy, double* sz,
 	for (int i=0; i<N; i++)
 	{
 	//H-field (Zeeman energy):
-	Etot[i] =-Hfield*((VHfield[0]+AC_FIELD_ON*HacTime*VHac[0])*sx[i]+(VHfield[1]+AC_FIELD_ON*HacTime*VHac[1])*sy[i]+(VHfield[2]+AC_FIELD_ON*HacTime*VHac[2])*sz[i]);
+	Etot[i] =-Hfield*((VHfield[0]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[0])*sx[i]+(VHfield[1]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[1])*sy[i]+(VHfield[2]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[2])*sz[i]);
 	//uniaxial anisotropy:
 	tmp0 = sx[i]*vku1[0] + sy[i]*vku1[1] + sz[i]*vku1[2];
 	Etot[i]-= ku1 * tmp0 * tmp0;
@@ -332,9 +332,9 @@ GetTotalEnergy(	double* sx, double* sy, double* sz,
 	int S;
 	float Je, Bq, dx, dy, dz, DM;
 	int i,j;
-	int na1, Na = uABC[0];
-	int nb1, Nb = uABC[1];
-	int nc1, Nc = uABC[2];
+	int na1, Na = ctx->uABC[0];
+	int nb1, Nb = ctx->uABC[1];
+	int nc1, Nc = ctx->uABC[2];
 	int bc_a; // boundary condition along "a"
 	int bc_b; // boundary condition along "b"
 	int bc_c; // boundary condition along "c"
@@ -356,22 +356,22 @@ GetTotalEnergy(	double* sx, double* sy, double* sz,
 		dz= VDMz[ni];// and if so, then DM (= Dij) should be set to 1.0
 		for (int nc=0; nc<Nc; nc++)
 		{
-			bc_c = 1 - (1-Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
+			bc_c = 1 - (1-ctx->Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
 			for (int nb=0; nb<Nb; nb++)
 			{
-				bc_b = 1 - (1-Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
+				bc_b = 1 - (1-ctx->Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
 				for (int na=0; na<Na; na++)
 				{
-					bc_a = 1 - (1-Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
+					bc_a = 1 - (1-ctx->Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
 					bc_f = bc_a*bc_b*bc_c;
 					na1 = na;
 					nb1 = Na * nb;
 					nc1 = Na * Nb * nc;
-					i = Ip + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
 					na1 = (Na + na + J)%Na;
 					nb1 = Na * ((Nb + nb + K)%Nb);
 					nc1 = Na * Nb * ((Nc + nc + L)%Nc);;
-					j = I  + AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
+					j = I  + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
 					//Symmetric Heisenberg exchange:
 					// Etot[i]-= Je * (sx[i]*sx[j]+sy[i]*sy[j]+sz[i]*sz[j]);
 					// //bi-quadratic exchange:
@@ -386,7 +386,7 @@ GetTotalEnergy(	double* sx, double* sy, double* sz,
 		}
 	}
 	tmp0=0;
-	for (i=0;i<NOS;i++)
+	for (i=0;i<ctx->NOS;i++)
 	{
 		tmp0 = tmp0 + Etot[i];
 	}
@@ -394,7 +394,7 @@ GetTotalEnergy(	double* sx, double* sy, double* sz,
 }
 
 double
-GetTotalEnergyE0(	double* sx, double* sy, double* sz, 
+GetTotalEnergyE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* Etot,double* Mtot, int N)
@@ -406,14 +406,14 @@ GetTotalEnergyE0(	double* sx, double* sy, double* sz,
 	double LD = 2*PI/Dij[0], HD = Dij[0]*Dij[0];
 
 
-	int Nx = uABC[0], Ny = uABC[1], Nz = uABC[2];
+	int Nx = ctx->uABC[0], Ny = ctx->uABC[1], Nz = ctx->uABC[2];
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	tmp0=0;
 	// if(Nz == 1 && Nx > 1 && Ny > 1){
 		for(int i = 0; i < Nx; i++){
 			for(int j = 0; j < Ny; j++){
 				int n = i + j*Nx, n1 = (i-1+Nx)%Nx+j*Nx, n2 = i + ((j-1+Ny)%Ny)*Nx;
-				Etot[n] = 4*PI*PI*(Hf/HD)*(1-sx[n]*sin(VHtheta*PI/180)*cos(VHphi*PI/180)-sy[n]*sin(VHtheta*PI/180)*sin(VHphi*PI/180)-sz[n]*cos(VHtheta*PI/180))/(LD*LD) -\
+				Etot[n] = 4*PI*PI*(ctx->Hf/HD)*(1-sx[n]*sin(ctx->VHtheta*PI/180)*cos(ctx->VHphi*PI/180)-sy[n]*sin(ctx->VHtheta*PI/180)*sin(ctx->VHphi*PI/180)-sz[n]*cos(ctx->VHtheta*PI/180))/(LD*LD) -\
 				(sx[n]*sx[n1]+sy[n]*sy[n1]+sz[n]*sz[n1]-1) + (1./LD)*2.*PI*(sy[n]*sz[n1]-sz[n]*sy[n1]) -\
 				(sx[n]*sx[n2]+sy[n]*sy[n2]+sz[n]*sz[n2]-1) + (1./LD)*2.*PI*(sz[n]*sx[n2]-sx[n]*sz[n2]);
 				tmp0 = tmp0 + Etot[n];
@@ -451,10 +451,10 @@ GetTotalEnergyE0(	double* sx, double* sy, double* sz,
 // }
 
 void
-GetFluctuations( float* rx, float* ry, float* rz, int N ){
+GetFluctuations( magnoom_ctx *ctx, float* rx, float* ry, float* rz, int N ){
 	for (int i=0; i<N; i++){
 		float r[3];
-		float A=sqrt(2*fabs(log(t_step)));
+		float A=sqrt(2*fabs(log(ctx->t_step)));
 		for(int j=0; j<3; j++){
 			float U = rand() / (float)RAND_MAX;
 			float V = rand() / (float)RAND_MAX;
@@ -472,7 +472,7 @@ GetFluctuations( float* rx, float* ry, float* rz, int N ){
 }
 
 void
-StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
+StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
 				double* tnx,		double* tny,		double* tnz,		// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
@@ -517,19 +517,19 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 
 	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
-	Cx = VCu[0] * Cu;
-	Cy = VCu[1] * Cu;
-	Cz = VCu[2] * Cu;
-	GetEffectiveField( 	inx, iny, inz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	Cx = ctx->VCu[0] * ctx->Cu;
+	Cy = ctx->VCu[1] * ctx->Cu;
+	Cz = ctx->VCu[2] * ctx->Cu;
+	GetEffectiveField( ctx, inx, iny, inz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
-	int Na = uABC[0];
-	int Nb = uABC[1];
+	int Na = ctx->uABC[0];
+	int Nb = ctx->uABC[1];
 	int nb1, nc1;
 	int i;
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
@@ -540,18 +540,18 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = inx[i];	ny = iny[i];	nz = inz[i];
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					// deterministic terms of Landau–Lifshitz equation:
-					Ax = 0.5f * h * ( - Alpha_p * Precession * Hx - Alpha_d * (ny * Hz - nz * Hy) );
-					Ay = 0.5f * h * ( - Alpha_p * Precession * Hy - Alpha_d * (nz * Hx - nx * Hz) );
-					Az = 0.5f * h * ( - Alpha_p * Precession * Hz - Alpha_d * (nx * Hy - ny * Hx) );
+					Ax = 0.5f * h * ( - Alpha_p * ctx->Precession * Hx - Alpha_d * (ny * Hz - nz * Hy) );
+					Ay = 0.5f * h * ( - Alpha_p * ctx->Precession * Hy - Alpha_d * (nz * Hx - nx * Hz) );
+					Az = 0.5f * h * ( - Alpha_p * ctx->Precession * Hz - Alpha_d * (nx * Hy - ny * Hx) );
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Ax = Ax + 0.5f * h * ( - Alpha_d * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Ay = Ay + 0.5f * h * ( - Alpha_d * Cy + (nz * Cx - nx * Cz) );
 						Az = Az + 0.5f * h * ( - Alpha_d * Cz + (nx * Cy - ny * Cx) );
@@ -598,13 +598,13 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 		}
 	}
 
-	GetEffectiveField( 	tnx, tny, tnz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	GetEffectiveField( ctx, tnx, tny, tnz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//final step of midpoint solver:
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
@@ -614,14 +614,14 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 					// deterministic terms of Landau–Lifshitz equation:
-					Ax = 0.5f * h * ( - Alpha_p * Precession * Hx - Alpha_d * (ny * Hz - nz * Hy) );
-					Ay = 0.5f * h * ( - Alpha_p * Precession * Hy - Alpha_d * (nz * Hx - nx * Hz) );
-					Az = 0.5f * h * ( - Alpha_p * Precession * Hz - Alpha_d * (nx * Hy - ny * Hx) );
+					Ax = 0.5f * h * ( - Alpha_p * ctx->Precession * Hx - Alpha_d * (ny * Hz - nz * Hy) );
+					Ay = 0.5f * h * ( - Alpha_p * ctx->Precession * Hy - Alpha_d * (nz * Hx - nx * Hz) );
+					Az = 0.5f * h * ( - Alpha_p * ctx->Precession * Hz - Alpha_d * (nx * Hy - ny * Hx) );
 					// Spin-torque term
 					Ax = Ax + 0.5f * h * ( - Alpha_d * Cx + (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 					Ay = Ay + 0.5f * h * ( - Alpha_d * Cy + (nz * Cx - nx * Cz) );
@@ -651,15 +651,15 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 					inz[i] = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
 
 					// find max torque:
-					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
-					Hx = Heffx[i]-detMi*inx[i];
-					Hy = Heffy[i]-detMi*iny[i];	
-					Hz = Heffz[i]-detMi*inz[i];
+					detMi = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
+					Hx = ctx->Heffx[i]-detMi*inx[i];
+					Hy = ctx->Heffy[i]-detMi*iny[i];	
+					Hz = ctx->Heffz[i]-detMi*inz[i];
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
-					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;
-					bSx[i]=inx[i];
-					bSy[i]=iny[i];
-					bSz[i]=inz[i];
+					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
+					ctx->bSx[i]=inx[i];
+					ctx->bSy[i]=iny[i];
+					ctx->bSz[i]=inz[i];
 				}
 			}
 		}
@@ -668,7 +668,7 @@ StochasticLLG(	double* inx,		double* iny,		double* inz,		// input vector field
 
 
 void
-StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector field
+StochasticLLG_Heun(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
 				double* tnx,		double* tny,		double* tnz,		// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
@@ -687,24 +687,24 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 	double Fx, Fy, Fz;// total matrix
 	double detMi;	 // detMi = 1/detM
 	double D = sqrt(2.0 * alpha / (1.0 + alpha * alpha) * temperature);
-	double Alpha_d = alpha / (1.0 + alpha * alpha * Precession);
+	double Alpha_d = alpha / (1.0 + alpha * alpha * ctx->Precession);
 	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
 
 	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
-	Cx = VCu[0] * Cu;
-	Cy = VCu[1] * Cu;
-	Cz = VCu[2] * Cu;
-	GetEffectiveField( 	inx, iny, inz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	Cx = ctx->VCu[0] * ctx->Cu;
+	Cy = ctx->VCu[1] * ctx->Cu;
+	Cz = ctx->VCu[2] * ctx->Cu;
+	GetEffectiveField( ctx, inx, iny, inz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//Predictor step:
-	int Na = uABC[0];
-	int Nb = uABC[1];
+	int Na = ctx->uABC[0];
+	int Nb = ctx->uABC[1];
 	int nb1, nc1;
 	int i;
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
 		{
@@ -714,9 +714,9 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = inx[i];	ny = iny[i];	nz = inz[i];
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					// deterministic terms of Landau–Lifshitz equation:
@@ -725,7 +725,7 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
 						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
@@ -746,13 +746,13 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 		}
 	}
 
-	GetEffectiveField( 	tnx, tny, tnz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	GetEffectiveField( ctx, tnx, tny, tnz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//corrector step:
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
@@ -762,9 +762,9 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
 					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 
 					// deterministic terms of Landau–Lifshitz equation:
@@ -773,7 +773,7 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Fz = Alpha_p * Hz + Alpha_d * (nx * Hy - ny * Hx);
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
 						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
@@ -797,15 +797,15 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 					inz[i] = nz * detMi;
 
 					//find max torque
-					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
-					Hx = Heffx[i]-detMi*inx[i];
-					Hy = Heffy[i]-detMi*iny[i];	
-					Hz = Heffz[i]-detMi*inz[i];
+					detMi = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
+					Hx = ctx->Heffx[i]-detMi*inx[i];
+					Hy = ctx->Heffy[i]-detMi*iny[i];	
+					Hz = ctx->Heffz[i]-detMi*inz[i];
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
-					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;
-					bSx[i]=inx[i];
-					bSy[i]=iny[i];
-					bSz[i]=inz[i];
+					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
+					ctx->bSx[i]=inx[i];
+					ctx->bSy[i]=iny[i];
+					ctx->bSz[i]=inz[i];
 				}
 			}
 		}
@@ -815,7 +815,7 @@ StochasticLLG_Heun(	double* inx,		double* iny,		double* inz,		// input vector fi
 
 
 void
-StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector field
+StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
 				double* tnx,		double* tny,		double* tnz,		// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
@@ -836,7 +836,7 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 	double Fx, Fy, Fz;// total matrix
 	double detMi;	 // detMi = 1/detM
 	double D = sqrt(2.0 * alpha / (1.0 + alpha * alpha) * temperature);
-	double Alpha_d = alpha / (1.0 + alpha * alpha * Precession);
+	double Alpha_d = alpha / (1.0 + alpha * alpha * ctx->Precession);
 	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
 
 	double xi = Xi; 
@@ -846,19 +846,19 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 
 	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
-	Cx = VCu[0] * Cu;
-	Cy = VCu[1] * Cu;
-	Cz = VCu[2] * Cu;
-	GetEffectiveField( 	inx, iny, inz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	Cx = ctx->VCu[0] * ctx->Cu;
+	Cy = ctx->VCu[1] * ctx->Cu;
+	Cz = ctx->VCu[2] * ctx->Cu;
+	GetEffectiveField( ctx, inx, iny, inz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k1:
-	int Na = uABC[0];
-	int Nb = uABC[1];
+	int Na = ctx->uABC[0];
+	int Nb = ctx->uABC[1];
 	int nb1, nc1;
 	int i;
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
 		{
@@ -868,15 +868,15 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = inx[i];	ny = iny[i];	nz = inz[i];
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 
 					//Li-Zhang
-					int ip = Ip + AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
-					int im = Ip + AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
+					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
+					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 				
 					Hx1 = Hx + c1*(inx[ip]-inx[im])/2;
 					Hy1 = Hy + c1*(iny[ip]-iny[im])/2;
@@ -904,7 +904,7 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Fz = Alpha_p * Hz1 + Alpha_d * (nx * Hy2 - ny * Hx2);
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
 						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
@@ -925,13 +925,13 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 		}
 	}
 
-	GetEffectiveField( 	tnx, tny, tnz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	GetEffectiveField( ctx, tnx, tny, tnz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//corrector step:
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
@@ -941,13 +941,13 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
-					int ip = Ip + AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
-					int im = Ip + AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
+					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
+					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
+					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];	// <-- they are new values for heff
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
 					Hx1 = Hx + c1*(tnx[ip]-tnx[im])/2;
 					Hy1 = Hy + c1*(tny[ip]-tny[im])/2;
 					Hz1 = Hz + c1*(tnz[ip]-tnz[im])/2;
@@ -966,7 +966,7 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Fz = Alpha_p * Hz1 + Alpha_d * (nx * Hy2 - ny * Hx2);
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
 						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
@@ -990,15 +990,15 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 					inz[i] = Cz * detMi;
 
 					//find max torque
-					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
-					Hx = Heffx[i]-detMi*inx[i];
-					Hy = Heffy[i]-detMi*iny[i];	
-					Hz = Heffz[i]-detMi*inz[i];
+					detMi = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
+					Hx = ctx->Heffx[i]-detMi*inx[i];
+					Hy = ctx->Heffy[i]-detMi*iny[i];	
+					Hz = ctx->Heffz[i]-detMi*inz[i];
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
-					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;
-					bSx[i]=inx[i];
-					bSy[i]=iny[i];
-					bSz[i]=inz[i];
+					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
+					ctx->bSx[i]=inx[i];
+					ctx->bSy[i]=iny[i];
+					ctx->bSz[i]=inz[i];
 				}
 			}
 		}
@@ -1007,7 +1007,7 @@ StochasticLLG_RK23(	double* inx,		double* iny,		double* inz,		// input vector fi
 
 
 void
-StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector field
+StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
 				double* tnx,		double* tny,		double* tnz,		// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
@@ -1027,21 +1027,21 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 	double Fx, Fy, Fz;// total matrix
 	double detMi;	 // detMi = 1/detM
 	double D = sqrt(2.0 * alpha / (1.0 + alpha * alpha) * temperature);
-	double Alpha_d = alpha / (1.0 + alpha * alpha * Precession);
+	double Alpha_d = alpha / (1.0 + alpha * alpha * ctx->Precession);
 	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
 
 	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
-	Cx = VCu[0] * Cu;
-	Cy = VCu[1] * Cu;
-	Cz = VCu[2] * Cu;
-	GetEffectiveField( 	inx, iny, inz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	Cx = ctx->VCu[0] * ctx->Cu;
+	Cy = ctx->VCu[1] * ctx->Cu;
+	Cz = ctx->VCu[2] * ctx->Cu;
+	GetEffectiveField( ctx, inx, iny, inz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//Predictor step:
-	int Na = uABC[0];
-	int Nb = uABC[1];
+	int Na = ctx->uABC[0];
+	int Nb = ctx->uABC[1];
 	int nb1, nc1;
 	int i;
 
@@ -1050,7 +1050,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 	double c1 = (xi-alpha)*u, c2=(1+xi*alpha)*u/alpha;
 
 	//k1:
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
 		{
@@ -1060,15 +1060,15 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = inx[i];	ny = iny[i];	nz = inz[i];
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
-					int ip = Ip + AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
-					int im = Ip + AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
+					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
+					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					// Hx1 = Hx + c1*(inx[imm]/12 - 2*inx[im]/3 + 2*inx[ip]/3 -inx[ipp]/12);
 					// Hy1 = Hy + c1*(iny[imm]/12 - 2*iny[im]/3 + 2*iny[ip]/3 -iny[ipp]/12);
 					// Hz1 = Hz + c1*(inz[imm]/12 - 2*inz[im]/3 + 2*inz[ip]/3 -inz[ipp]/12);
@@ -1093,7 +1093,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Fz = Alpha_p * Hz1 + Alpha_d * (nx * Hy2 - ny * Hx2);
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
 						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
@@ -1110,9 +1110,9 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Cy = - h * (nz * Fx - nx * Fz);
 					Cz = - h * (nx * Fy - ny * Fx);
 					//save k1/6 in global temp array
-					t2Sx[i] = Cx/6.0;
-					t2Sy[i] = Cy/6.0;
-					t2Sz[i] = Cz/6.0;
+					ctx->t2Sx[i] = Cx/6.0;
+					ctx->t2Sy[i] = Cy/6.0;
+					ctx->t2Sz[i] = Cz/6.0;
 					//y_n+k1/2 will be used on the next step
 					tnx[i] = nx + Cx*0.5;
 					tny[i] = ny + Cy*0.5;
@@ -1122,13 +1122,13 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 		}
 	}
 	//Heff(y_n+k1/2):
-	GetEffectiveField( 	tnx, tny, tnz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	GetEffectiveField( ctx, tnx, tny, tnz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//k2:
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
 		{
@@ -1138,15 +1138,15 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
-					int ip = Ip + AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
-					int im = Ip + AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
+					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
+					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					// Hx1 = Hx + c1*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
 					// Hy1 = Hy + c1*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
 					// Hz1 = Hz + c1*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
@@ -1173,7 +1173,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
 						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
@@ -1190,9 +1190,9 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Cy = - h * (nz * Fx - nx * Fz);
 					Cz = - h * (nx * Fy - ny * Fx);
 					//save k2/3 in global temp array
-					t2Sx[i]+= Cx/3.0;
-					t2Sy[i]+= Cy/3.0;
-					t2Sz[i]+= Cz/3.0;
+					ctx->t2Sx[i]+= Cx/3.0;
+					ctx->t2Sy[i]+= Cy/3.0;
+					ctx->t2Sz[i]+= Cz/3.0;
 					//y_n+k2/2 will be used on the next step
 					tnx[i] = inx[i] + Cx*0.5;
 					tny[i] = iny[i] + Cy*0.5;
@@ -1202,12 +1202,12 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 		}
 	}
 	//Heff(y_n+k2/2):
-	GetEffectiveField( 	tnx, tny, tnz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	GetEffectiveField( ctx, tnx, tny, tnz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);	
 	//k3:
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
 		{
@@ -1217,15 +1217,15 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
-					int ip = Ip + AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
-					int im = Ip + AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
+					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
+					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					// Hx1 = Hx + c1*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
 					// Hy1 = Hy + c1*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
 					// Hz1 = Hz + c1*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
@@ -1250,7 +1250,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Fz = Alpha_p * Hz1 + Alpha_d * (nx * Hy2 - ny * Hx2);
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
 						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
@@ -1267,9 +1267,9 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Cy = - h * (nz * Fx - nx * Fz);
 					Cz = - h * (nx * Fy - ny * Fx);
 					//save k2/3 in global temp array
-					t2Sx[i]+= Cx/3.0;
-					t2Sy[i]+= Cy/3.0;
-					t2Sz[i]+= Cz/3.0;
+					ctx->t2Sx[i]+= Cx/3.0;
+					ctx->t2Sy[i]+= Cy/3.0;
+					ctx->t2Sz[i]+= Cz/3.0;
 					//y_n+k3 will be used on the next step
 					tnx[i] = inx[i] + Cx;
 					tny[i] = iny[i] + Cy;
@@ -1279,12 +1279,12 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 		}
 	}
 	//Heff(y_n+k3):
-	GetEffectiveField( 	tnx, tny, tnz, 
-						NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-						Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+	GetEffectiveField( ctx, tnx, tny, tnz, 
+						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);	
 	//k4:
-	for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
 		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
 		{
@@ -1294,15 +1294,15 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 				nb1 = Na * nb;
 				for (int na=naini; na<nafin; na++)
 				{
-					i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
-					Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
-					int ip = Ip + AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
-					int im = Ip + AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
+					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
+					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					// Hx1 = Hx + c1*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
 					// Hy1 = Hy + c1*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
 					// Hz1 = Hz + c1*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
@@ -1326,7 +1326,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Fz = Alpha_p * Hz1 + Alpha_d * (nx * Hy2 - ny * Hx2);
 
 					// Spin-torque term
-					if (Cu!=0) {
+					if (ctx->Cu!=0) {
 						Fx = Fx + h * ( Alpha_d * Cx - (ny * Cz - nz * Cy) ); //pay attention to the signe and factors
 						Fy = Fy + h * ( Alpha_d * Cy - (nz * Cx - nx * Cz) );
 						Fz = Fz + h * ( Alpha_d * Cz - (nx * Cy - ny * Cx) );
@@ -1343,13 +1343,13 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					Cy = - h * (nz * Fx - nx * Fz);
 					Cz = - h * (nx * Fy - ny * Fx);
 					//save k4/6 in global temp array
-					t2Sx[i]+= Cx/6.0;
-					t2Sy[i]+= Cy/6.0;
-					t2Sz[i]+= Cz/6.0;
+					ctx->t2Sx[i]+= Cx/6.0;
+					ctx->t2Sy[i]+= Cy/6.0;
+					ctx->t2Sz[i]+= Cz/6.0;
 					//y_{n+1}=y_n+k1/6+k2/3+k3/3+k4/6 - final step:
-					inx[i]+= t2Sx[i];
-					iny[i]+= t2Sy[i];
-					inz[i]+= t2Sz[i];
+					inx[i]+= ctx->t2Sx[i];
+					iny[i]+= ctx->t2Sy[i];
+					inz[i]+= ctx->t2Sz[i];
 					nx = inx[i];	ny = iny[i];	nz = inz[i];
 					//normalize spin
 					detMi = 1.0 / sqrt(nx*nx + ny*ny + nz*nz);
@@ -1358,15 +1358,15 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 					inz[i] = nz * detMi;
 
 					//find max torque
-					detMi = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
-					Hx = Heffx[i]-detMi*inx[i];
-					Hy = Heffy[i]-detMi*iny[i];	
-					Hz = Heffz[i]-detMi*inz[i];
+					detMi = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
+					Hx = ctx->Heffx[i]-detMi*inx[i];
+					Hy = ctx->Heffy[i]-detMi*iny[i];	
+					Hz = ctx->Heffz[i]-detMi*inz[i];
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
-					if (detMi > Max_torque[thread]) Max_torque[thread] = detMi;	
-					bSx[i]=inx[i];
-					bSy[i]=iny[i];
-					bSz[i]=inz[i];					
+					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;	
+					ctx->bSx[i]=inx[i];
+					ctx->bSy[i]=iny[i];
+					ctx->bSz[i]=inz[i];					
 				}
 			}
 		}
@@ -1376,7 +1376,7 @@ StochasticLLG_RK45(	double* inx,		double* iny,		double* inz,		// input vector fi
 
 
 void
-Relax(	double* inx,		double* iny,		double* inz,		// input vector field
+Relax(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
 				double* tnx,		double* tny,		double* tnz,		// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
@@ -1387,23 +1387,23 @@ Relax(	double* inx,		double* iny,		double* inz,		// input vector field
 				int ncini, 	int ncfin, bool* proj)
 {
 	
-		GetEffectiveField( 	inx, iny, inz, 
-					NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx,
-					Jij, Bij, Dij, VDMx, VDMy, VDMz, VKu1, Ku1, VKu2, Ku2, Kc, VHf, Hf, Heffx, Heffy, Heffz, NOS,
+		GetEffectiveField( ctx, inx, iny, inz, 
+					ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+					ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 					naini, nafin, nbini, nbfin, ncini, ncfin);
 	
 		
 
 			double Hx, Hy, Hz, temp;// components of the effective field
-			int Na = uABC[0];
-			int Nb = uABC[1];
+			int Na = ctx->uABC[0];
+			int Nb = ctx->uABC[1];
 			int nb1, nc1;
 			int i,s;
 
 			double ALPHA,g1,g2, d1,d2;
-			ALPHA = damping;
+			ALPHA = ctx->damping;
 
-			for (int Ip=0; Ip<AtomsPerBlock; Ip++)
+			for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 			{
 				for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
 				{
@@ -1413,22 +1413,22 @@ Relax(	double* inx,		double* iny,		double* inz,		// input vector field
 						nb1 = Na * nb;
 						for (int na=naini; na<nafin; na++)
 						{
-							i = Ip + AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-							Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+							i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+							Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 							//find max torque
-							temp = Heffx[i]*inx[i]+Heffy[i]*iny[i]+Heffz[i]*inz[i];
-							Hx = Heffx[i]-temp*inx[i];
-							Hy = Heffy[i]-temp*iny[i];	
-							Hz = Heffz[i]-temp*inz[i];
+							temp = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
+							Hx = ctx->Heffx[i]-temp*inx[i];
+							Hy = ctx->Heffy[i]-temp*iny[i];	
+							Hz = ctx->Heffz[i]-temp*inz[i];
 							temp = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
-							if (temp > Max_torque[thread]) Max_torque[thread] = temp;
+							if (temp > ctx->Max_torque[thread]) ctx->Max_torque[thread] = temp;
 							// constant step descent
 							proj[i] = (inz[i]>0)? true : false;
 							s = (proj[i])? 1 : -1;
 							g1 = inx[i]/(1+s*inz[i]);
 							g2 = iny[i]/(1+s*inz[i]);
 							
-							Hx = Heffx[i];	Hy = Heffy[i];	Hz = Heffz[i];
+							Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 							d1 = (Hx*(iny[i]*iny[i]+s*inz[i]*(1+s*inz[i])) - Hy*inx[i]*iny[i] - Hz*inx[i]*(s+inz[i]));
 							d2 = (-Hx*inx[i]*iny[i] + Hy*(inx[i]*inx[i]+s*inz[i]*(1+s*inz[i])) - Hz*iny[i]*(s+inz[i]));
 
@@ -1439,9 +1439,9 @@ Relax(	double* inx,		double* iny,		double* inz,		// input vector field
 							iny[i] = 2*g2/(1+g1*g1+g2*g2);
 							inz[i] = s*(1-g1*g1-g2*g2)/(1+g1*g1+g2*g2);
 
-							bSx[i]=inx[i];
-							bSy[i]=iny[i];
-							bSz[i]=inz[i];					
+							ctx->bSx[i]=inx[i];
+							ctx->bSy[i]=iny[i];
+							ctx->bSz[i]=inz[i];					
 						}
 					}
 				}
@@ -1452,42 +1452,42 @@ Relax(	double* inx,		double* iny,		double* inz,		// input vector field
 
 
 
-double GetACfield(int type)
+double GetACfield(magnoom_ctx *ctx, int type)
 {
 	double R=0;
 	double temp;
 	switch (type){
 		case SIN_FIELD:
-			R = AC_FIELD_ON*Hac*sin(Omega_dc*t_step*ITERATION);
+			R = ctx->AC_FIELD_ON*ctx->Hac*sin(ctx->Omega_dc*ctx->t_step*ctx->ITERATION);
 		break;
 
 		case GAUSSIAN_FIELD:
-			temp = (t_step*ITERATION-t_offset)/GPulseWidth;
-			R = AC_FIELD_ON*Hac*exp(-0.5*temp*temp );
+			temp = (ctx->t_step*ctx->ITERATION-ctx->t_offset)/ctx->GPulseWidth;
+			R = ctx->AC_FIELD_ON*ctx->Hac*exp(-0.5*temp*temp );
 		break;
 
 		case SINC_FIELD:
-			if (t_step*ITERATION<=GPulseWidth){
-				if (t_step*ITERATION==t_offset){
-					R = AC_FIELD_ON*Hac*1;
+			if (ctx->t_step*ctx->ITERATION<=ctx->GPulseWidth){
+				if (ctx->t_step*ctx->ITERATION==ctx->t_offset){
+					R = ctx->AC_FIELD_ON*ctx->Hac*1;
 				}else{
-					R = AC_FIELD_ON*Hac*sin((Omega_dc*(t_step*ITERATION-t_offset)))/(Omega_dc*(t_step*ITERATION-t_offset));
-				}				
+					R = ctx->AC_FIELD_ON*ctx->Hac*sin((ctx->Omega_dc*(ctx->t_step*ctx->ITERATION-ctx->t_offset)))/(ctx->Omega_dc*(ctx->t_step*ctx->ITERATION-ctx->t_offset));
+				}
 			}else{ R = 0.0; }
 		break;
 
 		case CIRCULAR_FIELD:
-			if(AC_FIELD_ON!=0){
-				VHac[0] = cos(Omega_dc*t_step*ITERATION);
-				VHac[1] = sin(Omega_dc*t_step*ITERATION);
-				VHac[2] = 0.0f;
-				R = AC_FIELD_ON*Hac;			
+			if(ctx->AC_FIELD_ON!=0){
+				ctx->VHac[0] = cos(ctx->Omega_dc*ctx->t_step*ctx->ITERATION);
+				ctx->VHac[1] = sin(ctx->Omega_dc*ctx->t_step*ctx->ITERATION);
+				ctx->VHac[2] = 0.0f;
+				R = ctx->AC_FIELD_ON*ctx->Hac;
 			}
 		break;
 	}
-	Bac[0] = R * VHac[0];
-	Bac[1] = R * VHac[1];
-	Bac[2] = R * VHac[2];
+	ctx->Bac[0] = R * ctx->VHac[0];
+	ctx->Bac[1] = R * ctx->VHac[1];
+	ctx->Bac[2] = R * ctx->VHac[2];
 	return R;
 }
 	
@@ -1495,23 +1495,25 @@ double GetACfield(int type)
 /* this function is run by the distinct thread */
 void *CALC_THREAD(void *void_ptr)
 {
-    int threadindex = *((int *) void_ptr);
+    calc_thread_arg *arg = (calc_thread_arg *) void_ptr;
+    int threadindex = arg->index;
+    magnoom_ctx *ctx = arg->ctx;
     // printf("threadindex =%d\n", threadindex );
     int dNa=0;
     int dNb=0;
     int dNc=0;
 
-    if (uABC[0]%THREADS_NUMBER==0){
-    		dNa = uABC[0]/THREADS_NUMBER;
-    }else{	dNa = (int)uABC[0]/THREADS_NUMBER+1;}
+    if (ctx->uABC[0]%THREADS_NUMBER==0){
+    		dNa = ctx->uABC[0]/THREADS_NUMBER;
+    }else{	dNa = (int)ctx->uABC[0]/THREADS_NUMBER+1;}
 
-    if (uABC[1]%THREADS_NUMBER==0){
-    		dNb = uABC[1]/THREADS_NUMBER;
-    }else{	dNb = (int)uABC[1]/THREADS_NUMBER+1;}
+    if (ctx->uABC[1]%THREADS_NUMBER==0){
+    		dNb = ctx->uABC[1]/THREADS_NUMBER;
+    }else{	dNb = (int)ctx->uABC[1]/THREADS_NUMBER+1;}
 
-    if (uABC[2]%THREADS_NUMBER==0){
-    		dNc = uABC[2]/THREADS_NUMBER;
-    }else{	dNc = (int)uABC[2]/THREADS_NUMBER+1;}
+    if (ctx->uABC[2]%THREADS_NUMBER==0){
+    		dNc = ctx->uABC[2]/THREADS_NUMBER;
+    }else{	dNc = (int)ctx->uABC[2]/THREADS_NUMBER+1;}
 
     int naini=0;
     int nafin=0;
@@ -1520,107 +1522,107 @@ void *CALC_THREAD(void *void_ptr)
     int ncini=0;
     int ncfin=0;
 
-    if (uABC[0]>=uABC[1]&&uABC[0]>=uABC[2]){      //a-axis is the longest side of the box
+    if (ctx->uABC[0]>=ctx->uABC[1]&&ctx->uABC[0]>=ctx->uABC[2]){      //a-axis is the longest side of the box
     	naini = dNa*threadindex; 
-    	if (dNa*(threadindex+1)<uABC[0]){
+    	if (dNa*(threadindex+1)<ctx->uABC[0]){
     		nafin = dNa*(threadindex+1);
     	}else{
-    		nafin = uABC[0];
+    		nafin = ctx->uABC[0];
     	}
-    	nbini = 0; nbfin = uABC[1];
-    	// nbini = 1; nbfin = uABC[1];//metka
-    	ncini = 0; ncfin = uABC[2];
-    }else if (uABC[2]>=uABC[0]&&uABC[2]>=uABC[1]){//c-axis is the longest side of the box
+    	nbini = 0; nbfin = ctx->uABC[1];
+    	// nbini = 1; nbfin = ctx->uABC[1];//metka
+    	ncini = 0; ncfin = ctx->uABC[2];
+    }else if (ctx->uABC[2]>=ctx->uABC[0]&&ctx->uABC[2]>=ctx->uABC[1]){//c-axis is the longest side of the box
     	ncini = dNc*threadindex; 
-    	if ( (dNc*(threadindex+1))<uABC[2]){
+    	if ( (dNc*(threadindex+1))<ctx->uABC[2]){
     		ncfin = dNc*(threadindex+1);
     	}else{
-    		ncfin = uABC[2];
+    		ncfin = ctx->uABC[2];
     	}
-    	naini = 0; nafin = uABC[0];	
-    	nbini = 0; nbfin = uABC[1];
-    }else if (uABC[1]>=uABC[0]&&uABC[1]>=uABC[2]){//b-axis is the longest side of the box
+    	naini = 0; nafin = ctx->uABC[0];	
+    	nbini = 0; nbfin = ctx->uABC[1];
+    }else if (ctx->uABC[1]>=ctx->uABC[0]&&ctx->uABC[1]>=ctx->uABC[2]){//b-axis is the longest side of the box
     	nbini = dNb*threadindex; 
-    	if (dNb*(threadindex+1)<uABC[1]){
+    	if (dNb*(threadindex+1)<ctx->uABC[1]){
     		nbfin = dNb*(threadindex+1);
     	}else{
-    		nbfin = uABC[1];
+    		nbfin = ctx->uABC[1];
     	}
-    	naini = 0; nafin = uABC[0];	
-    	ncini = 0; ncfin = uABC[2];    	
+    	naini = 0; nafin = ctx->uABC[0];	
+    	ncini = 0; ncfin = ctx->uABC[2];    	
     }
 
-	while(!EngineShutdown)
+	while(!ctx->EngineShutdown)
 	{
-		while(ENGINE_MUTEX != DO_IT && !EngineShutdown){ usleep(SleepTime);}
-		if (EngineShutdown) break;
-		HacTime = GetACfield(WhichACField);
+		while(ctx->ENGINE_MUTEX != DO_IT && !ctx->EngineShutdown){ usleep(ctx->SleepTime);}
+		if (ctx->EngineShutdown) break;
+		ctx->HacTime = GetACfield(ctx, ctx->WhichACField);
 		
-		switch (WhichIntegrationScheme){
+		switch (ctx->WhichIntegrationScheme){
 			case HEUN: 
-				// SimpleMinimizer(Sx,Sy,Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,NOS,damping,t_step,Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
-				StochasticLLG_Heun(Sx,Sy,Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,NOS,damping,t_step,Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				// SimpleMinimizer(ctx->Sx,ctx->Sy,ctx->Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,ctx->NOS,damping,t_step,Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_Heun(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 			break;
 
 			case SIB: 
-				StochasticLLG(Sx,Sy,Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,NOS,damping,t_step,Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 			break;
 
 			case RK23: 
-				StochasticLLG_RK23(Sx,Sy,Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,NOS,damping,t_step,Temperature,Xi,Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_RK23(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature,ctx->Xi,ctx->Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 			break;
 
 			case RK45: 
-				StochasticLLG_RK45(Sx,Sy,Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,NOS,damping,t_step,Temperature,Xi,Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_RK45(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature,ctx->Xi,ctx->Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 			break;
 
 			case RELAX: 	
-				Relax(Sx,Sy,Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,NOS,damping,t_step,Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin, Proj);
+				Relax(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin, ctx->Proj);
 			break;
 		}
-		if (threadindex==0 && Temperature > 0) GetFluctuations(RNx, RNy, RNz, NOS );
+		if (threadindex==0 && ctx->Temperature > 0) GetFluctuations(ctx, ctx->RNx, ctx->RNy, ctx->RNz, ctx->NOS );
 
 		if (threadindex==THREADS_NUMBER-1){ 
 			
 			//first thread opens the first (in) door in the next (second) thread
-			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
+			sem_post(ctx->sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
-			sem_wait(sem_in[threadindex]);
+			sem_wait(ctx->sem_in[threadindex]);
 			
-			MAX_TORQUE=0;
+			ctx->MAX_TORQUE=0;
 			for (int i=0;i<THREADS_NUMBER;i++){
-				if (Max_torque[i] > MAX_TORQUE) MAX_TORQUE = Max_torque[i];
-				Max_torque[i] = 0;
+				if (ctx->Max_torque[i] > ctx->MAX_TORQUE) ctx->MAX_TORQUE = ctx->Max_torque[i];
+				ctx->Max_torque[i] = 0;
 			}
 			
 			
-			ITERATION++;
-			if (ITERATION==Max_Numb_Iteration){
-			    Play=0;
-			    currentIteration=ITERATION;
-			    for (int i=0;i<NOS;i++){
-					bSx[i]=Sx[i];
-					bSy[i]=Sy[i];
-					bSz[i]=Sz[i];
+			ctx->ITERATION++;
+			if (ctx->ITERATION==ctx->Max_Numb_Iteration){
+			    ctx->Play=0;
+			    ctx->currentIteration=ctx->ITERATION;
+			    for (int i=0;i<ctx->NOS;i++){
+					ctx->bSx[i]=ctx->Sx[i];
+					ctx->bSy[i]=ctx->Sy[i];
+					ctx->bSz[i]=ctx->Sz[i];
 				}
-				pthread_mutex_lock(&culc_mutex);
-		            ENGINE_MUTEX=WAIT;
-		            SleepTime=3000;
-				pthread_mutex_unlock(&culc_mutex);
+				pthread_mutex_lock(&ctx->culc_mutex);
+		            ctx->ENGINE_MUTEX=WAIT;
+		            ctx->SleepTime=3000;
+				pthread_mutex_unlock(&ctx->culc_mutex);
 			}
 
 
 			//normalize all spins every 100 iterations
-			if (WhichIntegrationScheme != RELAX && ITERATION%100==0) 
+			if (ctx->WhichIntegrationScheme != RELAX && ctx->ITERATION%100==0) 
 			{
 				// printf("ich bin hier!\n");
-				for (int i=0;i<NOS;i++)
+				for (int i=0;i<ctx->NOS;i++)
 				{
-					if (Kind[i]!=0){
-					double absS = 1.0f/sqrt(Sx[i]*Sx[i]+Sy[i]*Sy[i]+Sz[i]*Sz[i]);
-					Sx[i] = Sx[i] * absS;
-					Sy[i] = Sy[i] * absS;
-					Sz[i] = Sz[i] * absS;
+					if (ctx->Kind[i]!=0){
+					double absS = 1.0f/sqrt(ctx->Sx[i]*ctx->Sx[i]+ctx->Sy[i]*ctx->Sy[i]+ctx->Sz[i]*ctx->Sz[i]);
+					ctx->Sx[i] = ctx->Sx[i] * absS;
+					ctx->Sy[i] = ctx->Sy[i] * absS;
+					ctx->Sz[i] = ctx->Sz[i] * absS;
 					}		
 				}
 			}
@@ -1628,14 +1630,14 @@ void *CALC_THREAD(void *void_ptr)
 
 
 			//save to file if recording is on
-			if (Record!=0 && ITERATION%rec_iteration == 0){
+			if (ctx->Record!=0 && ctx->ITERATION%ctx->rec_iteration == 0){
 
-				outputEtotal = GetTotalEnergyMoment( bSx, bSy, bSz, Heffx, 	Heffy, 	Heffz, Etot0, outputMtotal, NOS);
-				BigDataBank[0][recordsCounter] = (float)ITERATION;
-				BigDataBank[1][recordsCounter] = outputMtotal[0]*iNOS;
-				BigDataBank[2][recordsCounter] = outputMtotal[1]*iNOS;
-				BigDataBank[3][recordsCounter] = outputMtotal[2]*iNOS;
-				BigDataBank[4][recordsCounter] = outputEtotal;
+				ctx->outputEtotal = GetTotalEnergyMoment( ctx, ctx->bSx, ctx->bSy, ctx->bSz, ctx->Heffx, 	ctx->Heffy, 	ctx->Heffz, ctx->Etot0, ctx->outputMtotal, ctx->NOS);
+				ctx->BigDataBank[0][ctx->recordsCounter] = (float)ctx->ITERATION;
+				ctx->BigDataBank[1][ctx->recordsCounter] = ctx->outputMtotal[0]*ctx->iNOS;
+				ctx->BigDataBank[2][ctx->recordsCounter] = ctx->outputMtotal[1]*ctx->iNOS;
+				ctx->BigDataBank[3][ctx->recordsCounter] = ctx->outputMtotal[2]*ctx->iNOS;
+				ctx->BigDataBank[4][ctx->recordsCounter] = ctx->outputEtotal;
 				//metka test LLG
 				// BigDataBank[0][recordsCounter] = ITERATION*t_step;
 				// BigDataBank[1][recordsCounter] = bSx[0];
@@ -1644,68 +1646,68 @@ void *CALC_THREAD(void *void_ptr)
 				// BigDataBank[4][recordsCounter] = bSx[1];
 				// BigDataBank[5][recordsCounter] = bSy[1];
 				// BigDataBank[6][recordsCounter] = bSz[1];				
-				recordsCounter++;
-				if (recordsCounter==100){
-					if (outFile!=NULL){
-						for (int i=0; i<recordsCounter; i++){
-							snprintf(BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i],BigDataBank[0][i]*t_step,BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i]);
+				ctx->recordsCounter++;
+				if (ctx->recordsCounter==100){
+					if (ctx->outFile!=NULL){
+						for (int i=0; i<ctx->recordsCounter; i++){
+							snprintf(ctx->BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",ctx->BigDataBank[0][i],ctx->BigDataBank[0][i]*ctx->t_step,ctx->BigDataBank[1][i],ctx->BigDataBank[2][i],ctx->BigDataBank[3][i],ctx->BigDataBank[4][i]);
 							//metka test LLG
 							// snprintf(BuferString,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i],BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i],BigDataBank[5][i],BigDataBank[6][i]);
-							fputs(BuferString,outFile);  							
+							fputs(ctx->BuferString,ctx->outFile);  							
 						}
 					}
 					printf("%s\n", "Recording to file table.csv is done!");
-					recordsCounter=0;
+					ctx->recordsCounter=0;
 				}
 			}
 
 			//save mode snapshot
-			if (AC_MODE_REC*AC_FIELD_ON!=0){
-				float phase = Omega_dc*t_step*ITERATION*iTPI;
+			if (ctx->AC_MODE_REC*ctx->AC_FIELD_ON!=0){
+				float phase = ctx->Omega_dc*ctx->t_step*ctx->ITERATION*iTPI;
 				phase = phase - floor(phase);
 				int Im=-1;
-				float tolerance=0.5*t_step/Period_dc;
+				float tolerance=0.5*ctx->t_step/ctx->Period_dc;
 
-				for (int i=0; i<=num_images; i++){
-					if ( ABS(phase - i/(float)num_images)<tolerance){
-						Im = i%num_images;
+				for (int i=0; i<=ctx->num_images; i++){
+					if ( ABS(phase - i/(float)ctx->num_images)<tolerance){
+						Im = i%ctx->num_images;
 					}
 				}
 				if (Im!=-1){
-						current_rec_num_mode++;
-						for (int i=0; i<NOS; i++){
+						ctx->current_rec_num_mode++;
+						for (int i=0; i<ctx->NOS; i++){
 							// for delta m:
-							dImage_x[Im][i]=dImage_x[Im][i]+(Sx[i]-t3Sx[i]);
-							dImage_y[Im][i]=dImage_y[Im][i]+(Sy[i]-t3Sy[i]);
-							dImage_z[Im][i]=dImage_z[Im][i]+(Sz[i]-t3Sz[i]);	
+							ctx->dImage_x[Im][i]=ctx->dImage_x[Im][i]+(ctx->Sx[i]-ctx->t3Sx[i]);
+							ctx->dImage_y[Im][i]=ctx->dImage_y[Im][i]+(ctx->Sy[i]-ctx->t3Sy[i]);
+							ctx->dImage_z[Im][i]=ctx->dImage_z[Im][i]+(ctx->Sz[i]-ctx->t3Sz[i]);	
 							// for m:
-							Image_x[Im][i] = Image_x[Im][i] + Sx[i];
-							Image_y[Im][i] = Image_y[Im][i] + Sy[i];
-							Image_z[Im][i] = Image_z[Im][i] + Sz[i];						
+							ctx->Image_x[Im][i] = ctx->Image_x[Im][i] + ctx->Sx[i];
+							ctx->Image_y[Im][i] = ctx->Image_y[Im][i] + ctx->Sy[i];
+							ctx->Image_z[Im][i] = ctx->Image_z[Im][i] + ctx->Sz[i];						
 						}
 						printf("tolerance %1.8f \n", tolerance);
 						// printf("ABS(phase - i/(float)num_images)= %1.8f \n", ABS(phase - Im/(float)num_images));
-						printf("Phase %1.8f (%d) (%1.8f)\n", phase,Im,Im/(float)num_images);
-						printf("Image %d\n", current_rec_num_mode);
-						if (current_rec_num_mode==num_images*rec_num_mode){	
-							Play=0;
-							AC_MODE_REC=0;
-							AC_FIELD_ON=0;
-							current_rec_num_mode=0;
-							for (int j=0; j<num_images; j++){
-								for (int i=0; i<NOS; i++){
+						printf("Phase %1.8f (%d) (%1.8f)\n", phase,Im,Im/(float)ctx->num_images);
+						printf("Image %d\n", ctx->current_rec_num_mode);
+						if (ctx->current_rec_num_mode==ctx->num_images*ctx->rec_num_mode){	
+							ctx->Play=0;
+							ctx->AC_MODE_REC=0;
+							ctx->AC_FIELD_ON=0;
+							ctx->current_rec_num_mode=0;
+							for (int j=0; j<ctx->num_images; j++){
+								for (int i=0; i<ctx->NOS; i++){
 								// for dm:
-									dImage_x[j][i]=dImage_x[j][i]/rec_num_mode;
-									dImage_y[j][i]=dImage_y[j][i]/rec_num_mode;
-									dImage_z[j][i]=dImage_z[j][i]/rec_num_mode;
+									ctx->dImage_x[j][i]=ctx->dImage_x[j][i]/ctx->rec_num_mode;
+									ctx->dImage_y[j][i]=ctx->dImage_y[j][i]/ctx->rec_num_mode;
+									ctx->dImage_z[j][i]=ctx->dImage_z[j][i]/ctx->rec_num_mode;
 								// for m:
-									Image_x[j][i]=Image_x[j][i]/rec_num_mode;
-									Image_y[j][i]=Image_y[j][i]/rec_num_mode;
-									Image_z[j][i]=Image_z[j][i]/rec_num_mode;
-									float Norm=sqrt(Image_x[j][i]*Image_x[j][i]+Image_y[j][i]*Image_y[j][i]+Image_z[j][i]*Image_z[j][i]);					
-									Image_x[j][i]=Image_x[j][i]/Norm;
-									Image_y[j][i]=Image_y[j][i]/Norm;
-									Image_z[j][i]=Image_z[j][i]/Norm;
+									ctx->Image_x[j][i]=ctx->Image_x[j][i]/ctx->rec_num_mode;
+									ctx->Image_y[j][i]=ctx->Image_y[j][i]/ctx->rec_num_mode;
+									ctx->Image_z[j][i]=ctx->Image_z[j][i]/ctx->rec_num_mode;
+									float Norm=sqrt(ctx->Image_x[j][i]*ctx->Image_x[j][i]+ctx->Image_y[j][i]*ctx->Image_y[j][i]+ctx->Image_z[j][i]*ctx->Image_z[j][i]);					
+									ctx->Image_x[j][i]=ctx->Image_x[j][i]/Norm;
+									ctx->Image_y[j][i]=ctx->Image_y[j][i]/Norm;
+									ctx->Image_z[j][i]=ctx->Image_z[j][i]/Norm;
 
 								}
 								/* only dm */
@@ -1719,18 +1721,18 @@ void *CALC_THREAD(void *void_ptr)
 								/* m and dm */
 									char vtk_filename[64] = "";
 									snprintf(vtk_filename,64,"phase%d.vtk",j);
-									Save_VTK_6(Image_x[j], Image_y[j], Image_z[j], dImage_x[j], dImage_y[j], dImage_z[j],0, vtk_filename);
+									Save_VTK_6(ctx, ctx->Image_x[j], ctx->Image_y[j], ctx->Image_z[j], ctx->dImage_x[j], ctx->dImage_y[j], ctx->dImage_z[j],0, vtk_filename);
 								/*dTheta dPhi*/
-								for (int i=0; i<NOS; i++){
+								for (int i=0; i<ctx->NOS; i++){
 								// get theta and phi for the equilibrium state:
-									float T=acos(t3Sz[i]);
-									float F=atan2(t3Sy[i],t3Sx[i]);
+									float T=acos(ctx->t3Sz[i]);
+									float F=atan2(ctx->t3Sy[i],ctx->t3Sx[i]);
 								// get spin i
 									float s[3], r[3];
 									mat4x4 My, Mz, M;
-									s[0]=(float)Image_x[j][i];
-									s[1]=(float)Image_y[j][i];
-									s[2]=(float)Image_z[j][i];
+									s[0]=(float)ctx->Image_x[j][i];
+									s[1]=(float)ctx->Image_y[j][i];
+									s[2]=(float)ctx->Image_z[j][i];
 									mat4x4_identity(My);
 									mat4x4_rotate_Y(My, My, T);
 									mat4x4_identity(Mz);
@@ -1739,48 +1741,48 @@ void *CALC_THREAD(void *void_ptr)
 			
 									mat4x4_mul_vec3(r, My, s);
 									mat4x4_mul_vec3(s, Mz, r);
-									dImage_x[j][i]=s[0];
-									dImage_y[j][i]=s[1];
-									dImage_z[j][i]=s[2];	
+									ctx->dImage_x[j][i]=s[0];
+									ctx->dImage_y[j][i]=s[1];
+									ctx->dImage_z[j][i]=s[2];	
 								}
 									snprintf(vtk_filename,64,"dTdF%d.vtk",j);
-									Save_VTK(dImage_x[j], dImage_y[j], dImage_z[j],0, vtk_filename);
+									Save_VTK(ctx, ctx->dImage_x[j], ctx->dImage_y[j], ctx->dImage_z[j],0, vtk_filename);
 							}
 					}
 				}
 			}
 
-			if (DATA_TRANSFER_MUTEX==WAIT_DATA){
-				for (int i=0;i<NOS;i++){
-					bSx[i]=Sx[i];
-					bSy[i]=Sy[i];
-					bSz[i]=Sz[i];
+			if (ctx->DATA_TRANSFER_MUTEX==WAIT_DATA){
+				for (int i=0;i<ctx->NOS;i++){
+					ctx->bSx[i]=ctx->Sx[i];
+					ctx->bSy[i]=ctx->Sy[i];
+					ctx->bSz[i]=ctx->Sz[i];
 				}
-				pthread_mutex_lock(&show_mutex);
-					DATA_TRANSFER_MUTEX=TAKE_DATA;
-					currentIteration=ITERATION;
-				pthread_mutex_unlock(&show_mutex);	
+				pthread_mutex_lock(&ctx->show_mutex);
+					ctx->DATA_TRANSFER_MUTEX=TAKE_DATA;
+					ctx->currentIteration=ctx->ITERATION;
+				pthread_mutex_unlock(&ctx->show_mutex);	
 			}
 
 
 			// All workers leave together after completing the current iteration.
-			if (EngineShutdownRequested) EngineShutdown = true;
+			if (ctx->EngineShutdownRequested) ctx->EngineShutdown = true;
 
 			// now it opens the second (out) door in the next (second) thread
-			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
+			sem_post(ctx->sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
-			sem_wait(sem_out[threadindex]);
+			sem_wait(ctx->sem_out[threadindex]);
 
 		}else{
 			
 			//all other calculation threads
-			sem_wait(sem_in[threadindex]);
+			sem_wait(ctx->sem_in[threadindex]);
 			// first button which open the first door in the next (second) thread
-			sem_post(sem_in[(threadindex+1)%THREADS_NUMBER]);
+			sem_post(ctx->sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// second door will be open from the last thread (second button)
-			sem_wait(sem_out[threadindex]);
+			sem_wait(ctx->sem_out[threadindex]);
 			// second button which open the second door in the next (second) thread
-			sem_post(sem_out[(threadindex+1)%THREADS_NUMBER]);
+			sem_post(ctx->sem_out[(threadindex+1)%THREADS_NUMBER]);
 			
 		}
 
