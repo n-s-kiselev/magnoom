@@ -56,6 +56,25 @@ static bool build_atb_object(const char *source)
     nob_cmd_append(&cmd, "c++", "-x", "objective-c++", "-D_MACOSX");
 #elif defined(_WIN32)
     nob_cmd_append(&cmd, nob_sv_ends_with_cstr(nob_sv_from_cstr(source), ".cpp") ? "c++" : "cc", "-D_WINDOWS");
+    // TwMgr.cpp's CreateCursors() calls MAKEINTRESOURCE() on values like
+    // IDC_ARROW, which MinGW-w64's own <winuser.h> already defines via
+    // MAKEINTRESOURCE (i.e. as a pointer, not a raw integer id) - so this is
+    // MAKEINTRESOURCE applied twice. That's always been a redundant no-op at
+    // runtime (the "fake pointer" round-trips through the WORD truncation
+    // unchanged), but recent MinGW-w64 GCC (confirmed with 14.2.0) now
+    // treats the implicit pointer-to-WORD narrowing inside that expansion as
+    // a hard error in C++ instead of a warning. -fpermissive downgrades it
+    // back to a warning without touching this stock upstream AntTweakBar
+    // source (same fix already applied and confirmed working in the
+    // standalone AntTweakBar-Legacy project this is vendored from).
+    nob_cmd_append(&cmd, "-fpermissive");
+    // This build targets the OpenGL backend only and does not compile/link
+    // TwDirect3D9/10/11.cpp (see atb_common_sources above) - without this,
+    // TwMgr.cpp's TwCreateGraph() unconditionally does "new
+    // CTwGraphDirect3D9/10/11" under plain ANT_WINDOWS, requiring those
+    // classes' vtables at link time even though magnoom never requests
+    // TW_DIRECT3D9/10/11.
+    nob_cmd_append(&cmd, "-DTW_NO_DIRECT3D");
 #else
     nob_cmd_append(&cmd, nob_sv_ends_with_cstr(nob_sv_from_cstr(source), ".cpp") ? "c++" : "cc", "-D_UNIX");
 #endif
