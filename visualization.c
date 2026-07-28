@@ -2013,8 +2013,8 @@ void setupTweakBar(magnoom_ctx *ctx)
     tw_glfw2_set_bar_size(ctx->control_bar, 220, 530);
     TwDefine(" Parameters&Controls help='F3: show/hide Control bar' "); // change default tweak bar size and color
 
-	//TwAddButton(control_bar, "Run", CB_Run, ctx, "key='r' label='RUN simulation' ");
-	TwAddVarCB(ctx->control_bar, "Run", TW_TYPE_BOOL32, CB_Set_Run, CB_Get_Run, ctx, " keyIncr='r' true='On' false='Off' label='RUN simulation' ");
+	//TwAddButton(control_bar, "Run", CB_Run, ctx, "key='SPACE' label='RUN simulation' ");
+	TwAddVarCB(ctx->control_bar, "Run", TW_TYPE_BOOL32, CB_Set_Run, CB_Get_Run, ctx, " keyIncr='SPACE' true='On' false='Off' label='RUN simulation' ");
 	TwAddVarRW(ctx->control_bar, "Record", TW_TYPE_BOOL32, &ctx->Record, "label='Recording' true='On' false='Off' help='Recording <sx>, <sy>, <sz> in each iteration'");
 	TwAddVarRW(ctx->control_bar, "Rec_Iteration", TW_TYPE_INT32, &ctx->rec_iteration, "label='Every iteration' min=1 max=1000 step=1 ");
     TwAddVarRW(ctx->control_bar, "Max_Iteration", TW_TYPE_INT32, &ctx->Max_Numb_Iteration, "label='Max. Iteration' min=1 max=100000000 step=100 ");
