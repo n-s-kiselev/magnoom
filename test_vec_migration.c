@@ -44,46 +44,44 @@ int main(void)
     ReallocateMemoryForAllOther(&ctx, ctx.NOS);
     ReallocateMemoryForImages(&ctx, ctx.num_images, ctx.NOS);
     printf("alloc: all non-null = %d\n",
-           ctx.Sx && ctx.Sy && ctx.Sz && ctx.tSx && ctx.tSy && ctx.tSz &&
-           ctx.t2Sx && ctx.t2Sy && ctx.t2Sz && ctx.t3Sx && ctx.t3Sy && ctx.t3Sz &&
-           ctx.bSx && ctx.bSy && ctx.bSz);
+           ctx.S && ctx.bS && ctx.tS && ctx.t2S && ctx.t3S && ctx.Image && ctx.dImage);
 
     /* --- geometry / kind / deterministic (HOMO) initial state --- */
     GetBox(&ctx, ctx.abc, ctx.uABC, ctx.Box);
     UpdateSpinPositions(&ctx, ctx.abc, ctx.uABC, ctx.Block, ctx.AtomsPerBlock, ctx.Box, ctx.Px, ctx.Py, ctx.Pz);
     UpdateKind(&ctx, ctx.Kind, ctx.Px, ctx.Py, ctx.Pz, ctx.NOS, ctx.NOSK);
-    InitSpinComponents(&ctx, ctx.Px, ctx.Py, ctx.Pz, ctx.Sx, ctx.Sy, ctx.Sz, 1 /* HOMO, deterministic */);
-    for (int i = 0; i < ctx.NOS; i++) { ctx.bSx[i] = ctx.Sx[i]; ctx.bSy[i] = ctx.Sy[i]; ctx.bSz[i] = ctx.Sz[i]; }
+    InitSpinComponents(&ctx, ctx.Px, ctx.Py, ctx.Pz, ctx.S, 1 /* HOMO, deterministic */);
+    for (int i = 0; i < ctx.NOS; i++) {
+        VEC_X(ctx.bS,i) = VEC_X(ctx.S,i);
+        VEC_Y(ctx.bS,i) = VEC_Y(ctx.S,i);
+        VEC_Z(ctx.bS,i) = VEC_Z(ctx.S,i);
+    }
 
     printf("NOS=%d\n", ctx.NOS);
-    print_spin("initial", 0, ctx.Sx[0], ctx.Sy[0], ctx.Sz[0]);
-    print_spin("initial", ctx.NOS / 2, ctx.Sx[ctx.NOS/2], ctx.Sy[ctx.NOS/2], ctx.Sz[ctx.NOS/2]);
-    print_spin("initial", ctx.NOS - 1, ctx.Sx[ctx.NOS-1], ctx.Sy[ctx.NOS-1], ctx.Sz[ctx.NOS-1]);
+    print_spin("initial", 0, VEC_X(ctx.S,0), VEC_Y(ctx.S,0), VEC_Z(ctx.S,0));
+    print_spin("initial", ctx.NOS / 2, VEC_X(ctx.S,ctx.NOS/2), VEC_Y(ctx.S,ctx.NOS/2), VEC_Z(ctx.S,ctx.NOS/2));
+    print_spin("initial", ctx.NOS - 1, VEC_X(ctx.S,ctx.NOS-1), VEC_Y(ctx.S,ctx.NOS-1), VEC_Z(ctx.S,ctx.NOS-1));
 
     /* --- copy S -> tS (memcpy-equivalent) --- */
-    memcpy(ctx.tSx, ctx.Sx, ctx.NOS * sizeof(double));
-    memcpy(ctx.tSy, ctx.Sy, ctx.NOS * sizeof(double));
-    memcpy(ctx.tSz, ctx.Sz, ctx.NOS * sizeof(double));
+    memcpy(ctx.tS, ctx.S, 3*(size_t)ctx.NOS * sizeof(double));
     printf("copy S->tS matches: %d\n",
-           memcmp(ctx.tSx, ctx.Sx, ctx.NOS*sizeof(double)) == 0 &&
-           memcmp(ctx.tSy, ctx.Sy, ctx.NOS*sizeof(double)) == 0 &&
-           memcmp(ctx.tSz, ctx.Sz, ctx.NOS*sizeof(double)) == 0);
+           memcmp(ctx.tS, ctx.S, 3*(size_t)ctx.NOS*sizeof(double)) == 0);
 
     /* --- one deterministic integrator step (Temperature defaults to 0: no rand() involved) --- */
-    StochasticLLG_Heun(&ctx, ctx.Sx, ctx.Sy, ctx.Sz, ctx.tSx, ctx.tSy, ctx.tSz,
+    StochasticLLG_Heun(&ctx, ctx.S, ctx.tS,
                         ctx.Heffx, ctx.Heffy, ctx.Heffz, ctx.RNx, ctx.RNy, ctx.RNz,
                         ctx.NOS, ctx.damping, ctx.t_step, ctx.Temperature,
                         0, 0, ctx.uABC[0], 0, ctx.uABC[1], 0, ctx.uABC[2]);
-    print_spin("after_heun", 0, ctx.Sx[0], ctx.Sy[0], ctx.Sz[0]);
-    print_spin("after_heun", ctx.NOS / 2, ctx.Sx[ctx.NOS/2], ctx.Sy[ctx.NOS/2], ctx.Sz[ctx.NOS/2]);
-    print_spin("after_heun", ctx.NOS - 1, ctx.Sx[ctx.NOS-1], ctx.Sy[ctx.NOS-1], ctx.Sz[ctx.NOS-1]);
+    print_spin("after_heun", 0, VEC_X(ctx.S,0), VEC_Y(ctx.S,0), VEC_Z(ctx.S,0));
+    print_spin("after_heun", ctx.NOS / 2, VEC_X(ctx.S,ctx.NOS/2), VEC_Y(ctx.S,ctx.NOS/2), VEC_Z(ctx.S,ctx.NOS/2));
+    print_spin("after_heun", ctx.NOS - 1, VEC_X(ctx.S,ctx.NOS-1), VEC_Y(ctx.S,ctx.NOS-1), VEC_Z(ctx.S,ctx.NOS-1));
 
     /* --- file round-trip: Save_VTK (binary) then Read_VTK into bS, compare --- */
-    Save_VTK(&ctx, ctx.Sx, ctx.Sy, ctx.Sz, 0, "/tmp/magnoom_test_roundtrip.vtk");
-    Read_VTK(&ctx, ctx.bSx, ctx.bSy, ctx.bSz, "/tmp/magnoom_test_roundtrip.vtk");
-    print_spin("roundtrip", 0, ctx.bSx[0], ctx.bSy[0], ctx.bSz[0]);
-    print_spin("roundtrip", ctx.NOS / 2, ctx.bSx[ctx.NOS/2], ctx.bSy[ctx.NOS/2], ctx.bSz[ctx.NOS/2]);
-    print_spin("roundtrip", ctx.NOS - 1, ctx.bSx[ctx.NOS-1], ctx.bSy[ctx.NOS-1], ctx.bSz[ctx.NOS-1]);
+    Save_VTK(&ctx, ctx.S, 0, "/tmp/magnoom_test_roundtrip.vtk");
+    Read_VTK(&ctx, ctx.bS, "/tmp/magnoom_test_roundtrip.vtk");
+    print_spin("roundtrip", 0, VEC_X(ctx.bS,0), VEC_Y(ctx.bS,0), VEC_Z(ctx.bS,0));
+    print_spin("roundtrip", ctx.NOS / 2, VEC_X(ctx.bS,ctx.NOS/2), VEC_Y(ctx.bS,ctx.NOS/2), VEC_Z(ctx.bS,ctx.NOS/2));
+    print_spin("roundtrip", ctx.NOS - 1, VEC_X(ctx.bS,ctx.NOS-1), VEC_Y(ctx.bS,ctx.NOS-1), VEC_Z(ctx.bS,ctx.NOS-1));
     remove("/tmp/magnoom_test_roundtrip.vtk");
 
     printf("TEST DONE\n");

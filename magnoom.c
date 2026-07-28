@@ -120,30 +120,6 @@ typedef struct magnoom_ctx {
 	double*         t3S;    /* RK-integrator temporary, length 3*NOS        */
 	double*         Image;  /* flat snapshot block, IMAGE_COMPONENT-indexed */
 	double*         dImage; /* flat derivative-snapshot block, same layout  */
-	/* TODO(vec-migration): the per-component pointers below are being       */
-	/* replaced by the interleaved buffers above and will be deleted once    */
-	/* every consumer is converted (see docs/plans -- vector-field migration)*/
-	double*         Sx;
-	double*         Sy;
-	double*         Sz;
-	double*         tSx;
-	double*         tSy;
-	double*         tSz;
-	double*         t2Sx;
-	double*         t2Sy;
-	double*         t2Sz;
-	double*         t3Sx;
-	double*         t3Sy;
-	double*         t3Sz;
-	double**        Image_x;
-	double**        Image_y;
-	double**        Image_z;
-	double**        dImage_x;
-	double**        dImage_y;
-	double**        dImage_z;
-	double*         bSx;
-	double*         bSy;
-	double*         bSz;
 	float*          IsoLineX;
 	float*          IsoLineY;
 	float*          IsoLineZ;
@@ -818,7 +794,7 @@ void HSVtoRGB(magnoom_ctx *ctx, float Vec[3], float rgb[3], int inV, int inH ){
 
 
 
-void Save_OVF_b8(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char ovf_filename[64]){
+void Save_OVF_b8(magnoom_ctx *ctx, double* S, char ovf_filename[64]){
     float temp0 = 0;
     float temp1 = 0;
     float temp2 = 0;
@@ -903,7 +879,7 @@ void Save_OVF_b8(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char ovf_
                      for (int atom=0; atom<ctx->AtomsPerBlock; atom++)
                         {
                          int N = n + atom;
-                         double Temp[]= {Sx[N], Sy[N], Sz[N]};
+                         double Temp[]= {VEC_X(S,N), VEC_Y(S,N), VEC_Z(S,N)};
                          fwrite (Temp , sizeof(double), 3, pFile);
                      }
                  }
@@ -917,7 +893,7 @@ void Save_OVF_b8(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char ovf_
 }
 
 
-void SaveBin(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char bin_filename[64]){
+void SaveBin(magnoom_ctx *ctx, double* S, char bin_filename[64]){
     unsigned short int num = 65535;
     struct tfshortint {
         unsigned short int t;
@@ -929,7 +905,7 @@ void SaveBin(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char bin_file
             for(int i = 0; i < ctx->uABC[0]; i++){
             int n = i+j*ctx->uABC[0]+k*ctx->uABC[0]*ctx->uABC[1];
 
-            double nx = Sx[n], ny = Sy[n], nz = Sz[n];
+            double nx = VEC_X(S,n), ny = VEC_Y(S,n), nz = VEC_Z(S,n);
 
             double T, F;
             T = acos(nz)/PI;
@@ -953,7 +929,7 @@ void SaveBin(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char bin_file
 }
 
 
-void SavePng(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char png_filename[64], enSliceMode WhichSliceMode, int x1, int y1, int z1){
+void SavePng(magnoom_ctx *ctx, double* S, char png_filename[64], enSliceMode WhichSliceMode, int x1, int y1, int z1){
   if (WhichSliceMode!=FILTER)
   {
     int scale = 10;
@@ -998,7 +974,7 @@ void SavePng(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char png_file
               break;
         }
         rgb[0] = 0; rgb[1] = 0; rgb[2] = 0;
-        vec[0] = Sx[n]; vec[1] = Sy[n]; vec[2] = Sz[n];
+        vec[0] = VEC_X(S,n); vec[1] = VEC_Y(S,n); vec[2] = VEC_Z(S,n);
         // vec[0] = 0; vec[1] = 0; vec[2] =1;
         HSVtoRGB(ctx, vec, rgb, ctx->InvertValue, ctx->InvertHue);///1,0
         rgb[0] *= 255;
@@ -1164,7 +1140,7 @@ double end_swap_double(const double val, const int size)
     return ret;
     }
 
-void Save_VTK(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, const int mode, char vtk_filename[64])
+void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, char vtk_filename[64])
 {
     float temp0 = 0;
     float temp1 = 0;
@@ -1216,9 +1192,9 @@ void Save_VTK(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, const int mo
                     temp2 = 0.f;
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        temp0 += Sx[N];
-                        temp1 += Sy[N];
-                        temp2 += Sz[N];
+                        temp0 += VEC_X(S,N);
+                        temp1 += VEC_Y(S,N);
+                        temp2 += VEC_Z(S,N);
                     }
                     temp0 = temp0/ctx->AtomsPerBlock;
                     temp1 = temp1/ctx->AtomsPerBlock;
@@ -1250,9 +1226,9 @@ void Save_VTK(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, const int mo
                     temp2 = 0.f;
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        temp0 += Sx[N];
-                        temp1 += Sy[N];
-                        temp2 += Sz[N];
+                        temp0 += VEC_X(S,N);
+                        temp1 += VEC_Y(S,N);
+                        temp2 += VEC_Z(S,N);
                     }
                         temp0 = temp0/ctx->AtomsPerBlock;
                         temp1 = temp1/ctx->AtomsPerBlock;
@@ -1285,9 +1261,9 @@ void Save_VTK(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, const int mo
                     temp2 = 0.f;
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        temp0 += Sx[N];
-                        temp1 += Sy[N];
-                        temp2 += Sz[N];
+                        temp0 += VEC_X(S,N);
+                        temp1 += VEC_Y(S,N);
+                        temp2 += VEC_Z(S,N);
                     }
                         temp0 = temp0/ctx->AtomsPerBlock;
                         temp1 = temp1/ctx->AtomsPerBlock;
@@ -1312,8 +1288,8 @@ void Save_VTK(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, const int mo
     }
 }
 
-void Save_VTK_6(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz,
-                double* dSx, double* dSy, double* dSz, const int mode, char vtk_filename[64])
+void Save_VTK_6(magnoom_ctx *ctx, double* S,
+                double* dS, const int mode, char vtk_filename[64])
 {
     float temp0 = 0;
     float temp1 = 0;
@@ -1365,9 +1341,9 @@ void Save_VTK_6(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz,
                     temp2 = 0.f;
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        temp0 += Sx[N];
-                        temp1 += Sy[N];
-                        temp2 += Sz[N];
+                        temp0 += VEC_X(S,N);
+                        temp1 += VEC_Y(S,N);
+                        temp2 += VEC_Z(S,N);
                     }
                     temp0 = temp0/ctx->AtomsPerBlock;
                     temp1 = temp1/ctx->AtomsPerBlock;
@@ -1400,9 +1376,9 @@ void Save_VTK_6(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz,
                     temp2 = 0.f;
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        temp0 += dSx[N];
-                        temp1 += dSy[N];
-                        temp2 += dSz[N];
+                        temp0 += VEC_X(dS,N);
+                        temp1 += VEC_Y(dS,N);
+                        temp2 += VEC_Z(dS,N);
                     }
                     temp0 = temp0/ctx->AtomsPerBlock;
                     temp1 = temp1/ctx->AtomsPerBlock;
@@ -1435,9 +1411,9 @@ void Save_VTK_6(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz,
                     temp2 = 0.f;
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        temp0 += dSx[N];
-                        temp1 += dSy[N];
-                        temp2 += dSz[N];
+                        temp0 += VEC_X(dS,N);
+                        temp1 += VEC_Y(dS,N);
+                        temp2 += VEC_Z(dS,N);
                     }
                         temp0 = temp0/ctx->AtomsPerBlock;
                         temp1 = temp1/ctx->AtomsPerBlock;
@@ -1470,9 +1446,9 @@ void Save_VTK_6(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz,
                     temp2 = 0.f;
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        temp0 += Sx[N];
-                        temp1 += Sy[N];
-                        temp2 += Sz[N];
+                        temp0 += VEC_X(S,N);
+                        temp1 += VEC_Y(S,N);
+                        temp2 += VEC_Z(S,N);
                     }
                         temp0 = temp0/ctx->AtomsPerBlock;
                         temp1 = temp1/ctx->AtomsPerBlock;
@@ -1535,7 +1511,7 @@ int ReadVTKLines(FILE * fp, char * line)
     return pos-1;// the last symbol is the line end symbol
 }
 
-void Read_VTK(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, char vtk_filename[64]){
+void Read_VTK(magnoom_ctx *ctx, double* S, char vtk_filename[64]){
 char  line[256];//whole line of header should be not longer then 256 characters
 int   lineLength=0;
 int   valuedim=3;
@@ -1604,9 +1580,9 @@ if(FilePointer!=NULL) {
                                         temp4_x = end_swap_float(temp4_x, sizeof(temp4_x));
                                         temp4_y = end_swap_float(temp4_y, sizeof(temp4_y));
                                         temp4_z = end_swap_float(temp4_z, sizeof(temp4_z));
-                                        Sx[I]=ctx->bSx[I]=(double)temp4_x;
-                                        Sy[I]=ctx->bSy[I]=(double)temp4_y;
-                                        Sz[I]=ctx->bSz[I]=(double)temp4_z;
+                                        VEC_X(S,I)=VEC_X(ctx->bS,I)=(double)temp4_x;
+                                        VEC_Y(S,I)=VEC_Y(ctx->bS,I)=(double)temp4_y;
+                                        VEC_Z(S,I)=VEC_Z(ctx->bS,I)=(double)temp4_z;
                                     }
                                 }else if (binType==8){
                                     if(!fread(&temp8_x,binType,1,FilePointer)) break;
@@ -1617,9 +1593,9 @@ if(FilePointer!=NULL) {
                                         temp8_x = end_swap_double(temp8_x, sizeof(temp8_x));
                                         temp8_y = end_swap_double(temp8_y, sizeof(temp8_y));
                                         temp8_z = end_swap_double(temp8_z, sizeof(temp8_z));
-                                        Sx[I]=ctx->bSx[I]=temp8_x;
-                                        Sy[I]=ctx->bSy[I]=temp8_y;
-                                        Sz[I]=ctx->bSz[I]=temp8_z;
+                                        VEC_X(S,I)=VEC_X(ctx->bS,I)=temp8_x;
+                                        VEC_Y(S,I)=VEC_Y(ctx->bS,I)=temp8_y;
+                                        VEC_Z(S,I)=VEC_Z(ctx->bS,I)=temp8_z;
                                     }
                                 }
                             }
@@ -1645,20 +1621,6 @@ void ReallocateMemoryForImages(magnoom_ctx *ctx, int NumImages, int NOS){
     size_t count = 3*(size_t)NumImages*(size_t)NOS;
     ctx->Image  = (double *) calloc(count, sizeof(double));
     ctx->dImage = (double *) calloc(count, sizeof(double));
-
-    ctx->Image_x = (double **) calloc(NumImages, sizeof(double *));
-    for(int i=0;i<NumImages;i++) ctx->Image_x[i] = (double *) calloc(NOS, sizeof(double));
-    ctx->Image_y = (double **) calloc(NumImages, sizeof(double *));
-    for(int i=0;i<NumImages;i++) ctx->Image_y[i] = (double *) calloc(NOS, sizeof(double));
-    ctx->Image_z = (double **) calloc(NumImages, sizeof(double *));
-    for(int i=0;i<NumImages;i++) ctx->Image_z[i] = (double *) calloc(NOS, sizeof(double));
-
-    ctx->dImage_x = (double **) calloc(NumImages, sizeof(double *));
-    for(int i=0;i<NumImages;i++) ctx->dImage_x[i] = (double *) calloc(NOS, sizeof(double));
-    ctx->dImage_y = (double **) calloc(NumImages, sizeof(double *));
-    for(int i=0;i<NumImages;i++) ctx->dImage_y[i] = (double *) calloc(NOS, sizeof(double));
-    ctx->dImage_z = (double **) calloc(NumImages, sizeof(double *));
-    for(int i=0;i<NumImages;i++) ctx->dImage_z[i] = (double *) calloc(NOS, sizeof(double));
 }
 
 #include "math_utils.c"		/*All mathematical fuctions*/
@@ -1676,10 +1638,6 @@ void ReallocateMemoryForSpins(magnoom_ctx *ctx, int NOS){
 	}
 	ctx->S  = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- for 10^6 spins allocated memory for ctx->S = 24 Mega Byte
 	ctx->bS = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
-
-	ctx->Sx = (double *)calloc(NOS, sizeof(double));
-	ctx->Sy = (double *)calloc(NOS, sizeof(double));
-	ctx->Sz = (double *)calloc(NOS, sizeof(double));	// <-- for 10^6 spins allocated memory for ctx->Sz,ctx->Sy,ctx->Sz = 12 Mega Byte
 	ctx->Kind = (int *)calloc(NOS, sizeof(int));
 }
 
@@ -1691,22 +1649,6 @@ void ReallocateMemoryForAllOther(magnoom_ctx *ctx, int NOS){
 	ctx->tS  = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
 	ctx->t2S = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
 	ctx->t3S = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
-
-	ctx->tSx = (double *)calloc(NOS, sizeof(double));
-	ctx->tSy = (double *)calloc(NOS, sizeof(double));
-	ctx->tSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
-
-	ctx->t2Sx = (double *)calloc(NOS, sizeof(double));
-	ctx->t2Sy = (double *)calloc(NOS, sizeof(double));
-	ctx->t2Sz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
-
-	ctx->t3Sx = (double *)calloc(NOS, sizeof(double));
-	ctx->t3Sy = (double *)calloc(NOS, sizeof(double));
-	ctx->t3Sz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
-
-	ctx->bSx = (double *)calloc(NOS, sizeof(double));
-	ctx->bSy = (double *)calloc(NOS, sizeof(double));
-	ctx->bSz = (double *)calloc(NOS, sizeof(double));	// <-- + 12 Mega Byte
 
 	ctx->RNx = (float *)calloc(NOS, sizeof(float));
 	ctx->RNy = (float *)calloc(NOS, sizeof(float));
@@ -1857,8 +1799,8 @@ main (int argc, char **argv){
 	GetBox(&mag_ctx, mag_ctx.abc, mag_ctx.uABC, mag_ctx.Box);
 	UpdateSpinPositions(&mag_ctx, mag_ctx.abc, mag_ctx.uABC, mag_ctx.Block, mag_ctx.AtomsPerBlock, mag_ctx.Box, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz);
 	UpdateKind(&mag_ctx, mag_ctx.Kind, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.NOS, mag_ctx.NOSK);
-	InitSpinComponents( &mag_ctx, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.Sx, mag_ctx.Sy, mag_ctx.Sz, 0);
-	for (int i=0;i<mag_ctx.NOS;i++) { mag_ctx.bSx[i]=mag_ctx.Sx[i]; mag_ctx.bSy[i]=mag_ctx.Sy[i]; mag_ctx.bSz[i]=mag_ctx.Sz[i];}
+	InitSpinComponents( &mag_ctx, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.S, 0);
+	for (int i=0;i<mag_ctx.NOS;i++) { VEC_X(mag_ctx.bS,i)=VEC_X(mag_ctx.S,i); VEC_Y(mag_ctx.bS,i)=VEC_Y(mag_ctx.S,i); VEC_Z(mag_ctx.bS,i)=VEC_Z(mag_ctx.S,i);}
 
     // Set OpenGL context initial state.
 	setupOpenGL(&mag_ctx);
@@ -1868,7 +1810,7 @@ main (int argc, char **argv){
 	UpdatePrototypeVerNorInd(&mag_ctx, mag_ctx.vertexProto, mag_ctx.normalProto, mag_ctx.indicesProto, mag_ctx.arrowFaces, mag_ctx.WhichVectorMode,0);
 	// Fill big array for indecies for all arrows, cans, cones or boxes 
 	UpdateIndices(&mag_ctx, mag_ctx.indicesProto , mag_ctx.IdNumProto, mag_ctx.indices, mag_ctx.IdNum, mag_ctx.VCNumProto); 
-	UpdateVerticesNormalsColors(&mag_ctx, mag_ctx.vertexProto, mag_ctx.normalProto, mag_ctx.VCNumProto, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.VCNum, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.bSx, mag_ctx.bSy, mag_ctx.bSz, mag_ctx.WhichVectorMode);
+	UpdateVerticesNormalsColors(&mag_ctx, mag_ctx.vertexProto, mag_ctx.normalProto, mag_ctx.VCNumProto, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.VCNum, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.bS, mag_ctx.WhichVectorMode);
 	CreateNewVBO(&mag_ctx);
 	UpdateVBO(&mag_ctx, &mag_ctx.vboIdV, &mag_ctx.vboIdN, &mag_ctx.vboIdC, &mag_ctx.iboIdI, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.indices);
 
@@ -1928,13 +1870,8 @@ main (int argc, char **argv){
 
 	free(mag_ctx.S);     			free(mag_ctx.bS);
 	free(mag_ctx.tS);    			free(mag_ctx.t2S);   			free(mag_ctx.t3S);
-	/* mag_ctx.Image/dImage intentionally not freed here, matching the       */
-	/* pre-existing (unfixed) leak of Image_x/Image_y/Image_z/dImage_* below.*/
-	free(mag_ctx.Sx);    			free(mag_ctx.Sy);    			free(mag_ctx.Sz);
-	free(mag_ctx.tSx);   			free(mag_ctx.tSy);   			free(mag_ctx.tSz);
-	free(mag_ctx.bSx);   			free(mag_ctx.bSy);   			free(mag_ctx.bSz);
-	free(mag_ctx.t2Sx);  			free(mag_ctx.t2Sy);  			free(mag_ctx.t2Sz);
-	free(mag_ctx.t3Sx);  			free(mag_ctx.t3Sy);  			free(mag_ctx.t3Sz);
+	/* mag_ctx.Image/dImage intentionally not freed here -- pre-existing     */
+	/* (unfixed) leak, preserved as-is.                                      */
 	free(mag_ctx.Heffx); 			free(mag_ctx.Heffy); 			free(mag_ctx.Heffz);
 	free(mag_ctx.RNx);   			free(mag_ctx.RNy);   			free(mag_ctx.RNz);
 	free(mag_ctx.Px);    			free(mag_ctx.Py);    			free(mag_ctx.Pz);

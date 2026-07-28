@@ -29,9 +29,9 @@ void			UpdateVBO(magnoom_ctx *, GLuint * , GLuint * , GLuint * , GLuint * , floa
 void			UpdateVBO_H(magnoom_ctx *, GLuint * , GLuint * , GLuint * , GLuint * , float * , float * , float * , GLuint * );
 void			UpdateSpinComponents(float * , float * , float * , int);
 void			UpdateSpinPositions(magnoom_ctx *, float[][3], int[3], float[][3], int, float[][3], float*, float*, float*);
-void			InitSpinComponents(magnoom_ctx *, float * , float * , float * , double * , double * , double * , int N);
+void			InitSpinComponents(magnoom_ctx *, float * , float * , float * , double * , int N);
 void			UpdateIndices(magnoom_ctx *, GLuint * , int, GLuint *, int, int);
-void			UpdateVerticesNormalsColors(magnoom_ctx *, float *, float *, int, float *, float *, float *, int, float * , float * , float *, double * , double * , double *, int);
+void			UpdateVerticesNormalsColors(magnoom_ctx *, float *, float *, int, float *, float *, float *, int, float * , float * , float *, double * , int);
 void 			UpdateVerticesNormalsColors_H(magnoom_ctx *, float *, float *, int Kinp, float *, float *, float *, float, float, float, float, float, float);
 // drawing functions
 void			GetBox(magnoom_ctx *, float[][3], int[3], float[3][3]);
@@ -334,7 +334,7 @@ void idle (magnoom_ctx *ctx)
 				case 0:
 				ChangeVectorMode(ctx, 1);
 				case 1:
-				ctx->totalEnergy = GetTotalEnergy( 	ctx, ctx->bSx, ctx->bSy, ctx->bSz,
+				ctx->totalEnergy = GetTotalEnergy( 	ctx, ctx->bS,
 							ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 							ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Etot, ctx->Mtot, ctx->NOS );
 				// totalEnergy = 0;
@@ -788,25 +788,25 @@ UpdateKind(magnoom_ctx *ctx, int* Kind,float* Px, float* Py, float* Pz, int NOS,
 
     for (int n=0; n<NOS; n++)
     {   
-        ctx->Sx[n]*= Kind[n];
-        ctx->Sy[n]*= Kind[n];
-        ctx->Sz[n]*= Kind[n];
+        VEC_X(ctx->S,n)*= Kind[n];
+        VEC_Y(ctx->S,n)*= Kind[n];
+        VEC_Z(ctx->S,n)*= Kind[n];
 
-        ctx->bSx[n]*= Kind[n];
-        ctx->bSy[n]*= Kind[n];
-        ctx->bSz[n]*= Kind[n]; 
+        VEC_X(ctx->bS,n)*= Kind[n];
+        VEC_Y(ctx->bS,n)*= Kind[n];
+        VEC_Z(ctx->bS,n)*= Kind[n];
         
-        ctx->tSx[n]*= Kind[n];
-        ctx->tSy[n]*= Kind[n];
-        ctx->tSz[n]*= Kind[n]; 
+        VEC_X(ctx->tS,n)*= Kind[n];
+        VEC_Y(ctx->tS,n)*= Kind[n];
+        VEC_Z(ctx->tS,n)*= Kind[n]; 
         
-        ctx->t2Sx[n]*= Kind[n];
-        ctx->t2Sy[n]*= Kind[n];
-        ctx->t2Sz[n]*= Kind[n];  
+        VEC_X(ctx->t2S,n)*= Kind[n];
+        VEC_Y(ctx->t2S,n)*= Kind[n];
+        VEC_Z(ctx->t2S,n)*= Kind[n];  
 
-        ctx->t3Sx[n]*= Kind[n];
-        ctx->t3Sy[n]*= Kind[n];
-        ctx->t3Sz[n]*= Kind[n]; 
+        VEC_X(ctx->t3S,n)*= Kind[n];
+        VEC_Y(ctx->t3S,n)*= Kind[n];
+        VEC_Z(ctx->t3S,n)*= Kind[n]; 
     }
 
 }
@@ -825,10 +825,10 @@ void TW_CALL CB_RotateAllSpins( void *clientData )
 	{
         double tmp[3];
 		for (int i=0; i<ctx->NOS; i++) {
-			RotateVector(ctx->Sx[i], ctx->Sy[i], ctx->Sz[i], ctx->chDir[0], ctx->chDir[1], ctx->chDir[2], ctx->RotateAllSpins, tmp);
-			ctx->bSx[i] = ctx->Sx[i] = tmp[0];
-			ctx->bSy[i] = ctx->Sy[i] = tmp[1];
-			ctx->bSz[i] = ctx->Sz[i] = tmp[2];
+			RotateVector(VEC_X(ctx->S,i), VEC_Y(ctx->S,i), VEC_Z(ctx->S,i), ctx->chDir[0], ctx->chDir[1], ctx->chDir[2], ctx->RotateAllSpins, tmp);
+			VEC_X(ctx->bS,i) = VEC_X(ctx->S,i) = tmp[0];
+			VEC_Y(ctx->bS,i) = VEC_Y(ctx->S,i) = tmp[1];
+			VEC_Z(ctx->bS,i) = VEC_Z(ctx->S,i) = tmp[2];
 		}
 		ChangeVectorMode(ctx, 1);		
 	}
@@ -837,20 +837,20 @@ void TW_CALL CB_RotateAllSpins( void *clientData )
 void TW_CALL CB_InvertX( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	for (int i=0; i<ctx->NOS; i++) {ctx->Sx[i] = -ctx->Sx[i]; ctx->bSx[i] = -ctx->bSx[i];}
+	for (int i=0; i<ctx->NOS; i++) {VEC_X(ctx->S,i) = -VEC_X(ctx->S,i); VEC_X(ctx->bS,i) = -VEC_X(ctx->bS,i);}
 	ChangeVectorMode(ctx, 1);
 }
 
 void TW_CALL CB_InvertY( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	for (int i=0; i<ctx->NOS; i++) {ctx->Sy[i] = -ctx->Sy[i]; ctx->bSy[i] = -ctx->bSy[i];}
+	for (int i=0; i<ctx->NOS; i++) {VEC_Y(ctx->S,i) = -VEC_Y(ctx->S,i); VEC_Y(ctx->bS,i) = -VEC_Y(ctx->bS,i);}
 	ChangeVectorMode(ctx, 1);
 }
 
 void TW_CALL CB_InvertZ( void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	for (int i=0; i<ctx->NOS; i++) {ctx->Sz[i] = -ctx->Sz[i]; ctx->bSz[i] = -ctx->bSz[i];}
+	for (int i=0; i<ctx->NOS; i++) {VEC_Z(ctx->S,i) = -VEC_Z(ctx->S,i); VEC_Z(ctx->bS,i) = -VEC_Z(ctx->bS,i);}
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -1303,7 +1303,7 @@ void TW_CALL CB_SaveCSV( void *clientData )
     					for (atom=0; atom<ctx->AtomsPerBlock; atom++){
     					    N = n + atom;
                             //metka
-    						snprintf(ctx->shortBufer,200,"%2.5f,%2.5f,%2.5f,%0.15f,%0.15f,%0.15f,\n",ctx->Px[N],ctx->Py[N],ctx->Pz[N],ctx->bSx[N],ctx->bSy[N],ctx->bSz[N]);
+    						snprintf(ctx->shortBufer,200,"%2.5f,%2.5f,%2.5f,%0.15f,%0.15f,%0.15f,\n",ctx->Px[N],ctx->Py[N],ctx->Pz[N],VEC_X(ctx->bS,N),VEC_Y(ctx->bS,N),VEC_Z(ctx->bS,N));
                             // snprintf(shortBufer,200,"%.14g,%.14g,%.14g,%.14g,%.14g,%.14g,%.14g,%.14g,\n",
                                 // ctx->Px[N],ctx->Py[N],ctx->Pz[N],bSx[N],bSy[N],bSz[N],acos(bSz[N])*R2D,atan2 (bSy[N],bSx[N])*R2D);
     						fputs (ctx->shortBufer,pFile); 
@@ -1330,9 +1330,9 @@ void TW_CALL CB_SaveCSV( void *clientData )
     						n = n*ctx->AtomsPerBlock;//index of the first spin in the block
     						for (atom=0; atom<ctx->AtomsPerBlock; atom++){
     						    N = n + atom;
-    						    tSpin[0]+=ctx->bSx[N];
-    						    tSpin[1]+=ctx->bSy[N];
-    						    tSpin[2]+=ctx->bSz[N];
+    						    tSpin[0]+=VEC_X(ctx->bS,N);
+    						    tSpin[1]+=VEC_Y(ctx->bS,N);
+    						    tSpin[2]+=VEC_Z(ctx->bS,N);
     						}
     					}
     					tPositin[0]+=ctx->abc[0][0]*an+ctx->abc[1][0]*bn;
@@ -1358,9 +1358,9 @@ void TW_CALL CB_SaveCSV( void *clientData )
     						n = n*ctx->AtomsPerBlock;//index of the first spin in the block
     						for (atom=0; atom<ctx->AtomsPerBlock; atom++){
     						    N = n + atom;
-    						    tSpin[0]+=ctx->bSx[N];
-    						    tSpin[1]+=ctx->bSy[N];
-    						    tSpin[2]+=ctx->bSz[N];
+    						    tSpin[0]+=VEC_X(ctx->bS,N);
+    						    tSpin[1]+=VEC_Y(ctx->bS,N);
+    						    tSpin[2]+=VEC_Z(ctx->bS,N);
     						}
     					}
     					tPositin[0]+=ctx->abc[0][0]*an+ctx->abc[2][0]*cn;
@@ -1386,9 +1386,9 @@ void TW_CALL CB_SaveCSV( void *clientData )
     						n = n*ctx->AtomsPerBlock;//index of the first spin in the block
     						for (atom=0; atom<ctx->AtomsPerBlock; atom++){
     						    N = n + atom;
-    						    tSpin[0]+=ctx->bSx[N];
-    						    tSpin[1]+=ctx->bSy[N];
-    						    tSpin[2]+=ctx->bSz[N];
+    						    tSpin[0]+=VEC_X(ctx->bS,N);
+    						    tSpin[1]+=VEC_Y(ctx->bS,N);
+    						    tSpin[2]+=VEC_Z(ctx->bS,N);
     						}
     					}
     					tPositin[0]+=ctx->abc[2][0]*cn+ctx->abc[1][0]*bn;
@@ -1444,9 +1444,9 @@ void TW_CALL CB_ReadCSV( void *clientData )
 				// ctx->Px[i]=px;
 				// ctx->Py[i]=py;
 				// ctx->Pz[i]=pz;
-				ctx->bSx[i]=ctx->Sx[i]=sx;
-				ctx->bSy[i]=ctx->Sy[i]=sy;
-				ctx->bSz[i]=ctx->Sz[i]=sz;
+				VEC_X(ctx->bS,i)=VEC_X(ctx->S,i)=sx;
+				VEC_Y(ctx->bS,i)=VEC_Y(ctx->S,i)=sy;
+				VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i)=sz;
 		 	}
 		 	i++;
 		}while(c != EOF); 
@@ -1523,8 +1523,8 @@ void TW_CALL CB_ReadOVF( void *clientData )
 							ReadDataLine(FilePointer, line);
 							if (k<ctx->uABC[2] && j<ctx->uABC[1] && i<ctx->uABC[0]){
 								n = i + j*ctx->uABC[0] + k*ctx->uABC[0]*ctx->uABC[1];
-								sscanf(line, "%lf %lf %lf", &ctx->bSx[n],&ctx->bSy[n],&ctx->bSz[n]);
-								ctx->Sx[n]=ctx->bSx[n]; ctx->Sy[n]=ctx->bSy[n];ctx->Sz[n]=ctx->bSz[n];
+								sscanf(line, "%lf %lf %lf", &VEC_X(ctx->bS,n),&VEC_Y(ctx->bS,n),&VEC_Z(ctx->bS,n));
+								VEC_X(ctx->S,n)=VEC_X(ctx->bS,n); VEC_Y(ctx->S,n)=VEC_Y(ctx->bS,n);VEC_Z(ctx->S,n)=VEC_Z(ctx->bS,n);
 							}
 						}
 					}
@@ -1550,7 +1550,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 				// 		}
 				// 	}
 				// }
-				if(fread(&ctx->bSx[0],binType,1,FilePointer)) {
+				if(fread(&VEC_X(ctx->bS,0),binType,1,FilePointer)) {
 				//printf("%f \n",bSx[0]);	
 					for (int k=0; k<znodes; k++){
 						for (int j=0; j<ynodes; j++){
@@ -1564,9 +1564,9 @@ void TW_CALL CB_ReadOVF( void *clientData )
 										if(!fread(&temp4_z,binType,1,FilePointer)) break;
 										for (int t=0; t<ctx->AtomsPerBlock; t++){
 											int I=n*ctx->AtomsPerBlock+t;
-											ctx->Sx[I]=ctx->bSx[I]=(double)temp4_x; 
-											ctx->Sy[I]=ctx->bSy[I]=(double)temp4_y;
-											ctx->Sz[I]=ctx->bSz[I]=(double)temp4_z;		
+											VEC_X(ctx->S,I)=VEC_X(ctx->bS,I)=(double)temp4_x;
+											VEC_Y(ctx->S,I)=VEC_Y(ctx->bS,I)=(double)temp4_y;
+											VEC_Z(ctx->S,I)=VEC_Z(ctx->bS,I)=(double)temp4_z;
 										}
 									}else{
 										if(!fread(&temp8_x,binType,1,FilePointer)) break;
@@ -1574,9 +1574,9 @@ void TW_CALL CB_ReadOVF( void *clientData )
 										if(!fread(&temp8_z,binType,1,FilePointer)) break;
 										for (int t=0; t<ctx->AtomsPerBlock; t++){
 											int I=n*ctx->AtomsPerBlock+t;
-											ctx->Sx[I]=ctx->bSx[I]=temp8_x; 
-											ctx->Sy[I]=ctx->bSy[I]=temp8_y;
-											ctx->Sz[I]=ctx->bSz[I]=temp8_z;		
+											VEC_X(ctx->S,I)=VEC_X(ctx->bS,I)=temp8_x;
+											VEC_Y(ctx->S,I)=VEC_Y(ctx->bS,I)=temp8_y;
+											VEC_Z(ctx->S,I)=VEC_Z(ctx->bS,I)=temp8_z;
 										}
 									}
 								}	
@@ -1596,9 +1596,9 @@ void TW_CALL CB_ReadOVF( void *clientData )
 	}else{printf("Cannot open file: %s \n", ctx->inputfilename);}
     //metka dlya schiutyvaniya equilibrium state for dm
     for (int i=0; i<ctx->NOS; i++){
-        ctx->t3Sx[i]=ctx->Sx[i];
-        ctx->t3Sy[i]=ctx->Sy[i];
-        ctx->t3Sz[i]=ctx->Sz[i];                       
+        VEC_X(ctx->t3S,i)=VEC_X(ctx->S,i);
+        VEC_Y(ctx->t3S,i)=VEC_Y(ctx->S,i);
+        VEC_Z(ctx->t3S,i)=VEC_Z(ctx->S,i);                       
     }
 	ChangeVectorMode(ctx, 1);
 }
@@ -1633,8 +1633,8 @@ void TW_CALL CB_ReadBIN( void *clientData )
 					ny = sin(T)*sin(F);
 					nz = cos(T);
 					int n = (i)+(j)*Nx+k*Nx*Ny;
-					ctx->Sx[n] = nx; ctx->Sy[n] = ny; ctx->Sz[n] = nz;
-					ctx->bSx[n] = nx; ctx->bSy[n] = ny; ctx->bSz[n] = nz;					
+					VEC_X(ctx->S,n) = nx; VEC_Y(ctx->S,n) = ny; VEC_Z(ctx->S,n) = nz;
+					VEC_X(ctx->bS,n) = nx; VEC_Y(ctx->bS,n) = ny; VEC_Z(ctx->bS,n) = nz;
 				}
 			}
 	    }
@@ -1647,7 +1647,7 @@ void TW_CALL CB_ReadBIN( void *clientData )
 void TW_CALL CB_ReadVTK( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    Read_VTK(ctx, ctx->Sx, ctx->Sy, ctx->Sz, ctx->inputfilename);
+    Read_VTK(ctx, ctx->S, ctx->inputfilename);
     ChangeVectorMode(ctx, 1);
 }
 
@@ -1661,7 +1661,7 @@ void TW_CALL CB_Save_OVF_b8( void *clientData )
     if(strncmp(ovf_filename, ".ovf",4)==0){
         printf("Enter the file name. It cannot be empty!");
     }else{
-        Save_OVF_b8(ctx, ctx->bSx, ctx->bSy, ctx->bSz, ovf_filename);
+        Save_OVF_b8(ctx, ctx->bS, ovf_filename);
     }
 }
 
@@ -1674,7 +1674,7 @@ void TW_CALL CB_Save_VTK_b4( void *clientData )
     if(strncmp(vtk_filename, ".vtk",4)==0){
         printf("Enter the file name. It cannot be empty!");
     }else{
-        Save_VTK(ctx, ctx->bSx, ctx->bSy, ctx->bSz, 0, vtk_filename);//metka 0->1
+        Save_VTK(ctx, ctx->bS, 0, vtk_filename);//metka 0->1
 
         // Save_VTS_b4(bSx, bSy, bSz, ctx->Px, ctx->Py, ctx->Pz, Box, vts_filename);
         // Save_VTS_ascii(bSx, bSy, bSz, ctx->Px, ctx->Py, ctx->Pz, Box, vts_filename);
@@ -1700,7 +1700,7 @@ void TW_CALL CB_Save_BIN( void *clientData )
     if(strncmp(bin_filename, ".bin",4)==0){
         printf("Enter the file name. It cannot be empty!");
     }else{
-        SaveBin(ctx, ctx->bSx, ctx->bSy, ctx->bSz, bin_filename);//metka 0->1
+        SaveBin(ctx, ctx->bS, bin_filename);//metka 0->1
     }
 }
 
@@ -1713,7 +1713,7 @@ void TW_CALL CB_Save_PNG( void *clientData )
     if(strncmp(png_filename, ".png",4)==0){
         printf("Enter the file name. It cannot be empty!");
     }else{
-        SavePng(ctx, ctx->bSx, ctx->bSy, ctx->bSz, png_filename, ctx->WhichSliceMode, ctx->A_layer_min-1, ctx->B_layer_min-1, ctx->C_layer_min-1);//metka 0->1
+        SavePng(ctx, ctx->bS, png_filename, ctx->WhichSliceMode, ctx->A_layer_min-1, ctx->B_layer_min-1, ctx->C_layer_min-1);//metka 0->1
     }
 }
 
@@ -2777,8 +2777,8 @@ void Buttons( magnoom_ctx *ctx, int id )
 
 void ChangeInitialState ( magnoom_ctx *ctx, int id )
 {
-	InitSpinComponents( ctx, ctx->Px, ctx->Py, ctx->Pz, ctx->Sx, ctx->Sy, ctx->Sz, id );
-	for (int i=0;i<ctx->NOS;i++) { ctx->bSx[i]=ctx->Sx[i]; ctx->bSy[i]=ctx->Sy[i]; ctx->bSz[i]=ctx->Sz[i];}
+	InitSpinComponents( ctx, ctx->Px, ctx->Py, ctx->Pz, ctx->S, id );
+	for (int i=0;i<ctx->NOS;i++) { VEC_X(ctx->bS,i)=VEC_X(ctx->S,i); VEC_Y(ctx->bS,i)=VEC_Y(ctx->S,i); VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i);}
 	ChangeVectorMode (ctx,  1 );
 	ctx->SpecialEvent=1;
 }
@@ -2794,7 +2794,7 @@ void ChangeVectorMode( magnoom_ctx *ctx, int id )
 		// Fill big array for indecies for all arrows, cans, cones or boxes 
 		UpdateIndices(ctx, ctx->indicesProto , ctx->IdNumProto, ctx->indices, ctx->IdNum, ctx->VCNumProto);
 		case 1:	// change only the layer(s) for drawing
-		UpdateVerticesNormalsColors(ctx, ctx->vertexProto, ctx->normalProto, ctx->VCNumProto, ctx->vertices, ctx->normals, ctx->colors, ctx->VCNum, ctx->Px, ctx->Py, ctx->Pz, ctx->bSx, ctx->bSy, ctx->bSz, ctx->WhichVectorMode);
+		UpdateVerticesNormalsColors(ctx, ctx->vertexProto, ctx->normalProto, ctx->VCNumProto, ctx->vertices, ctx->normals, ctx->colors, ctx->VCNum, ctx->Px, ctx->Py, ctx->Pz, ctx->bS, ctx->WhichVectorMode);
 		UpdateVBO(ctx, &ctx->vboIdV, &ctx->vboIdN, &ctx->vboIdC, &ctx->iboIdI,ctx->vertices, ctx->normals, ctx->colors, ctx->indices);
 		break;
 	}
@@ -3446,10 +3446,10 @@ void UpdateIndices(magnoom_ctx *ctx, GLuint * Iinp , int Kinp, GLuint * Iout, in
 
 
 
-void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, int Kinp, 
-							float * Vout, float * Nout, float * Cout, int Kout, 
+void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, int Kinp,
+							float * Vout, float * Nout, float * Cout, int Kout,
 							float * Px, float * Py, float * Pz,
-							double * Sx, double * Sy, double * Sz, int mode)
+							double * spinArr, int mode)
 {
 	//float tmpV1[3], tmpV2[3], tmpV3[3], RGB[3], U, A;
 	float S[3], RGB[3], U, A;
@@ -3507,9 +3507,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 					{
 					    N = n + atom;
 						//slow version is commented but easy to read: 
-						S[0] = Sx[N];
-						S[1] = Sy[N];
-						S[2] = Sz[N];
+						S[0] = VEC_X(spinArr,N);
+						S[1] = VEC_Y(spinArr,N);
+						S[2] = VEC_Z(spinArr,N);
 						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
 						// if (SpinFilter1){
 						// 	if (!PhiInvert1 && !PhiInvert2){
@@ -3597,9 +3597,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 				{
 				    N = n + atom;
 					//slow version is commented but easy to read: 
-					S[0] = Sx[N];
-					S[1] = Sy[N];
-					S[2] = Sz[N];
+					S[0] = VEC_X(spinArr,N);
+					S[1] = VEC_Y(spinArr,N);
+					S[2] = VEC_Z(spinArr,N);
                     HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
 					vlength = Unitf(S,S);
 			        // HSVtoRGB( S, RGB, InvertValue, InvertHue);
@@ -3690,9 +3690,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 					{
 					    N = atom + n*ctx->AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
 		 
-						S[0]+= Sx[N];
-						S[1]+= Sy[N];
-						S[2]+= Sz[N];
+						S[0]+= VEC_X(spinArr,N);
+						S[1]+= VEC_Y(spinArr,N);
+						S[2]+= VEC_Z(spinArr,N);
 				    }
 					int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
 					//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
@@ -3750,9 +3750,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 					{
 					    N = atom + n*ctx->AtomsPerBlock;//n*AtomsPerBlock=index of the first spin in the block;
 		 
-						S[0]+= Sx[N];
-						S[1]+= Sy[N];
-						S[2]+= Sz[N];
+						S[0]+= VEC_X(spinArr,N);
+						S[1]+= VEC_Y(spinArr,N);
+						S[2]+= VEC_Z(spinArr,N);
 				    }
                     HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
 				    (void)Unitf(S,S);
@@ -3805,9 +3805,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 					n = n*ctx->AtomsPerBlock;//index of the first spin in the block
 					for (int atom=0; atom<ctx->AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
-						S[0] = Sx[n+atom];
-						S[1] = Sy[n+atom];
-						S[2] = Sz[n+atom];
+						S[0] = VEC_X(spinArr,n+atom);
+						S[1] = VEC_Y(spinArr,n+atom);
+						S[2] = VEC_Z(spinArr,n+atom);
                         HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);
 						vlength = Unitf(S,S);//metka
 						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
@@ -3844,9 +3844,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 				n = n*ctx->AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<ctx->AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
-					S[0] = Sx[n+atom];
-					S[1] = Sy[n+atom];
-					S[2] = Sz[n+atom];
+					S[0] = VEC_X(spinArr,n+atom);
+					S[1] = VEC_Y(spinArr,n+atom);
+					S[2] = VEC_Z(spinArr,n+atom);
                     HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
 					vlength = Unitf(S,S);
 			        // HSVtoRGB( S, RGB, InvertValue, InvertHue);
@@ -3896,9 +3896,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 					n = n*ctx->AtomsPerBlock;//index of the first spin in the block
 					for (int atom=0; atom<ctx->AtomsPerBlock; atom++)//atom is the index of the atom in block
 					{
-						S[0] = Sx[n+atom];
-						S[1] = Sy[n+atom];
-						S[2] = Sz[n+atom];
+						S[0] = VEC_X(spinArr,n+atom);
+						S[1] = VEC_Y(spinArr,n+atom);
+						S[2] = VEC_Z(spinArr,n+atom);
 						int phi = atan2int( S[1], S[0] );// return integer angle phi 0 - 360
 						//if (S[2]>=Sz_min1 && S[2]<=Sz_max1)
 						//if ( (S[2]>=Sz_min1 && S[2]<=Sz_max1) && (phi>=phi_min1 && phi<=phi_max1) )
@@ -3950,9 +3950,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 				n = n*ctx->AtomsPerBlock;//index of the first spin in the block
 				for (int atom=0; atom<ctx->AtomsPerBlock; atom++)//atom is the index of the atom in block
 				{
-					S[0] = Sx[n+atom];
-					S[1] = Sy[n+atom];
-					S[2] = Sz[n+atom];
+					S[0] = VEC_X(spinArr,n+atom);
+					S[1] = VEC_Y(spinArr,n+atom);
+					S[2] = VEC_Z(spinArr,n+atom);
                     HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
 					vlength = Unitf(S,S);
 			        // HSVtoRGB( S, RGB, InvertValue, InvertHue);

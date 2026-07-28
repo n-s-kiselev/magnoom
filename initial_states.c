@@ -1,4 +1,4 @@
-void CreatSkyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Sk_R, float tx, float ty)
+void CreatSkyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, float Sk_R, float tx, float ty)
 {
 	float T = 0.f;
 	float F = 0.f;
@@ -15,19 +15,19 @@ void CreatSkyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, double 
 		{
 			T= PI*exp(-0.5*r/Sk_R);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
 			F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
-			ctx->Sx[n] = sin(T)*cos(F)*ctx->Kind[n];
-			ctx->Sy[n] = sin(T)*sin(F)*ctx->Kind[n];
-			ctx->Sz[n] = cos(T)*ctx->Kind[n];
+			VEC_X(ctx->S,n) = sin(T)*cos(F)*ctx->Kind[n];
+			VEC_Y(ctx->S,n) = sin(T)*sin(F)*ctx->Kind[n];
+			VEC_Z(ctx->S,n) = cos(T)*ctx->Kind[n];
 			//metka test  color code:	
-			// float inv_abs_S=1.0f/sqrt(ctx->Sx[n]*ctx->Sx[n]+ctx->Sy[n]*ctx->Sy[n]+ctx->Sz[n]*ctx->Sz[n]);
-			// ctx->Sx[n] = ctx->Sx[n]*inv_abs_S/(0.1*r+1.0);
-			// ctx->Sy[n] = ctx->Sy[n]*inv_abs_S/(0.1*r+1.0);
-			// ctx->Sz[n] = ctx->Sz[n]*inv_abs_S/(0.1*r+1.0);
+			// float inv_abs_S=1.0f/sqrt(VEC_X(ctx->S,n)*VEC_X(ctx->S,n)+VEC_Y(ctx->S,n)*VEC_Y(ctx->S,n)+VEC_Z(ctx->S,n)*VEC_Z(ctx->S,n));
+			// VEC_X(ctx->S,n) = VEC_X(ctx->S,n)*inv_abs_S/(0.1*r+1.0);
+			// VEC_Y(ctx->S,n) = VEC_Y(ctx->S,n)*inv_abs_S/(0.1*r+1.0);
+			// VEC_Z(ctx->S,n) = VEC_Z(ctx->S,n)*inv_abs_S/(0.1*r+1.0);
 		}
 	}
 }
 
-void GetSkyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Sk_R, float tx, float ty)
+void GetSkyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, float Sk_R, float tx, float ty)
 {
 	float T = 0.f;
 	float F = 0.f;
@@ -45,14 +45,14 @@ void GetSkyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, double * 
 		if (r<Sk_R){
 			T = PI*(1-r/Sk_R);
 			F = atan2(ry,rx)+PI*0.5;
-			sx[n] = sin(T)*cos(F)*ctx->Kind[n];
-			sy[n] = sin(T)*sin(F)*ctx->Kind[n];
-			sz[n] = cos(T)*ctx->Kind[n];
+			VEC_X(s,n) = sin(T)*cos(F)*ctx->Kind[n];
+			VEC_Y(s,n) = sin(T)*sin(F)*ctx->Kind[n];
+			VEC_Z(s,n) = cos(T)*ctx->Kind[n];
 		}
 	}
 }
 
-void GetAntiskyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Sk_R, float tx, float ty, bool orient)
+void GetAntiskyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, float Sk_R, float tx, float ty, bool orient)
 {
 	float T = 0.f;
 	float F = 0.f;
@@ -79,14 +79,14 @@ void GetAntiskyrmion(magnoom_ctx *ctx, float * px, float * py, float * pz, doubl
 		if (r<Sk_R){
 			T = PI*(1-r/Sk_R);
 			
-			sx[n] = sin(T)*cos(F)*ctx->Kind[n];
-			sy[n] = sin(T)*sin(F)*ctx->Kind[n];
-			sz[n] = cos(T)*ctx->Kind[n];
+			VEC_X(s,n) = sin(T)*cos(F)*ctx->Kind[n];
+			VEC_Y(s,n) = sin(T)*sin(F)*ctx->Kind[n];
+			VEC_Z(s,n) = cos(T)*ctx->Kind[n];
 		}
 	}
 }
 
-void TiltSpinsToX(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Sk_R, float tx, float ty)
+void TiltSpinsToX(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, float Sk_R, float tx, float ty)
 {
 	float T = 0.f;
 	float F = 0.f;
@@ -103,14 +103,14 @@ void TiltSpinsToX(magnoom_ctx *ctx, float * px, float * py, float * pz, double *
 		{
 			T= PI/2;
 			F= 0;
-			ctx->Sx[n] = sin(T)*cos(F)*ctx->Kind[n];
-			ctx->Sy[n] = sin(T)*sin(F)*ctx->Kind[n];
-			ctx->Sz[n] = cos(T)*ctx->Kind[n];
+			VEC_X(ctx->S,n) = sin(T)*cos(F)*ctx->Kind[n];
+			VEC_Y(ctx->S,n) = sin(T)*sin(F)*ctx->Kind[n];
+			VEC_Z(ctx->S,n) = cos(T)*ctx->Kind[n];
 		}
 	}
 }
 
-void CreatSkyrmionSoliton(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Sk_R, float tx, float ty)
+void CreatSkyrmionSoliton(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, float Sk_R, float tx, float ty)
 {
 	float T = 0.f;
 	float F = 0.f;
@@ -134,19 +134,19 @@ void CreatSkyrmionSoliton(magnoom_ctx *ctx, float * px, float * py, float * pz, 
 		if (r<Sk_R){
 			T = PI*exp(-2*r/Sk_R);
 			F = atan2(ry,rx)+PI*0.5;
-			ctx->Sx[n] = sin(T)*cos(F)*ctx->Kind[n];
-			ctx->Sy[n] = sin(T)*sin(F)*ctx->Kind[n];
-			ctx->Sz[n] = cos(T)*ctx->Kind[n];			
+			VEC_X(ctx->S,n) = sin(T)*cos(F)*ctx->Kind[n];
+			VEC_Y(ctx->S,n) = sin(T)*sin(F)*ctx->Kind[n];
+			VEC_Z(ctx->S,n) = cos(T)*ctx->Kind[n];			
 		}else{
-			ctx->Sx[n] = 0.0f;
-			ctx->Sy[n] = 0.0f;
-			ctx->Sz[n] = 1.0f*ctx->Kind[n];
+			VEC_X(ctx->S,n) = 0.0f;
+			VEC_Y(ctx->S,n) = 0.0f;
+			VEC_Z(ctx->S,n) = 1.0f*ctx->Kind[n];
 		}
 	}
 }
 
 
-void CreatGlobule(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Sk_R, float tx, float ty, float tz)
+void CreatGlobule(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, float Sk_R, float tx, float ty, float tz)
 {
 	float T = 0.f;
 	float F = 0.f;
@@ -166,9 +166,9 @@ void CreatGlobule(magnoom_ctx *ctx, float * px, float * py, float * pz, double *
 		{
 			T=PI*exp(-2*r1/ctx->chSize);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
 			F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
-			ctx->Sx[n] = sin(T)*cos(F)*ctx->Kind[n];
-			ctx->Sy[n] = sin(T)*sin(F)*ctx->Kind[n];
-			ctx->Sz[n] = cos(T)*ctx->Kind[n];			
+			VEC_X(ctx->S,n) = sin(T)*cos(F)*ctx->Kind[n];
+			VEC_Y(ctx->S,n) = sin(T)*sin(F)*ctx->Kind[n];
+			VEC_Z(ctx->S,n) = cos(T)*ctx->Kind[n];			
 		}
 	}
 }
@@ -206,7 +206,7 @@ void Rz(float T, double* sx, double* sy, double* sz)
 	*sz = szp;
 }
 
-void CreatBobber(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Bob_R ,float tx, float ty, int Loc_B)
+void CreatBobber(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, float Bob_R ,float tx, float ty, int Loc_B)
 {
 	float top = 0.5*ctx->Box[2][2];
 	float R;
@@ -231,36 +231,36 @@ void CreatBobber(magnoom_ctx *ctx, float * px, float * py, float * pz, double * 
 			{
 			T=PI*(R-r)/R;//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
 			F= 1*(-atan2(rx,ry));//<--chiral (bloch) skyrmion |Q|=1
-			ctx->Sx[n] = -sin(T)*cos(F)*ctx->Kind[n];
-			ctx->Sy[n] = -sin(T)*sin(F)*ctx->Kind[n];
-			ctx->Sz[n] = cos(T)*ctx->Kind[n];	
+			VEC_X(ctx->S,n) = -sin(T)*cos(F)*ctx->Kind[n];
+			VEC_Y(ctx->S,n) = -sin(T)*sin(F)*ctx->Kind[n];
+			VEC_Z(ctx->S,n) = cos(T)*ctx->Kind[n];	
 			}
 		}	
 	}
 }
 
-void CreatHorisontalBobber(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, float Bob_R){
+void CreatHorisontalBobber(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, float Bob_R){
 	for(int i = 0; i < ctx->uABC[0]; i++){
 		for(int j = 0; j < ctx->uABC[1]; j++){
 			for(int k = 0; k < ctx->uABC[2]; k++){
 				int n = i + j*ctx->uABC[0] + k*ctx->uABC[0]*ctx->uABC[1];
-				ctx->Sx[n] = 0;
-				ctx->Sy[n] = 0;
-				ctx->Sz[n] = 1;	
+				VEC_X(ctx->S,n) = 0;
+				VEC_Y(ctx->S,n) = 0;
+				VEC_Z(ctx->S,n) = 1;	
 				if(px[n]<0 && (py[n]*py[n]+pz[n]*pz[n]) < Bob_R*Bob_R){
 					float r = sqrt(py[n]*py[n]+pz[n]*pz[n]);
 					float T = PI*(Bob_R-r)/Bob_R;
 					float F = atan2(py[n],pz[n]) + 0.5*PI;
-					ctx->Sx[n] = sin(T)*cos(F);
-					ctx->Sy[n] = sin(T)*sin(F);
-					ctx->Sz[n] = cos(T);	
+					VEC_X(ctx->S,n) = sin(T)*cos(F);
+					VEC_Y(ctx->S,n) = sin(T)*sin(F);
+					VEC_Z(ctx->S,n) = cos(T);	
 				}
 			}
 		}
 	}
 }
 
-void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, double * sx, double * sy, double * sz, int id)
+void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, int id)
 {
 	float T = 0.f;
 	float F = 0.f;
@@ -282,34 +282,34 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			rnd[1] = 2.0 * (0.5 - rand() / (double)RAND_MAX);
 			rnd[2] = 2.0 * (0.5 - rand() / (double)RAND_MAX);
 			(void)Unit(rnd,rnd);
-			ctx->Sx[n] = rnd[0]*ctx->Kind[n];
-			ctx->Sy[n] = rnd[1]*ctx->Kind[n];
-			ctx->Sz[n] = rnd[2]*ctx->Kind[n];	
+			VEC_X(ctx->S,n) = rnd[0]*ctx->Kind[n];
+			VEC_Y(ctx->S,n) = rnd[1]*ctx->Kind[n];
+			VEC_Z(ctx->S,n) = rnd[2]*ctx->Kind[n];	
 		}	
 		//test
-			// ctx->Sx[0] = 1.0;
-			// ctx->Sy[0] = 0.0;
-			// ctx->Sz[0] = 0.0;
-			// ctx->Sx[1] = 0.0;
-			// ctx->Sy[1] = 0.0;
-			// ctx->Sz[1] = 1.0;	
+			// VEC_X(ctx->S,0) = 1.0;
+			// VEC_Y(ctx->S,0) = 0.0;
+			// VEC_Z(ctx->S,0) = 0.0;
+			// VEC_X(ctx->S,1) = 0.0;
+			// VEC_Y(ctx->S,1) = 0.0;
+			// VEC_Z(ctx->S,1) = 1.0;	
 		// Stefan		
 		// if(chSize>0)
 		// {
 		// 	if( rand() / (double)RAND_MAX>0.5){
-		// 		TiltSpinsToX(ctx, px, py, pz, sx, sy, sz, chSize, 0.5*ctx->uABC[0], 0);				
+		// 		TiltSpinsToX(ctx, px, py, pz, s, chSize, 0.5*ctx->uABC[0], 0);				
 		// 	}
 
 		// 	if( 2.0 * (0.5 - rand() / (double)RAND_MAX)>0){
-		// 		TiltSpinsToX(ctx, px, py, pz, sx, sy, sz, chSize,-0.5*ctx->uABC[0], 0);				
+		// 		TiltSpinsToX(ctx, px, py, pz, s, chSize,-0.5*ctx->uABC[0], 0);				
 		// 	}
 
 		// 	// if( 2.0 * (0.5 - rand() / (double)RAND_MAX)>0){
-		// 	// 	TiltSpinsToX(ctx, px, py, pz, sx, sy, sz, chSize, 0.5*ctx->uABC[0], -0.5*ctx->uABC[1]);				
+		// 	// 	TiltSpinsToX(ctx, px, py, pz, s, chSize, 0.5*ctx->uABC[0], -0.5*ctx->uABC[1]);				
 		// 	// }
 
 		// 	// if( 2.0 * (0.5 - rand() / (double)RAND_MAX)>0){
-		// 	// 	TiltSpinsToX(ctx, px, py, pz, sx, sy, sz, chSize, 0.5*ctx->uABC[0],  0.5*ctx->uABC[1]);				
+		// 	// 	TiltSpinsToX(ctx, px, py, pz, s, chSize, 0.5*ctx->uABC[0],  0.5*ctx->uABC[1]);				
 		// 	// }
 		// }
 	break;
@@ -317,23 +317,23 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 	case 1: //homogeneous
 		for (int n=0; n<ctx->NOS; n++)
 		{	
-			ctx->Sx[n] = ctx->chDir[0]*ctx->Kind[n];
-			ctx->Sy[n] = ctx->chDir[1]*ctx->Kind[n];
-			ctx->Sz[n] = ctx->chDir[2]*ctx->Kind[n];	
+			VEC_X(ctx->S,n) = ctx->chDir[0]*ctx->Kind[n];
+			VEC_Y(ctx->S,n) = ctx->chDir[1]*ctx->Kind[n];
+			VEC_Z(ctx->S,n) = ctx->chDir[2]*ctx->Kind[n];	
 
 			//tilted FM
-			// ctx->Sx[n] = sin(VHtheta*PI/180)*cos(VHphi*PI/180);
-			// ctx->Sy[n] = sin(VHtheta*PI/180)*sin(VHphi*PI/180);
-			// ctx->Sz[n] = cos(VHtheta*PI/180);	
+			// VEC_X(ctx->S,n) = sin(VHtheta*PI/180)*cos(VHphi*PI/180);
+			// VEC_Y(ctx->S,n) = sin(VHtheta*PI/180)*sin(VHphi*PI/180);
+			// VEC_Z(ctx->S,n) = cos(VHtheta*PI/180);	
 
 			//cone
-			// ctx->Sx[n] = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*cos(pz[n]*2*PI/64);
-			// ctx->Sy[n] = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*sin(pz[n]*2*PI/64);
-			// ctx->Sz[n] = Hf/(ctx->Dij[0]*ctx->Dij[0]);	
+			// VEC_X(ctx->S,n) = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*cos(pz[n]*2*PI/64);
+			// VEC_Y(ctx->S,n) = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*sin(pz[n]*2*PI/64);
+			// VEC_Z(ctx->S,n) = Hf/(ctx->Dij[0]*ctx->Dij[0]);	
 			// int kz = n%(ctx->uABC[0]*ctx->uABC[1]);
-			// ctx->Sx[n] = sin(acos(0.7975))*cos(pz[n]*2*PI/128);
-			// ctx->Sy[n] = sin(acos(0.7975))*sin(pz[n]*2*PI/128);
-			// ctx->Sz[n] = 0.7975;	
+			// VEC_X(ctx->S,n) = sin(acos(0.7975))*cos(pz[n]*2*PI/128);
+			// VEC_Y(ctx->S,n) = sin(acos(0.7975))*sin(pz[n]*2*PI/128);
+			// VEC_Z(ctx->S,n) = 0.7975;	
 		}
 
 	break;
@@ -341,7 +341,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 	case 2: // skyrmion Q=1
 		if(ctx->chSize>0)
 		{
-			CreatSkyrmion(ctx, px, py, pz, sx, sy, sz, ctx->chSize,0,0);	
+			CreatSkyrmion(ctx, px, py, pz, s, ctx->chSize,0,0);	
 		}
 	break;
 
@@ -365,9 +365,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			// //F=-1*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=1
 			// F=-2*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=2
 			// //F=-3*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=3
-			// ctx->Sx[n] = sin(T)*cos(F)*ctx->Kind[n];
-			// ctx->Sy[n] = sin(T)*sin(F)*ctx->Kind[n];
-			// ctx->Sz[n] = cos(T)*ctx->Kind[n];	
+			// VEC_X(ctx->S,n) = sin(T)*cos(F)*ctx->Kind[n];
+			// VEC_Y(ctx->S,n) = sin(T)*sin(F)*ctx->Kind[n];
+			// VEC_Z(ctx->S,n) = cos(T)*ctx->Kind[n];	
 			// }
 			//metka eto antiskyrmion
 				float T = 0.f;
@@ -385,9 +385,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 					{
 						T= PI*exp(-2*r/ctx->chSize);//<-- defines skyrmion profile you may put periodical function to get target like skyrmions
 						F= atan2(ry,rx)+PI*0.5;//<--chiral (bloch) skyrmion |Q|=1
-						ctx->Sy[n] = sin(T)*cos(F)*ctx->Kind[n];
-						ctx->Sx[n] = sin(T)*sin(F)*ctx->Kind[n];
-						ctx->Sz[n] = cos(T)*ctx->Kind[n];
+						VEC_Y(ctx->S,n) = sin(T)*cos(F)*ctx->Kind[n];
+						VEC_X(ctx->S,n) = sin(T)*sin(F)*ctx->Kind[n];
+						VEC_Z(ctx->S,n) = cos(T)*ctx->Kind[n];
 					}
 				}
 		}
@@ -413,9 +413,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			//F=-1*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=1
 			//F=-2*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=2
 			F=-7*(-atan2(px[n],py[n]))+PI*0.5;//<-- achiral skyrmion |Q|=3
-			ctx->Sx[n] = sin(T)*cos(F)*ctx->Kind[n];
-			ctx->Sy[n] = sin(T)*sin(F)*ctx->Kind[n];
-			ctx->Sz[n] = cos(T)*ctx->Kind[n];	
+			VEC_X(ctx->S,n) = sin(T)*cos(F)*ctx->Kind[n];
+			VEC_Y(ctx->S,n) = sin(T)*sin(F)*ctx->Kind[n];
+			VEC_Z(ctx->S,n) = cos(T)*ctx->Kind[n];	
 			}
 		}	
 	break;
@@ -424,7 +424,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		if(ctx->chSize>0)
 		
 		{
-			CreatBobber(ctx, px, py, pz, sx, sy, sz, ctx->chSize, 0, 0, 1);	
+			CreatBobber(ctx, px, py, pz, s, ctx->chSize, 0, 0, 1);	
 		}
 	break;
 
@@ -432,8 +432,8 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		if(ctx->chSize>0)
 		
 		{
-			// CreatBobber(ctx, px, py, pz, sx, sy, sz, chSize, 0, 0, -1);	
-			CreatHorisontalBobber(ctx, px, py, pz, sx, sy, sz, ctx->chSize);			
+			// CreatBobber(ctx, px, py, pz, s, chSize, 0, 0, -1);	
+			CreatHorisontalBobber(ctx, px, py, pz, s, ctx->chSize);			
 		}
 	break;
 
@@ -453,9 +453,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		
 			for (int n=0; n<ctx->NOS; n++)
 			{	
-				ctx->Sx[n] = 0.f*ctx->Kind[n];
-				ctx->Sy[n] = 0.f*ctx->Kind[n];
-				ctx->Sz[n] = 1.f*ctx->Kind[n];	
+				VEC_X(ctx->S,n) = 0.f*ctx->Kind[n];
+				VEC_Y(ctx->S,n) = 0.f*ctx->Kind[n];
+				VEC_Z(ctx->S,n) = 1.f*ctx->Kind[n];	
 			}
 			
 			int Ntr=10;
@@ -468,14 +468,14 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 
 					RotTranLatX=CoChDir*TranLatX-SiChDir*TranLatY;//Tranlation of Bobber Lattice (along Y) with rotate in XY
 					RotTranLatY=SiChDir*TranLatX+CoChDir*TranLatY;//Tranlation of  Lattice (along Y) with rotate in XY
-					CreatBobber(ctx, px, py, pz, sx, sy, sz, Bob_Radius, RotTranLatX, RotTranLatY, 1);
+					CreatBobber(ctx, px, py, pz, s, Bob_Radius, RotTranLatX, RotTranLatY, 1);
 
 					TranLatX1=TranLatX+aBobLat/2;//
 					TranLatY1=TranLatY+PerBobLat/3;//
 
 					RotTranLatX=CoChDir*TranLatX1-SiChDir*TranLatY1;//Tranlation of Bobber Lattice (along Y) with rotate in XY
 					RotTranLatY=SiChDir*TranLatX1+CoChDir*TranLatY1;//Tranlation of  Lattice (along Y) with rotate in XY
-					CreatBobber(ctx, px, py, pz, sx, sy, sz, Bob_Radius, RotTranLatX, RotTranLatY, -1);
+					CreatBobber(ctx, px, py, pz, s, Bob_Radius, RotTranLatX, RotTranLatY, -1);
 				}
 			}	
 		}
@@ -499,9 +499,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			{	
 				if (pz[n]>0)
 				{
-				ctx->Sx[n] = 0.f*ctx->Kind[n];
-				ctx->Sy[n] = 0.f*ctx->Kind[n];
-				ctx->Sz[n] = 1.f*ctx->Kind[n];
+				VEC_X(ctx->S,n) = 0.f*ctx->Kind[n];
+				VEC_Y(ctx->S,n) = 0.f*ctx->Kind[n];
+				VEC_Z(ctx->S,n) = 1.f*ctx->Kind[n];
 				}	
 			}
 			
@@ -514,7 +514,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 					TranLatY=PerBobLat*ky;//Tranlation of Bobber Lattice (along Y) without rotate
 					RotTranLatX=CoChDir*TranLatX-SiChDir*TranLatY;//Tranlation of Bobber Lattice (along Y) with rotate in XY
 					RotTranLatY=SiChDir*TranLatX+CoChDir*TranLatY;//Tranlation of  Lattice (along Y) with rotate in XY
-					CreatBobber(ctx, px, py, pz, sx, sy, sz, Bob_Radius, RotTranLatX, RotTranLatY, 1);
+					CreatBobber(ctx, px, py, pz, s, Bob_Radius, RotTranLatX, RotTranLatY, 1);
 				}
 			}	
 		}
@@ -538,9 +538,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			{	
 				if (pz[n]<0)
 				{
-				ctx->Sx[n] = 0.f*ctx->Kind[n];
-				ctx->Sy[n] = 0.f*ctx->Kind[n];
-				ctx->Sz[n] = 1.f*ctx->Kind[n];
+				VEC_X(ctx->S,n) = 0.f*ctx->Kind[n];
+				VEC_Y(ctx->S,n) = 0.f*ctx->Kind[n];
+				VEC_Z(ctx->S,n) = 1.f*ctx->Kind[n];
 				}	
 			}
 			
@@ -553,7 +553,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 					TranLatY=PerBobLat*ky;//Tranlation of Bobber Lattice (along Y) without rotate
 					RotTranLatX=CoChDir*TranLatX-SiChDir*TranLatY;//Tranlation of Bobber Lattice (along Y) with rotate in XY
 					RotTranLatY=SiChDir*TranLatX+CoChDir*TranLatY;//Tranlation of  Lattice (along Y) with rotate in XY
-					CreatBobber(ctx, px, py, pz, sx, sy, sz, Bob_Radius, RotTranLatX, RotTranLatY, -1);
+					CreatBobber(ctx, px, py, pz, s, Bob_Radius, RotTranLatX, RotTranLatY, -1);
 				}
 			}	
 		}	
@@ -592,9 +592,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		// 		F = atan2(v2[1],v2[0]);
 		// 		// f = F + atan2( 1.0/(tan(tmp)),cos(T) );
 		// 		f = F - atan2( 1.0/(tan(tmp)),cos(T) );//metka +/-
-		// 		ctx->Sx[n] = sin(t)*cos(f)*ctx->Kind[n];
-		// 		ctx->Sy[n] = sin(t)*sin(f)*ctx->Kind[n];
-		// 		ctx->Sz[n] = cos(t)*ctx->Kind[n];
+		// 		VEC_X(ctx->S,n) = sin(t)*cos(f)*ctx->Kind[n];
+		// 		VEC_Y(ctx->S,n) = sin(t)*sin(f)*ctx->Kind[n];
+		// 		VEC_Z(ctx->S,n) = cos(t)*ctx->Kind[n];
 		// 	}
 		// }
 		if(ctx->chSize>0)
@@ -622,9 +622,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			// 	t = acos(1.0-2.0*t*t);
 			// 	f = -F + atan2( 1.0/(tan(tmp)),cos(T) );
 			// 	// f = -F + atan( 1.0/( tan(tmp)*cos(T) ) );
-			// 	ctx->Sx[n] = sin(t)*cos(f)*ctx->Kind[n];
-			// 	ctx->Sy[n] = sin(t)*sin(f)*ctx->Kind[n];
-			// 	ctx->Sz[n] = cos(t)*ctx->Kind[n];
+			// 	VEC_X(ctx->S,n) = sin(t)*cos(f)*ctx->Kind[n];
+			// 	VEC_Y(ctx->S,n) = sin(t)*sin(f)*ctx->Kind[n];
+			// 	VEC_Z(ctx->S,n) = cos(t)*ctx->Kind[n];
 			// }
 			// metka Vlad anzats
 			{	
@@ -633,9 +633,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 				float rz=pz[n]/ctx->chSize;
 				r = sqrt(rx*rx+ry*ry+rz*rz);
 				float G = 2*atan(exp(-2*r)/r);
-				ctx->Sx[n] = (1-cos(2*G))*rz*rx/(r*r) + sin(2*G)*ry/r;
-				ctx->Sy[n] = -(1-cos(2*G))*rz*ry/(r*r) + sin(2*G)*rx/r;
-				ctx->Sz[n] = (1-cos(2*G))*rz*rz/(r*r) + cos(2*G);
+				VEC_X(ctx->S,n) = (1-cos(2*G))*rz*rx/(r*r) + sin(2*G)*ry/r;
+				VEC_Y(ctx->S,n) = -(1-cos(2*G))*rz*ry/(r*r) + sin(2*G)*rx/r;
+				VEC_Z(ctx->S,n) = (1-cos(2*G))*rz*rz/(r*r) + cos(2*G);
 			}				
 		}
 	break;
@@ -651,28 +651,28 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		for (int i=0; i<ctx->NOS; i++)
 		{	
 			angle=360*(px[i]*ctx->chDir[0]+py[i]*ctx->chDir[1]+pz[i]*ctx->chDir[2])/ctx->chSize;
-			RotateVector(ctx->Sx[i], ctx->Sy[i], ctx->Sz[i], ctx->chDir[0], ctx->chDir[1], ctx->chDir[2], angle, tmp);
-			ctx->bSx[i] = ctx->Sx[i] = tmp[0];
-			ctx->bSy[i] = ctx->Sy[i] = tmp[1];
-			ctx->bSz[i] = ctx->Sz[i] = tmp[2];
+			RotateVector(VEC_X(ctx->S,i), VEC_Y(ctx->S,i), VEC_Z(ctx->S,i), ctx->chDir[0], ctx->chDir[1], ctx->chDir[2], angle, tmp);
+			VEC_X(ctx->bS,i) = VEC_X(ctx->S,i) = tmp[0];
+			VEC_Y(ctx->bS,i) = VEC_Y(ctx->S,i) = tmp[1];
+			VEC_Z(ctx->bS,i) = VEC_Z(ctx->S,i) = tmp[2];
 		}	
 		// float Psp = 1;
 		// for (int i=0; i<ctx->NOS; i++)
 		// {	
 		// 	float r = sqrt(px[i]*px[i]+py[i]*py[i])/64;
 		// 	T = 2*PI*Psp*(px[i]+py[i])/(64*sqrt(2));
-		// 	bSx[i] = ctx->Sx[i] = -sin(T)/sqrt(2);
-		// 	bSy[i] = ctx->Sy[i] = sin(T)/sqrt(2);
-		// 	bSz[i] = ctx->Sz[i] = cos(T);
+		// 	bSx[i] = VEC_X(ctx->S,i) = -sin(T)/sqrt(2);
+		// 	bSy[i] = VEC_Y(ctx->S,i) = sin(T)/sqrt(2);
+		// 	bSz[i] = VEC_Z(ctx->S,i) = cos(T);
 		// }	
 
 		// for (int i=0; i<ctx->NOS; i++)
 		// {	
 		// 	float r = (px[i]+0.5*ctx->uABC[0])/64;
 		// 	T = 2*PI*(1-r);
-		// 	bSx[i] = ctx->Sx[i] = 0;
-		// 	bSy[i] = ctx->Sy[i] = sin(T);
-		// 	bSz[i] = ctx->Sz[i] = cos(T);
+		// 	bSx[i] = VEC_X(ctx->S,i) = 0;
+		// 	bSy[i] = VEC_Y(ctx->S,i) = sin(T);
+		// 	bSz[i] = VEC_Z(ctx->S,i) = cos(T);
 		// }	
 
 
@@ -716,9 +716,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 				tmpv[1] = sin(T);
 				tmpv[2] = 0.0f;
 				NewBasisCartesian(tmpv, chDir, tmpv2);
-				ctx->Sx[n] = tmpv2[0]*ctx->Kind[n];
-				ctx->Sy[n] = tmpv2[1]*ctx->Kind[n];
-				ctx->Sz[n] = tmpv2[2]*ctx->Kind[n];
+				VEC_X(ctx->S,n) = tmpv2[0]*ctx->Kind[n];
+				VEC_Y(ctx->S,n) = tmpv2[1]*ctx->Kind[n];
+				VEC_Z(ctx->S,n) = tmpv2[2]*ctx->Kind[n];
 			}
 			*/
 		}
@@ -729,24 +729,24 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		{
 			for (int i=0; i<ctx->NOS; i++)
 			{	
-				ctx->bSx[i] = ctx->Sx[i] = 0;
-				ctx->bSy[i] = ctx->Sy[i] = 0;
-				ctx->bSz[i] = ctx->Sz[i] = 1;
+				VEC_X(ctx->bS,i) = VEC_X(ctx->S,i) = 0;
+				VEC_Y(ctx->bS,i) = VEC_Y(ctx->S,i) = 0;
+				VEC_Z(ctx->bS,i) = VEC_Z(ctx->S,i) = 1;
 			}	
 
-			// GetSkyrmion(ctx, px, py, pz, sx, sy, sz, chSize, 0, 0);
-			// GetSkyrmion(ctx, px, py, pz, sx, sy, sz, chSize, -0.5*ctx->uABC[0], -0.5*ctx->uABC[1]);
-			// GetSkyrmion(ctx, px, py, pz, sx, sy, sz, chSize, 0.5*ctx->uABC[0], 0.5*ctx->uABC[1]);
-			// GetSkyrmion(ctx, px, py, pz, sx, sy, sz, chSize, 0.5*ctx->uABC[0], -0.5*ctx->uABC[1]);
-			// GetSkyrmion(ctx, px, py, pz, sx, sy, sz, chSize, -0.5*ctx->uABC[0], 0.5*ctx->uABC[1]);
+			// GetSkyrmion(ctx, px, py, pz, s, chSize, 0, 0);
+			// GetSkyrmion(ctx, px, py, pz, s, chSize, -0.5*ctx->uABC[0], -0.5*ctx->uABC[1]);
+			// GetSkyrmion(ctx, px, py, pz, s, chSize, 0.5*ctx->uABC[0], 0.5*ctx->uABC[1]);
+			// GetSkyrmion(ctx, px, py, pz, s, chSize, 0.5*ctx->uABC[0], -0.5*ctx->uABC[1]);
+			// GetSkyrmion(ctx, px, py, pz, s, chSize, -0.5*ctx->uABC[0], 0.5*ctx->uABC[1]);
 
 			// ask lattice
 
-			GetAntiskyrmion(ctx, px, py, pz, sx, sy, sz, ctx->chSize, 0, 0,0);
-			GetAntiskyrmion(ctx, px, py, pz, sx, sy, sz, ctx->chSize, -0.5*ctx->uABC[0], -0.5*ctx->uABC[1],1);
-			GetAntiskyrmion(ctx, px, py, pz, sx, sy, sz, ctx->chSize, 0.5*ctx->uABC[0], 0.5*ctx->uABC[1],1);
-			GetAntiskyrmion(ctx, px, py, pz, sx, sy, sz, ctx->chSize, 0.5*ctx->uABC[0], -0.5*ctx->uABC[1],1);
-			GetAntiskyrmion(ctx, px, py, pz, sx, sy, sz, ctx->chSize, -0.5*ctx->uABC[0], 0.5*ctx->uABC[1],1);
+			GetAntiskyrmion(ctx, px, py, pz, s, ctx->chSize, 0, 0,0);
+			GetAntiskyrmion(ctx, px, py, pz, s, ctx->chSize, -0.5*ctx->uABC[0], -0.5*ctx->uABC[1],1);
+			GetAntiskyrmion(ctx, px, py, pz, s, ctx->chSize, 0.5*ctx->uABC[0], 0.5*ctx->uABC[1],1);
+			GetAntiskyrmion(ctx, px, py, pz, s, ctx->chSize, 0.5*ctx->uABC[0], -0.5*ctx->uABC[1],1);
+			GetAntiskyrmion(ctx, px, py, pz, s, ctx->chSize, -0.5*ctx->uABC[0], 0.5*ctx->uABC[1],1);
 
 			
 			float T = ctx->chDir[0];
@@ -756,24 +756,24 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 
 				int kz = (int)n/(ctx->uABC[0]*ctx->uABC[1]);
 				float F = 2*PI*kz/ctx->chDir[1];
-				nx = sx[n]*cos(F) - sy[n]*sin(F);
-				ny = sx[n]*sin(F) + sy[n]*cos(F);
+				nx = VEC_X(s,n)*cos(F) - VEC_Y(s,n)*sin(F);
+				ny = VEC_X(s,n)*sin(F) + VEC_Y(s,n)*cos(F);
 
-				sx[n] = nx; sy[n]=ny;
+				VEC_X(s,n) = nx; VEC_Y(s,n)=ny;
 
-				nx = sx[n]*cos(T) - sz[n]*sin(T);
-				nz = sx[n]*sin(T) + sz[n]*cos(T);
+				nx = VEC_X(s,n)*cos(T) - VEC_Z(s,n)*sin(T);
+				nz = VEC_X(s,n)*sin(T) + VEC_Z(s,n)*cos(T);
 
-				sx[n] = nx; sz[n]=nz;
+				VEC_X(s,n) = nx; VEC_Z(s,n)=nz;
 
-				nx = sx[n]*cos(F) - sy[n]*sin(F);
-				ny = sx[n]*sin(F) + sy[n]*cos(F);
+				nx = VEC_X(s,n)*cos(F) - VEC_Y(s,n)*sin(F);
+				ny = VEC_X(s,n)*sin(F) + VEC_Y(s,n)*cos(F);
 
-				sx[n]=nx; sy[n]=ny;
+				VEC_X(s,n)=nx; VEC_Y(s,n)=ny;
 
-				// ctx->Sx[n] = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*cos(pz[n]*2*PI/128);
-				// ctx->Sy[n] = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*sin(pz[n]*2*PI/128);
-				// ctx->Sz[n] = Hf/(ctx->Dij[0]*ctx->Dij[0]);	
+				// VEC_X(ctx->S,n) = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*cos(pz[n]*2*PI/128);
+				// VEC_Y(ctx->S,n) = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*sin(pz[n]*2*PI/128);
+				// VEC_Z(ctx->S,n) = Hf/(ctx->Dij[0]*ctx->Dij[0]);	
 				
 			
 			}	
@@ -791,9 +791,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		
 			// for (int n=0; n<ctx->NOS; n++)
 			// {	
-			// 	ctx->Sx[n] = 0.f*ctx->Kind[n];
-			// 	ctx->Sy[n] = 0.f*ctx->Kind[n];
-			// 	ctx->Sz[n] = 1.f*ctx->Kind[n];	
+			// 	VEC_X(ctx->S,n) = 0.f*ctx->Kind[n];
+			// 	VEC_Y(ctx->S,n) = 0.f*ctx->Kind[n];
+			// 	VEC_Z(ctx->S,n) = 1.f*ctx->Kind[n];	
 			// }
 			
 			// int Ntr=10;
@@ -805,7 +805,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			// 		TranLatY=PerSkirmLat*ky;//Tranlation of skirmion Lattice (along Y) without rotate
 			// 		RotTranLatX=CoChDir*TranLatX-SiChDir*TranLatY;//Tranlation of skirmion Lattice (along Y) with rotate in XY
 			// 		RotTranLatY=SiChDir*TranLatX+CoChDir*TranLatY;//Tranlation of skirmion Lattice (along Y) with rotate in XY
-			// 		CreatSkyrmion(ctx, px, py, pz, sx, sy, sz, Sk_Radius, RotTranLatX, RotTranLatY);
+			// 		CreatSkyrmion(ctx, px, py, pz, s, Sk_Radius, RotTranLatX, RotTranLatY);
 			// 	}
 			// }	
 		}
@@ -815,63 +815,63 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		{
 			for (int n=0; n<ctx->NOS; n++)
 			{	
-				ctx->Sx[n] = 0.f*ctx->Kind[n];
-				ctx->Sy[n] = 0.f*ctx->Kind[n];
-				ctx->Sz[n] = 1.f*ctx->Kind[n];	
+				VEC_X(ctx->S,n) = 0.f*ctx->Kind[n];
+				VEC_Y(ctx->S,n) = 0.f*ctx->Kind[n];
+				VEC_Z(ctx->S,n) = 1.f*ctx->Kind[n];	
 			}
-			CreatGlobule(ctx, px, py, pz, sx, sy, sz, ctx->chSize, 0, 0, -1);
+			CreatGlobule(ctx, px, py, pz, s, ctx->chSize, 0, 0, -1);
 
 			//hex Lx/Ly=sqrt(3)
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,         0,         0,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,         0,         0,-ctx->uABC[2]/2);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,         0,         0, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,         0,         0, ctx->uABC[2]/2);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,         0,-ctx->uABC[0]*sqrt(3)/3, 0);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2, ctx->uABC[0]*sqrt(3)/6, 0);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2, ctx->uABC[0]*sqrt(3)/6, 0);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,         0,-ctx->uABC[0]*sqrt(3)/3, 0);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2, ctx->uABC[0]*sqrt(3)/6, 0);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2, ctx->uABC[0]*sqrt(3)/6, 0);
 
 			//bcc
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,         0,         0,         0);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,         0,         0,         0);
 
 
 			//fcc	
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2,-ctx->uABC[2]/2);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2,-ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2, ctx->uABC[1]/2, ctx->uABC[2]/2);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,-ctx->uABC[0]/2,         0,         0);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize, ctx->uABC[0]/2,         0,         0);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,         0, ctx->uABC[1]/2,         0);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,         0,-ctx->uABC[1]/2,         0);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,-ctx->uABC[0]/2,         0,         0);
+			// CreatGlobule(ctx, px, py, pz, s, chSize, ctx->uABC[0]/2,         0,         0);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,         0, ctx->uABC[1]/2,         0);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,         0,-ctx->uABC[1]/2,         0);
 
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,         0,         0, ctx->uABC[2]/2);
-			// CreatGlobule(ctx, px, py, pz, sx, sy, sz, chSize,         0,         0,-ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,         0,         0, ctx->uABC[2]/2);
+			// CreatGlobule(ctx, px, py, pz, s, chSize,         0,         0,-ctx->uABC[2]/2);
 
 			// float F0 = PI/2;
 			// float P = TPI*ctx->Jij[0]/ctx->Dij[0];
@@ -901,13 +901,13 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			// 	rx = sin(T)*cos(F);
 			// 	ry = sin(T)*sin(F);
 			// 	rz = cos(T);
-			// 	ctx->Sx[n] = ((cos(KZ)*cos(KZ)+cos(Theta)*sin(KZ)*sin(KZ))*rx + sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*ry + sin(KZ)*sin(Theta)*rz)*ctx->Kind[n];
-			// 	ctx->Sy[n] = (sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*rx+(cos(KZ)*cos(KZ)*cos(Theta)+sin(KZ)*sin(KZ))*ry-cos(KZ)*sin(Theta)*rz)*ctx->Kind[n];
-			// 	ctx->Sz[n] = (-sin(KZ)*sin(Theta)*rx+cos(KZ)*sin(Theta)*ry+cos(Theta)*rz)*ctx->Kind[n];
+			// 	VEC_X(ctx->S,n) = ((cos(KZ)*cos(KZ)+cos(Theta)*sin(KZ)*sin(KZ))*rx + sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*ry + sin(KZ)*sin(Theta)*rz)*ctx->Kind[n];
+			// 	VEC_Y(ctx->S,n) = (sin(2*KZ)*sin(Theta/2)*sin(Theta/2)*rx+(cos(KZ)*cos(KZ)*cos(Theta)+sin(KZ)*sin(KZ))*ry-cos(KZ)*sin(Theta)*rz)*ctx->Kind[n];
+			// 	VEC_Z(ctx->S,n) = (-sin(KZ)*sin(Theta)*rx+cos(KZ)*sin(Theta)*ry+cos(Theta)*rz)*ctx->Kind[n];
 
-			// 	// ctx->Sx[n] = sin(T)*cos(F);
-			// 	// ctx->Sy[n] = sin(T)*sin(F);
-			// 	// ctx->Sz[n] = cos(T);
+			// 	// VEC_X(ctx->S,n) = sin(T)*cos(F);
+			// 	// VEC_Y(ctx->S,n) = sin(T)*sin(F);
+			// 	// VEC_Z(ctx->S,n) = cos(T);
 			// }
 		}
 	break;
@@ -930,25 +930,25 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 				T2 = (ry) * TPI / chSize;
 				F1 = (rx) * TPI / chSize;
 				F2 = (ry) * TPI / chSize;
-				ctx->Sx[n] = 0;
-				ctx->Sy[n] = 0;
-				ctx->Sz[n] = 1;
+				VEC_X(ctx->S,n) = 0;
+				VEC_Y(ctx->S,n) = 0;
+				VEC_Z(ctx->S,n) = 1;
 				//kanazawa
-				ctx->Sx[n] = sin(ry * TPI / chSize)+cos(rz * TPI / chSize);
-				ctx->Sy[n] = sin(rz * TPI / chSize)+cos(rx * TPI / chSize);
-				ctx->Sz[n] = sin(rx * TPI / chSize)+cos(ry * TPI / chSize);
+				VEC_X(ctx->S,n) = sin(ry * TPI / chSize)+cos(rz * TPI / chSize);
+				VEC_Y(ctx->S,n) = sin(rz * TPI / chSize)+cos(rx * TPI / chSize);
+				VEC_Z(ctx->S,n) = sin(rx * TPI / chSize)+cos(ry * TPI / chSize);
 
-				rx=sqrt(ctx->Sx[n]*ctx->Sx[n]+ctx->Sy[n]*ctx->Sy[n]+ctx->Sz[n]*ctx->Sz[n]);
-				ctx->Sx[n] = ctx->Sx[n]/rx;
-				ctx->Sy[n] = ctx->Sy[n]/rx;
-				ctx->Sz[n] = ctx->Sz[n]/rx;
-				// Rx(T1,&ctx->Sx[n],&ctx->Sy[n],&ctx->Sz[n]);
-				// Ry(T2,&ctx->Sx[n],&ctx->Sy[n],&ctx->Sz[n]);
-				// Rz(rz * TPI / chSize,&ctx->Sx[n],&ctx->Sy[n],&ctx->Sz[n]);
+				rx=sqrt(VEC_X(ctx->S,n)*VEC_X(ctx->S,n)+VEC_Y(ctx->S,n)*VEC_Y(ctx->S,n)+VEC_Z(ctx->S,n)*VEC_Z(ctx->S,n));
+				VEC_X(ctx->S,n) = VEC_X(ctx->S,n)/rx;
+				VEC_Y(ctx->S,n) = VEC_Y(ctx->S,n)/rx;
+				VEC_Z(ctx->S,n) = VEC_Z(ctx->S,n)/rx;
+				// Rx(T1,&VEC_X(ctx->S,n),&VEC_Y(ctx->S,n),&VEC_Z(ctx->S,n));
+				// Ry(T2,&VEC_X(ctx->S,n),&VEC_Y(ctx->S,n),&VEC_Z(ctx->S,n));
+				// Rz(rz * TPI / chSize,&VEC_X(ctx->S,n),&VEC_Y(ctx->S,n),&VEC_Z(ctx->S,n));
 
-				// ctx->Sx[n] = (sin(T1)+sin(T2)) * (cos(F1-F2)) * ctx->Kind[n];
-				// ctx->Sy[n] = (sin(T1)+sin(T2)) * (sin(F1+F2)) * ctx->Kind[n];
-				// ctx->Sz[n] = (cos(T1)-cos(T2)) * ctx->Kind[n];
+				// VEC_X(ctx->S,n) = (sin(T1)+sin(T2)) * (cos(F1-F2)) * ctx->Kind[n];
+				// VEC_Y(ctx->S,n) = (sin(T1)+sin(T2)) * (sin(F1+F2)) * ctx->Kind[n];
+				// VEC_Z(ctx->S,n) = (cos(T1)-cos(T2)) * ctx->Kind[n];
 			}*/
 			float Lx=px[ctx->uABC[0]-1]-px[0];
 			float Ly=py[ctx->uABC[1]*ctx->uABC[0]-1]-py[0];
@@ -959,12 +959,12 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 				// float rz = pz[n]-pz[0];
 				F1 = rx * TPI / Lx;
 				T1 = ry * PI / Ly;
-				ctx->Sx[n] = 0;
-				ctx->Sy[n] = 0;
-				ctx->Sz[n] = 1;
-				ctx->Sx[n] = sin(T1)*cos(F1)*ctx->Kind[n];
-				ctx->Sy[n] = sin(T1)*sin(F1)*ctx->Kind[n];
-				ctx->Sz[n] = cos(T1)*ctx->Kind[n];
+				VEC_X(ctx->S,n) = 0;
+				VEC_Y(ctx->S,n) = 0;
+				VEC_Z(ctx->S,n) = 1;
+				VEC_X(ctx->S,n) = sin(T1)*cos(F1)*ctx->Kind[n];
+				VEC_Y(ctx->S,n) = sin(T1)*sin(F1)*ctx->Kind[n];
+				VEC_Z(ctx->S,n) = cos(T1)*ctx->Kind[n];
 			}			
 		}
 		printf("spin0x=%f",px[0]);
@@ -975,10 +975,10 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 	for (int n=0; n<ctx->NOS; n++)
 			{	
 				if (ctx->Kind[n]!=0){
-					inv_abs_S=1.0f/sqrt(ctx->Sx[n]*ctx->Sx[n]+ctx->Sy[n]*ctx->Sy[n]+ctx->Sz[n]*ctx->Sz[n]);
-					ctx->Sx[n] = ctx->Sx[n]*inv_abs_S;
-					ctx->Sy[n] = ctx->Sy[n]*inv_abs_S;
-					ctx->Sz[n] = ctx->Sz[n]*inv_abs_S;
+					inv_abs_S=1.0f/sqrt(VEC_X(ctx->S,n)*VEC_X(ctx->S,n)+VEC_Y(ctx->S,n)*VEC_Y(ctx->S,n)+VEC_Z(ctx->S,n)*VEC_Z(ctx->S,n));
+					VEC_X(ctx->S,n) = VEC_X(ctx->S,n)*inv_abs_S;
+					VEC_Y(ctx->S,n) = VEC_Y(ctx->S,n)*inv_abs_S;
+					VEC_Z(ctx->S,n) = VEC_Z(ctx->S,n)*inv_abs_S;
 				}	
 			}
 	break;

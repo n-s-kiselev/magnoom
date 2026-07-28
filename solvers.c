@@ -1,5 +1,5 @@
 void
-GetEffectiveField(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
+GetEffectiveField(	magnoom_ctx *ctx, double* s,
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* heffx, double* heffy, double* heffz, int N, 
@@ -39,19 +39,19 @@ GetEffectiveField(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 					}
 
 					//uniaxial anisotropy1:
-					tmp0 = sx[i]*vku1[0] + sy[i]*vku1[1] + sz[i]*vku1[2];
+					tmp0 = VEC_X(s,i)*vku1[0] + VEC_Y(s,i)*vku1[1] + VEC_Z(s,i)*vku1[2];
 					heffx[i]+= 2 * ku1 * vku1[0] * tmp0;
 					heffy[i]+= 2 * ku1 * vku1[1] * tmp0;
 					heffz[i]+= 2 * ku1 * vku1[2] * tmp0;
 					//uniaxial anisotropy2:
-					tmp0 = sx[i]*vku2[0] + sy[i]*vku2[1] + sz[i]*vku2[2];
+					tmp0 = VEC_X(s,i)*vku2[0] + VEC_Y(s,i)*vku2[1] + VEC_Z(s,i)*vku2[2];
 					heffx[i]+= 2 * ku2 * vku2[0] * tmp0;
 					heffy[i]+= 2 * ku2 * vku2[1] * tmp0;
 					heffz[i]+= 2 * ku2 * vku2[2] * tmp0;
 					//cubic anisotropy:
-					heffx[i]+= 4 * kc * sx[i]*sx[i]*sx[i];
-					heffy[i]+= 4 * kc * sy[i]*sy[i]*sy[i];
-					heffz[i]+= 4 * kc * sz[i]*sz[i]*sz[i];			
+					heffx[i]+= 4 * kc * VEC_X(s,i)*VEC_X(s,i)*VEC_X(s,i);
+					heffy[i]+= 4 * kc * VEC_Y(s,i)*VEC_Y(s,i)*VEC_Y(s,i);
+					heffz[i]+= 4 * kc * VEC_Z(s,i)*VEC_Z(s,i)*VEC_Z(s,i);			
 				}
 			}
 		}
@@ -96,25 +96,25 @@ GetEffectiveField(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 					nc1 = Na * Nb * ((Nc + nc + L)%Nc);					
 					j = I  + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
 					// Symmetric Heisenberg exchange:
-					// heffx[i]+= Je * sx[j] * bc_f;
-					// heffy[i]+= Je * sy[j] * bc_f;
-					// heffz[i]+= Je * sz[j] * bc_f;
+					// heffx[i]+= Je * VEC_X(s,j) * bc_f;
+					// heffy[i]+= Je * VEC_Y(s,j) * bc_f;
+					// heffz[i]+= Je * VEC_Z(s,j) * bc_f;
 					// Bi-quadratic exchange:
-					// tmp0 = (sx[i]*sx[j] + sy[i]*sy[j] + sz[i]*sz[j]) * bc_f;
-					// heffx[i]+= 2 * Bq * sx[j] * tmp0;
-					// heffy[i]+= 2 * Bq * sy[j] * tmp0;
-					// heffz[i]+= 2 * Bq * sz[j] * tmp0;
+					// tmp0 = (VEC_X(s,i)*VEC_X(s,j) + VEC_Y(s,i)*VEC_Y(s,j) + VEC_Z(s,i)*VEC_Z(s,j)) * bc_f;
+					// heffx[i]+= 2 * Bq * VEC_X(s,j) * tmp0;
+					// heffy[i]+= 2 * Bq * VEC_Y(s,j) * tmp0;
+					// heffz[i]+= 2 * Bq * VEC_Z(s,j) * tmp0;
 					// Dzyaloshinskii-Moriya interaction (antisymmetric exchange):
-					// heffx[i]+= DM*(sy[j]*dz - sz[j]*dy) * bc_f;
-					// heffy[i]+= DM*(sz[j]*dx - sx[j]*dz) * bc_f;
-					// heffz[i]+= DM*(sx[j]*dy - sy[j]*dx) * bc_f;	
+					// heffx[i]+= DM*(VEC_Y(s,j)*dz - VEC_Z(s,j)*dy) * bc_f;
+					// heffy[i]+= DM*(VEC_Z(s,j)*dx - VEC_X(s,j)*dz) * bc_f;
+					// heffz[i]+= DM*(VEC_X(s,j)*dy - VEC_Y(s,j)*dx) * bc_f;	
 
 					// a bit shorter version:
 					
-					tmp0 = Bq * 2 * (sx[i]*sx[j] + sy[i]*sy[j] + sz[i]*sz[j]);				
-					heffx[i] = heffx[i] + (Je * sx[j] +  sx[j] * tmp0 + DM*(sy[j]*dz - sz[j]*dy) )* bc_f;
-					heffy[i] = heffy[i] + (Je * sy[j] +  sy[j] * tmp0 + DM*(sz[j]*dx - sx[j]*dz) )* bc_f;
-					heffz[i] = heffz[i] + (Je * sz[j] +  sz[j] * tmp0 + DM*(sx[j]*dy - sy[j]*dx) )* bc_f;
+					tmp0 = Bq * 2 * (VEC_X(s,i)*VEC_X(s,j) + VEC_Y(s,i)*VEC_Y(s,j) + VEC_Z(s,i)*VEC_Z(s,j));				
+					heffx[i] = heffx[i] + (Je * VEC_X(s,j) +  VEC_X(s,j) * tmp0 + DM*(VEC_Y(s,j)*dz - VEC_Z(s,j)*dy) )* bc_f;
+					heffy[i] = heffy[i] + (Je * VEC_Y(s,j) +  VEC_Y(s,j) * tmp0 + DM*(VEC_Z(s,j)*dx - VEC_X(s,j)*dz) )* bc_f;
+					heffz[i] = heffz[i] + (Je * VEC_Z(s,j) +  VEC_Z(s,j) * tmp0 + DM*(VEC_X(s,j)*dy - VEC_Y(s,j)*dx) )* bc_f;
 				}
 			}
 		}
@@ -158,7 +158,7 @@ void fun4(double k1, double k2, double k3, double k4,
 
 
 double
-GetTotalEnergyMoment(	magnoom_ctx *ctx, double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
+GetTotalEnergyMoment(	magnoom_ctx *ctx, double* s, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
 {
 	double tmp0 = 0;
 	Mtot[0] = 0;
@@ -167,15 +167,15 @@ GetTotalEnergyMoment(	magnoom_ctx *ctx, double* sx, double* sy, double* sz, doub
 	for (int i=0; i<N; i++)
 	{
 
-		Etot[i] = 1.0-Hx[i]*sx[i] - Hy[i]*sy[i] - Hz[i]*sz[i];
+		Etot[i] = 1.0-Hx[i]*VEC_X(s,i) - Hy[i]*VEC_Y(s,i) - Hz[i]*VEC_Z(s,i);
 		// metka test stochastic LLG
 		double vtemp[3];
 		// opposite to the rotation of the vector of external field
-		RotateVector(sx[i],sy[i],sz[i],0,0,1,-ctx->VHphi,vtemp); //rotate about y by theta of the external field
+		RotateVector(VEC_X(s,i),VEC_Y(s,i),VEC_Z(s,i),0,0,1,-ctx->VHphi,vtemp); //rotate about y by theta of the external field
 		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-ctx->VHtheta,vtemp); //rotate about z by phi of the external field
 		Mtot[0] = Mtot[0] + vtemp[0];
 		Mtot[1] = Mtot[1] + vtemp[1];
-		Mtot[2] = Mtot[2] + vtemp[2];		
+		Mtot[2] = Mtot[2] + vtemp[2];
 		// Mtot[0] = Mtot[0] + sx[i];
 		// Mtot[1] = Mtot[1] + sy[i];
 		// Mtot[2] = Mtot[2] + sz[i];
@@ -300,7 +300,7 @@ GetTotalEnergyFerro(magnoom_ctx *ctx, double sx, double sy, double sz,
 }
 
 double
-GetTotalEnergy(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
+GetTotalEnergy(	magnoom_ctx *ctx, double* s,
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
 					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
 					double* Etot,double* Mtot, int N)
@@ -313,18 +313,18 @@ GetTotalEnergy(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 	for (int i=0; i<N; i++)
 	{
 	//H-field (Zeeman energy):
-	Etot[i] =-Hfield*((VHfield[0]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[0])*sx[i]+(VHfield[1]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[1])*sy[i]+(VHfield[2]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[2])*sz[i]);
+	Etot[i] =-Hfield*((VHfield[0]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[0])*VEC_X(s,i)+(VHfield[1]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[1])*VEC_Y(s,i)+(VHfield[2]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[2])*VEC_Z(s,i));
 	//uniaxial anisotropy:
-	tmp0 = sx[i]*vku1[0] + sy[i]*vku1[1] + sz[i]*vku1[2];
+	tmp0 = VEC_X(s,i)*vku1[0] + VEC_Y(s,i)*vku1[1] + VEC_Z(s,i)*vku1[2];
 	Etot[i]-= ku1 * tmp0 * tmp0;
 	//uniaxial anisotropy:
-	tmp0 = sx[i]*vku2[0] + sy[i]*vku2[1] + sz[i]*vku2[2];
+	tmp0 = VEC_X(s,i)*vku2[0] + VEC_Y(s,i)*vku2[1] + VEC_Z(s,i)*vku2[2];
 	Etot[i]-= ku2 * tmp0 * tmp0;
 	//cubic anisotropy:
-	Etot[i]-= kc * (sx[i]*sx[i]*sx[i]*sx[i] + sy[i]*sy[i]*sy[i]*sy[i] + sz[i]*sz[i]*sz[i]*sz[i]);	
-	Mtot[0] = Mtot[0] + sx[i];
-	Mtot[1] = Mtot[1] + sy[i];
-	Mtot[2] = Mtot[2] + sz[i];
+	Etot[i]-= kc * (VEC_X(s,i)*VEC_X(s,i)*VEC_X(s,i)*VEC_X(s,i) + VEC_Y(s,i)*VEC_Y(s,i)*VEC_Y(s,i)*VEC_Y(s,i) + VEC_Z(s,i)*VEC_Z(s,i)*VEC_Z(s,i)*VEC_Z(s,i));	
+	Mtot[0] = Mtot[0] + VEC_X(s,i);
+	Mtot[1] = Mtot[1] + VEC_Y(s,i);
+	Mtot[2] = Mtot[2] + VEC_Z(s,i);
 	}
 
 	// pairwise spin interactions
@@ -373,14 +373,14 @@ GetTotalEnergy(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 					nc1 = Na * Nb * ((Nc + nc + L)%Nc);;
 					j = I  + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
 					//Symmetric Heisenberg exchange:
-					// Etot[i]-= Je * (sx[i]*sx[j]+sy[i]*sy[j]+sz[i]*sz[j]);
+					// Etot[i]-= Je * (VEC_X(s,i)*VEC_X(s,j)+VEC_Y(s,i)*VEC_Y(s,j)+VEC_Z(s,i)*VEC_Z(s,j));
 					// //bi-quadratic exchange:
-					// tmp0 = sx[i]*sx[j] + sy[i]*sy[j] + sz[i]*sz[j];
+					// tmp0 = VEC_X(s,i)*VEC_X(s,j) + VEC_Y(s,i)*VEC_Y(s,j) + VEC_Z(s,i)*VEC_Z(s,j);
 					// Etot[i]-= Bq * tmp0 * tmp0;
 					// //Dzyaloshinskii-Moriya interaction (antisymmetric exchange):
-					// Etot[i]-= DM*(dx*(sy[i]*sz[j] - sz[i]*sy[j]) + dy*(sz[i]*sx[j] - sx[i]*sz[j]) + dz*(sx[i]*sy[j] - sy[i]*sx[j]));
-					tmp0 = sx[i]*sx[j] + sy[i]*sy[j] + sz[i]*sz[j];
-					Etot[i] = Etot[i] - bc_f*( Je * tmp0 + Bq * tmp0 * tmp0 + DM*(dx*(sy[i]*sz[j] - sz[i]*sy[j]) + dy*(sz[i]*sx[j] - sx[i]*sz[j]) + dz*(sx[i]*sy[j] - sy[i]*sx[j])) );
+					// Etot[i]-= DM*(dx*(VEC_Y(s,i)*VEC_Z(s,j) - VEC_Z(s,i)*VEC_Y(s,j)) + dy*(VEC_Z(s,i)*VEC_X(s,j) - VEC_X(s,i)*VEC_Z(s,j)) + dz*(VEC_X(s,i)*VEC_Y(s,j) - VEC_Y(s,i)*VEC_X(s,j)));
+					tmp0 = VEC_X(s,i)*VEC_X(s,j) + VEC_Y(s,i)*VEC_Y(s,j) + VEC_Z(s,i)*VEC_Z(s,j);
+					Etot[i] = Etot[i] - bc_f*( Je * tmp0 + Bq * tmp0 * tmp0 + DM*(dx*(VEC_Y(s,i)*VEC_Z(s,j) - VEC_Z(s,i)*VEC_Y(s,j)) + dy*(VEC_Z(s,i)*VEC_X(s,j) - VEC_X(s,i)*VEC_Z(s,j)) + dz*(VEC_X(s,i)*VEC_Y(s,j) - VEC_Y(s,i)*VEC_X(s,j))) );
 				}
 			}
 		}
@@ -472,8 +472,8 @@ GetFluctuations( magnoom_ctx *ctx, float* rx, float* ry, float* rz, int N ){
 }
 
 void
-StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
-				double* tnx,		double* tny,		double* tnz,		// temporal storage
+StochasticLLG(	magnoom_ctx *ctx, double* in,						// input vector field
+				double* tn,						// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
@@ -520,8 +520,7 @@ StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// in
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
-	GetEffectiveField( ctx, inx, iny, inz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, in,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
@@ -541,7 +540,7 @@ StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// in
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -569,12 +568,12 @@ StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// in
 					az = nz + nx * Ay - ny * Ax;
 
 					// detMi  = 1.0f/(1.0f + Ax * Ax + Ay * Ay + Az * Az);
-					// tnx[i] = (ax*(1+Ax*Ax)+ay*(Ax*Ay+Az)+az*(Ax*Az-Ay))*detMi
-					// tny[i] = (ax*(Ay*Ax-Az)+ay*(1+Ay*Ay)+az*(Ay*Az+Ax))*detMi
-					// tnz[i] = (ax*(Az*Ax+Ay)+ay*(Az*Ay-Ax)+az*(1+Az*Az))*detMi
-					// tnx[i] = ( tnx[i] + nx ) / 2;
-					// tny[i] = ( tnx[i] + nx ) / 2;
-					// tnz[i] = ( tnx[i] + nx ) / 2;
+					// VEC_X(tn,i) = (ax*(1+Ax*Ax)+ay*(Ax*Ay+Az)+az*(Ax*Az-Ay))*detMi
+					// VEC_Y(tn,i) = (ax*(Ay*Ax-Az)+ay*(1+Ay*Ay)+az*(Ay*Az+Ax))*detMi
+					// VEC_Z(tn,i) = (ax*(Az*Ax+Ay)+ay*(Az*Ay-Ax)+az*(1+Az*Az))*detMi
+					// VEC_X(tn,i) = ( VEC_X(tn,i) + nx ) / 2;
+					// VEC_Y(tn,i) = ( VEC_X(tn,i) + nx ) / 2;
+					// VEC_Z(tn,i) = ( VEC_X(tn,i) + nx ) / 2;
 
 					// let's do it in a a bit more efficient way by using Hx, Hy, Hz, Rx, Ry and Rz as temporal variables:
 					Hx = Ax * Ax;
@@ -590,16 +589,15 @@ StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// in
 					ny = ny + ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
 					nz = nz + ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
 
-					tnx[i] = nx * 0.5f;
-					tny[i] = ny * 0.5f;
-					tnz[i] = nz * 0.5f;
+					VEC_X(tn,i) = nx * 0.5f;
+					VEC_Y(tn,i) = ny * 0.5f;
+					VEC_Z(tn,i) = nz * 0.5f;
 				}
 			}
 		}
 	}
 
-	GetEffectiveField( ctx, tnx, tny, tnz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
@@ -615,7 +613,7 @@ StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// in
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
+					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);	// <-- compare this line to corresponding one in prediction step
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 					// deterministic terms of Landau–Lifshitz equation:
@@ -631,7 +629,7 @@ StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// in
 					Ay = Ay + 0.5f * rh * D * ( - Alpha_p * Ry - Alpha_d * (nz * Rx - nx * Rz) );
 					Az = Az + 0.5f * rh * D * ( - Alpha_p * Rz - Alpha_d * (nx * Ry - ny * Rx) );
 
-					nx = inx[i];	ny = iny[i];	nz = inz[i];	//<-- pay attention to this line!
+					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);	//<-- pay attention to this line!
 
 					ax = nx + ny * Az - nz * Ay;
 					ay = ny + nz * Ax - nx * Az;
@@ -646,20 +644,20 @@ StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// in
 					
 					detMi = 1.0f/(1.0f + Hx + Hy + Hz);
 					
-					inx[i] = ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;// <-- back to the array of spins new values
-					iny[i] = ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
-					inz[i] = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
+					VEC_X(in,i) = ( ax * (1. + Hx) + ay * (Rz + Az) + az * (Ry - Ay) ) * detMi;// <-- back to the array of spins new values
+					VEC_Y(in,i) = ( ax * (Rz - Az) + ay * (1. + Hy) + az * (Rx + Ax) ) * detMi;
+					VEC_Z(in,i) = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
 
 					// find max torque:
-					detMi = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
-					Hx = ctx->Heffx[i]-detMi*inx[i];
-					Hy = ctx->Heffy[i]-detMi*iny[i];	
-					Hz = ctx->Heffz[i]-detMi*inz[i];
+					detMi = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
+					Hx = ctx->Heffx[i]-detMi*VEC_X(in,i);
+					Hy = ctx->Heffy[i]-detMi*VEC_Y(in,i);	
+					Hz = ctx->Heffz[i]-detMi*VEC_Z(in,i);
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
-					ctx->bSx[i]=inx[i];
-					ctx->bSy[i]=iny[i];
-					ctx->bSz[i]=inz[i];
+					VEC_X(ctx->bS,i)=VEC_X(in,i);
+					VEC_Y(ctx->bS,i)=VEC_Y(in,i);
+					VEC_Z(ctx->bS,i)=VEC_Z(in,i);
 				}
 			}
 		}
@@ -668,8 +666,8 @@ StochasticLLG(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// in
 
 
 void
-StochasticLLG_Heun(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
-				double* tnx,		double* tny,		double* tnz,		// temporal storage
+StochasticLLG_Heun(	magnoom_ctx *ctx, double* in,						// input vector field
+				double* tn,						// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
@@ -695,8 +693,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
-	GetEffectiveField( ctx, inx, iny, inz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, in,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//Predictor step:
@@ -715,7 +712,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -738,16 +735,15 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
 					}
 					
-					tnx[i] = nx - h * (ny * Fz - nz * Fy);
-					tny[i] = ny - h * (nz * Fx - nx * Fz);
-					tnz[i] = nz - h * (nx * Fy - ny * Fx);
+					VEC_X(tn,i) = nx - h * (ny * Fz - nz * Fy);
+					VEC_Y(tn,i) = ny - h * (nz * Fx - nx * Fz);
+					VEC_Z(tn,i) = nz - h * (nx * Fy - ny * Fx);
 				}
 			}
 		}
 	}
 
-	GetEffectiveField( ctx, tnx, tny, tnz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
@@ -763,7 +759,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
-					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
+					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);	// <-- compare this line to corresponding one in prediction step
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 
@@ -786,26 +782,26 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
 					}
 					
-					nx = 0.5 * ( nx + inx[i] - h * (ny * Fz - nz * Fy) );
-					ny = 0.5 * ( ny + iny[i] - h * (nz * Fx - nx * Fz) );
-					nz = 0.5 * ( nz + inz[i] - h * (nx * Fy - ny * Fx) );
+					nx = 0.5 * ( nx + VEC_X(in,i) - h * (ny * Fz - nz * Fy) );
+					ny = 0.5 * ( ny + VEC_Y(in,i) - h * (nz * Fx - nx * Fz) );
+					nz = 0.5 * ( nz + VEC_Z(in,i) - h * (nx * Fy - ny * Fx) );
 
 					//normalize spin
 					detMi = 1.0 / sqrt(nx*nx + ny*ny + nz*nz);
-					inx[i] = nx * detMi;
-					iny[i] = ny * detMi;
-					inz[i] = nz * detMi;
+					VEC_X(in,i) = nx * detMi;
+					VEC_Y(in,i) = ny * detMi;
+					VEC_Z(in,i) = nz * detMi;
 
 					//find max torque
-					detMi = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
-					Hx = ctx->Heffx[i]-detMi*inx[i];
-					Hy = ctx->Heffy[i]-detMi*iny[i];	
-					Hz = ctx->Heffz[i]-detMi*inz[i];
+					detMi = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
+					Hx = ctx->Heffx[i]-detMi*VEC_X(in,i);
+					Hy = ctx->Heffy[i]-detMi*VEC_Y(in,i);	
+					Hz = ctx->Heffz[i]-detMi*VEC_Z(in,i);
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
-					ctx->bSx[i]=inx[i];
-					ctx->bSy[i]=iny[i];
-					ctx->bSz[i]=inz[i];
+					VEC_X(ctx->bS,i)=VEC_X(in,i);
+					VEC_Y(ctx->bS,i)=VEC_Y(in,i);
+					VEC_Z(ctx->bS,i)=VEC_Z(in,i);
 				}
 			}
 		}
@@ -815,8 +811,8 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 
 
 void
-StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
-				double* tnx,		double* tny,		double* tnz,		// temporal storage
+StochasticLLG_RK23(	magnoom_ctx *ctx, double* in,						// input vector field
+				double* tn,						// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
@@ -849,8 +845,7 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
-	GetEffectiveField( ctx, inx, iny, inz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, in,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k1:
@@ -869,7 +864,7 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 
 					//Li-Zhang
@@ -878,20 +873,20 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
 					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 				
-					Hx1 = Hx + c1*(inx[ip]-inx[im])/2;
-					Hy1 = Hy + c1*(iny[ip]-iny[im])/2;
-					Hz1 = Hz + c1*(inz[ip]-inz[im])/2;
+					Hx1 = Hx + c1*(VEC_X(in,ip)-VEC_X(in,im))/2;
+					Hy1 = Hy + c1*(VEC_Y(in,ip)-VEC_Y(in,im))/2;
+					Hz1 = Hz + c1*(VEC_Z(in,ip)-VEC_Z(in,im))/2;
 
-					Hx2 = Hx + c2*(inx[ip]-inx[im])/2;
-					Hy2 = Hy + c2*(iny[ip]-iny[im])/2;
-					Hz2 = Hz + c2*(inz[ip]-inz[im])/2;
-					// Hx1 = Hx + c1*(inx[imm]/12 - 2*inx[im]/3 + 2*inx[ip]/3 -inx[ipp]/12);
-					// Hy1 = Hy + c1*(iny[imm]/12 - 2*iny[im]/3 + 2*iny[ip]/3 -iny[ipp]/12);
-					// Hz1 = Hz + c1*(inz[imm]/12 - 2*inz[im]/3 + 2*inz[ip]/3 -inz[ipp]/12);
+					Hx2 = Hx + c2*(VEC_X(in,ip)-VEC_X(in,im))/2;
+					Hy2 = Hy + c2*(VEC_Y(in,ip)-VEC_Y(in,im))/2;
+					Hz2 = Hz + c2*(VEC_Z(in,ip)-VEC_Z(in,im))/2;
+					// Hx1 = Hx + c1*(VEC_X(in,imm)/12 - 2*VEC_X(in,im)/3 + 2*VEC_X(in,ip)/3 -VEC_X(in,ipp)/12);
+					// Hy1 = Hy + c1*(VEC_Y(in,imm)/12 - 2*VEC_Y(in,im)/3 + 2*VEC_Y(in,ip)/3 -VEC_Y(in,ipp)/12);
+					// Hz1 = Hz + c1*(VEC_Z(in,imm)/12 - 2*VEC_Z(in,im)/3 + 2*VEC_Z(in,ip)/3 -VEC_Z(in,ipp)/12);
 
-					// Hx2 = Hx + c2*(inx[imm]/12 - 2*inx[im]/3 + 2*inx[ip]/3 -inx[ipp]/12);
-					// Hy2 = Hy + c2*(iny[imm]/12 - 2*iny[im]/3 + 2*iny[ip]/3 -iny[ipp]/12);
-					// Hz2 = Hz + c2*(inz[imm]/12 - 2*inz[im]/3 + 2*inz[ip]/3 -inz[ipp]/12);
+					// Hx2 = Hx + c2*(VEC_X(in,imm)/12 - 2*VEC_X(in,im)/3 + 2*VEC_X(in,ip)/3 -VEC_X(in,ipp)/12);
+					// Hy2 = Hy + c2*(VEC_Y(in,imm)/12 - 2*VEC_Y(in,im)/3 + 2*VEC_Y(in,ip)/3 -VEC_Y(in,ipp)/12);
+					// Hz2 = Hz + c2*(VEC_Z(in,imm)/12 - 2*VEC_Z(in,im)/3 + 2*VEC_Z(in,ip)/3 -VEC_Z(in,ipp)/12);
 
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -917,16 +912,15 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
 					}
 					
-					tnx[i] = nx - 0.5*h * (ny * Fz - nz * Fy);
-					tny[i] = ny - 0.5*h * (nz * Fx - nx * Fz);
-					tnz[i] = nz - 0.5*h * (nx * Fy - ny * Fx);
+					VEC_X(tn,i) = nx - 0.5*h * (ny * Fz - nz * Fy);
+					VEC_Y(tn,i) = ny - 0.5*h * (nz * Fx - nx * Fz);
+					VEC_Z(tn,i) = nz - 0.5*h * (nx * Fy - ny * Fx);
 				}
 			}
 		}
 	}
 
-	GetEffectiveField( ctx, tnx, tny, tnz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
@@ -946,15 +940,15 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
 					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
 					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
-					nx = tnx[i];	ny = tny[i];	nz = tnz[i];	// <-- compare this line to corresponding one in prediction step
+					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);	// <-- compare this line to corresponding one in prediction step
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
-					Hx1 = Hx + c1*(tnx[ip]-tnx[im])/2;
-					Hy1 = Hy + c1*(tny[ip]-tny[im])/2;
-					Hz1 = Hz + c1*(tnz[ip]-tnz[im])/2;
+					Hx1 = Hx + c1*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
+					Hy1 = Hy + c1*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
+					Hz1 = Hz + c1*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
 
-					Hx2 = Hx + c2*(tnx[ip]-tnx[im])/2;
-					Hy2 = Hy + c2*(tny[ip]-tny[im])/2;
-					Hz2 = Hz + c2*(tnz[ip]-tnz[im])/2;
+					Hx2 = Hx + c2*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
+					Hy2 = Hy + c2*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
+					Hz2 = Hz + c2*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 
 					// deterministic terms of Landau–Lifshitz equation:
@@ -979,26 +973,26 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 						Fz = Fz + rh * D * ( Alpha_p * Rz + Alpha_d * (nx * Ry - ny * Rx) );
 					}
 					//(Cx,Cy,Cz here are used as temp variables)
-					Cx = inx[i] - h * (ny * Fz - nz * Fy);
-					Cy = iny[i] - h * (nz * Fx - nx * Fz);
-					Cz = inz[i] - h * (nx * Fy - ny * Fx);
+					Cx = VEC_X(in,i) - h * (ny * Fz - nz * Fy);
+					Cy = VEC_Y(in,i) - h * (nz * Fx - nx * Fz);
+					Cz = VEC_Z(in,i) - h * (nx * Fy - ny * Fx);
 
 					//normalize spin
 					detMi = 1.0 / sqrt(Cx*Cx + Cy*Cy + Cz*Cz);
-					inx[i] = Cx * detMi;
-					iny[i] = Cy * detMi;
-					inz[i] = Cz * detMi;
+					VEC_X(in,i) = Cx * detMi;
+					VEC_Y(in,i) = Cy * detMi;
+					VEC_Z(in,i) = Cz * detMi;
 
 					//find max torque
-					detMi = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
-					Hx = ctx->Heffx[i]-detMi*inx[i];
-					Hy = ctx->Heffy[i]-detMi*iny[i];	
-					Hz = ctx->Heffz[i]-detMi*inz[i];
+					detMi = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
+					Hx = ctx->Heffx[i]-detMi*VEC_X(in,i);
+					Hy = ctx->Heffy[i]-detMi*VEC_Y(in,i);	
+					Hz = ctx->Heffz[i]-detMi*VEC_Z(in,i);
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
-					ctx->bSx[i]=inx[i];
-					ctx->bSy[i]=iny[i];
-					ctx->bSz[i]=inz[i];
+					VEC_X(ctx->bS,i)=VEC_X(in,i);
+					VEC_Y(ctx->bS,i)=VEC_Y(in,i);
+					VEC_Z(ctx->bS,i)=VEC_Z(in,i);
 				}
 			}
 		}
@@ -1007,8 +1001,8 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 
 
 void
-StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
-				double* tnx,		double* tny,		double* tnz,		// temporal storage
+StochasticLLG_RK45(	magnoom_ctx *ctx, double* in,						// input vector field
+				double* tn,						// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
@@ -1035,8 +1029,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
-	GetEffectiveField( ctx, inx, iny, inz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, in,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 	//Predictor step:
@@ -1061,7 +1054,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -1069,20 +1062,20 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
 					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
 					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
-					// Hx1 = Hx + c1*(inx[imm]/12 - 2*inx[im]/3 + 2*inx[ip]/3 -inx[ipp]/12);
-					// Hy1 = Hy + c1*(iny[imm]/12 - 2*iny[im]/3 + 2*iny[ip]/3 -iny[ipp]/12);
-					// Hz1 = Hz + c1*(inz[imm]/12 - 2*inz[im]/3 + 2*inz[ip]/3 -inz[ipp]/12);
+					// Hx1 = Hx + c1*(VEC_X(in,imm)/12 - 2*VEC_X(in,im)/3 + 2*VEC_X(in,ip)/3 -VEC_X(in,ipp)/12);
+					// Hy1 = Hy + c1*(VEC_Y(in,imm)/12 - 2*VEC_Y(in,im)/3 + 2*VEC_Y(in,ip)/3 -VEC_Y(in,ipp)/12);
+					// Hz1 = Hz + c1*(VEC_Z(in,imm)/12 - 2*VEC_Z(in,im)/3 + 2*VEC_Z(in,ip)/3 -VEC_Z(in,ipp)/12);
 
-					// Hx2 = Hx + c2*(inx[imm]/12 - 2*inx[im]/3 + 2*inx[ip]/3 -inx[ipp]/12);
-					// Hy2 = Hy + c2*(iny[imm]/12 - 2*iny[im]/3 + 2*iny[ip]/3 -iny[ipp]/12);
-					// Hz2 = Hz + c2*(inz[imm]/12 - 2*inz[im]/3 + 2*inz[ip]/3 -inz[ipp]/12);
-					Hx1 = Hx + c1*(inx[ip]-inx[im])/2;
-					Hy1 = Hy + c1*(iny[ip]-iny[im])/2;
-					Hz1 = Hz + c1*(inz[ip]-inz[im])/2;
+					// Hx2 = Hx + c2*(VEC_X(in,imm)/12 - 2*VEC_X(in,im)/3 + 2*VEC_X(in,ip)/3 -VEC_X(in,ipp)/12);
+					// Hy2 = Hy + c2*(VEC_Y(in,imm)/12 - 2*VEC_Y(in,im)/3 + 2*VEC_Y(in,ip)/3 -VEC_Y(in,ipp)/12);
+					// Hz2 = Hz + c2*(VEC_Z(in,imm)/12 - 2*VEC_Z(in,im)/3 + 2*VEC_Z(in,ip)/3 -VEC_Z(in,ipp)/12);
+					Hx1 = Hx + c1*(VEC_X(in,ip)-VEC_X(in,im))/2;
+					Hy1 = Hy + c1*(VEC_Y(in,ip)-VEC_Y(in,im))/2;
+					Hz1 = Hz + c1*(VEC_Z(in,ip)-VEC_Z(in,im))/2;
 
-					Hx2 = Hx + c2*(inx[ip]-inx[im])/2;
-					Hy2 = Hy + c2*(iny[ip]-iny[im])/2;
-					Hz2 = Hz + c2*(inz[ip]-inz[im])/2;
+					Hx2 = Hx + c2*(VEC_X(in,ip)-VEC_X(in,im))/2;
+					Hy2 = Hy + c2*(VEC_Y(in,ip)-VEC_Y(in,im))/2;
+					Hz2 = Hz + c2*(VEC_Z(in,ip)-VEC_Z(in,im))/2;
 
 					// deterministic terms of Landau–Lifshitz equation:
 					// Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
@@ -1110,20 +1103,19 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					Cy = - h * (nz * Fx - nx * Fz);
 					Cz = - h * (nx * Fy - ny * Fx);
 					//save k1/6 in global temp array
-					ctx->t2Sx[i] = Cx/6.0;
-					ctx->t2Sy[i] = Cy/6.0;
-					ctx->t2Sz[i] = Cz/6.0;
+					VEC_X(ctx->t2S,i) = Cx/6.0;
+					VEC_Y(ctx->t2S,i) = Cy/6.0;
+					VEC_Z(ctx->t2S,i) = Cz/6.0;
 					//y_n+k1/2 will be used on the next step
-					tnx[i] = nx + Cx*0.5;
-					tny[i] = ny + Cy*0.5;
-					tnz[i] = nz + Cz*0.5;				
+					VEC_X(tn,i) = nx + Cx*0.5;
+					VEC_Y(tn,i) = ny + Cy*0.5;
+					VEC_Z(tn,i) = nz + Cz*0.5;				
 				}
 			}
 		}
 	}
 	//Heff(y_n+k1/2):
-	GetEffectiveField( ctx, tnx, tny, tnz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);
 
@@ -1139,7 +1131,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
+					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -1147,21 +1139,21 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
 					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
 					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
-					// Hx1 = Hx + c1*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
-					// Hy1 = Hy + c1*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
-					// Hz1 = Hz + c1*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
+					// Hx1 = Hx + c1*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
+					// Hy1 = Hy + c1*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
+					// Hz1 = Hz + c1*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
 
-					// Hx2 = Hx + c2*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
-					// Hy2 = Hy + c2*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
-					// Hz2 = Hz + c2*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
+					// Hx2 = Hx + c2*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
+					// Hy2 = Hy + c2*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
+					// Hz2 = Hz + c2*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
 
-					Hx1 = Hx + c1*(tnx[ip]-tnx[im])/2;
-					Hy1 = Hy + c1*(tny[ip]-tny[im])/2;
-					Hz1 = Hz + c1*(tnz[ip]-tnz[im])/2;
+					Hx1 = Hx + c1*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
+					Hy1 = Hy + c1*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
+					Hz1 = Hz + c1*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
 
-					Hx2 = Hx + c2*(tnx[ip]-tnx[im])/2;
-					Hy2 = Hy + c2*(tny[ip]-tny[im])/2;
-					Hz2 = Hz + c2*(tnz[ip]-tnz[im])/2;
+					Hx2 = Hx + c2*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
+					Hy2 = Hy + c2*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
+					Hz2 = Hz + c2*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
 
 					// deterministic terms of Landau–Lifshitz equation:
 					// Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
@@ -1190,20 +1182,19 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					Cy = - h * (nz * Fx - nx * Fz);
 					Cz = - h * (nx * Fy - ny * Fx);
 					//save k2/3 in global temp array
-					ctx->t2Sx[i]+= Cx/3.0;
-					ctx->t2Sy[i]+= Cy/3.0;
-					ctx->t2Sz[i]+= Cz/3.0;
+					VEC_X(ctx->t2S,i)+= Cx/3.0;
+					VEC_Y(ctx->t2S,i)+= Cy/3.0;
+					VEC_Z(ctx->t2S,i)+= Cz/3.0;
 					//y_n+k2/2 will be used on the next step
-					tnx[i] = inx[i] + Cx*0.5;
-					tny[i] = iny[i] + Cy*0.5;
-					tnz[i] = inz[i] + Cz*0.5;						
+					VEC_X(tn,i) = VEC_X(in,i) + Cx*0.5;
+					VEC_Y(tn,i) = VEC_Y(in,i) + Cy*0.5;
+					VEC_Z(tn,i) = VEC_Z(in,i) + Cz*0.5;						
 				}
 			}
 		}
 	}
 	//Heff(y_n+k2/2):
-	GetEffectiveField( ctx, tnx, tny, tnz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);	
 	//k3:
@@ -1218,7 +1209,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
+					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -1226,20 +1217,20 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
 					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
 					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
-					// Hx1 = Hx + c1*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
-					// Hy1 = Hy + c1*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
-					// Hz1 = Hz + c1*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
+					// Hx1 = Hx + c1*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
+					// Hy1 = Hy + c1*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
+					// Hz1 = Hz + c1*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
 
-					// Hx2 = Hx + c2*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
-					// Hy2 = Hy + c2*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
-					// Hz2 = Hz + c2*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
-					Hx1 = Hx + c1*(tnx[ip]-tnx[im])/2;
-					Hy1 = Hy + c1*(tny[ip]-tny[im])/2;
-					Hz1 = Hz + c1*(tnz[ip]-tnz[im])/2;
+					// Hx2 = Hx + c2*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
+					// Hy2 = Hy + c2*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
+					// Hz2 = Hz + c2*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
+					Hx1 = Hx + c1*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
+					Hy1 = Hy + c1*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
+					Hz1 = Hz + c1*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
 
-					Hx2 = Hx + c2*(tnx[ip]-tnx[im])/2;
-					Hy2 = Hy + c2*(tny[ip]-tny[im])/2;
-					Hz2 = Hz + c2*(tnz[ip]-tnz[im])/2;
+					Hx2 = Hx + c2*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
+					Hy2 = Hy + c2*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
+					Hz2 = Hz + c2*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
 
 					// deterministic terms of Landau–Lifshitz equation:
 					// Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
@@ -1267,20 +1258,19 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					Cy = - h * (nz * Fx - nx * Fz);
 					Cz = - h * (nx * Fy - ny * Fx);
 					//save k2/3 in global temp array
-					ctx->t2Sx[i]+= Cx/3.0;
-					ctx->t2Sy[i]+= Cy/3.0;
-					ctx->t2Sz[i]+= Cz/3.0;
+					VEC_X(ctx->t2S,i)+= Cx/3.0;
+					VEC_Y(ctx->t2S,i)+= Cy/3.0;
+					VEC_Z(ctx->t2S,i)+= Cz/3.0;
 					//y_n+k3 will be used on the next step
-					tnx[i] = inx[i] + Cx;
-					tny[i] = iny[i] + Cy;
-					tnz[i] = inz[i] + Cz;							
+					VEC_X(tn,i) = VEC_X(in,i) + Cx;
+					VEC_Y(tn,i) = VEC_Y(in,i) + Cy;
+					VEC_Z(tn,i) = VEC_Z(in,i) + Cz;							
 				}
 			}
 		}
 	}
 	//Heff(y_n+k3):
-	GetEffectiveField( ctx, tnx, tny, tnz, 
-						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 						naini, nafin, nbini, nbfin, ncini, ncfin);	
 	//k4:
@@ -1295,7 +1285,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = tnx[i];	ny = tny[i];	nz = tnz[i];
+					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -1303,20 +1293,20 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
 					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
 					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
-					// Hx1 = Hx + c1*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
-					// Hy1 = Hy + c1*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
-					// Hz1 = Hz + c1*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
+					// Hx1 = Hx + c1*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
+					// Hy1 = Hy + c1*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
+					// Hz1 = Hz + c1*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
 
-					// Hx2 = Hx + c2*(tnx[imm]/12 - 2*tnx[im]/3 + 2*tnx[ip]/3 -tnx[ipp]/12);
-					// Hy2 = Hy + c2*(tny[imm]/12 - 2*tny[im]/3 + 2*tny[ip]/3 -tny[ipp]/12);
-					// Hz2 = Hz + c2*(tnz[imm]/12 - 2*tnz[im]/3 + 2*tnz[ip]/3 -tnz[ipp]/12);
-					Hx1 = Hx + c1*(tnx[ip]-tnx[im])/2;
-					Hy1 = Hy + c1*(tny[ip]-tny[im])/2;
-					Hz1 = Hz + c1*(tnz[ip]-tnz[im])/2;
+					// Hx2 = Hx + c2*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
+					// Hy2 = Hy + c2*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
+					// Hz2 = Hz + c2*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
+					Hx1 = Hx + c1*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
+					Hy1 = Hy + c1*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
+					Hz1 = Hz + c1*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
 
-					Hx2 = Hx + c2*(tnx[ip]-tnx[im])/2;
-					Hy2 = Hy + c2*(tny[ip]-tny[im])/2;
-					Hz2 = Hz + c2*(tnz[ip]-tnz[im])/2;
+					Hx2 = Hx + c2*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
+					Hy2 = Hy + c2*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
+					Hz2 = Hz + c2*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
 					// deterministic terms of Landau–Lifshitz equation:
 					// Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
 					// Fy = Alpha_p * Hy + Alpha_d * (nz * Hx - nx * Hz);
@@ -1343,30 +1333,30 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 					Cy = - h * (nz * Fx - nx * Fz);
 					Cz = - h * (nx * Fy - ny * Fx);
 					//save k4/6 in global temp array
-					ctx->t2Sx[i]+= Cx/6.0;
-					ctx->t2Sy[i]+= Cy/6.0;
-					ctx->t2Sz[i]+= Cz/6.0;
+					VEC_X(ctx->t2S,i)+= Cx/6.0;
+					VEC_Y(ctx->t2S,i)+= Cy/6.0;
+					VEC_Z(ctx->t2S,i)+= Cz/6.0;
 					//y_{n+1}=y_n+k1/6+k2/3+k3/3+k4/6 - final step:
-					inx[i]+= ctx->t2Sx[i];
-					iny[i]+= ctx->t2Sy[i];
-					inz[i]+= ctx->t2Sz[i];
-					nx = inx[i];	ny = iny[i];	nz = inz[i];
+					VEC_X(in,i)+= VEC_X(ctx->t2S,i);
+					VEC_Y(in,i)+= VEC_Y(ctx->t2S,i);
+					VEC_Z(in,i)+= VEC_Z(ctx->t2S,i);
+					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
 					//normalize spin
 					detMi = 1.0 / sqrt(nx*nx + ny*ny + nz*nz);
-					inx[i] = nx * detMi;
-					iny[i] = ny * detMi;
-					inz[i] = nz * detMi;
+					VEC_X(in,i) = nx * detMi;
+					VEC_Y(in,i) = ny * detMi;
+					VEC_Z(in,i) = nz * detMi;
 
 					//find max torque
-					detMi = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
-					Hx = ctx->Heffx[i]-detMi*inx[i];
-					Hy = ctx->Heffy[i]-detMi*iny[i];	
-					Hz = ctx->Heffz[i]-detMi*inz[i];
+					detMi = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
+					Hx = ctx->Heffx[i]-detMi*VEC_X(in,i);
+					Hy = ctx->Heffy[i]-detMi*VEC_Y(in,i);	
+					Hz = ctx->Heffz[i]-detMi*VEC_Z(in,i);
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;	
-					ctx->bSx[i]=inx[i];
-					ctx->bSy[i]=iny[i];
-					ctx->bSz[i]=inz[i];					
+					VEC_X(ctx->bS,i)=VEC_X(in,i);
+					VEC_Y(ctx->bS,i)=VEC_Y(in,i);
+					VEC_Z(ctx->bS,i)=VEC_Z(in,i);					
 				}
 			}
 		}
@@ -1376,8 +1366,8 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		
 
 
 void
-Relax(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vector field
-				double* tnx,		double* tny,		double* tnz,		// temporal storage
+Relax(	magnoom_ctx *ctx, double* in,						// input vector field
+				double* tn,						// temporal storage
 				double* heffx,	double* heffy,	double* heffz,	// effective field
 				float* rx,		float* ry,		float* rz,		// random numbers 
 				int nos,		float alpha, 	float h,		// number of spins, damping, time step
@@ -1387,8 +1377,7 @@ Relax(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vect
 				int ncini, 	int ncfin, bool* proj)
 {
 	
-		GetEffectiveField( ctx, inx, iny, inz, 
-					ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
+		GetEffectiveField( ctx, in,					ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
 					ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
 					naini, nafin, nbini, nbfin, ncini, ncfin);
 	
@@ -1416,32 +1405,32 @@ Relax(	magnoom_ctx *ctx, double* inx,		double* iny,		double* inz,		// input vect
 							i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 							Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 							//find max torque
-							temp = ctx->Heffx[i]*inx[i]+ctx->Heffy[i]*iny[i]+ctx->Heffz[i]*inz[i];
-							Hx = ctx->Heffx[i]-temp*inx[i];
-							Hy = ctx->Heffy[i]-temp*iny[i];	
-							Hz = ctx->Heffz[i]-temp*inz[i];
+							temp = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
+							Hx = ctx->Heffx[i]-temp*VEC_X(in,i);
+							Hy = ctx->Heffy[i]-temp*VEC_Y(in,i);	
+							Hz = ctx->Heffz[i]-temp*VEC_Z(in,i);
 							temp = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 							if (temp > ctx->Max_torque[thread]) ctx->Max_torque[thread] = temp;
 							// constant step descent
-							proj[i] = (inz[i]>0)? true : false;
+							proj[i] = (VEC_Z(in,i)>0)? true : false;
 							s = (proj[i])? 1 : -1;
-							g1 = inx[i]/(1+s*inz[i]);
-							g2 = iny[i]/(1+s*inz[i]);
+							g1 = VEC_X(in,i)/(1+s*VEC_Z(in,i));
+							g2 = VEC_Y(in,i)/(1+s*VEC_Z(in,i));
 							
 							Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
-							d1 = (Hx*(iny[i]*iny[i]+s*inz[i]*(1+s*inz[i])) - Hy*inx[i]*iny[i] - Hz*inx[i]*(s+inz[i]));
-							d2 = (-Hx*inx[i]*iny[i] + Hy*(inx[i]*inx[i]+s*inz[i]*(1+s*inz[i])) - Hz*iny[i]*(s+inz[i]));
+							d1 = (Hx*(VEC_Y(in,i)*VEC_Y(in,i)+s*VEC_Z(in,i)*(1+s*VEC_Z(in,i))) - Hy*VEC_X(in,i)*VEC_Y(in,i) - Hz*VEC_X(in,i)*(s+VEC_Z(in,i)));
+							d2 = (-Hx*VEC_X(in,i)*VEC_Y(in,i) + Hy*(VEC_X(in,i)*VEC_X(in,i)+s*VEC_Z(in,i)*(1+s*VEC_Z(in,i))) - Hz*VEC_Y(in,i)*(s+VEC_Z(in,i)));
 
 							g1 += ALPHA*d1;
 							g2 += ALPHA*d2;
 
-							inx[i] = 2*g1/(1+g1*g1+g2*g2);
-							iny[i] = 2*g2/(1+g1*g1+g2*g2);
-							inz[i] = s*(1-g1*g1-g2*g2)/(1+g1*g1+g2*g2);
+							VEC_X(in,i) = 2*g1/(1+g1*g1+g2*g2);
+							VEC_Y(in,i) = 2*g2/(1+g1*g1+g2*g2);
+							VEC_Z(in,i) = s*(1-g1*g1-g2*g2)/(1+g1*g1+g2*g2);
 
-							ctx->bSx[i]=inx[i];
-							ctx->bSy[i]=iny[i];
-							ctx->bSz[i]=inz[i];					
+							VEC_X(ctx->bS,i)=VEC_X(in,i);
+							VEC_Y(ctx->bS,i)=VEC_Y(in,i);
+							VEC_Z(ctx->bS,i)=VEC_Z(in,i);					
 						}
 					}
 				}
@@ -1561,23 +1550,23 @@ void *CALC_THREAD(void *void_ptr)
 		switch (ctx->WhichIntegrationScheme){
 			case HEUN: 
 				// SimpleMinimizer(ctx->Sx,ctx->Sy,ctx->Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,ctx->NOS,damping,t_step,Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
-				StochasticLLG_Heun(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_Heun(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 			break;
 
 			case SIB: 
-				StochasticLLG(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 			break;
 
 			case RK23: 
-				StochasticLLG_RK23(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature,ctx->Xi,ctx->Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_RK23(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature,ctx->Xi,ctx->Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 			break;
 
 			case RK45: 
-				StochasticLLG_RK45(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature,ctx->Xi,ctx->Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_RK45(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature,ctx->Xi,ctx->Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 			break;
 
 			case RELAX: 	
-				Relax(ctx, ctx->Sx,ctx->Sy,ctx->Sz,ctx->tSx,ctx->tSy,ctx->tSz,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin, ctx->Proj);
+				Relax(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin, ctx->Proj);
 			break;
 		}
 		if (threadindex==0 && ctx->Temperature > 0) GetFluctuations(ctx, ctx->RNx, ctx->RNy, ctx->RNz, ctx->NOS );
@@ -1601,9 +1590,9 @@ void *CALC_THREAD(void *void_ptr)
 			    ctx->Play=0;
 			    ctx->currentIteration=ctx->ITERATION;
 			    for (int i=0;i<ctx->NOS;i++){
-					ctx->bSx[i]=ctx->Sx[i];
-					ctx->bSy[i]=ctx->Sy[i];
-					ctx->bSz[i]=ctx->Sz[i];
+					VEC_X(ctx->bS,i)=VEC_X(ctx->S,i);
+					VEC_Y(ctx->bS,i)=VEC_Y(ctx->S,i);
+					VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i);
 				}
 				pthread_mutex_lock(&ctx->culc_mutex);
 		            ctx->ENGINE_MUTEX=WAIT;
@@ -1619,10 +1608,10 @@ void *CALC_THREAD(void *void_ptr)
 				for (int i=0;i<ctx->NOS;i++)
 				{
 					if (ctx->Kind[i]!=0){
-					double absS = 1.0f/sqrt(ctx->Sx[i]*ctx->Sx[i]+ctx->Sy[i]*ctx->Sy[i]+ctx->Sz[i]*ctx->Sz[i]);
-					ctx->Sx[i] = ctx->Sx[i] * absS;
-					ctx->Sy[i] = ctx->Sy[i] * absS;
-					ctx->Sz[i] = ctx->Sz[i] * absS;
+					double absS = 1.0f/sqrt(VEC_X(ctx->S,i)*VEC_X(ctx->S,i)+VEC_Y(ctx->S,i)*VEC_Y(ctx->S,i)+VEC_Z(ctx->S,i)*VEC_Z(ctx->S,i));
+					VEC_X(ctx->S,i) = VEC_X(ctx->S,i) * absS;
+					VEC_Y(ctx->S,i) = VEC_Y(ctx->S,i) * absS;
+					VEC_Z(ctx->S,i) = VEC_Z(ctx->S,i) * absS;
 					}		
 				}
 			}
@@ -1632,7 +1621,7 @@ void *CALC_THREAD(void *void_ptr)
 			//save to file if recording is on
 			if (ctx->Record!=0 && ctx->ITERATION%ctx->rec_iteration == 0){
 
-				ctx->outputEtotal = GetTotalEnergyMoment( ctx, ctx->bSx, ctx->bSy, ctx->bSz, ctx->Heffx, 	ctx->Heffy, 	ctx->Heffz, ctx->Etot0, ctx->outputMtotal, ctx->NOS);
+				ctx->outputEtotal = GetTotalEnergyMoment( ctx, ctx->bS, ctx->Heffx, 	ctx->Heffy, 	ctx->Heffz, ctx->Etot0, ctx->outputMtotal, ctx->NOS);
 				ctx->BigDataBank[0][ctx->recordsCounter] = (float)ctx->ITERATION;
 				ctx->BigDataBank[1][ctx->recordsCounter] = ctx->outputMtotal[0]*ctx->iNOS;
 				ctx->BigDataBank[2][ctx->recordsCounter] = ctx->outputMtotal[1]*ctx->iNOS;
@@ -1677,13 +1666,13 @@ void *CALC_THREAD(void *void_ptr)
 						ctx->current_rec_num_mode++;
 						for (int i=0; i<ctx->NOS; i++){
 							// for delta m:
-							ctx->dImage_x[Im][i]=ctx->dImage_x[Im][i]+(ctx->Sx[i]-ctx->t3Sx[i]);
-							ctx->dImage_y[Im][i]=ctx->dImage_y[Im][i]+(ctx->Sy[i]-ctx->t3Sy[i]);
-							ctx->dImage_z[Im][i]=ctx->dImage_z[Im][i]+(ctx->Sz[i]-ctx->t3Sz[i]);	
+							IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,0)+(VEC_X(ctx->S,i)-VEC_X(ctx->t3S,i));
+							IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,1)+(VEC_Y(ctx->S,i)-VEC_Y(ctx->t3S,i));
+							IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,2)+(VEC_Z(ctx->S,i)-VEC_Z(ctx->t3S,i));
 							// for m:
-							ctx->Image_x[Im][i] = ctx->Image_x[Im][i] + ctx->Sx[i];
-							ctx->Image_y[Im][i] = ctx->Image_y[Im][i] + ctx->Sy[i];
-							ctx->Image_z[Im][i] = ctx->Image_z[Im][i] + ctx->Sz[i];						
+							IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,0) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,0) + VEC_X(ctx->S,i);
+							IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,1) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,1) + VEC_Y(ctx->S,i);
+							IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,2) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,2) + VEC_Z(ctx->S,i);
 						}
 						printf("tolerance %1.8f \n", tolerance);
 						// printf("ABS(phase - i/(float)num_images)= %1.8f \n", ABS(phase - Im/(float)num_images));
@@ -1697,17 +1686,17 @@ void *CALC_THREAD(void *void_ptr)
 							for (int j=0; j<ctx->num_images; j++){
 								for (int i=0; i<ctx->NOS; i++){
 								// for dm:
-									ctx->dImage_x[j][i]=ctx->dImage_x[j][i]/ctx->rec_num_mode;
-									ctx->dImage_y[j][i]=ctx->dImage_y[j][i]/ctx->rec_num_mode;
-									ctx->dImage_z[j][i]=ctx->dImage_z[j][i]/ctx->rec_num_mode;
+									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)/ctx->rec_num_mode;
+									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)/ctx->rec_num_mode;
+									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)/ctx->rec_num_mode;
 								// for m:
-									ctx->Image_x[j][i]=ctx->Image_x[j][i]/ctx->rec_num_mode;
-									ctx->Image_y[j][i]=ctx->Image_y[j][i]/ctx->rec_num_mode;
-									ctx->Image_z[j][i]=ctx->Image_z[j][i]/ctx->rec_num_mode;
-									float Norm=sqrt(ctx->Image_x[j][i]*ctx->Image_x[j][i]+ctx->Image_y[j][i]*ctx->Image_y[j][i]+ctx->Image_z[j][i]*ctx->Image_z[j][i]);					
-									ctx->Image_x[j][i]=ctx->Image_x[j][i]/Norm;
-									ctx->Image_y[j][i]=ctx->Image_y[j][i]/Norm;
-									ctx->Image_z[j][i]=ctx->Image_z[j][i]/Norm;
+									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)/ctx->rec_num_mode;
+									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)/ctx->rec_num_mode;
+									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)/ctx->rec_num_mode;
+									float Norm=sqrt(IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)+IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)+IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2));					
+									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)/Norm;
+									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)/Norm;
+									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)/Norm;
 
 								}
 								/* only dm */
@@ -1721,18 +1710,18 @@ void *CALC_THREAD(void *void_ptr)
 								/* m and dm */
 									char vtk_filename[64] = "";
 									snprintf(vtk_filename,64,"phase%d.vtk",j);
-									Save_VTK_6(ctx, ctx->Image_x[j], ctx->Image_y[j], ctx->Image_z[j], ctx->dImage_x[j], ctx->dImage_y[j], ctx->dImage_z[j],0, vtk_filename);
+									Save_VTK_6(ctx, &ctx->Image[(size_t)j*ctx->NOS*3], &ctx->dImage[(size_t)j*ctx->NOS*3], 0, vtk_filename);
 								/*dTheta dPhi*/
 								for (int i=0; i<ctx->NOS; i++){
 								// get theta and phi for the equilibrium state:
-									float T=acos(ctx->t3Sz[i]);
-									float F=atan2(ctx->t3Sy[i],ctx->t3Sx[i]);
+									float T=acos(VEC_Z(ctx->t3S,i));
+									float F=atan2(VEC_Y(ctx->t3S,i),VEC_X(ctx->t3S,i));
 								// get spin i
 									float s[3], r[3];
 									mat4x4 My, Mz, M;
-									s[0]=(float)ctx->Image_x[j][i];
-									s[1]=(float)ctx->Image_y[j][i];
-									s[2]=(float)ctx->Image_z[j][i];
+									s[0]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0);
+									s[1]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1);
+									s[2]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2);
 									mat4x4_identity(My);
 									mat4x4_rotate_Y(My, My, T);
 									mat4x4_identity(Mz);
@@ -1741,12 +1730,12 @@ void *CALC_THREAD(void *void_ptr)
 			
 									mat4x4_mul_vec3(r, My, s);
 									mat4x4_mul_vec3(s, Mz, r);
-									ctx->dImage_x[j][i]=s[0];
-									ctx->dImage_y[j][i]=s[1];
-									ctx->dImage_z[j][i]=s[2];	
+									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)=s[0];
+									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)=s[1];
+									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)=s[2];	
 								}
 									snprintf(vtk_filename,64,"dTdF%d.vtk",j);
-									Save_VTK(ctx, ctx->dImage_x[j], ctx->dImage_y[j], ctx->dImage_z[j],0, vtk_filename);
+									Save_VTK(ctx, &ctx->dImage[(size_t)j*ctx->NOS*3],0, vtk_filename);
 							}
 					}
 				}
@@ -1754,9 +1743,9 @@ void *CALC_THREAD(void *void_ptr)
 
 			if (ctx->DATA_TRANSFER_MUTEX==WAIT_DATA){
 				for (int i=0;i<ctx->NOS;i++){
-					ctx->bSx[i]=ctx->Sx[i];
-					ctx->bSy[i]=ctx->Sy[i];
-					ctx->bSz[i]=ctx->Sz[i];
+					VEC_X(ctx->bS,i)=VEC_X(ctx->S,i);
+					VEC_Y(ctx->bS,i)=VEC_Y(ctx->S,i);
+					VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i);
 				}
 				pthread_mutex_lock(&ctx->show_mutex);
 					ctx->DATA_TRANSFER_MUTEX=TAKE_DATA;
