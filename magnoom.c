@@ -523,17 +523,20 @@ magnoom_ctx mag_ctx;
 typedef struct { int index; magnoom_ctx *ctx; } calc_thread_arg;
 
 /*****************************************************************************/
-/* Transitional macros: every migrated name NOT reused as a function         */
-/* parameter/local elsewhere resolves transparently to its mag_ctx field, so */
-/* not-yet-converted code keeps compiling and behaving identically while the */
-/* refactor proceeds file-by-file. Removed once every reference uses ctx->   */
-/* explicitly (see docs/plans/magnoom-ctx-refactor.md, section 9.8).         */
-/* Excluded on purpose (real name shadowing elsewhere in the codebase):      */
-/* abc, uABC, NOS, Jij, Bij, Dij, VDMx, VDMy, VDMz, Etot, Mtot, Xi, Curr_u,   */
-/* coef, ALPHA, axisX, axisY, axisZ, axis, window_width, window_height, Px,  */
-/* Py, Pz, Sx, Sy, Sz, Kind, vertices, normals, colors, indices, Rot,        */
-/* WhichSliceMode.                                                          */
+/* Interleaved vector-field accessors: Sx/Sy/Sz-style per-component arrays   */
+/* are being migrated to single interleaved buffers (S[3*n+0..2], one        */
+/* allocation per vector field instead of three). These macros are the only */
+/* sanctioned way to index such a buffer -- do not write buf[3*n+d] inline.  */
+/* IMAGE_COMPONENT addresses one flat snapshot block laid out as            */
+/* [imageIndex][n][d]; a specific snapshot's sub-buffer (a plain double*)   */
+/* can still be read with VEC_X/VEC_Y/VEC_Z once offset to its start.       */
 /*****************************************************************************/
+#define VEC_COMPONENT(buf, n, d) ((buf)[3*(size_t)(n) + (size_t)(d)])
+#define VEC_X(buf, n) VEC_COMPONENT(buf, n, 0)
+#define VEC_Y(buf, n) VEC_COMPONENT(buf, n, 1)
+#define VEC_Z(buf, n) VEC_COMPONENT(buf, n, 2)
+#define IMAGE_COMPONENT(images, imageIndex, nodesNum, n, d) \
+	((images)[(((size_t)(imageIndex)*(size_t)(nodesNum) + (size_t)(n))*3 + (size_t)(d))])
 
 /*****************************************************************************/
 /* magnoom_ctx_init: sets every field to its current compile-time default,   */
@@ -543,13 +546,6 @@ typedef struct { int index; magnoom_ctx *ctx; } calc_thread_arg;
 /*****************************************************************************/
 bool magnoom_ctx_init(magnoom_ctx *ctx)
 {
-	/* NOTE: ctx is always ctx (there is exactly one instance). Fields   */
-	/* that still resolve through a transitional macro (see the macro block  */
-	/* above) MUST be written as bare names here, not ctx->name -- the macro */
-	/* expansion after "->" would otherwise produce invalid syntax. Only the */
-	/* names excluded from macros (real shadows elsewhere: abc, uABC, NOS,   */
-	/* Jij, Bij, Dij, axisX/Y/Z, axis, window_width, window_height,          */
-	/* WhichSliceMode) are written through ctx-> below.                      */
 
 	/* Slicing parameters */
 	ctx->A_layer_min = 1;
@@ -1718,7 +1714,8 @@ void RestartCalcThreads(magnoom_ctx *ctx, pthread_t * thread_id, calc_thread_arg
 /*                        Program Main Thread                            */
 /*************************************************************************/
 
-int 
+#ifndef MAGNOOM_TEST_BUILD
+int
 main (int argc, char **argv){
 	if (!magnoom_ctx_init(&mag_ctx)) {
 		fprintf(stderr, "Unable to initialize Magnoom data.\n");
@@ -1921,5 +1918,6 @@ main (int argc, char **argv){
 
 	fclose (mag_ctx.outFile);
 
-	return 0;    
+	return 0;
 }
+#endif /* MAGNOOM_TEST_BUILD */

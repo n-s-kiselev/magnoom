@@ -15,6 +15,8 @@
 #define GLFW_OBJECT BUILD_DIR "glfw2.o"
 #define MAGNOOM_OBJECT BUILD_DIR "magnoom.o"
 #define OUTPUT BUILD_DIR "magnoom"
+#define TEST_OBJECT BUILD_DIR "magnoom_test.o"
+#define TEST_OUTPUT BUILD_DIR "magnoom_test"
 #define NOB_HEADER "vendor/nob/nob.h"
 
 #if defined(_WIN32)
@@ -146,6 +148,46 @@ static bool build_magnoom(void)
     return nob_cmd_run(&cmd);
 }
 
+static bool build_test_object(void)
+{
+    const char *inputs[] = {
+        "test_vec_migration.c", "magnoom.c", "solvers.c", "lattice_geometry.c", "initial_states.c",
+        "math_utils.c", "visualization.c", "linmath.h",
+        ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
+        "vendor/stb/stb_image_write.h",
+        "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,
+    };
+    if (!build_needed(TEST_OBJECT, inputs, NOB_ARRAY_LEN(inputs))) return true;
+
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, "cc", "-std=c99", "-O0", "-g", "-Wall", "-fno-strict-aliasing", "-DTW_STATIC",
+                   "-DMAGNOOM_TEST_BUILD",
+                   "-I" ATB_INCLUDE, "-I" GLAD_INCLUDE, "-I" GLFW_INCLUDE,
+                   "-c", "test_vec_migration.c", "-o", TEST_OBJECT);
+    return nob_cmd_run(&cmd);
+}
+
+static bool build_test(void)
+{
+    const char *inputs[] = { TEST_OBJECT, ATB_LIB, GLAD_OBJECT, GLFW_OBJECT };
+    const char *output = TEST_OUTPUT EXE_EXT;
+    if (!build_needed(output, inputs, NOB_ARRAY_LEN(inputs))) return true;
+
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, "c++", TEST_OBJECT, GLAD_OBJECT, ATB_LIB, GLFW_OBJECT, "-o", output);
+#if defined(__APPLE__)
+    nob_cmd_append(&cmd, "-framework", "OpenGL", "-framework", "Cocoa",
+                   "-framework", "AppKit", "-framework", "Foundation", "-framework", "IOKit",
+                   "-framework", "CoreVideo", "-pthread",
+                   "-Wno-deprecated-declarations", "-lobjc");
+#elif defined(_WIN32)
+    nob_cmd_append(&cmd, "-lopengl32", "-lgdi32", "-lwinmm");
+#else
+    nob_cmd_append(&cmd, "-lGL", "-lX11", "-lXrandr", "-lpthread", "-ldl", "-lm");
+#endif
+    return nob_cmd_run(&cmd);
+}
+
 static bool clear_directory(const char *folder)
 {
     if (!nob_file_exists(folder)) return true;
@@ -173,8 +215,9 @@ static bool clean(void)
 
 static void usage(const char *program)
 {
-    printf("usage: %s [-clean] [-help]\n", program);
+    printf("usage: %s [-clean] [-test] [-help]\n", program);
     printf("  -clean  remove generated build files and exit\n");
+    printf("  -test   build the vector-migration regression binary and exit\n");
     printf("  -help   print this help and exit\n");
 }
 
@@ -183,6 +226,13 @@ int main(int argc, char **argv)
     NOB_GO_REBUILD_URSELF_PLUS(argc, argv, NOB_HEADER);
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-clean") == 0) return clean() ? 0 : 1;
+        if (strcmp(argv[i], "-test") == 0) {
+            if (!nob_mkdir_if_not_exists(BUILD_DIR) || !nob_mkdir_if_not_exists(ATB_BUILD_DIR)) return 1;
+            if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() ||
+                !build_test_object() || !build_test()) return 1;
+            nob_log(NOB_INFO, "built %s", TEST_OUTPUT EXE_EXT);
+            return 0;
+        }
         if (strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0) {
             usage(argv[0]);
             return 0;
