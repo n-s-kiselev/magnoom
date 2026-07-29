@@ -21,12 +21,17 @@ float			ElapsedSeconds( );
 // color control functions
 void			HSVtoRGB(magnoom_ctx *, float[3], float [3] , int, int);
 void			InitRGB(float* , float* , float* , int*);
+// VBO mesh descriptor helpers
+void            InitVBOMesh(vbo_mesh *, GLenum);
+void            CreateVBOMesh(vbo_mesh *);
+void            UploadVBOMesh(vbo_mesh *, const float *, const float *, const float *, const GLuint *, unsigned int);
+void            DrawVBOMeshIndexed(const vbo_mesh *, GLenum, GLsizei, GLsizei);
+void            DestroyVBOMesh(vbo_mesh *);
 // VBO array preparing functions
 void			ReallocateArrayDrawing(magnoom_ctx *);
 void			UpdatePrototypeVerNorInd(magnoom_ctx *, float*,float*,GLuint*,int,int,int);
-void			CreateNewVBO(magnoom_ctx *);
-void			UpdateVBO(magnoom_ctx *, GLuint * , GLuint * , GLuint * , GLuint * , float * , float * , float * , GLuint * );
-void			UpdateVBO_H(magnoom_ctx *, GLuint * , GLuint * , GLuint * , GLuint * , float * , float * , float * , GLuint * );
+
+
 void			UpdateSpinComponents(float * , float * , float * , int);
 void			UpdateSpinPositions(magnoom_ctx *, float[][3], int[3], float[][3], int, float[][3], float*, float*, float*);
 void			InitSpinComponents(magnoom_ctx *, float * , float * , float * , double * , int N);
@@ -36,13 +41,8 @@ void 			UpdateVerticesNormalsColors_H(magnoom_ctx *, float *, float *, int Kinp,
 // drawing functions
 void			GetBox(magnoom_ctx *, float[][3], int[3], float[3][3]);
 void			drawVBO(magnoom_ctx *);
-void			drawVBO_H(magnoom_ctx *);
-void			drawVBO_BOX(magnoom_ctx *);
-void 			drawVBO_BASIS(magnoom_ctx *);
-void            drawVBO_AC_phase(magnoom_ctx *);
-void			drawVBO_PBC_A(magnoom_ctx *);
-void			drawVBO_PBC_B(magnoom_ctx *);
-void			drawVBO_PBC_C(magnoom_ctx *);
+
+
 void			idle(magnoom_ctx *);
 void			setupTweakBar(magnoom_ctx *);
 void            GLFWKey(GLFWwindow *, int, int, int, int);
@@ -217,17 +217,17 @@ void Display (magnoom_ctx *ctx)
 
 
 	drawVBO(ctx); // Draw VBO for spins
-	drawVBO_H(ctx); // Draw VBO for vector representing the firld direction 
+	DrawVBOMeshIndexed(&ctx->field_mesh, GL_TRIANGLES, ctx->field_mesh.index_count, 0);
 	
 	// possibly draw the box and periodic boundary condition :
 	if( ctx->BoxOn != 0 ) {	
-		drawVBO_BOX(ctx);
-		if(ctx->Boundary[0]!=0) drawVBO_PBC_A(ctx);;
-		if(ctx->Boundary[1]!=0) drawVBO_PBC_B(ctx);
-		if(ctx->Boundary[2]!=0) drawVBO_PBC_C(ctx);
+		DrawVBOMeshIndexed(&ctx->box_mesh, GL_TRIANGLES, ctx->box_mesh.index_count, 0);
+		if(ctx->Boundary[0]!=0) DrawVBOMeshIndexed(&ctx->pbc_mesh[0], GL_TRIANGLES, ctx->pbc_mesh[0].index_count, 0);
+		if(ctx->Boundary[1]!=0) DrawVBOMeshIndexed(&ctx->pbc_mesh[1], GL_TRIANGLES, ctx->pbc_mesh[1].index_count, 0);
+		if(ctx->Boundary[2]!=0) DrawVBOMeshIndexed(&ctx->pbc_mesh[2], GL_TRIANGLES, ctx->pbc_mesh[2].index_count, 0);
 	}
 	// possibly draw the axes:
-	if( ctx->AxesOn != 0 ) drawVBO_BASIS(ctx);//glCallList( AxesList );//
+	if( ctx->AxesOn != 0 ) DrawVBOMeshIndexed(&ctx->basis_mesh, GL_TRIANGLES, ctx->basis_mesh.index_count, 0);
 
 	glPopMatrix();//NSK
 
@@ -483,8 +483,13 @@ void TW_CALL CB_GetScale(void *value, void *clientData)
 void TW_CALL CB_SetScaleH(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->Scale_H = *( float *)value; // copy value to Scale
-    ChangeVectorMode (ctx, 0);
+    ctx->Scale_H = *( float *)value;
+    UpdateVerticesNormalsColors_H(ctx, ctx->vertexProto_H, ctx->normalProto_H, ctx->VCNum_H,
+                                  ctx->vertices_H, ctx->normals_H, ctx->colors_H,
+                                  ctx->Box[0][0]*0.6f, ctx->Box[1][1]*0.6f, ctx->Box[2][2]*0.6f,
+                                  ctx->VHf[0], ctx->VHf[1], ctx->VHf[2]);
+    UploadVBOMesh(&ctx->field_mesh, ctx->vertices_H, ctx->normals_H, ctx->colors_H,
+                  ctx->indices_H, VBO_UPLOAD_ALL);
 }
 
 //  Callback function called by the tweak bar to get the 'AutoRotate' value
@@ -631,7 +636,7 @@ void TW_CALL CB_SetHfield(const void *value, void *clientData )
     ctx->Bdc[1] = ctx->Hf * ctx->VHf[1];
     ctx->Bdc[2] = ctx->Hf * ctx->VHf[2];
 	UpdateVerticesNormalsColors_H(ctx, ctx->vertexProto_H, ctx->normalProto_H, ctx->VCNum_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->Box[0][0]*0.6, ctx->Box[1][1]*0.6, ctx->Box[2][2]*0.6, ctx->VHf[0], ctx->VHf[1], ctx->VHf[2]);
-	UpdateVBO_H(ctx, &ctx->vboIdV_H, &ctx->vboIdN_H, &ctx->vboIdC_H, &ctx->iboIdI_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H);
+	UploadVBOMesh(&ctx->field_mesh, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H, VBO_UPLOAD_ALL);
 }
 
 void TW_CALL CB_GetHfield(void *value, void *clientData)
@@ -652,7 +657,7 @@ void TW_CALL CB_SetHfieldTheta(const void *value, void *clientData )
 	ctx->Bdc[1]=ctx->Hf*ctx->VHf[1];
 	ctx->Bdc[2]=ctx->Hf*ctx->VHf[2];
 	UpdateVerticesNormalsColors_H(ctx, ctx->vertexProto_H, ctx->normalProto_H, ctx->VCNum_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->Box[0][0]*0.6, ctx->Box[1][1]*0.6, ctx->Box[2][2]*0.6, ctx->VHf[0], ctx->VHf[1], ctx->VHf[2]);
-	UpdateVBO_H(ctx, &ctx->vboIdV_H, &ctx->vboIdN_H, &ctx->vboIdC_H, &ctx->iboIdI_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H);
+	UploadVBOMesh(&ctx->field_mesh, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H, VBO_UPLOAD_ALL);
 }
 
 void TW_CALL CB_GetHfieldTheta(void *value, void *clientData)
@@ -676,7 +681,7 @@ void TW_CALL CB_SetHfieldPhi(const void *value, void *clientData )
 	ctx->Bdc[1]=ctx->Hf*ctx->VHf[1];
 	ctx->Bdc[2]=ctx->Hf*ctx->VHf[2];
 	UpdateVerticesNormalsColors_H(ctx, ctx->vertexProto_H, ctx->normalProto_H, ctx->VCNum_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->Box[0][0]*0.6, ctx->Box[1][1]*0.6, ctx->Box[2][2]*0.6, ctx->VHf[0], ctx->VHf[1], ctx->VHf[2]);
-	UpdateVBO_H(ctx, &ctx->vboIdV_H, &ctx->vboIdN_H, &ctx->vboIdC_H, &ctx->iboIdI_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H);
+	UploadVBOMesh(&ctx->field_mesh, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H, VBO_UPLOAD_ALL);
 }
 
 void TW_CALL CB_GetHfieldPhi(void *value, void *clientData)
@@ -696,7 +701,7 @@ void TW_CALL CB_GetHfieldPhi(void *value, void *clientData)
 // 	// VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
 // 	// VHf[2]=cos(PI*VHtheta/180);
 // 	UpdateVerticesNormalsColors_H(&mag_ctx, vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.8, Box[1][1]*0.8, Box[2][2]*0.8, VHf[0], VHf[1], VHf[2]);
-// 	UpdateVBO_H(&mag_ctx, &vboIdV_H, &vboIdN_H, &vboIdC_H, &iboIdI_H, vertices_H, normals_H, colors_H, indices_H);
+
 // }
 
 // void TW_CALL CB_GetHfieldXYZ(void *value, void *clientData)
@@ -2803,7 +2808,18 @@ void ChangeVectorMode( magnoom_ctx *ctx, int id )
 		UpdateIndices(ctx, ctx->indicesProto , ctx->IdNumProto, ctx->indices, ctx->IdNum, ctx->VCNumProto);
 		case 1:	// change only the layer(s) for drawing
 		UpdateVerticesNormalsColors(ctx, ctx->vertexProto, ctx->normalProto, ctx->VCNumProto, ctx->vertices, ctx->normals, ctx->colors, ctx->VCNum, ctx->Px, ctx->Py, ctx->Pz, ctx->bS, ctx->WhichVectorMode);
-		UpdateVBO(ctx, &ctx->vboIdV, &ctx->vboIdN, &ctx->vboIdC, &ctx->iboIdI,ctx->vertices, ctx->normals, ctx->colors, ctx->indices);
+		// FILTER slice mode uses N_filter subset
+		if (ctx->WhichSliceMode == FILTER) {
+			ctx->spin_mesh.index_count  = ctx->N_filter * ctx->IdNumProto;
+			ctx->spin_mesh.component_count = ctx->N_filter * ctx->VCNumProto;
+		} else {
+			ctx->spin_mesh.index_count  = ctx->IdNum;
+			ctx->spin_mesh.component_count = ctx->VCNum;
+		}
+		ctx->spin_mesh.component_capacity = ctx->spin_mesh.component_count;
+		ctx->spin_mesh.index_capacity = ctx->spin_mesh.index_count;
+		ctx->spin_mesh.uses_normals = (ctx->WhichVectorMode == BOX1 || ctx->WhichVectorMode == ARROW1 || ctx->WhichVectorMode == CONE1) ? 1 : 0;
+		UploadVBOMesh(&ctx->spin_mesh, ctx->vertices, ctx->normals, ctx->colors, ctx->indices, VBO_UPLOAD_ALL);
 		break;
 	}
 }
@@ -3009,16 +3025,6 @@ void ReallocateArrayDrawing_BASIS(magnoom_ctx *ctx)
 	ctx->normals_BASIS	= (float  *)malloc(ctx->VCNum_BASIS * sizeof( float  ));
 	ctx->colors_BASIS	= (float  *)malloc(ctx->VCNum_BASIS * sizeof( float  ));
 	ctx->indices_BASIS	= (GLuint *)malloc(ctx->IdNum_BASIS * sizeof( GLuint ));				
-}
-
-void ReallocateArrayDrawing_AC_phase(magnoom_ctx *ctx)
-{
-    free(ctx->vertices_AC_phase); free(ctx->colors_AC_phase); free(ctx->indices_AC_phase);         
-    ctx->IdNum_AC_phase = 2; // number of indixes
-    ctx->VCNum_AC_phase = 3*2; // metka
-    ctx->vertices_AC_phase  = (float  *)malloc(ctx->VCNum_AC_phase * sizeof( float  ));
-    ctx->colors_AC_phase    = (float  *)malloc(ctx->VCNum_AC_phase * sizeof( float  ));
-    ctx->indices_AC_phase   = (GLuint *)malloc(ctx->IdNum_AC_phase * sizeof( GLuint ));             
 }
 
 void ReallocateArrayDrawing_PBC(magnoom_ctx *ctx)
@@ -4330,41 +4336,6 @@ void UpdateVerticesNormalsColors_BASIS(magnoom_ctx *ctx, float * vertices, float
 
 }
 
-void UpdateVerticesNormalsColors_AC_phase(magnoom_ctx *ctx, float * vertices, float * colors, GLuint * indices)
-{
-    int i=-1;
-    int j=-1;
-    vertices[++i]=0; colors[i]=1;
-    vertices[++i]=0; colors[i]=1;
-    vertices[++i]=0; colors[i]=1;
-    indices[++j]=0;
-
-    vertices[++i]=200; colors[i]=1;
-    vertices[++i]=100; colors[i]=1;
-    vertices[++i]=0;   colors[i]=1;
-    indices[++j]=1;
-
-    // float   d = WireWidth;
-    // float   cube[3][3] = {
-    //             {   1.0f, 0.0f, 0.0f }, // a
-    //             {   0.0f, 1.0f, 0.0f }, // b
-    //             {   0.0f, 0.0f, 1.0f }};// c
-    // float tr[3] = {-d/2, -d/2, -d/2};
-    // float length = 20*d;
-    // float colorR[3]={1, 0, 0};
-    // float colorG[3]={0, 1, 0};
-    // float colorB[3]={0, 0, 1};
-    // float color0[3]={0.1,0.1,0.1};
-    
-    // parallelepiped(ctx,  cube, tr, length, d, d, colorR, 0, vertices, ctx->normals, colors, indices );//X
-    // parallelepiped(ctx,  cube, tr, d, length, d, colorG, 1, vertices, ctx->normals, colors, indices );//Y
-    // parallelepiped(ctx,  cube, tr, d, d, length, colorB, 2, vertices, ctx->normals, colors, indices );//Z
-    // d *= 1.5; tr[0]=-d/2; tr[1]=-d/2; tr[2]=-d/2;
-
-    // parallelepiped(ctx,  cube, tr, d, d, d, color0, 3, vertices, ctx->normals, colors, indices );//O
-
-}
-
 void UpdateVerticesNormalsColors_PBC(magnoom_ctx *ctx, int K0, float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
 {
 	float 	d = ctx->WireWidth;
@@ -4501,467 +4472,176 @@ void UpdateSpinPositions(magnoom_ctx *ctx, float abc[][3], int uABC[3], float BD
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CreateNewVBO( magnoom_ctx *ctx ){
-	glGenBuffers(1, &ctx->vboIdV);
-	glGenBuffers(1, &ctx->vboIdN);
-	glGenBuffers(1, &ctx->vboIdC);
-	glGenBuffers(1, &ctx->iboIdI);
-}
 
-void CreateNewVBO_H( magnoom_ctx *ctx ){
-	glGenBuffers(1, &ctx->vboIdV_H);
-	glGenBuffers(1, &ctx->vboIdN_H);
-	glGenBuffers(1, &ctx->vboIdC_H);
-	glGenBuffers(1, &ctx->iboIdI_H);
-}
 
-void CreateNewVBO_BOX( magnoom_ctx *ctx ){
-	glGenBuffers(1, &ctx->vboIdV_BOX);
-	glGenBuffers(1, &ctx->vboIdN_BOX);
-	glGenBuffers(1, &ctx->vboIdC_BOX);
-	glGenBuffers(1, &ctx->iboIdI_BOX);
-}
 
-void CreateNewVBO_BASIS( magnoom_ctx *ctx ){
-	glGenBuffers(1, &ctx->vboIdV_BASIS);
-	glGenBuffers(1, &ctx->vboIdN_BASIS);
-	glGenBuffers(1, &ctx->vboIdC_BASIS);
-	glGenBuffers(1, &ctx->iboIdI_BASIS);
-}
-
-void CreateNewVBO_AC_phase( magnoom_ctx *ctx ){
-    glGenBuffers(1, &ctx->vboIdV_AC_phase);
-    glGenBuffers(1, &ctx->vboIdC_AC_phase);
-    glGenBuffers(1, &ctx->iboIdI_AC_phase);
-}
-
-void CreateNewVBO_PBC( magnoom_ctx *ctx ){
-	glGenBuffers(1, &ctx->vboIdV_PBC_A);
-	glGenBuffers(1, &ctx->vboIdN_PBC_A);
-	glGenBuffers(1, &ctx->vboIdC_PBC_A);
-	glGenBuffers(1, &ctx->iboIdI_PBC_A);
-
-	glGenBuffers(1, &ctx->vboIdV_PBC_B);
-	glGenBuffers(1, &ctx->vboIdN_PBC_B);
-	glGenBuffers(1, &ctx->vboIdC_PBC_B);
-	glGenBuffers(1, &ctx->iboIdI_PBC_B);
-
-	glGenBuffers(1, &ctx->vboIdV_PBC_C);
-	glGenBuffers(1, &ctx->vboIdN_PBC_C);
-	glGenBuffers(1, &ctx->vboIdC_PBC_C);
-	glGenBuffers(1, &ctx->iboIdI_PBC_C);
-}
-
-void UpdateVBO(magnoom_ctx *ctx, GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
-{	//ver, nor, col and ind pointer to arrays of vertxcies components, norlamls, ctx->colors and indecies 
-	if (ctx->WhichSliceMode==FILTER){
-			ctx->IdNum = ctx->N_filter * ctx->IdNumProto;
-			ctx->VCNum = ctx->N_filter * ctx->VCNumProto;
-	}
-	switch (ctx->WhichVectorMode)
-	{
-		case ARROW1:
-		case CONE1:
-		case BOX1:			
-				glBindBuffer(GL_ARRAY_BUFFER, *V);
-				glBufferData(GL_ARRAY_BUFFER, ctx->VCNum * sizeof(float), NULL, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum * sizeof(float), ver); 
-
-				glBindBuffer(GL_ARRAY_BUFFER, *N);
-				glBufferData(GL_ARRAY_BUFFER, ctx->VCNum * sizeof(float), NULL, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum * sizeof(float), nor);
-
-				glBindBuffer(GL_ARRAY_BUFFER, *C);
-				glBufferData(GL_ARRAY_BUFFER, ctx->VCNum * sizeof(float), NULL, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum * sizeof(float), col);
-
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 1*ctx->IdNum * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);//***?1<->2?
-				glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ctx->IdNum * sizeof(GLuint), ind);
-		break;
-		case uPOINT:
-				glBindBuffer(GL_ARRAY_BUFFER, *V);
-				glBufferData(GL_ARRAY_BUFFER, ctx->VCNum * sizeof(float), 0, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum * sizeof(float), ver); 
-				// for cane and point modes we do not need ctx->normals	
-				glBindBuffer(GL_ARRAY_BUFFER, *C);
-				glBufferData(GL_ARRAY_BUFFER, ctx->VCNum * sizeof(float), 0, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum * sizeof(float), col);
-
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-				glBufferData(GL_ELEMENT_ARRAY_BUFFER, ctx->IdNum * sizeof(GLuint), 0, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ctx->IdNum * sizeof(GLuint), ind);
-		case CANE: //Cane is default vector mode
-		default:
-				glBindBuffer(GL_ARRAY_BUFFER, *V);
-				glBufferData(GL_ARRAY_BUFFER, ctx->VCNum * sizeof(float), 0, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum * sizeof(float), ver); 
-				// for cane and point modes we do not need ctx->normals	
-				glBindBuffer(GL_ARRAY_BUFFER, *C);
-				glBufferData(GL_ARRAY_BUFFER, ctx->VCNum * sizeof(float), 0, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum * sizeof(float), col);
-
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-				glBufferData(GL_ELEMENT_ARRAY_BUFFER, ctx->IdNum * sizeof(GLuint), 0, GL_DYNAMIC_DRAW);
-				glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ctx->IdNum * sizeof(GLuint), ind);
-	}
-}
-
-void UpdateVBO_H(magnoom_ctx *ctx, GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
-{	//ver, nor, col and ind pointer to arrays of vertxcies components, norlamls, ctx->colors and indecies 
-	glBindBuffer(GL_ARRAY_BUFFER, *V);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_H * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_H* sizeof(float), ver); 
-
-	glBindBuffer(GL_ARRAY_BUFFER, *N);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_H * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_H * sizeof(float), nor);
-
-	glBindBuffer(GL_ARRAY_BUFFER, *C);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_H * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_H* sizeof(float), col);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, ctx->IdNum_H * sizeof(GLuint), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ctx->IdNum_H * sizeof(GLuint), ind);
-}
-
-void UpdateVBO_BOX(magnoom_ctx *ctx, GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
-{	
-	glBindBuffer(GL_ARRAY_BUFFER, *V);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_BOX * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_BOX * sizeof(float), ver); 
-
-	glBindBuffer(GL_ARRAY_BUFFER, *N);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_BOX * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_BOX * sizeof(float), nor);
-
-	glBindBuffer(GL_ARRAY_BUFFER, *C);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_BOX * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_BOX * sizeof(float), col);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, ctx->IdNum_BOX * sizeof(GLuint), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ctx->IdNum_BOX * sizeof(GLuint), ind);
-}
-
-void UpdateVBO_BASIS(magnoom_ctx *ctx, GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
-{	
-	glBindBuffer(GL_ARRAY_BUFFER, *V);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_BASIS * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_BASIS * sizeof(float), ver); 
-
-	glBindBuffer(GL_ARRAY_BUFFER, *N);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_BASIS * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_BASIS * sizeof(float), nor);
-
-	glBindBuffer(GL_ARRAY_BUFFER, *C);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_BASIS * sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_BASIS * sizeof(float), col);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, ctx->IdNum_BASIS * sizeof(GLuint), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ctx->IdNum_BASIS * sizeof(GLuint), ind);
-}
-
-void UpdateVBO_AC_phase(magnoom_ctx *ctx, GLuint * V, GLuint * C, GLuint * I, float * ver, float * col, GLuint * ind)
-{//metka   
-    int VCNumAC=3*2;
-    glBindBuffer(GL_ARRAY_BUFFER, *V);
-    glBufferData(GL_ARRAY_BUFFER, VCNumAC * sizeof(float), 0, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, VCNumAC * sizeof(float), ver); 
-    // for cane and point modes we do not need ctx->normals  
-    glBindBuffer(GL_ARRAY_BUFFER, *C);
-    glBufferData(GL_ARRAY_BUFFER, VCNumAC * sizeof(float), 0, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, VCNumAC * sizeof(float), col);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, ctx->IdNum * sizeof(GLuint), 0, GL_DYNAMIC_DRAW);
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ctx->IdNum * sizeof(GLuint), ind);
-    }
-
-void UpdateVBO_PBC(magnoom_ctx *ctx, GLuint * V, GLuint * N, GLuint * C, GLuint * I, float * ver, float * nor, float * col, GLuint * ind)
-{	
-	glBindBuffer(GL_ARRAY_BUFFER, *V);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_PBC * sizeof(float), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_PBC * sizeof(float), ver); 
-
-	glBindBuffer(GL_ARRAY_BUFFER, *N);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_PBC* sizeof(float), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_PBC * sizeof(float), nor);
-
-	glBindBuffer(GL_ARRAY_BUFFER, *C);
-	glBufferData(GL_ARRAY_BUFFER, ctx->VCNum_PBC * sizeof(float), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ctx->VCNum_PBC * sizeof(float), col);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *I);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, ctx->IdNum_PBC * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ctx->IdNum_PBC * sizeof(GLuint), ind);	
-}
 
 
 void drawVBO(magnoom_ctx *ctx)
 {
-	switch (ctx->WhichVectorMode)
+	GLsizei spin_count = (GLsizei)ctx->spin_mesh.index_count;
+	int is_solid = (ctx->WhichVectorMode == BOX1 || ctx->WhichVectorMode == ARROW1 || ctx->WhichVectorMode == CONE1);
+
+	if (is_solid) {
+		if (ctx->Light_On) glEnable(GL_LIGHTING);
+		else              glDisable(GL_LIGHTING);
+		ctx->spin_mesh.uses_normals = 1;
+		DrawVBOMeshIndexed(&ctx->spin_mesh, GL_TRIANGLES, spin_count, 0);
+		glEnable(GL_LIGHTING);
+		return;
+	}
+
+	glDisable(GL_LIGHTING);
+	ctx->spin_mesh.uses_normals = 0;
+
+	if (ctx->WhichVectorMode == uPOINT) {
+		DrawVBOMeshIndexed(&ctx->spin_mesh, GL_POINTS, spin_count, 0);
+		glPointSize(10.f * ctx->Scale);
+		glDrawElements(GL_POINTS, spin_count, GL_UNSIGNED_INT, (void*)0);
+		glEnable(GL_LIGHTING);
+		return;
+	}
+
+	/* CANE (default) mode — draw twice: first lines+small points (stride 0),
+	   then large points (interleaved stride 6*sizeof(float)). */
 	{
-		case BOX1:
-		case ARROW1:
-		case CONE1:
-			if (ctx->Light_On) {
-				glEnable(GL_LIGHTING);
-			}else{
-				glDisable(GL_LIGHTING);
-			}
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdN);		glNormalPointer(GL_FLOAT, 0, (void*)0);
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
+		vbo_mesh *m = &ctx->spin_mesh;
+		GLsizei stride0  = 0;
+		GLsizei stride6  = 6 * (GLsizei)sizeof(float);
 
-			glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
-			glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
-			glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
+		/* Pass 1 — stride 0 */
+		glBindBuffer(GL_ARRAY_BUFFER, m->color_buffer);
+		glColorPointer(3, GL_FLOAT, stride0, (void*)0);
+		glBindBuffer(GL_ARRAY_BUFFER, m->vertex_buffer);
+		glVertexPointer(3, GL_FLOAT, stride0, (void*)0);
+		glEnableClientState(GL_COLOR_ARRAY);
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->index_buffer);
 
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI);
-			glDrawElements(GL_TRIANGLES, ctx->IdNum, GL_UNSIGNED_INT, (void*)(0));
+		glLineWidth(5.0f * ctx->Scale);
+		glDrawElements(GL_LINES, spin_count, GL_UNSIGNED_INT, (void*)0);
+		glPointSize(4.0f * ctx->Scale);
+		glDrawElements(GL_POINTS, spin_count, GL_UNSIGNED_INT, (void*)0);
 
-			glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-			glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
-			glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
+		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_COLOR_ARRAY);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-			glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
-			glEnable(GL_LIGHTING);
-		break;
+		/* Pass 2 — interleaved stride 6 */
+		glBindBuffer(GL_ARRAY_BUFFER, m->color_buffer);
+		glColorPointer(3, GL_FLOAT, stride6, (void*)0);
+		glBindBuffer(GL_ARRAY_BUFFER, m->vertex_buffer);
+		glVertexPointer(3, GL_FLOAT, stride6, (void*)0);
+		glEnableClientState(GL_COLOR_ARRAY);
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->index_buffer);
 
-		case uPOINT:
-		    glDisable(GL_LIGHTING);
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
+		glPointSize(10.5f * ctx->Scale);
+		glDrawElements(GL_POINTS, spin_count / 2, GL_UNSIGNED_INT, (void*)0);
 
-			glEnableClientState(GL_COLOR_ARRAY);		// enable normal arrays
-			glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
+		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_COLOR_ARRAY);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI);
-			
-			glPointSize(10.f*ctx->Scale);
-			//Note, the range specifies the range of index values in the index region being rendered from.
-			//glDrawElements(GL_POINTS, iNum, GL_UNSIGNED_INT, (void*)(iStart*sizeof(GLuint)));
-			glDrawElements(GL_POINTS, ctx->IdNum, GL_UNSIGNED_INT, (void*)0);//draw whole VBO
-
-			glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-			glDisableClientState(GL_COLOR_ARRAY);		// disable normal arrays
-
-			glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
-			glEnable(GL_LIGHTING);
-		break;
-
-		case CANE: 
-		default:
-			glDisable(GL_LIGHTING);
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
-
-			glEnableClientState(GL_COLOR_ARRAY);		// enable normal arrays
-			glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
-
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI);
-			
-			glLineWidth(5.0f*ctx->Scale);
-			//glDrawElements(GL_LINES, iNum, GL_UNSIGNED_INT, (void*)(iStart*sizeof(GLuint)));// draw a stick VCNum
-			glDrawElements(GL_LINES, ctx->IdNum, GL_UNSIGNED_INT, (void*)0);// draw a stick VCNum
-			glPointSize(4.0f*ctx->Scale);
-			//glDrawElements(GL_POINTS, iNum, GL_UNSIGNED_INT, (void*)(iStart*sizeof(GLuint)));// draw a ball (point at the end of the stick)
-			glDrawElements(GL_POINTS, ctx->IdNum, GL_UNSIGNED_INT, (void*)0);// draw a ball (point at the end of the stick)
-
-			glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-			glDisableClientState(GL_COLOR_ARRAY);		// disable normal arrays
-
-			glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
-
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC);		glColorPointer(3, GL_FLOAT, 6*sizeof(float), (void*)0);
-			glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV);		glVertexPointer(3, GL_FLOAT, 6*sizeof(float), (void*)0);
-
-			glEnableClientState(GL_COLOR_ARRAY);		// enable normal arrays
-			glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays		
-
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI);
-			
-			glPointSize(10.5f*ctx->Scale);
-			//glDrawElements(GL_POINTS, iNum/2, GL_UNSIGNED_INT, (void*)(iStart/2*sizeof(GLuint)));
-			glDrawElements(GL_POINTS, ctx->IdNum/2, GL_UNSIGNED_INT, (void*)0);// draw a ball (point at the end of the stick)
-
-			glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-			glDisableClientState(GL_COLOR_ARRAY);		// disable normal arrays
-
-			glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
-			glEnable(GL_LIGHTING);
+		glEnable(GL_LIGHTING);
 	}
 }
 
-void drawVBO_H(magnoom_ctx *ctx)
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// vbo_mesh generic helpers                                                             //
+//////////////////////////////////////////////////////////////////////////////////////////
+
+void InitVBOMesh(vbo_mesh *mesh, GLenum usage)
 {
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC_H);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdN_H);		glNormalPointer(GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV_H);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
-
-	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
-	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
-	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI_H);
-	glDrawElements(GL_TRIANGLES, ctx->IdNum_H, GL_UNSIGNED_INT, (void*)(0));
-
-	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
-	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
-
-	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+	mesh->vertex_buffer = 0;
+	mesh->normal_buffer = 0;
+	mesh->color_buffer  = 0;
+	mesh->index_buffer  = 0;
+	mesh->component_count    = 0;
+	mesh->component_capacity = 0;
+	mesh->index_count    = 0;
+	mesh->index_capacity = 0;
+	mesh->usage = usage;
 }
 
-void drawVBO_BOX(magnoom_ctx *ctx)
+void CreateVBOMesh(vbo_mesh *mesh)
 {
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC_BOX);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdN_BOX);		glNormalPointer(GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV_BOX);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
-
-	glEnableClientState(GL_COLOR_ARRAY );		// enable color arrays
-	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
-	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI_BOX);
-	glDrawElements(GL_TRIANGLES, ctx->IdNum_BOX, GL_UNSIGNED_INT, (void*)(0));
-
-	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
-	glDisableClientState(GL_COLOR_ARRAY );		// disable color arrays
-
-	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+	glGenBuffers(1, &mesh->vertex_buffer);
+	glGenBuffers(1, &mesh->normal_buffer);
+	glGenBuffers(1, &mesh->color_buffer);
+	glGenBuffers(1, &mesh->index_buffer);
 }
 
-void drawVBO_BASIS(magnoom_ctx *ctx)
+void UploadVBOMesh(vbo_mesh *restrict mesh,
+		   const float *restrict vertices,
+		   const float *restrict normals,
+		   const float *restrict colors,
+		   const GLuint *restrict indices,
+		   unsigned int upload_mask)
 {
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC_BASIS);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdN_BASIS);		glNormalPointer(GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV_BASIS);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
+	size_t vert_bytes = mesh->component_capacity * sizeof(float);
+	size_t idx_bytes  = mesh->index_capacity  * sizeof(GLuint);
 
-	glEnableClientState(GL_COLOR_ARRAY );		// enable color arrays
-	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
-	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI_BASIS);
-	glDrawElements(GL_TRIANGLES, ctx->IdNum_BASIS, GL_UNSIGNED_INT, (void*)(0));
-
-	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
-	glDisableClientState(GL_COLOR_ARRAY );		// disable color arrays
-
-	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+	if (upload_mask & VBO_UPLOAD_VERTICES) {
+		glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer);
+		glBufferData(GL_ARRAY_BUFFER, vert_bytes, NULL, mesh->usage);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, mesh->component_count * sizeof(float), vertices);
+	}
+	if (upload_mask & VBO_UPLOAD_NORMALS) {
+		glBindBuffer(GL_ARRAY_BUFFER, mesh->normal_buffer);
+		glBufferData(GL_ARRAY_BUFFER, vert_bytes, NULL, mesh->usage);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, mesh->component_count * sizeof(float), normals);
+	}
+	if (upload_mask & VBO_UPLOAD_COLORS) {
+		glBindBuffer(GL_ARRAY_BUFFER, mesh->color_buffer);
+		glBufferData(GL_ARRAY_BUFFER, vert_bytes, NULL, mesh->usage);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, mesh->component_count * sizeof(float), colors);
+	}
+	if (upload_mask & VBO_UPLOAD_INDICES) {
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index_buffer);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_bytes, NULL, mesh->usage);
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, mesh->index_capacity * sizeof(GLuint), indices);
+	}
 }
 
-void drawVBO_AC_phase(magnoom_ctx *ctx)
+void DrawVBOMeshIndexed(const vbo_mesh *mesh, GLenum primitive, GLsizei count, GLsizei stride)
 {
-    glDisable(GL_LIGHTING);
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC_AC_phase);      glColorPointer(3, GL_FLOAT, 0, (void*)0);
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV_AC_phase);      glVertexPointer(3, GL_FLOAT, 0, (void*)0);  
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->color_buffer);
+	glColorPointer(3, GL_FLOAT, (GLsizei)stride, (void*)0);
 
-    glEnableClientState(GL_COLOR_ARRAY);        // enable color arrays
-    glEnableClientState(GL_VERTEX_ARRAY);       // enable vertex arrays 
+	if (mesh->uses_normals) {
+		glBindBuffer(GL_ARRAY_BUFFER, mesh->normal_buffer);
+		glNormalPointer(GL_FLOAT, 0, (void*)0);
+	}
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI_AC_phase);
-    
-    glLineWidth(5.0f);
-    //glDrawElements(GL_LINES, iNum, GL_UNSIGNED_INT, (void*)(iStart*sizeof(GLuint)));// draw a stick VCNum
-    glDrawElements(GL_LINES, ctx->IdNum, GL_UNSIGNED_INT, (void*)0);// draw a stick VCNum
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer);
+	glVertexPointer(3, GL_FLOAT, (GLsizei)stride, (void*)0);
 
-    glDisableClientState(GL_VERTEX_ARRAY);      // disable vertex arrays
-    glDisableClientState(GL_COLOR_ARRAY);       // disable normal arrays
+	glEnableClientState(GL_COLOR_ARRAY);
+	if (mesh->uses_normals) glEnableClientState(GL_NORMAL_ARRAY);
+	glEnableClientState(GL_VERTEX_ARRAY);
 
-    glBindBuffer(GL_ARRAY_BUFFER,           0); // disable vertex arrays
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,   0); // disable normal arrays
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index_buffer);
+	glDrawElements(primitive, count, GL_UNSIGNED_INT, (void*)0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC_AC_phase);      glColorPointer(3, GL_FLOAT, 6*sizeof(float), (void*)0);
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV_AC_phase);      glVertexPointer(3, GL_FLOAT, 6*sizeof(float), (void*)0);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	if (mesh->uses_normals) glDisableClientState(GL_NORMAL_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
 
-    glEnableClientState(GL_COLOR_ARRAY);        // enable normal arrays
-    glEnableClientState(GL_VERTEX_ARRAY);       // enable vertex arrays     
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI_AC_phase);
-    
-    glPointSize(10.5f*ctx->Scale);
-    glDrawElements(GL_POINTS, ctx->IdNum_AC_phase/2, GL_UNSIGNED_INT, (void*)0);// draw a ball (point at the end of the stick)
-
-    glDisableClientState(GL_VERTEX_ARRAY);      // disable vertex arrays
-    glDisableClientState(GL_COLOR_ARRAY);       // disable normal arrays
-
-    glBindBuffer(GL_ARRAY_BUFFER,           0); // disable vertex arrays
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,   0); // disable normal arrays
-    glEnable(GL_LIGHTING);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void drawVBO_PBC_A(magnoom_ctx *ctx)
+void DestroyVBOMesh(vbo_mesh *mesh)
 {
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC_PBC_A);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdN_PBC_A);		glNormalPointer(GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV_PBC_A);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
-
-	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
-	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
-	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI_PBC_A);
-	glDrawElements(GL_TRIANGLES, ctx->IdNum_PBC, GL_UNSIGNED_INT, (void*)(0));
-
-	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
-	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
-
-	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
-}
-
-void drawVBO_PBC_B(magnoom_ctx *ctx)
-{
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC_PBC_B);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdN_PBC_B);		glNormalPointer(GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV_PBC_B);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
-
-	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
-	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
-	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI_PBC_B);
-	glDrawElements(GL_TRIANGLES, ctx->IdNum_PBC, GL_UNSIGNED_INT, (void*)(0));
-
-	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
-	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
-
-	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
-}
-
-void drawVBO_PBC_C(magnoom_ctx *ctx)
-{
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdC_PBC_C);		glColorPointer(3, GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdN_PBC_C);		glNormalPointer(GL_FLOAT, 0, (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, ctx->vboIdV_PBC_C);		glVertexPointer(3, GL_FLOAT, 0, (void*)0);	
-
-	glEnableClientState(GL_COLOR_ARRAY);		// enable color arrays
-	glEnableClientState(GL_NORMAL_ARRAY);		// enable normal arrays
-	glEnableClientState(GL_VERTEX_ARRAY);		// enable vertex arrays	
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->iboIdI_PBC_C);
-	glDrawElements(GL_TRIANGLES, ctx->IdNum_PBC, GL_UNSIGNED_INT, (void*)(0));
-
-	glDisableClientState(GL_VERTEX_ARRAY);		// disable vertex arrays
-	glDisableClientState(GL_NORMAL_ARRAY);		// disable normal arrays
-	glDisableClientState(GL_COLOR_ARRAY);		// disable color arrays
-
-	glBindBuffer(GL_ARRAY_BUFFER,			0);	// disable vertex arrays
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,	0);	// disable normal arrays
+	if (mesh->vertex_buffer) glDeleteBuffers(1, &mesh->vertex_buffer);
+	if (mesh->normal_buffer) glDeleteBuffers(1, &mesh->normal_buffer);
+	if (mesh->color_buffer)  glDeleteBuffers(1, &mesh->color_buffer);
+	if (mesh->index_buffer)  glDeleteBuffers(1, &mesh->index_buffer);
+	InitVBOMesh(mesh, mesh->usage);
 }

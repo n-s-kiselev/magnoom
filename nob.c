@@ -158,7 +158,10 @@ static bool build_magnoom(void)
                    "-framework", "CoreVideo", "-pthread",
                    "-Wno-deprecated-declarations", "-lobjc");
 #elif defined(_WIN32)
-    nob_cmd_append(&cmd, "-lopengl32", "-lgdi32", "-lwinmm");
+    // Statically link the MinGW runtime (libstdc++, libgcc, and libwinpthread if pulled in)
+    // so the .exe doesn't depend on DLLs that may not be present on a machine without the
+    // MinGW toolchain installed (this links via c++, which dynamically links libstdc++ by default).
+    nob_cmd_append(&cmd, "-static", "-lopengl32", "-lgdi32", "-lwinmm");
 #else
     nob_cmd_append(&cmd, "-lGL", "-lX11", "-lXrandr", "-lpthread", "-ldl", "-lm");
 #endif

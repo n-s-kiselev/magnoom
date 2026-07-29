@@ -46,7 +46,7 @@
 #endif
 
 static const char SOFTWARE_NAME[] = "Magnoom";
-static const char SOFTWARE_VERSION[] = "1.01";
+static const char SOFTWARE_VERSION[] = "1.02";
 
 #define ABS(x) ((x)<0?-(x):(x))
 
@@ -100,6 +100,31 @@ typedef enum    {RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L
 typedef enum    {DEFAULT_G, CILINDER_G, SPHERE_G} enGeom;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
+
+/*****************************************************************************/
+/* vbo_mesh: descriptor for GPU buffer groups used in fixed-function drawing */
+/*****************************************************************************/
+typedef struct {
+	GLuint          vertex_buffer;
+	GLuint          normal_buffer;
+	GLuint          color_buffer;
+	GLuint          index_buffer;
+	size_t          component_count;
+	size_t          component_capacity;
+	size_t          index_count;
+	size_t          index_capacity;
+	GLenum          usage;
+	int             uses_normals;
+} vbo_mesh;
+
+enum {
+	VBO_UPLOAD_VERTICES = 1 << 0,
+	VBO_UPLOAD_NORMALS  = 1 << 1,
+	VBO_UPLOAD_COLORS   = 1 << 2,
+	VBO_UPLOAD_INDICES  = 1 << 3,
+	VBO_UPLOAD_ATTRIBUTES = VBO_UPLOAD_VERTICES | VBO_UPLOAD_NORMALS | VBO_UPLOAD_COLORS,
+	VBO_UPLOAD_ALL = VBO_UPLOAD_ATTRIBUTES | VBO_UPLOAD_INDICES
+};
 
 /*****************************************************************************/
 /* magnoom_ctx: single struct holding all program state (formerly globals    */
@@ -444,9 +469,6 @@ typedef struct magnoom_ctx {
 	GLfloat*        normals_BASIS;
 	GLfloat*        colors_BASIS;
 	GLuint*         indices_BASIS;
-	GLfloat*        vertices_AC_phase;
-	GLfloat*        colors_AC_phase;
-	GLuint*         indices_AC_phase;
 	GLfloat*        vertices_PBC_A;
 	GLfloat*        normals_PBC_A;
 	GLfloat*        colors_PBC_A;
@@ -459,31 +481,6 @@ typedef struct magnoom_ctx {
 	GLfloat*        normals_PBC_C;
 	GLfloat*        colors_PBC_C;
 	GLuint*         indices_PBC_C;
-
-	/* VBO/IBO ids */
-	GLuint          vboIdV;
-	GLuint          vboIdN;
-	GLuint          vboIdC;
-	GLuint          iboIdI;
-	GLuint          vboIdV_H;
-	GLuint          vboIdN_H;
-	GLuint          vboIdC_H;
-	GLuint          iboIdI_H;
-	GLuint          vboIdV_BOX;
-	GLuint          vboIdN_BOX;
-	GLuint          vboIdC_BOX;
-	GLuint          iboIdI_BOX;
-	GLuint          vboIdV_BASIS;
-	GLuint          vboIdN_BASIS;
-	GLuint          vboIdC_BASIS;
-	GLuint          iboIdI_BASIS;
-	GLuint          vboIdV_AC_phase;
-	GLuint          vboIdC_AC_phase;
-	GLuint          iboIdI_AC_phase;
-	GLuint          vboIdV_PBC_A, vboIdV_PBC_B, vboIdV_PBC_C;
-	GLuint          vboIdN_PBC_A, vboIdN_PBC_B, vboIdN_PBC_C;
-	GLuint          vboIdC_PBC_A, vboIdC_PBC_B, vboIdC_PBC_C;
-	GLuint          iboIdI_PBC_A, iboIdI_PBC_B, iboIdI_PBC_C;
 
 	/* geometry-sizing counters */
 	int             ElNumProto;
@@ -498,10 +495,15 @@ typedef struct magnoom_ctx {
 	int             VCNum_BOX;
 	int             IdNum_BASIS;
 	int             VCNum_BASIS;
-	int             IdNum_AC_phase;
-	int             VCNum_AC_phase;
 	int             IdNum_PBC;
 	int             VCNum_PBC;
+
+	/* vbo_mesh descriptors replacing parallel GPU-ID and count fields */
+	vbo_mesh        spin_mesh;
+	vbo_mesh        field_mesh;
+	vbo_mesh        box_mesh;
+	vbo_mesh        basis_mesh;
+	vbo_mesh        pbc_mesh[3];
 } magnoom_ctx;
 
 magnoom_ctx mag_ctx;
@@ -1815,8 +1817,14 @@ main (int argc, char **argv){
 	// Fill big array for indecies for all arrows, cans, cones or boxes 
 	UpdateIndices(&mag_ctx, mag_ctx.indicesProto , mag_ctx.IdNumProto, mag_ctx.indices, mag_ctx.IdNum, mag_ctx.VCNumProto); 
 	UpdateVerticesNormalsColors(&mag_ctx, mag_ctx.vertexProto, mag_ctx.normalProto, mag_ctx.VCNumProto, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.VCNum, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.bS, mag_ctx.WhichVectorMode);
-	CreateNewVBO(&mag_ctx);
-	UpdateVBO(&mag_ctx, &mag_ctx.vboIdV, &mag_ctx.vboIdN, &mag_ctx.vboIdC, &mag_ctx.iboIdI, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.indices);
+	InitVBOMesh(&mag_ctx.spin_mesh, GL_DYNAMIC_DRAW);
+	mag_ctx.spin_mesh.uses_normals = (mag_ctx.WhichVectorMode == BOX1 || mag_ctx.WhichVectorMode == ARROW1 || mag_ctx.WhichVectorMode == CONE1) ? 1 : 0;
+	mag_ctx.spin_mesh.component_count = mag_ctx.VCNum;
+	mag_ctx.spin_mesh.component_capacity = mag_ctx.VCNum;
+	mag_ctx.spin_mesh.index_count = mag_ctx.IdNum;
+	mag_ctx.spin_mesh.index_capacity = mag_ctx.IdNum;
+	CreateVBOMesh(&mag_ctx.spin_mesh);
+	UploadVBOMesh(&mag_ctx.spin_mesh, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.indices, VBO_UPLOAD_ALL);
 
     mag_ctx.VHf[0]=sin(PI*mag_ctx.VHtheta/180)*cos(PI*mag_ctx.VHphi/180);
 	mag_ctx.VHf[1]=sin(PI*mag_ctx.VHtheta/180)*sin(PI*mag_ctx.VHphi/180);
@@ -1825,27 +1833,68 @@ main (int argc, char **argv){
 	ReallocateArrayDrawing_H(&mag_ctx);
     UpdatePrototypeVerNorInd(&mag_ctx, mag_ctx.vertexProto_H, mag_ctx.normalProto_H, mag_ctx.indices_H, mag_ctx.arrowFaces_H, ARROW1,1);
     UpdateVerticesNormalsColors_H(&mag_ctx, mag_ctx.vertexProto_H, mag_ctx.normalProto_H, mag_ctx.VCNum_H, mag_ctx.vertices_H, mag_ctx.normals_H, mag_ctx.colors_H, mag_ctx.Box[0][0]*0.6, mag_ctx.Box[1][1]*0.6, mag_ctx.Box[2][2]*0.6, mag_ctx.VHf[0], mag_ctx.VHf[1], mag_ctx.VHf[2]);
-    CreateNewVBO_H(&mag_ctx);
-    UpdateVBO_H(&mag_ctx, &mag_ctx.vboIdV_H, &mag_ctx.vboIdN_H, &mag_ctx.vboIdC_H, &mag_ctx.iboIdI_H, mag_ctx.vertices_H, mag_ctx.normals_H, mag_ctx.colors_H, mag_ctx.indices_H);
+	InitVBOMesh(&mag_ctx.field_mesh, GL_STATIC_DRAW);
+	mag_ctx.field_mesh.uses_normals = 1;
+	mag_ctx.field_mesh.component_count = mag_ctx.VCNum_H;
+	mag_ctx.field_mesh.component_capacity = mag_ctx.VCNum_H;
+	mag_ctx.field_mesh.index_count = mag_ctx.IdNum_H;
+	mag_ctx.field_mesh.index_capacity = mag_ctx.IdNum_H;
+	CreateVBOMesh(&mag_ctx.field_mesh);
+    UploadVBOMesh(&mag_ctx.field_mesh, mag_ctx.vertices_H, mag_ctx.normals_H, mag_ctx.colors_H, mag_ctx.indices_H, VBO_UPLOAD_ALL);
 
+	/* --- BOX mesh: static, startup-only --- */
 	ReallocateArrayDrawing_BOX(&mag_ctx);
 	UpdateVerticesNormalsColors_BOX(&mag_ctx, mag_ctx.vertices_BOX, mag_ctx.normals_BOX, mag_ctx.colors_BOX, mag_ctx.indices_BOX, mag_ctx.Box);
-	CreateNewVBO_BOX(&mag_ctx);
-	UpdateVBO_BOX(&mag_ctx, &mag_ctx.vboIdV_BOX, &mag_ctx.vboIdN_BOX, &mag_ctx.vboIdC_BOX, &mag_ctx.iboIdI_BOX, mag_ctx.vertices_BOX, mag_ctx.normals_BOX, mag_ctx.colors_BOX, mag_ctx.indices_BOX);
+	InitVBOMesh(&mag_ctx.box_mesh, GL_STATIC_DRAW);
+	mag_ctx.box_mesh.uses_normals = 1;
+	mag_ctx.box_mesh.component_count = mag_ctx.VCNum_BOX;
+	mag_ctx.box_mesh.component_capacity = mag_ctx.VCNum_BOX;
+	mag_ctx.box_mesh.index_count = mag_ctx.IdNum_BOX;
+	mag_ctx.box_mesh.index_capacity = mag_ctx.IdNum_BOX;
+	CreateVBOMesh(&mag_ctx.box_mesh);
+	UploadVBOMesh(&mag_ctx.box_mesh, mag_ctx.vertices_BOX, mag_ctx.normals_BOX, mag_ctx.colors_BOX, mag_ctx.indices_BOX, VBO_UPLOAD_ALL);
 
+	/* --- BASIS mesh: static, startup-only --- */
 	ReallocateArrayDrawing_BASIS(&mag_ctx);
 	UpdateVerticesNormalsColors_BASIS(&mag_ctx, mag_ctx.vertices_BASIS, mag_ctx.normals_BASIS, mag_ctx.colors_BASIS, mag_ctx.indices_BASIS, mag_ctx.Box);
-	CreateNewVBO_BASIS(&mag_ctx);
-	UpdateVBO_BASIS(&mag_ctx, &mag_ctx.vboIdV_BASIS, &mag_ctx.vboIdN_BASIS, &mag_ctx.vboIdC_BASIS, &mag_ctx.iboIdI_BASIS, mag_ctx.vertices_BASIS, mag_ctx.normals_BASIS, mag_ctx.colors_BASIS, mag_ctx.indices_BASIS);
+	InitVBOMesh(&mag_ctx.basis_mesh, GL_STATIC_DRAW);
+	mag_ctx.basis_mesh.uses_normals = 1;
+	mag_ctx.basis_mesh.component_count = mag_ctx.VCNum_BASIS;
+	mag_ctx.basis_mesh.component_capacity = mag_ctx.VCNum_BASIS;
+	mag_ctx.basis_mesh.index_count = mag_ctx.IdNum_BASIS;
+	mag_ctx.basis_mesh.index_capacity = mag_ctx.IdNum_BASIS;
+	CreateVBOMesh(&mag_ctx.basis_mesh);
+	UploadVBOMesh(&mag_ctx.basis_mesh, mag_ctx.vertices_BASIS, mag_ctx.normals_BASIS, mag_ctx.colors_BASIS, mag_ctx.indices_BASIS, VBO_UPLOAD_ALL);
 
+	/* --- PBC meshes: three static axis meshes, startup-only --- */
 	ReallocateArrayDrawing_PBC(&mag_ctx);
+	InitVBOMesh(&mag_ctx.pbc_mesh[0], GL_STATIC_DRAW);
+	mag_ctx.pbc_mesh[0].uses_normals = 1;
+	mag_ctx.pbc_mesh[0].component_count = mag_ctx.VCNum_PBC;
+	mag_ctx.pbc_mesh[0].component_capacity = mag_ctx.VCNum_PBC;
+	mag_ctx.pbc_mesh[0].index_count = mag_ctx.IdNum_PBC;
+	mag_ctx.pbc_mesh[0].index_capacity = mag_ctx.IdNum_PBC;
+	InitVBOMesh(&mag_ctx.pbc_mesh[1], GL_STATIC_DRAW);
+	mag_ctx.pbc_mesh[1].uses_normals = 1;
+	mag_ctx.pbc_mesh[1].component_count = mag_ctx.VCNum_PBC;
+	mag_ctx.pbc_mesh[1].component_capacity = mag_ctx.VCNum_PBC;
+	mag_ctx.pbc_mesh[1].index_count = mag_ctx.IdNum_PBC;
+	mag_ctx.pbc_mesh[1].index_capacity = mag_ctx.IdNum_PBC;
+	InitVBOMesh(&mag_ctx.pbc_mesh[2], GL_STATIC_DRAW);
+	mag_ctx.pbc_mesh[2].uses_normals = 1;
+	mag_ctx.pbc_mesh[2].component_count = mag_ctx.VCNum_PBC;
+	mag_ctx.pbc_mesh[2].component_capacity = mag_ctx.VCNum_PBC;
+	mag_ctx.pbc_mesh[2].index_count = mag_ctx.IdNum_PBC;
+	mag_ctx.pbc_mesh[2].index_capacity = mag_ctx.IdNum_PBC;
 	UpdateVerticesNormalsColors_PBC(&mag_ctx, 0, mag_ctx.vertices_PBC_A, mag_ctx.normals_PBC_A, mag_ctx.colors_PBC_A, mag_ctx.indices_PBC_A, mag_ctx.Box);
 	UpdateVerticesNormalsColors_PBC(&mag_ctx, 1, mag_ctx.vertices_PBC_B, mag_ctx.normals_PBC_B, mag_ctx.colors_PBC_B, mag_ctx.indices_PBC_B, mag_ctx.Box);
 	UpdateVerticesNormalsColors_PBC(&mag_ctx, 2, mag_ctx.vertices_PBC_C, mag_ctx.normals_PBC_C, mag_ctx.colors_PBC_C, mag_ctx.indices_PBC_C, mag_ctx.Box);  
-	CreateNewVBO_PBC(&mag_ctx);
-    UpdateVBO_PBC(&mag_ctx, &mag_ctx.vboIdV_PBC_A, &mag_ctx.vboIdN_PBC_A, &mag_ctx.vboIdC_PBC_A, &mag_ctx.iboIdI_PBC_A, mag_ctx.vertices_PBC_A, mag_ctx.normals_PBC_A, mag_ctx.colors_PBC_A, mag_ctx.indices_PBC_A);
-    UpdateVBO_PBC(&mag_ctx, &mag_ctx.vboIdV_PBC_B, &mag_ctx.vboIdN_PBC_B, &mag_ctx.vboIdC_PBC_B, &mag_ctx.iboIdI_PBC_B, mag_ctx.vertices_PBC_B, mag_ctx.normals_PBC_B, mag_ctx.colors_PBC_B, mag_ctx.indices_PBC_B);
-    UpdateVBO_PBC(&mag_ctx, &mag_ctx.vboIdV_PBC_C, &mag_ctx.vboIdN_PBC_C, &mag_ctx.vboIdC_PBC_C, &mag_ctx.iboIdI_PBC_C, mag_ctx.vertices_PBC_C, mag_ctx.normals_PBC_C, mag_ctx.colors_PBC_C, mag_ctx.indices_PBC_C);
+	CreateVBOMesh(&mag_ctx.pbc_mesh[0]);
+	UploadVBOMesh(&mag_ctx.pbc_mesh[0], mag_ctx.vertices_PBC_A, mag_ctx.normals_PBC_A, mag_ctx.colors_PBC_A, mag_ctx.indices_PBC_A, VBO_UPLOAD_ALL);
+	CreateVBOMesh(&mag_ctx.pbc_mesh[1]);
+	UploadVBOMesh(&mag_ctx.pbc_mesh[1], mag_ctx.vertices_PBC_B, mag_ctx.normals_PBC_B, mag_ctx.colors_PBC_B, mag_ctx.indices_PBC_B, VBO_UPLOAD_ALL);
+	CreateVBOMesh(&mag_ctx.pbc_mesh[2]);
+	UploadVBOMesh(&mag_ctx.pbc_mesh[2], mag_ctx.vertices_PBC_C, mag_ctx.normals_PBC_C, mag_ctx.colors_PBC_C, mag_ctx.indices_PBC_C, VBO_UPLOAD_ALL);
 
 	// Explicit GLFW loop, matching the AntTweakBar Legacy examples.
 	while (!glfwWindowShouldClose(mag_ctx.MainWindow)) {
@@ -1858,6 +1907,14 @@ main (int argc, char **argv){
 	mag_ctx.EngineShutdownRequested = true;
 	mag_ctx.ENGINE_MUTEX = DO_IT;
 	for (int i = 0; i < THREADS_NUMBER; ++i) pthread_join(thread_id[i], NULL);
+	// Destroy GPU buffers (needs active GL context):
+	DestroyVBOMesh(&mag_ctx.spin_mesh);
+	DestroyVBOMesh(&mag_ctx.field_mesh);
+	DestroyVBOMesh(&mag_ctx.box_mesh);
+	DestroyVBOMesh(&mag_ctx.basis_mesh);
+	DestroyVBOMesh(&mag_ctx.pbc_mesh[0]);
+	DestroyVBOMesh(&mag_ctx.pbc_mesh[1]);
+	DestroyVBOMesh(&mag_ctx.pbc_mesh[2]);
 	TwTerminate();
 	glfwTerminate();
 
