@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h> //I like printf( )!
+#include <stdio.h> 
 #include <time.h>
 
 #if defined(_WIN32)
@@ -62,29 +62,17 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 /* Constants formerly in magnoom.h                                          */
 /*****************************************************************************/
 #define PI      3.14159265359
-#define PI2     1.570796326795
-#define iPI     0.318309886     // 1/Pi
-#define TPI     6.28318530718   // 2*Pi
-#define iTPI    0.1591549430919 // 1/(2*Pi)
-#define D2R     0.01745329251   // Pi/180 degrees to radians
-#define R2D     57.295779513    // 180/Pi radians to degrees
-#define min_float ((float)(1e-37F))
-#define max_float ((float)(3.402823466e+38F))
-#define setNAN(x) *((int *)x) = 0x7FC00000
-#define isNAN(x)  ( *((int *)x) == 0x7FC00000  ? TRUE : FALSE  )
-#define GoldenRatio 1.61803398875 //(1+sqrt[5])/2
-#define intMAX  24000000
-// used in OpenGL
-#define ESCAPE  0x1b // the escape key:
-#define SPACE   0x20 // the space  key:
-#define PLUS    0x2b // "+" key
-#define MINUS   0x2d // "-" key
+#define TPI     (2.0 * PI)
+#define iTPI    (1.0 / TPI)
+#define D2R     (PI / 180.0)
+#define R2D     (180.0 / PI)
+#define HIDDEN_VECTOR_SCALE 24000000
 // active mouse buttons (or them together):
 #define LEFT   4
 #define MIDDLE 2
 #define RIGHT  1
 // number of slots for camera positions to save in memory
-#define NumCamPosSave 5
+#define CAMERA_POSITION_SLOTS 5
 
 /*****************************************************************************/
 /* Enum types needed by magnoom_ctx fields (formerly in magnoom.h/visualization.c) */
@@ -357,7 +345,7 @@ typedef struct magnoom_ctx {
 	float           dTransXYZ[3];
 	float           TransSpeed;
 	int             CurrentCameraPositionBank;
-	float           CameraPosition[NumCamPosSave][7];
+	float           CameraPosition[CAMERA_POSITION_SLOTS][7];
 	float           axis[3];
 	float           angle;
 

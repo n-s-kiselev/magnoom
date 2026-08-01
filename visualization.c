@@ -272,7 +272,7 @@ void setupOpenGL (magnoom_ctx *ctx)
 		exit(1);
 	}
 
-	for (int i=0;i<NumCamPosSave;i++){
+	for (int i=0;i<CAMERA_POSITION_SLOTS;i++){
 		ctx->CameraPosition[i][0]=0;
 		ctx->CameraPosition[i][1]=0;
 		ctx->CameraPosition[i][2]=0;
@@ -2339,7 +2339,7 @@ void GLFWKey(GLFWwindow *window, int key, int scancode, int action, int mods)
 		return;
 	}
 	if (key == GLFW_KEY_ESCAPE && action != GLFW_RELEASE) {
-		keyboardDown(&mag_ctx, ESCAPE, 0, 0);
+		keyboardDown(&mag_ctx, TW_KEY_ESCAPE, 0, 0);
 		return;
 	}
 	if (action == GLFW_RELEASE && key >= 'A' && key <= 'Z') {
@@ -2606,7 +2606,7 @@ void keyboardDown( magnoom_ctx *ctx, unsigned char key, int x, int y )
 				Buttons(ctx,  ZUP );
 			break;
 
-			case ESCAPE:
+			case TW_KEY_ESCAPE:
 				Buttons(ctx,  QUIT );
 				break;
 
@@ -2815,7 +2815,10 @@ void ChangeVectorMode( magnoom_ctx *ctx, int id )
 		ctx->spin_mesh.component_capacity = ctx->spin_mesh.component_count;
 		ctx->spin_mesh.index_capacity = ctx->spin_mesh.index_count;
 		ctx->spin_mesh.uses_normals = (ctx->WhichVectorMode == BOX1 || ctx->WhichVectorMode == ARROW1 || ctx->WhichVectorMode == CONE1) ? 1 : 0;
-		UploadVBOMesh(&ctx->spin_mesh, ctx->vertices, ctx->normals, ctx->colors, ctx->indices, VBO_UPLOAD_ALL);
+		unsigned int upload_mask = ctx->spin_mesh.uses_normals
+			? VBO_UPLOAD_ALL
+			: VBO_UPLOAD_VERTICES | VBO_UPLOAD_COLORS | VBO_UPLOAD_INDICES;
+		UploadVBOMesh(&ctx->spin_mesh, ctx->vertices, ctx->normals, ctx->colors, ctx->indices, upload_mask);
 		break;
 	}
 }
@@ -3077,9 +3080,6 @@ void UpdatePrototypeVerNorInd(magnoom_ctx *ctx, float * V, float * N, GLuint * I
 		h = H*0.65f;	// H - head
 	}
 
-	//float h=H-H/GoldenRatio;	//H - head
-	//float R=h/GoldenRatio;	//big radius
-	//float r=R-R/GoldenRatio;	//small radius 
 	// Arrow //////////////////////////////////// Cane//////////////////////////////////////////////
 	//          Top____________                //                                                 //
 	//     H    / \           ^                //             O v1(x1,y1,z1)                      // 
@@ -3968,9 +3968,9 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 			        // HSVtoRGB( S, RGB, InvertValue, InvertHue);
 			        j++;
 					//i = (n-nini)*Kinp;							// index of ferst cane vertex 
-					i = j*Kinp;//intMAX
+					i = j*Kinp;
 					int Factor = ctx->Kind[n+atom];
-					if (Factor==0) Factor=intMAX;
+					if (Factor==0) Factor=HIDDEN_VECTOR_SCALE;
 					Vout[i+0] = Factor*( S[0]*(1-ctx->Pivot)*ctx->Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
 					Vout[i+1] = Factor*( S[1]*(1-ctx->Pivot)*ctx->Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
 					Vout[i+2] = Factor*( S[2]*(1-ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
