@@ -6,51 +6,52 @@ enum WindowSpecialKey {
 };
 
 // which button:
-typedef enum 	{XUP, YUP, ZUP, ADD_SET, RESET, QUIT, PLAY, RECORD} enButton;
+typedef enum {XUP, YUP, ZUP, ADD_SET, RESET, QUIT, PLAY, RECORD} enButton;
 
-void			ChangeVectorMode( magnoom_ctx *, int );
-void			ChangeColorMap( magnoom_ctx *, int );
-void			ChangeInitialState( magnoom_ctx *, int );
-void			Buttons( magnoom_ctx *, int );
-void			keyboardDown( magnoom_ctx *, unsigned char, int, int );
-void			keyboardUp( magnoom_ctx *, unsigned char, int, int );
-void			KeyboardAdd( magnoom_ctx *, int, int, int );
-void			MouseButton( magnoom_ctx *, int, int, int, int );
-void			MouseMotion( magnoom_ctx *, int, int );
-float			ElapsedSeconds( );
+void ChangeVectorMode( magnoom_ctx *, int );
+void ChangeColorMap( magnoom_ctx *, int );
+void ChangeInitialState( magnoom_ctx *, int );
+void Buttons( magnoom_ctx *, int );
+void keyboardDown( magnoom_ctx *, unsigned char, int, int );
+void keyboardUp( magnoom_ctx *, unsigned char, int, int );
+void KeyboardAdd( magnoom_ctx *, int, int, int );
+void MouseButton( magnoom_ctx *, int, int, int, int );
+void MouseMotion( magnoom_ctx *, int, int );
+float ElapsedSeconds( );
 // color control functions
-void			HSVtoRGB(magnoom_ctx *, float[3], float [3] , int, int);
-void			InitRGB(float* , float* , float* , int*);
+void HSVtoRGB(magnoom_ctx *, float[3], float [3] , int, int);
+void InitRGB(float* , float* , float* , int*);
 // VBO mesh descriptor helpers
-void            InitVBOMesh(vbo_mesh *, GLenum);
-void            CreateVBOMesh(vbo_mesh *);
-void            UploadVBOMesh(vbo_mesh *, const float *, const float *, const float *, const GLuint *, unsigned int);
-void            DrawVBOMeshIndexed(const vbo_mesh *, GLenum, GLsizei, GLsizei);
-void            DestroyVBOMesh(vbo_mesh *);
+void InitVBOMesh(vbo_mesh *, GLenum);
+void CreateVBOMesh(vbo_mesh *);
+void UploadVBOMesh(vbo_mesh *, const float *, const float *, const float *, const GLuint *, unsigned int);
+void DrawVBOMeshIndexed(const vbo_mesh *, GLenum, GLsizei, GLsizei);
+void DestroyVBOMesh(vbo_mesh *);
 // VBO array preparing functions
-void			ReallocateArrayDrawing(magnoom_ctx *);
-void			UpdatePrototypeVerNorInd(magnoom_ctx *, float*,float*,GLuint*,int,int,int);
+void ReallocateArrayDrawing(magnoom_ctx *);
+void UpdatePrototypeVerNorInd(magnoom_ctx *, float*,float*,GLuint*,int,int,int);
 
 
-void			UpdateSpinComponents(float * , float * , float * , int);
-void			UpdateSpinPositions(magnoom_ctx *, float[][3], int[3], float[][3], int, float[][3], float*, float*, float*);
-void			InitSpinComponents(magnoom_ctx *, float * , float * , float * , double * , int N);
-void			UpdateIndices(magnoom_ctx *, GLuint * , int, GLuint *, int, int);
-void			UpdateVerticesNormalsColors(magnoom_ctx *, float *, float *, int, float *, float *, float *, int, float * , float * , float *, double * , int);
-void 			UpdateVerticesNormalsColors_H(magnoom_ctx *, float *, float *, int Kinp, float *, float *, float *, float, float, float, float, float, float);
+void UpdateSpinComponents(float * , float * , float * , int);
+void UpdateSpinPositions(magnoom_ctx *, float[][3], int[3], float[][3], int, float[][3], float*, float*, float*);
+void InitSpinComponents(magnoom_ctx *, float * , float * , float * , double * , int N);
+void UpdateIndices(magnoom_ctx *, GLuint * , int, GLuint *, int, int);
+void UpdateVerticesNormalsColors(magnoom_ctx *, float *, float *, int, float *, float *, float *, int, float * , float * , float *, double * , int);
+void UpdateVerticesNormalsColors_H(magnoom_ctx *, float *, float *, int Kinp, float *, float *, float *, float, float, float, float, float, float);
+void UpdateKind(magnoom_ctx *);
 // drawing functions
-void			GetBox(magnoom_ctx *, float[][3], int[3], float[3][3]);
-void			drawVBO(magnoom_ctx *);
+void GetBox(magnoom_ctx *, float[][3], int[3], float[3][3]);
+void drawVBO(magnoom_ctx *);
 
 
-void			idle(magnoom_ctx *);
-void			setupTweakBar(magnoom_ctx *);
-void            GLFWKey(GLFWwindow *, int, int, int, int);
-void            GLFWChar(GLFWwindow *, unsigned int);
-void            GLFWMouseButton(GLFWwindow *, int, int, int);
-void            GLFWMouseMotion(GLFWwindow *, double, double);
-void            GLFWMouseWheel(GLFWwindow *, double, double);
-void            GLFWResize(GLFWwindow *, int, int);
+void idle(magnoom_ctx *);
+void setupTweakBar(magnoom_ctx *);
+void GLFWKey(GLFWwindow *, int, int, int, int);
+void GLFWChar(GLFWwindow *, unsigned int);
+void GLFWMouseButton(GLFWwindow *, int, int, int);
+void GLFWMouseMotion(GLFWwindow *, double, double);
+void GLFWMouseWheel(GLFWwindow *, double, double);
+void GLFWResize(GLFWwindow *, int, int);
 
 
 
@@ -257,6 +258,7 @@ void setupOpenGL (magnoom_ctx *ctx)
 		glfwTerminate();
 		exit(1);
 	}
+	glfwSetWindowUserPointer(ctx->MainWindow, ctx);
 	glfwMakeContextCurrent(ctx->MainWindow);
 	// Not gladLoadGLLoader(glfwGetProcAddress): GLFW2's own glfwGetProcAddress
 	// (unlike GLFW3's) is a thin wglGetProcAddress() wrapper with no fallback
@@ -385,11 +387,11 @@ void TW_CALL CB_SetN_Multisample(const void *value, void *clientData )
 }
 
 
-void TW_CALL CB_GetN_Multisample(void *value, void *clientData)
-{
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->N_Multisample;
-}
+// void TW_CALL CB_GetN_Multisample(void *value, void *clientData)
+// {
+//     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+//     *(int *)value = ctx->N_Multisample;
+// }
 
 
 void TW_CALL CB_Set_Run( const void *value, void *clientData )
@@ -659,16 +661,12 @@ void TW_CALL CB_SetHfieldTheta(const void *value, void *clientData )
 void TW_CALL CB_GetHfieldTheta(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-
-
-    (void)clientData; 
     *(float*)value = ctx->VHtheta; 
 }
 
 void TW_CALL CB_SetHfieldPhi(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
     ctx->VHphi = *(float*)value;
 	ctx->VHf[0]=sin(PI*ctx->VHtheta/180)*cos(PI*ctx->VHphi/180);
 	ctx->VHf[1]=sin(PI*ctx->VHtheta/180)*sin(PI*ctx->VHphi/180);
@@ -683,7 +681,6 @@ void TW_CALL CB_SetHfieldPhi(const void *value, void *clientData )
 void TW_CALL CB_GetHfieldPhi(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; 
     *(float*)value = ctx->VHphi; 
 }
 
@@ -710,7 +707,6 @@ void TW_CALL CB_GetHfieldPhi(void *value, void *clientData)
 void TW_CALL CB_SetNumImages(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     ctx->num_images = *( int *)value; // copy value to Period_dc
     ReallocateMemoryForImages(ctx, ctx->num_images, ctx->NOS);
 }
@@ -718,14 +714,12 @@ void TW_CALL CB_SetNumImages(const void *value, void *clientData )
 void TW_CALL CB_GetNumImages(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->num_images; // just copy Period_dc to value
 }
 
 void TW_CALL CB_SetACPeriod(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     ctx->Period_dc = *( double *)value; // copy value to Period_dc
     ctx->Omega_dc = TPI/ctx->Period_dc;
 }
@@ -733,14 +727,12 @@ void TW_CALL CB_SetACPeriod(const void *value, void *clientData )
 void TW_CALL CB_GetACPeriod(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(double *)value = ctx->Period_dc; // just copy Period_dc to value
 }
 
 void TW_CALL CB_SetOmega(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     ctx->Omega_dc = *( double *)value; // copy value to Period_dc
     ctx->Period_dc = TPI/ctx->Omega_dc;
 }
@@ -748,7 +740,6 @@ void TW_CALL CB_SetOmega(const void *value, void *clientData )
 void TW_CALL CB_GetOmega(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(double *)value = ctx->Omega_dc; // just copy Omega_dc to value
 }
 
@@ -758,72 +749,10 @@ void TW_CALL CB_SetInitial( void *clientData )
 	ChangeInitialState(ctx,  ctx->WhichInitialState );
 }
 
-void
-UpdateKind(magnoom_ctx *ctx, int* Kind,float* Px, float* Py, float* Pz, int NOS, int NOSK)
-{
-	float dist, dist_max = ctx->chSizeG * ctx->chSizeG;
-	switch(ctx->WhichGeometry){
-		case CILINDER_G:
-			for (int i=0; i<NOS; i++){
-				dist = Px[i]*Px[i]+Py[i]*Py[i];
-				if (dist>dist_max){
-					Kind[i] = 0;
-				}else{
-					Kind[i] = 1;
-					NOSK++;
-				}
-			}
-		break;
-
-		case SPHERE_G:
-			for (int i=0; i<NOS; i++){
-				dist = Px[i]*Px[i]+Py[i]*Py[i]+Pz[i]*Pz[i];
-				if (dist>dist_max){
-					Kind[i] = 0;
-				}else{
-					Kind[i] = 1;
-					NOSK++;
-				}
-			}
-		break;
-
-		default:
-			for (int i=0; i<NOS; i++){
-					Kind[i] = 1;
-				}
-			NOSK = NOS;
-		break;
-	}
-
-    for (int n=0; n<NOS; n++)
-    {   
-        VEC_X(ctx->S,n)*= Kind[n];
-        VEC_Y(ctx->S,n)*= Kind[n];
-        VEC_Z(ctx->S,n)*= Kind[n];
-
-        VEC_X(ctx->bS,n)*= Kind[n];
-        VEC_Y(ctx->bS,n)*= Kind[n];
-        VEC_Z(ctx->bS,n)*= Kind[n];
-        
-        VEC_X(ctx->tS,n)*= Kind[n];
-        VEC_Y(ctx->tS,n)*= Kind[n];
-        VEC_Z(ctx->tS,n)*= Kind[n]; 
-        
-        VEC_X(ctx->t2S,n)*= Kind[n];
-        VEC_Y(ctx->t2S,n)*= Kind[n];
-        VEC_Z(ctx->t2S,n)*= Kind[n];  
-
-        VEC_X(ctx->t3S,n)*= Kind[n];
-        VEC_Y(ctx->t3S,n)*= Kind[n];
-        VEC_Z(ctx->t3S,n)*= Kind[n]; 
-    }
-
-}
-
 void TW_CALL CB_SetShape( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	UpdateKind(ctx, ctx->Kind, ctx->Px, ctx->Py, ctx->Pz, ctx->NOS, ctx->NOSK);
+	UpdateKind(ctx);
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -874,10 +803,8 @@ void TW_CALL CB_CleanSxSySzFile( void *clientData ){
  
 }
 
-
 void TW_CALL CB_SetSliceMode(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
     ctx->WhichSliceMode = *( enSliceMode *)value; // copy value to ctx->WhichSliceMode
     ChangeVectorMode(ctx, 0);
 }
@@ -885,19 +812,16 @@ void TW_CALL CB_SetSliceMode(const void *value, void *clientData ){
 
 void TW_CALL CB_GetSliceMode(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->WhichSliceMode; // just copy ctx->WhichSliceMode to value
 }
 
 void TW_CALL CB_GetThetaMax1(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->theta_max1; 
 }
 
 void TW_CALL CB_SetThetaMax1(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test>=ctx->theta_min1 ){
         ctx->theta_max1 = test;
@@ -908,13 +832,11 @@ void TW_CALL CB_SetThetaMax1(const void *value, void *clientData ){
 
 void TW_CALL CB_GetThetaMax2(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->theta_max2; 
 }
 
 void TW_CALL CB_SetThetaMax2(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test>=ctx->theta_min2 ){
         ctx->theta_max2 = test;
@@ -925,13 +847,11 @@ void TW_CALL CB_SetThetaMax2(const void *value, void *clientData ){
 
 void TW_CALL CB_GetThetaMax3(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->theta_max3; 
 }
 
 void TW_CALL CB_SetThetaMax3(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test>=ctx->theta_min3 ){
         ctx->theta_max3 = test;
@@ -942,13 +862,11 @@ void TW_CALL CB_SetThetaMax3(const void *value, void *clientData ){
 
 void TW_CALL CB_GetThetaMin1(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->theta_min1; 
 }
 
 void TW_CALL CB_SetThetaMin1(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test<=ctx->theta_max1 ){
         ctx->theta_min1 = test; 
@@ -959,13 +877,11 @@ void TW_CALL CB_SetThetaMin1(const void *value, void *clientData ){
 
 void TW_CALL CB_GetThetaMin2(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->theta_min2; 
 }
 
 void TW_CALL CB_SetThetaMin2(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test<=ctx->theta_max2 ){
         ctx->theta_min2 = test; 
@@ -976,13 +892,11 @@ void TW_CALL CB_SetThetaMin2(const void *value, void *clientData ){
 
 void TW_CALL CB_GetThetaMin3(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->theta_min3; 
 }
 
 void TW_CALL CB_SetThetaMin3(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test<=ctx->theta_max3 ){
         ctx->theta_min3 = test; 
@@ -993,14 +907,12 @@ void TW_CALL CB_SetThetaMin3(const void *value, void *clientData ){
 
 void TW_CALL CB_GetPhiMax1(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->phi_max1; 
 }
 
 
 void TW_CALL CB_SetPhiMax1(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test>=ctx->phi_min1 ){
         ctx->phi_max1 = test;
@@ -1010,14 +922,12 @@ void TW_CALL CB_SetPhiMax1(const void *value, void *clientData ){
 
 void TW_CALL CB_GetPhiMin1(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->phi_min1; 
 }
 
 
 void TW_CALL CB_SetPhiMin1(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test<=ctx->phi_max1 ){
         ctx->phi_min1 = test;
@@ -1027,14 +937,12 @@ void TW_CALL CB_SetPhiMin1(const void *value, void *clientData ){
 
 void TW_CALL CB_GetPhiMax2(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->phi_max2; 
 }
 
 
 void TW_CALL CB_SetPhiMax2(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test>=ctx->phi_min2 ){
         ctx->phi_max2 = test;
@@ -1044,14 +952,12 @@ void TW_CALL CB_SetPhiMax2(const void *value, void *clientData ){
 
 void TW_CALL CB_GetPhiMin2(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->phi_min2; 
 }
 
 
 void TW_CALL CB_SetPhiMin2(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test<=ctx->phi_max2 ){
         ctx->phi_min2 = test;
@@ -1061,14 +967,12 @@ void TW_CALL CB_SetPhiMin2(const void *value, void *clientData ){
 
 void TW_CALL CB_GetPhiMax3(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->phi_max3; 
 }
 
 
 void TW_CALL CB_SetPhiMax3(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test>=ctx->phi_min3 ){
         ctx->phi_max3 = test;
@@ -1078,13 +982,11 @@ void TW_CALL CB_SetPhiMax3(const void *value, void *clientData ){
 
 void TW_CALL CB_GetPhiMin3(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    (void)clientData; // unused
     *(int *)value = ctx->phi_min3; 
 }
 
 void TW_CALL CB_SetPhiMin3(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	(void)clientData; // unused
 	int test= *( int *)value; 
 	if (test<=ctx->phi_max3 ){
         ctx->phi_min3 = test;
@@ -1220,23 +1122,26 @@ void TW_CALL CB_SetSpinFilter3(const void *value, void *clientData ){
     ChangeVectorMode(ctx, 0);
 }
 
-void TW_CALL CB_GetGreedFilter(void *value, void *clientData){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(bool *)value = ctx->GreedFilter; 
+void TW_CALL CB_GetGreedFilter(void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	*(bool *)value = ctx->GreedFilter; 
 }
 
-void TW_CALL CB_SetGreedFilter(const void *value, void *clientData ){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+void TW_CALL CB_SetGreedFilter(const void *value, void *clientData )
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
 	ctx->GreedFilter= *( bool *)value; 
-    ChangeVectorMode(ctx, 0);
+	ChangeVectorMode(ctx, 0);
 }
 
 
-void TW_CALL CB_ResetIterations( void *clientData ){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-  ctx->ITERATION=0;
-  ctx->currentIteration=0;
-  ctx->SpecialEvent=1;
+void TW_CALL CB_ResetIterations( void *clientData )
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	ctx->ITERATION=0;
+	ctx->currentIteration=0;
+	ctx->SpecialEvent=1;
 }
 
 
@@ -1726,6 +1631,71 @@ void TW_CALL CB_Save_PNG( void *clientData )
     }
 }
 
+void UpdateKind(magnoom_ctx *ctx)
+{
+	int *Kind = ctx->Kind;
+	const float *Px = ctx->Px;
+	const float *Py = ctx->Py;
+	const float *Pz = ctx->Pz;
+	const int NOS = ctx->NOS;
+	float dist, dist_max = ctx->chSizeG * ctx->chSizeG;
+	ctx->NOSK = 0;
+	switch(ctx->WhichGeometry){
+		case CILINDER_G:
+			for (int i=0; i<NOS; i++){
+				dist = Px[i]*Px[i]+Py[i]*Py[i];
+				if (dist>dist_max){
+					Kind[i] = 0;
+				}else{
+					Kind[i] = 1;
+					ctx->NOSK++;
+				}
+			}
+		break;
+
+		case SPHERE_G:
+			for (int i=0; i<NOS; i++){
+				dist = Px[i]*Px[i]+Py[i]*Py[i]+Pz[i]*Pz[i];
+				if (dist>dist_max){
+					Kind[i] = 0;
+				}else{
+					Kind[i] = 1;
+					ctx->NOSK++;
+				}
+			}
+		break;
+
+		default:
+			for (int i=0; i<NOS; i++){
+					Kind[i] = 1;
+				}
+			ctx->NOSK = NOS;
+		break;
+	}
+
+    for (int n=0; n<NOS; n++)
+    {   
+        VEC_X(ctx->S,n)*= Kind[n];
+        VEC_Y(ctx->S,n)*= Kind[n];
+        VEC_Z(ctx->S,n)*= Kind[n];
+
+        VEC_X(ctx->bS,n)*= Kind[n];
+        VEC_Y(ctx->bS,n)*= Kind[n];
+        VEC_Z(ctx->bS,n)*= Kind[n];
+        
+        VEC_X(ctx->tS,n)*= Kind[n];
+        VEC_Y(ctx->tS,n)*= Kind[n];
+        VEC_Z(ctx->tS,n)*= Kind[n]; 
+        
+        VEC_X(ctx->t2S,n)*= Kind[n];
+        VEC_Y(ctx->t2S,n)*= Kind[n];
+        VEC_Z(ctx->t2S,n)*= Kind[n];  
+
+        VEC_X(ctx->t3S,n)*= Kind[n];
+        VEC_Y(ctx->t3S,n)*= Kind[n];
+        VEC_Z(ctx->t3S,n)*= Kind[n]; 
+    }
+}
 
 void readConfigFile(magnoom_ctx *ctx)
 {
@@ -1861,7 +1831,7 @@ void setupTweakBar(magnoom_ctx *ctx)
     tw_glfw2_set_bar_size(ctx->view_bar, 220, 530);
     TwDefine(" View help='F2: show/hide View bar' "); // change default tweak bar size and color
 
-	// TwAddVarCB(view_bar, "Multisampling", TW_TYPE_INT32, CB_SetN_Multisample, CB_GetN_Multisample, ctx, " label='Multisamples' min=1 max=32 step=1 help='Multisampling' group='Camera'");
+	// TwAddVarCB(ctx->view_bar, "Multisampling", TW_TYPE_INT32, CB_SetN_Multisample, CB_GetN_Multisample, ctx, " label='Multisamples' min=1 max=32 step=1 help='Multisampling' group='Camera'");
 	{
 	TwEnumVal		enProjectionsTw[] = { {ORTHO, "Orthogonal"}, {PERSP, "Perspective"} };
 	TwType			TW_TYPE_PROJ = TwDefineEnum("ProjectionType", enProjectionsTw, 2);
@@ -2204,13 +2174,7 @@ void setupTweakBar(magnoom_ctx *ctx)
     TwAddButton(ctx->initial_bar, "Write to BIN", CB_Save_BIN, ctx, "label='write to *.bin file' "); 
     TwAddButton(ctx->initial_bar, "Write to PNG", CB_Save_PNG, ctx, "label='write to *.png file' ");
 
-
     TwAddSeparator(ctx->initial_bar, "sep_isoline", NULL);
-
-    
-
-
-
 
 /*  AC field F5 */
 	ctx->ac_field_bar = TwNewBar("AC_Field");
@@ -2329,34 +2293,35 @@ static int GLFWSpecialToWindowKey(int key)
 
 void GLFWKey(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-	(void)window;
+	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)scancode;
 	if (TwEventKeyGLFW(key, action)) return;
 
 	int special = GLFWSpecialToWindowKey(key);
 	if (special && action != GLFW_RELEASE) {
-		KeyboardAdd(&mag_ctx, special, 0, 0);
+		KeyboardAdd(ctx, special, 0, 0);
 		return;
 	}
 	if (key == GLFW_KEY_ESCAPE && action != GLFW_RELEASE) {
-		keyboardDown(&mag_ctx, TW_KEY_ESCAPE, 0, 0);
+		keyboardDown(ctx, TW_KEY_ESCAPE, 0, 0);
 		return;
 	}
 	if (action == GLFW_RELEASE && key >= 'A' && key <= 'Z') {
 		unsigned char character = (unsigned char)((mods & GLFW_MOD_SHIFT) ? key : key - 'A' + 'a');
-		keyboardUp(&mag_ctx, character, 0, 0);
+		keyboardUp(ctx, character, 0, 0);
 	}
 }
 
 void GLFWChar(GLFWwindow *window, unsigned int character)
 {
-	(void)window;
+	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	if (character > 255 || TwEventCharGLFW((int)character, GLFW_PRESS)) return;
-	keyboardDown(&mag_ctx, (unsigned char)character, 0, 0);
+	keyboardDown(ctx, (unsigned char)character, 0, 0);
 }
 
 void GLFWMouseButton(GLFWwindow *window, int button, int action, int mods)
 {
+	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)mods;
 	if (TwEventMouseButtonGLFW(button, action)) return;
 	double x = 0.0, y = 0.0;
@@ -2364,37 +2329,38 @@ void GLFWMouseButton(GLFWwindow *window, int button, int action, int mods)
 	int windowButton = button == GLFW_MOUSE_BUTTON_LEFT ? WINDOW_MOUSE_LEFT
 	                 : button == GLFW_MOUSE_BUTTON_RIGHT ? WINDOW_MOUSE_RIGHT
 	                 : WINDOW_MOUSE_MIDDLE;
-	MouseButton(&mag_ctx, windowButton, action == GLFW_PRESS ? WINDOW_BUTTON_DOWN : WINDOW_BUTTON_UP,
-	            (int)(x * mag_ctx.MouseScaleX), (int)(y * mag_ctx.MouseScaleY));
+	MouseButton(ctx, windowButton, action == GLFW_PRESS ? WINDOW_BUTTON_DOWN : WINDOW_BUTTON_UP,
+	            (int)(x * ctx->MouseScaleX), (int)(y * ctx->MouseScaleY));
 }
 
 void GLFWMouseMotion(GLFWwindow *window, double x, double y)
 {
-	(void)window;
-	int pixelX = (int)(x * mag_ctx.MouseScaleX);
-	int pixelY = (int)(y * mag_ctx.MouseScaleY);
+	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
+	int pixelX = (int)(x * ctx->MouseScaleX);
+	int pixelY = (int)(y * ctx->MouseScaleY);
 	if (TwEventMousePosGLFW(pixelX, pixelY)) return;
-	MouseMotion(&mag_ctx, pixelX, pixelY);
+	MouseMotion(ctx, pixelX, pixelY);
 }
 
 void GLFWMouseWheel(GLFWwindow *window, double xoffset, double yoffset)
 {
-	(void)window;
+	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)xoffset;
-	mag_ctx.MouseWheelPosition += (int)yoffset;
-	if (TwEventMouseWheelGLFW(mag_ctx.MouseWheelPosition)) return;
-	mag_ctx.TransXYZ[2] += (float)yoffset * 0.5f;
+	ctx->MouseWheelPosition += (int)yoffset;
+	if (TwEventMouseWheelGLFW(ctx->MouseWheelPosition)) return;
+	ctx->TransXYZ[2] += (float)yoffset * 0.5f;
 }
 
 void GLFWResize(GLFWwindow *window, int width, int height)
 {
+	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	if (width < 1) width = 1;
 	if (height < 1) height = 1;
 	int windowWidth = width, windowHeight = height;
 	glfwGetWindowSize(window, &windowWidth, &windowHeight);
-	mag_ctx.MouseScaleX = windowWidth > 0 ? (double)width / windowWidth : 1.0;
-	mag_ctx.MouseScaleY = windowHeight > 0 ? (double)height / windowHeight : 1.0;
-	Resize(&mag_ctx, width, height);
+	ctx->MouseScaleX = windowWidth > 0 ? (double)width / windowWidth : 1.0;
+	ctx->MouseScaleY = windowHeight > 0 ? (double)height / windowHeight : 1.0;
+	Resize(ctx, width, height);
 }
 
 

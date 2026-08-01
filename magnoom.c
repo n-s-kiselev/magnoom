@@ -494,8 +494,6 @@ typedef struct magnoom_ctx {
 	vbo_mesh        pbc_mesh[3];
 } magnoom_ctx;
 
-magnoom_ctx mag_ctx;
-
 /* Per-thread argument for CALC_THREAD (solvers.c): carries both the thread's */
 /* index and ctx, since pthread's start-routine signature has room for only  */
 /* one void* argument. */
@@ -1686,6 +1684,7 @@ void RestartCalcThreads(magnoom_ctx *ctx, pthread_t * thread_id, calc_thread_arg
 
 int
 main (int argc, char **argv){
+	magnoom_ctx mag_ctx = {0};
 	if (!magnoom_ctx_init(&mag_ctx)) {
 		fprintf(stderr, "Unable to initialize Magnoom data.\n");
 		return 1;
@@ -1792,7 +1791,7 @@ main (int argc, char **argv){
 
 	GetBox(&mag_ctx, mag_ctx.abc, mag_ctx.uABC, mag_ctx.Box);
 	UpdateSpinPositions(&mag_ctx, mag_ctx.abc, mag_ctx.uABC, mag_ctx.Block, mag_ctx.AtomsPerBlock, mag_ctx.Box, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz);
-	UpdateKind(&mag_ctx, mag_ctx.Kind, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.NOS, mag_ctx.NOSK);
+	UpdateKind(&mag_ctx);
 	InitSpinComponents( &mag_ctx, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.S, 0);
 	for (int i=0;i<mag_ctx.NOS;i++) { VEC_X(mag_ctx.bS,i)=VEC_X(mag_ctx.S,i); VEC_Y(mag_ctx.bS,i)=VEC_Y(mag_ctx.S,i); VEC_Z(mag_ctx.bS,i)=VEC_Z(mag_ctx.S,i);}
 

@@ -8,7 +8,8 @@
 #include <GL/glfw.h>
 #include <AntTweakBar.h>
 
-typedef struct TwGLFW2Window { int unused; } GLFWwindow;
+// GLFW2 has no window user pointer, so the adapter stores callback context here.
+typedef struct TwGLFW2Window { void *user_pointer; } GLFWwindow;
 typedef void (*TwGLFW2ErrorFun)(int, const char *);
 typedef void (*TwGLFW2KeyFun)(GLFWwindow *, int, int, int, int);
 typedef void (*TwGLFW2CharFun)(GLFWwindow *, unsigned int);
@@ -81,6 +82,7 @@ static GLFWwindow *tw_glfw2_create_window(int width, int height, const char *tit
     glfwSetWindowTitle(title);
     glfwDisable(GLFW_AUTO_POLL_EVENTS);
     glfwEnable(GLFW_KEY_REPEAT);
+    tw_glfw2_window.user_pointer = NULL;
     return &tw_glfw2_window;
 }
 static void tw_glfw2_get_window_size(GLFWwindow *window, int *width, int *height)
@@ -123,6 +125,10 @@ static void tw_glfw2_set_window_should_close(GLFWwindow *window, int close)
 { (void)window; if (close) glfwCloseWindow(); }
 static void tw_glfw2_set_title(GLFWwindow *window, const char *title)
 { (void)window; glfwSetWindowTitle(title); }
+static void tw_glfw2_set_window_user_pointer(GLFWwindow *window, void *pointer)
+{ window->user_pointer = pointer; }
+static void *tw_glfw2_get_window_user_pointer(GLFWwindow *window)
+{ return window->user_pointer; }
 static void tw_glfw2_set_key(GLFWwindow *window, TwGLFW2KeyFun fun)
 { (void)window; tw_glfw2_key_fun = fun; glfwSetKeyCallback(tw_glfw2_key_cb); }
 static void tw_glfw2_set_char(GLFWwindow *window, TwGLFW2CharFun fun)
@@ -154,6 +160,8 @@ static void tw_glfw2_set_size(GLFWwindow *window, TwGLFW2WindowSizeFun fun)
 #define glfwWindowShouldClose tw_glfw2_window_should_close
 #define glfwSetWindowShouldClose tw_glfw2_set_window_should_close
 #define glfwSetWindowTitle tw_glfw2_set_title
+#define glfwSetWindowUserPointer tw_glfw2_set_window_user_pointer
+#define glfwGetWindowUserPointer tw_glfw2_get_window_user_pointer
 #define glfwSetKeyCallback tw_glfw2_set_key
 #define glfwSetCharCallback tw_glfw2_set_char
 #define glfwSetMouseButtonCallback tw_glfw2_set_button
