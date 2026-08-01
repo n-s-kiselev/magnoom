@@ -1,12 +1,32 @@
 void
-GetEffectiveField(	magnoom_ctx *ctx, double* s,
-					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
-					double* heffx, double* heffy, double* heffz, int N, 
+GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 					int naini, 	int nafin,
 					int nbini, 	int nbfin,
 					int ncini, 	int ncfin)
 {
+	const int numNeighbors = ctx->NeighborPairs;
+	const int *aidxBlock = ctx->AIdxBlock;
+	const int *nidxBlock = ctx->NIdxBlock;
+	const int *nidxGridA = ctx->NIdxGridA;
+	const int *nidxGridB = ctx->NIdxGridB;
+	const int *nidxGridC = ctx->NIdxGridC;
+	const int *shellIdx = ctx->SIdx;
+	const float *Jij = ctx->Jij;
+	const float *Bij = ctx->Bij;
+	const float *Dij = ctx->Dij;
+	const float *VDMx = ctx->VDMx;
+	const float *VDMy = ctx->VDMy;
+	const float *VDMz = ctx->VDMz;
+	const float *vku1 = ctx->VKu1;
+	const float ku1 = ctx->Ku1;
+	const float *vku2 = ctx->VKu2;
+	const float ku2 = ctx->Ku2;
+	const float kc = ctx->Kc;
+	const float *VHfield = ctx->VHf;
+	const float Hfield = ctx->Hf;
+	double *heffx = ctx->Heffx;
+	double *heffy = ctx->Heffy;
+	double *heffz = ctx->Heffz;
 	double tmp0;
 	int Ip, I, J, K, L;
 	int S;
@@ -158,8 +178,15 @@ void fun4(double k1, double k2, double k3, double k4,
 
 
 double
-GetTotalEnergyMoment(	magnoom_ctx *ctx, double* s, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
+GetTotalEnergyMoment(magnoom_ctx *ctx)
 {
+	const double *s = ctx->bS;
+	const double *Hx = ctx->Heffx;
+	const double *Hy = ctx->Heffy;
+	const double *Hz = ctx->Heffz;
+	double *Etot = ctx->Etot0;
+	double *Mtot = ctx->outputMtotal;
+	const int N = ctx->NOS;
 	double tmp0 = 0;
 	Mtot[0] = 0;
 	Mtot[1] = 0;
@@ -216,11 +243,32 @@ GetTotalEnergyMomentE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz, do
 }
 
 double
-GetTotalEnergyFerro(magnoom_ctx *ctx, double sx, double sy, double sz,
-					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
-					double* Etot, int N)
+GetTotalEnergyFerro(magnoom_ctx *ctx)
 {
+	double sx = ctx->VHf[0];
+	double sy = ctx->VHf[1];
+	double sz = ctx->VHf[2];
+	const int numNeighbors = ctx->NeighborPairs;
+	const int *aidxBlock = ctx->AIdxBlock;
+	const int *nidxGridA = ctx->NIdxGridA;
+	const int *nidxGridB = ctx->NIdxGridB;
+	const int *nidxGridC = ctx->NIdxGridC;
+	const int *shellIdx = ctx->SIdx;
+	const float *Jij = ctx->Jij;
+	const float *Bij = ctx->Bij;
+	const float *Dij = ctx->Dij;
+	const float *VDMx = ctx->VDMx;
+	const float *VDMy = ctx->VDMy;
+	const float *VDMz = ctx->VDMz;
+	const float *vku1 = ctx->VKu1;
+	const float ku1 = ctx->Ku1;
+	const float *vku2 = ctx->VKu2;
+	const float ku2 = ctx->Ku2;
+	const float kc = ctx->Kc;
+	const float *VHfield = ctx->VHf;
+	const float Hfield = ctx->Hf;
+	double *Etot = ctx->Etot;
+	const int N = ctx->NOS;
 	double tmp0=1.0/sqrt(sx*sx+sy*sy+sz*sz);
 	sx = sx/tmp0;
 	sy = sy/tmp0;
@@ -300,11 +348,32 @@ GetTotalEnergyFerro(magnoom_ctx *ctx, double sx, double sy, double sz,
 }
 
 double
-GetTotalEnergy(	magnoom_ctx *ctx, double* s,
-					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
-					double* Etot,double* Mtot, int N)
+GetTotalEnergy(magnoom_ctx *ctx)
 {
+	const double *s = ctx->bS;
+	const int numNeighbors = ctx->NeighborPairs;
+	const int *aidxBlock = ctx->AIdxBlock;
+	const int *nidxBlock = ctx->NIdxBlock;
+	const int *nidxGridA = ctx->NIdxGridA;
+	const int *nidxGridB = ctx->NIdxGridB;
+	const int *nidxGridC = ctx->NIdxGridC;
+	const int *shellIdx = ctx->SIdx;
+	const float *Jij = ctx->Jij;
+	const float *Bij = ctx->Bij;
+	const float *Dij = ctx->Dij;
+	const float *VDMx = ctx->VDMx;
+	const float *VDMy = ctx->VDMy;
+	const float *VDMz = ctx->VDMz;
+	const float *vku1 = ctx->VKu1;
+	const float ku1 = ctx->Ku1;
+	const float *vku2 = ctx->VKu2;
+	const float ku2 = ctx->Ku2;
+	const float kc = ctx->Kc;
+	const float *VHfield = ctx->VHf;
+	const float Hfield = ctx->Hf;
+	double *Etot = ctx->Etot;
+	double *Mtot = ctx->Mtot;
+	const int N = ctx->NOS;
 	double tmp0=0;
 	Mtot[0] = 0;
 	Mtot[1] = 0;
@@ -451,7 +520,11 @@ GetTotalEnergyE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 // }
 
 void
-GetFluctuations( magnoom_ctx *ctx, float* rx, float* ry, float* rz, int N ){
+GetFluctuations(magnoom_ctx *ctx){
+	float *rx = ctx->RNx;
+	float *ry = ctx->RNy;
+	float *rz = ctx->RNz;
+	const int N = ctx->NOS;
 	for (int i=0; i<N; i++){
 		float r[3];
 		float A=sqrt(2*fabs(log(ctx->t_step)));
@@ -472,12 +545,7 @@ GetFluctuations( magnoom_ctx *ctx, float* rx, float* ry, float* rz, int N ){
 }
 
 void
-StochasticLLG(	magnoom_ctx *ctx, double* in,						// input vector field
-				double* tn,						// temporal storage
-				double* heffx,	double* heffy,	double* heffz,	// effective field
-				float* rx,		float* ry,		float* rz,		// random numbers 
-				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature, 	int thread,					
+StochasticLLG(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
@@ -503,6 +571,14 @@ StochasticLLG(	magnoom_ctx *ctx, double* in,						// input vector field
 // where  A_i  is the matrix formed by replacing the i-th column of A by the column vector B.
 // Note: determinant M, detM = 1 + Ax^2 + Ay^2 + Az^2.
 {
+	double *in = ctx->S;
+	double *tn = ctx->tS;
+	const float *rx = ctx->RNx;
+	const float *ry = ctx->RNy;
+	const float *rz = ctx->RNz;
+	const float alpha = ctx->damping;
+	const float h = ctx->t_step;
+	const float temperature = ctx->Temperature;
 	double rh=sqrt(h);// h = \delta t
 	double nx, ny, nz;// components of the unit vector
 	double Hx, Hy, Hz;// components of the effective field
@@ -515,14 +591,11 @@ StochasticLLG(	magnoom_ctx *ctx, double* in,						// input vector field
 	double Alpha_d = alpha;// / (1.0 + alpha * alpha * Precession);
 	double Alpha_p = 1.0f;// / (1.0 + alpha * alpha);
 
-	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
-	GetEffectiveField( ctx, in,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
 	int Na = ctx->uABC[0];
 	int Nb = ctx->uABC[1];
@@ -597,9 +670,7 @@ StochasticLLG(	magnoom_ctx *ctx, double* in,						// input vector field
 		}
 	}
 
-	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//final step of midpoint solver:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -666,17 +737,20 @@ StochasticLLG(	magnoom_ctx *ctx, double* in,						// input vector field
 
 
 void
-StochasticLLG_Heun(	magnoom_ctx *ctx, double* in,						// input vector field
-				double* tn,						// temporal storage
-				double* heffx,	double* heffy,	double* heffz,	// effective field
-				float* rx,		float* ry,		float* rz,		// random numbers 
-				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature, 	int thread,					
+StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
 
 {
+	double *in = ctx->S;
+	double *tn = ctx->tS;
+	const float *rx = ctx->RNx;
+	const float *ry = ctx->RNy;
+	const float *rz = ctx->RNz;
+	const float alpha = ctx->damping;
+	const float h = ctx->t_step;
+	const float temperature = ctx->Temperature;
 	double rh=sqrt(h);// h = \delta t
 	double nx, ny, nz;// components of the unit vector
 	double Hx, Hy, Hz;// components of the effective field
@@ -688,14 +762,11 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* in,						// input vector field
 	double Alpha_d = alpha / (1.0 + alpha * alpha * ctx->Precession);
 	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
 
-	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
-	GetEffectiveField( ctx, in,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//Predictor step:
 	int Na = ctx->uABC[0];
 	int Nb = ctx->uABC[1];
@@ -743,9 +814,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* in,						// input vector field
 		}
 	}
 
-	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//corrector step:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -811,17 +880,22 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, double* in,						// input vector field
 
 
 void
-StochasticLLG_RK23(	magnoom_ctx *ctx, double* in,						// input vector field
-				double* tn,						// temporal storage
-				double* heffx,	double* heffy,	double* heffz,	// effective field
-				float* rx,		float* ry,		float* rz,		// random numbers 
-				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature, float Xi, float Curr_u, 	int thread,					
+StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
 
 {
+	double *in = ctx->S;
+	double *tn = ctx->tS;
+	const float *rx = ctx->RNx;
+	const float *ry = ctx->RNy;
+	const float *rz = ctx->RNz;
+	const float alpha = ctx->damping;
+	const float h = ctx->t_step;
+	const float temperature = ctx->Temperature;
+	const float Xi = ctx->Xi;
+	const float Curr_u = ctx->Curr_u;
 	double rh=sqrt(h);// h = \delta t
 	double nx, ny, nz;// components of the unit vector
 	double Hx, Hy, Hz;// components of the effective field
@@ -840,14 +914,11 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* in,						// input vector field
 	double c1 = (xi-alpha)*u, c2=(1+xi*alpha)*u/alpha;
 	// c2 = (alpha>1e-20)? (1+xi*alpha)*u/alpha : 0;
 
-	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
-	GetEffectiveField( ctx, in,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k1:
 	int Na = ctx->uABC[0];
 	int Nb = ctx->uABC[1];
@@ -920,9 +991,7 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* in,						// input vector field
 		}
 	}
 
-	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//corrector step:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -1001,16 +1070,21 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, double* in,						// input vector field
 
 
 void
-StochasticLLG_RK45(	magnoom_ctx *ctx, double* in,						// input vector field
-				double* tn,						// temporal storage
-				double* heffx,	double* heffy,	double* heffz,	// effective field
-				float* rx,		float* ry,		float* rz,		// random numbers 
-				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature, float Xi, float Curr_u,	int thread,					
+StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
 {
+	double *in = ctx->S;
+	double *tn = ctx->tS;
+	const float *rx = ctx->RNx;
+	const float *ry = ctx->RNy;
+	const float *rz = ctx->RNz;
+	const float alpha = ctx->damping;
+	const float h = ctx->t_step;
+	const float temperature = ctx->Temperature;
+	const float Xi = ctx->Xi;
+	const float Curr_u = ctx->Curr_u;
 	double rh=sqrt(h);// h = \delta t
 	double nx, ny, nz;// components of the unit vector
 	double Hx, Hy, Hz;// components of the effective field
@@ -1024,14 +1098,11 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* in,						// input vector field
 	double Alpha_d = alpha / (1.0 + alpha * alpha * ctx->Precession);
 	double Alpha_p = 1.0f / (1.0 + alpha * alpha);
 
-	//if (temperature>0) GetFluctuations( rx, ry, rz, nos );
 	//electric DC current vector (VCu) and density (Cu)
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
-	GetEffectiveField( ctx, in,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//Predictor step:
 	int Na = ctx->uABC[0];
 	int Nb = ctx->uABC[1];
@@ -1115,9 +1186,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* in,						// input vector field
 		}
 	}
 	//Heff(y_n+k1/2):
-	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//k2:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -1194,9 +1263,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* in,						// input vector field
 		}
 	}
 	//Heff(y_n+k2/2):
-	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);	
+	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k3:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
@@ -1270,9 +1337,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* in,						// input vector field
 		}
 	}
 	//Heff(y_n+k3):
-	GetEffectiveField( ctx, tn,						ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-						ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-						naini, nafin, nbini, nbfin, ncini, ncfin);	
+	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k4:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
@@ -1366,20 +1431,15 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, double* in,						// input vector field
 
 
 void
-Relax(	magnoom_ctx *ctx, double* in,						// input vector field
-				double* tn,						// temporal storage
-				double* heffx,	double* heffy,	double* heffz,	// effective field
-				float* rx,		float* ry,		float* rz,		// random numbers 
-				int nos,		float alpha, 	float h,		// number of spins, damping, time step
-				float temperature, 	int thread,					
+Relax(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
-				int ncini, 	int ncfin, bool* proj)
+				int ncini, 	int ncfin)
 {
+	double *in = ctx->S;
+	bool *proj = ctx->Proj;
 	
-		GetEffectiveField( ctx, in,					ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-					ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Heffx, ctx->Heffy, ctx->Heffz, ctx->NOS,
-					naini, nafin, nbini, nbfin, ncini, ncfin);
+	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	
 		
 
@@ -1441,11 +1501,11 @@ Relax(	magnoom_ctx *ctx, double* in,						// input vector field
 
 
 
-double GetACfield(magnoom_ctx *ctx, int type)
+double GetACfield(magnoom_ctx *ctx)
 {
 	double R=0;
 	double temp;
-	switch (type){
+	switch (ctx->WhichACField){
 		case SIN_FIELD:
 			R = ctx->AC_FIELD_ON*ctx->Hac*sin(ctx->Omega_dc*ctx->t_step*ctx->ITERATION);
 		break;
@@ -1545,31 +1605,31 @@ void *CALC_THREAD(void *void_ptr)
 	{
 		while(ctx->ENGINE_MUTEX != DO_IT && !ctx->EngineShutdown){ usleep(ctx->SleepTime);}
 		if (ctx->EngineShutdown) break;
-		ctx->HacTime = GetACfield(ctx, ctx->WhichACField);
+		ctx->HacTime = GetACfield(ctx);
 		
 		switch (ctx->WhichIntegrationScheme){
 			case HEUN: 
 				// SimpleMinimizer(ctx->Sx,ctx->Sy,ctx->Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,ctx->NOS,damping,t_step,Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
-				StochasticLLG_Heun(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_Heun(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
 			case SIB: 
-				StochasticLLG(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
 			case RK23: 
-				StochasticLLG_RK23(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature,ctx->Xi,ctx->Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_RK23(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
 			case RK45: 
-				StochasticLLG_RK45(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature,ctx->Xi,ctx->Curr_u, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
+				StochasticLLG_RK45(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
 			case RELAX: 	
-				Relax(ctx, ctx->S,ctx->tS,ctx->Heffx,ctx->Heffy,ctx->Heffz,ctx->RNx,ctx->RNy,ctx->RNz,ctx->NOS,ctx->damping,ctx->t_step,ctx->Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin, ctx->Proj);
+				Relax(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 		}
-		if (threadindex==0 && ctx->Temperature > 0) GetFluctuations(ctx, ctx->RNx, ctx->RNy, ctx->RNz, ctx->NOS );
+		if (threadindex==0 && ctx->Temperature > 0) GetFluctuations(ctx);
 
 		if (threadindex==THREADS_NUMBER-1){ 
 			
@@ -1621,7 +1681,7 @@ void *CALC_THREAD(void *void_ptr)
 			//save to file if recording is on
 			if (ctx->Record!=0 && ctx->ITERATION%ctx->rec_iteration == 0){
 
-				ctx->outputEtotal = GetTotalEnergyMoment( ctx, ctx->bS, ctx->Heffx, 	ctx->Heffy, 	ctx->Heffz, ctx->Etot0, ctx->outputMtotal, ctx->NOS);
+				ctx->outputEtotal = GetTotalEnergyMoment(ctx);
 				ctx->BigDataBank[0][ctx->recordsCounter] = (float)ctx->ITERATION;
 				ctx->BigDataBank[1][ctx->recordsCounter] = ctx->outputMtotal[0]*ctx->iNOS;
 				ctx->BigDataBank[2][ctx->recordsCounter] = ctx->outputMtotal[1]*ctx->iNOS;

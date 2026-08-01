@@ -342,9 +342,7 @@ void idle (magnoom_ctx *ctx)
 				case 0:
 				ChangeVectorMode(ctx, 1);
 				case 1:
-				ctx->totalEnergy = GetTotalEnergy( 	ctx, ctx->bS,
-							ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-							ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Etot, ctx->Mtot, ctx->NOS );
+				ctx->totalEnergy = GetTotalEnergy(ctx);
 				// totalEnergy = 0;
 				ctx->mtot[0] = ctx->Mtot[0]/ctx->NOS;
 				ctx->mtot[1] = ctx->Mtot[1]/ctx->NOS;
@@ -352,9 +350,7 @@ void idle (magnoom_ctx *ctx)
                 // int  k=123;
                 // mtot[2] = sqrt(bSx[k]*bSx[k]+bSy[k]*bSy[k]+bSz[k]*bSz[k]);//metka
 				ctx->perSpEnergy = ctx->totalEnergy/ctx->NOS;
-				ctx->totalEnergyFerro = GetTotalEnergyFerro( ctx, ctx->VHf[0], ctx->VHf[1], ctx->VHf[2],
-							ctx->NeighborPairs, ctx->AIdxBlock, ctx->NIdxBlock, ctx->NIdxGridA, ctx->NIdxGridB, ctx->NIdxGridC, ctx->SIdx,
-							ctx->Jij, ctx->Bij, ctx->Dij, ctx->VDMx, ctx->VDMy, ctx->VDMz, ctx->VKu1, ctx->Ku1, ctx->VKu2, ctx->Ku2, ctx->Kc, ctx->VHf, ctx->Hf, ctx->Etot, ctx->NOS );
+				ctx->totalEnergyFerro = GetTotalEnergyFerro(ctx);
 				// totalEnergyFerro = 0;
 				ctx->totalEnergyFerro = ctx->totalEnergyFerro/ctx->NOS;
 				ctx->perSpEnergyMinusFerro = ctx->perSpEnergy - ctx->totalEnergyFerro;
