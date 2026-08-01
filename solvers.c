@@ -1717,19 +1717,18 @@ void *CALC_THREAD(void *void_ptr)
 									float T=acos(VEC_Z(ctx->t3S,i));
 									float F=atan2(VEC_Y(ctx->t3S,i),VEC_X(ctx->t3S,i));
 								// get spin i
-									float s[3], r[3];
-									mat4x4 My, Mz, M;
+									vec4 s, r;
+									mat4x4 My, Mz;
 									s[0]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0);
 									s[1]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1);
 									s[2]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2);
+									s[3]=0.f;
 									mat4x4_identity(My);
 									mat4x4_rotate_Y(My, My, T);
 									mat4x4_identity(Mz);
 									mat4x4_rotate_Z(Mz, Mz, F);
-									// mat4x4_mul(M, Mz, My);
-			
-									mat4x4_mul_vec3(r, My, s);
-									mat4x4_mul_vec3(s, Mz, r);
+									mat4x4_mul_vec4(r, My, s);
+									mat4x4_mul_vec4(s, Mz, r);
 									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)=s[0];
 									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)=s[1];
 									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)=s[2];	

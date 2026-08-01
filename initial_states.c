@@ -573,7 +573,6 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		// 		v1[0]=px[n];
 		// 		v1[1]=py[n];
 		// 		v1[2]=pz[n];
-		// 		// mat4x4_mul_vec3(v2, M, v1);
 		// 		v2[0]=v1[0];
 		// 		v2[1]=v1[1];
 		// 		v2[2]=v1[2];				
