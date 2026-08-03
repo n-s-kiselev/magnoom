@@ -10,11 +10,11 @@ typedef enum {XUP, YUP, ZUP, ADD_SET, RESET, QUIT, PLAY, RECORD} enButton;
 
 void ChangeVectorMode( magnoom_ctx *, int );
 void ChangeColorMap( magnoom_ctx *, int );
-void ChangeInitialState( magnoom_ctx *, int );
+void ChangeInitialState( magnoom_ctx * );
 void ExecuteCommand( magnoom_ctx *, int );
-void HandleKeyDown( magnoom_ctx *, unsigned char, int, int );
-void HandleKeyUp( magnoom_ctx *, unsigned char, int, int );
-void HandleSpecialKey( magnoom_ctx *, int, int, int );
+void HandleKeyDown( magnoom_ctx *, unsigned char );
+void HandleKeyUp( magnoom_ctx *, unsigned char );
+void HandleSpecialKey( magnoom_ctx *, int );
 void HandleMouseButton( magnoom_ctx *, int, int, int, int );
 void HandleMouseDrag( magnoom_ctx *, int, int );
 float ElapsedSeconds( );
@@ -29,18 +29,18 @@ void DrawVBOMeshIndexed(const vbo_mesh *, GLenum, GLsizei, GLsizei);
 void DestroyVBOMesh(vbo_mesh *);
 // VBO array preparing functions
 void ReallocateArrayDrawing(magnoom_ctx *);
-void UpdatePrototypeVerNorInd(magnoom_ctx *, float*,float*,GLuint*,int,int,int);
-
+void UpdateProtoVerNorInd_Spins(magnoom_ctx *);
+void UpdateProtoVerNorInd_BextDC(magnoom_ctx *);
 
 void UpdateSpinComponents(float * , float * , float * , int);
-void UpdateSpinPositions(magnoom_ctx *, float[][3], int[3], float[][3], int, float[][3], float*, float*, float*);
+void UpdateSpinPositions(magnoom_ctx *);
 void InitSpinComponents(magnoom_ctx *, float * , float * , float * , double * , int N);
-void UpdateIndices(magnoom_ctx *, GLuint * , int, GLuint *, int, int);
-void UpdateVerticesNormalsColors(magnoom_ctx *, float *, float *, int, float *, float *, float *, int, float * , float * , float *, double * , int);
-void UpdateVerticesNormalsColors_H(magnoom_ctx *, float *, float *, int Kinp, float *, float *, float *, float, float, float, float, float, float);
+void UpdateIndices(magnoom_ctx *);
+void UpdateVerticesNormalsColors(magnoom_ctx *);
+void UpdateVerticesNormalsColors_BextDC(magnoom_ctx *);
 void UpdateKind(magnoom_ctx *);
 // drawing functions
-void GetBox(magnoom_ctx *, float[][3], int[3], float[3][3]);
+void GetBox(magnoom_ctx *);
 void drawVBO(magnoom_ctx *);
 
 
@@ -101,8 +101,11 @@ void Yup( magnoom_ctx *ctx )//metka
 
 
 
-void GetBox(magnoom_ctx *ctx, float abc[][3], int uABC[3], float box[3][3])
+void GetBox(magnoom_ctx *ctx)
 {
+	const float (*abc)[3] = ctx->abc;
+	const int *uABC = ctx->uABC;
+	float (*box)[3] = ctx->Box;
 	//origine of the box is (0,0,0)
 	//three vectors, b[1]+b[2]+b[2] define main diagonal of the box:
 	box[0][0] = (uABC[0])*abc[0][0];
@@ -218,7 +221,7 @@ void Display (magnoom_ctx *ctx)
 
 
 	drawVBO(ctx); // Draw VBO for spins
-	DrawVBOMeshIndexed(&ctx->field_mesh, GL_TRIANGLES, ctx->field_mesh.index_count, 0);
+	DrawVBOMeshIndexed(&ctx->BextDC_mesh, GL_TRIANGLES, ctx->BextDC_mesh.index_count, 0);
 	
 	// possibly draw the box and periodic boundary condition :
 	if( ctx->BoxOn != 0 ) {	
@@ -478,23 +481,20 @@ void TW_CALL CB_GetScale(void *value, void *clientData)
 }
 
 
-void TW_CALL CB_SetScaleH(const void *value, void *clientData )
+void TW_CALL CB_SetScaleBextDC(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->Scale_H = *( float *)value;
-    UpdateVerticesNormalsColors_H(ctx, ctx->vertexProto_H, ctx->normalProto_H, ctx->VCNum_H,
-                                  ctx->vertices_H, ctx->normals_H, ctx->colors_H,
-                                  ctx->Box[0][0]*0.6f, ctx->Box[1][1]*0.6f, ctx->Box[2][2]*0.6f,
-                                  ctx->VHf[0], ctx->VHf[1], ctx->VHf[2]);
-    UploadVBOMesh(&ctx->field_mesh, ctx->vertices_H, ctx->normals_H, ctx->colors_H,
-                  ctx->indices_H, VBO_UPLOAD_ALL);
+    ctx->Scale_BextDC = *( float *)value;
+	UpdateVerticesNormalsColors_BextDC(ctx);
+    UploadVBOMesh(&ctx->BextDC_mesh, ctx->vertices_BextDC, ctx->normals_BextDC, ctx->colors_BextDC,
+                  ctx->indices_BextDC, VBO_UPLOAD_ALL);
 }
 
 //  Callback function called by the tweak bar to get the 'AutoRotate' value
-void TW_CALL CB_GetScaleH(void *value, void *clientData)
+void TW_CALL CB_GetScaleBextDC(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(float *)value = ctx->Scale_H; // just copy Scale to value
+    *(float *)value = ctx->Scale_BextDC; // just copy Scale to value
 }
 
 
@@ -624,129 +624,127 @@ void TW_CALL CB_GetInvVal(void *value, void *clientData)
 }
 
 
-void TW_CALL CB_SetHfield(const void *value, void *clientData )
+void TW_CALL CB_SetBextDCMagnitude(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->Hf = *( float *)value; // copy value to InvertValue
+	ctx->BextDCMagnitude = *( float *)value;
     // metka
-    // if (Hf>1.1*fabs(ctx->Jij[0])) Hf=1.1*fabs(ctx->Jij[0]);
-    ctx->Bdc[0] = ctx->Hf * ctx->VHf[0];
-    ctx->Bdc[1] = ctx->Hf * ctx->VHf[1];
-    ctx->Bdc[2] = ctx->Hf * ctx->VHf[2];
-	UpdateVerticesNormalsColors_H(ctx, ctx->vertexProto_H, ctx->normalProto_H, ctx->VCNum_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->Box[0][0]*0.6, ctx->Box[1][1]*0.6, ctx->Box[2][2]*0.6, ctx->VHf[0], ctx->VHf[1], ctx->VHf[2]);
-	UploadVBOMesh(&ctx->field_mesh, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H, VBO_UPLOAD_ALL);
+    // if (BextDCMagnitude>1.1*fabs(ctx->Jij[0])) BextDCMagnitude=1.1*fabs(ctx->Jij[0]);
+    ctx->BextDC[0] = ctx->BextDCMagnitude * ctx->BextDCDirection[0];
+    ctx->BextDC[1] = ctx->BextDCMagnitude * ctx->BextDCDirection[1];
+    ctx->BextDC[2] = ctx->BextDCMagnitude * ctx->BextDCDirection[2];
+	UpdateVerticesNormalsColors_BextDC(ctx);
+	UploadVBOMesh(&ctx->BextDC_mesh, ctx->vertices_BextDC, ctx->normals_BextDC, ctx->colors_BextDC, ctx->indices_BextDC, VBO_UPLOAD_ALL);
 }
 
-void TW_CALL CB_GetHfield(void *value, void *clientData)
+void TW_CALL CB_GetBextDCMagnitude(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(float *)value = ctx->Hf; // just copy InvertValue to value
+	*(float *)value = ctx->BextDCMagnitude;
 }
 
 
-void TW_CALL CB_SetHfieldTheta(const void *value, void *clientData )
+void TW_CALL CB_SetBextDCTheta(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->VHtheta = *(float*)value;
-    ctx->VHf[0]=sin(PI*ctx->VHtheta/180)*cos(PI*ctx->VHphi/180);
-	ctx->VHf[1]=sin(PI*ctx->VHtheta/180)*sin(PI*ctx->VHphi/180);
-	ctx->VHf[2]=cos(PI*ctx->VHtheta/180);
-	ctx->Bdc[0]=ctx->Hf*ctx->VHf[0];
-	ctx->Bdc[1]=ctx->Hf*ctx->VHf[1];
-	ctx->Bdc[2]=ctx->Hf*ctx->VHf[2];
-	UpdateVerticesNormalsColors_H(ctx, ctx->vertexProto_H, ctx->normalProto_H, ctx->VCNum_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->Box[0][0]*0.6, ctx->Box[1][1]*0.6, ctx->Box[2][2]*0.6, ctx->VHf[0], ctx->VHf[1], ctx->VHf[2]);
-	UploadVBOMesh(&ctx->field_mesh, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H, VBO_UPLOAD_ALL);
+    ctx->BextDCTheta = *(float*)value;
+    ctx->BextDCDirection[0]=sin(PI*ctx->BextDCTheta/180)*cos(PI*ctx->BextDCPhi/180);
+	ctx->BextDCDirection[1]=sin(PI*ctx->BextDCTheta/180)*sin(PI*ctx->BextDCPhi/180);
+	ctx->BextDCDirection[2]=cos(PI*ctx->BextDCTheta/180);
+	ctx->BextDC[0]=ctx->BextDCMagnitude*ctx->BextDCDirection[0];
+	ctx->BextDC[1]=ctx->BextDCMagnitude*ctx->BextDCDirection[1];
+	ctx->BextDC[2]=ctx->BextDCMagnitude*ctx->BextDCDirection[2];
+	UpdateVerticesNormalsColors_BextDC(ctx);
+	UploadVBOMesh(&ctx->BextDC_mesh, ctx->vertices_BextDC, ctx->normals_BextDC, ctx->colors_BextDC, ctx->indices_BextDC, VBO_UPLOAD_ALL);
 }
 
-void TW_CALL CB_GetHfieldTheta(void *value, void *clientData)
+void TW_CALL CB_GetBextDCTheta(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(float*)value = ctx->VHtheta; 
+    *(float*)value = ctx->BextDCTheta;
 }
 
-void TW_CALL CB_SetHfieldPhi(const void *value, void *clientData )
+void TW_CALL CB_SetBextDCPhi(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->VHphi = *(float*)value;
-	ctx->VHf[0]=sin(PI*ctx->VHtheta/180)*cos(PI*ctx->VHphi/180);
-	ctx->VHf[1]=sin(PI*ctx->VHtheta/180)*sin(PI*ctx->VHphi/180);
-	ctx->VHf[2]=cos(PI*ctx->VHtheta/180);
-	ctx->Bdc[0]=ctx->Hf*ctx->VHf[0];
-	ctx->Bdc[1]=ctx->Hf*ctx->VHf[1];
-	ctx->Bdc[2]=ctx->Hf*ctx->VHf[2];
-	UpdateVerticesNormalsColors_H(ctx, ctx->vertexProto_H, ctx->normalProto_H, ctx->VCNum_H, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->Box[0][0]*0.6, ctx->Box[1][1]*0.6, ctx->Box[2][2]*0.6, ctx->VHf[0], ctx->VHf[1], ctx->VHf[2]);
-	UploadVBOMesh(&ctx->field_mesh, ctx->vertices_H, ctx->normals_H, ctx->colors_H, ctx->indices_H, VBO_UPLOAD_ALL);
+    ctx->BextDCPhi = *(float*)value;
+	ctx->BextDCDirection[0]=sin(PI*ctx->BextDCTheta/180)*cos(PI*ctx->BextDCPhi/180);
+	ctx->BextDCDirection[1]=sin(PI*ctx->BextDCTheta/180)*sin(PI*ctx->BextDCPhi/180);
+	ctx->BextDCDirection[2]=cos(PI*ctx->BextDCTheta/180);
+	ctx->BextDC[0]=ctx->BextDCMagnitude*ctx->BextDCDirection[0];
+	ctx->BextDC[1]=ctx->BextDCMagnitude*ctx->BextDCDirection[1];
+	ctx->BextDC[2]=ctx->BextDCMagnitude*ctx->BextDCDirection[2];
+	UpdateVerticesNormalsColors_BextDC(ctx);
+	UploadVBOMesh(&ctx->BextDC_mesh, ctx->vertices_BextDC, ctx->normals_BextDC, ctx->colors_BextDC, ctx->indices_BextDC, VBO_UPLOAD_ALL);
 }
 
-void TW_CALL CB_GetHfieldPhi(void *value, void *clientData)
+void TW_CALL CB_GetBextDCPhi(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(float*)value = ctx->VHphi; 
+    *(float*)value = ctx->BextDCPhi;
 }
 
 
 
-// void TW_CALL CB_SetHfieldXYZ(const void *value, void *clientData )
+// void TW_CALL CB_SetBextDCDirection(const void *value, void *clientData )
 // {
 // 	(void)clientData; // unused
-//  //    VHtheta = *(float*)value;
-//  //    VHf[0]=sin(PI*VHtheta/180)*cos(PI*VHphi/180);
-// 	// VHf[1]=sin(PI*VHtheta/180)*sin(PI*VHphi/180);
-// 	// VHf[2]=cos(PI*VHtheta/180);
-// 	UpdateVerticesNormalsColors_H(&mag_ctx, vertexProto_H, normalProto_H, VCNum_H, vertices_H, normals_H, colors_H, Box[0][0]*0.8, Box[1][1]*0.8, Box[2][2]*0.8, VHf[0], VHf[1], VHf[2]);
-
+//  //    BextDCTheta = *(float*)value;
+//  //    BextDCDirection[0]=sin(PI*BextDCTheta/180)*cos(PI*BextDCPhi/180);
+// 	// BextDCDirection[1]=sin(PI*BextDCTheta/180)*sin(PI*BextDCPhi/180);
+// 	// BextDCDirection[2]=cos(PI*BextDCTheta/180);
 // }
 
-// void TW_CALL CB_GetHfieldXYZ(void *value, void *clientData)
+// void TW_CALL CB_GetBextDCDirection(void *value, void *clientData)
 // {
 //     (void)clientData; 
-//     // *(float*)value = VHtheta; //metka check this comment!
+//     // *(float*)value = BextDCTheta; //metka check this comment!
 // }
 
 
 void TW_CALL CB_SetNumImages(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->num_images = *( int *)value; // copy value to Period_dc
+	ctx->num_images = *( int *)value;
     ReallocateMemoryForImages(ctx, ctx->num_images, ctx->NOS);
 }
 
 void TW_CALL CB_GetNumImages(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->num_images; // just copy Period_dc to value
+	*(int *)value = ctx->num_images;
 }
 
-void TW_CALL CB_SetACPeriod(const void *value, void *clientData )
+void TW_CALL CB_SetBextACPeriod(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->Period_dc = *( double *)value; // copy value to Period_dc
-    ctx->Omega_dc = TPI/ctx->Period_dc;
+    ctx->BextACPeriod = *( double *)value; // copy value to BextACPeriod
+    ctx->BextACOmega = TPI/ctx->BextACPeriod;
 }
 
-void TW_CALL CB_GetACPeriod(void *value, void *clientData)
+void TW_CALL CB_GetBextACPeriod(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(double *)value = ctx->Period_dc; // just copy Period_dc to value
+    *(double *)value = ctx->BextACPeriod; // just copy BextACPeriod to value
 }
 
-void TW_CALL CB_SetOmega(const void *value, void *clientData )
+void TW_CALL CB_SetBextACOmega(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->Omega_dc = *( double *)value; // copy value to Period_dc
-    ctx->Period_dc = TPI/ctx->Omega_dc;
+	ctx->BextACOmega = *( double *)value;
+    ctx->BextACPeriod = TPI/ctx->BextACOmega;
 }
 
-void TW_CALL CB_GetOmega(void *value, void *clientData)
+void TW_CALL CB_GetBextACOmega(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(double *)value = ctx->Omega_dc; // just copy Omega_dc to value
+    *(double *)value = ctx->BextACOmega; // just copy BextACOmega to value
 }
 
 void TW_CALL CB_SetInitial( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	ChangeInitialState(ctx,  ctx->WhichInitialState );
+	ChangeInitialState(ctx);
 }
 
 void TW_CALL CB_SetShape( void *clientData )
@@ -1901,7 +1899,8 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarCB(ctx->view_bar, "Pivot", TW_TYPE_FLOAT, CB_SetPivot, CB_GetPivot,  ctx, " min=0 max=1 step=0.01 help='Pivot of 3D arrow.' group='Appearance' ");
 	TwAddVarCB(ctx->view_bar, "Faces", TW_TYPE_INT32, CB_SetFaces, CB_GetFaces,  ctx, " min=3 max=20 step=1 help='Number of faces for 3D arrow.' group='Appearance' ");
 	TwAddVarCB(ctx->view_bar, "Scale", TW_TYPE_FLOAT, CB_SetScale, CB_GetScale,  ctx, " min=0.1 max=10 step=0.01 keyIncr='+' keyDecr='-' help='Scale the vectors.' group='Appearance' ");
-    TwAddVarCB(ctx->view_bar, "Scale Bext", TW_TYPE_FLOAT, CB_SetScaleH, CB_GetScaleH,  ctx, " min=0.1 max=10 step=0.01 keyIncr='+' keyDecr='-' help='Scale the vectors.' group='Appearance' ");
+	TwAddVarCB(ctx->view_bar, "BextDCArrowScale", TW_TYPE_FLOAT, CB_SetScaleBextDC, CB_GetScaleBextDC, ctx,
+		"label='Bext DC arrow scale' min=0.1 max=10 step=0.01 keyIncr='+' keyDecr='-' help='Scale the rendered static external-field arrow.' group='Appearance'");
 
 
 	TwAddVarRW(ctx->view_bar, "Show basis", TW_TYPE_BOOL32, &ctx->AxesOn, " key=CTRL+o  group='Appearance'");
@@ -2017,20 +2016,20 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarRW(ctx->control_bar, "Curr_u", TW_TYPE_FLOAT, &ctx->Curr_u, "label='Curr_u'  step=0.001 help='Current in Zhang-Li torque' ");
 
     TwAddSeparator(ctx->control_bar, "sep-2", NULL);
-	TwAddVarCB(ctx->control_bar, "FieldTheta", TW_TYPE_FLOAT, CB_SetHfieldTheta, CB_GetHfieldTheta, ctx, "label='H theta'  step=0.0001 help='Change the direction of applied field' ");
-	TwAddVarCB(ctx->control_bar, "FieldPhi", TW_TYPE_FLOAT, CB_SetHfieldPhi, CB_GetHfieldPhi, ctx, "label='H phi' step=0.0001  help='Change the direction of applied field' ");
-	TwAddVarCB(ctx->control_bar, "Field", TW_TYPE_FLOAT, CB_SetHfield, CB_GetHfield, ctx, "label='Field'  min=0 step=0.0000001 help='Change the strength of applied field' ");
-	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldDir, CB_GetHfieldDir, VHf, 
-	// "label='Field direction' opened=true help='Change the direction of applied field' ");
+	TwAddVarCB(ctx->control_bar, "BextDCTheta", TW_TYPE_FLOAT, CB_SetBextDCTheta, CB_GetBextDCTheta, ctx, "label='Bext DC theta' step=0.0001 help='Change the static external-field direction' ");
+	TwAddVarCB(ctx->control_bar, "BextDCPhi", TW_TYPE_FLOAT, CB_SetBextDCPhi, CB_GetBextDCPhi, ctx, "label='Bext DC phi' step=0.0001 help='Change the static external-field direction' ");
+	TwAddVarCB(ctx->control_bar, "BextDCMagnitude", TW_TYPE_FLOAT, CB_SetBextDCMagnitude, CB_GetBextDCMagnitude, ctx, "label='Bext DC magnitude' min=0 step=0.0000001 help='Change the static external-field magnitude' ");
+	// TwAddVarCB(control_bar, "BextDCDirection", TW_TYPE_DIR3F, CB_SetBextDCDirection, CB_GetBextDCDirection, BextDCDirection,
+	// "label='Bext DC direction' opened=true help='Change the static external-field direction' ");
 	// temp_color[0] = 55;
 	// temp_color[1] = 55;
 	// temp_color[2] = 155;
-	// TwSetParam(control_bar, "FieldDir", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
-	// // TwAddVarRW(control_bar, "Field", TW_TYPE_FLOAT, &Hf, 
-	// // "label='Field' help='The value of uniaxial anisotropy' ");
+	// TwSetParam(control_bar, "BextDCDirection", "arrowcolor", TW_PARAM_INT32, 3, temp_color);
+	// // TwAddVarRW(control_bar, "BextDCMagnitude", TW_TYPE_FLOAT, &BextDCMagnitude,
+	// // "label='Bext DC magnitude' help='Static external-field magnitude' ");
 	// TwAddSeparator(control_bar, "control_sep1", NULL);
-	// TwAddVarCB(control_bar, "FieldDir", TW_TYPE_DIR3F, CB_SetHfieldXYZ, CB_GetHfieldXYZ, ctx, 
-	// " label='Field direction' opened=false help='Change the applied field direction.' ");
+	// TwAddVarCB(control_bar, "BextDCDirection", TW_TYPE_DIR3F, CB_SetBextDCDirection, CB_GetBextDCDirection, ctx,
+	// "label='Bext DC direction' opened=false help='Change the static external-field direction.' ");
 
 	TwAddSeparator(ctx->control_bar, "control_sep2", NULL);
 
@@ -2176,41 +2175,41 @@ void setupTweakBar(magnoom_ctx *ctx)
 
     TwAddSeparator(ctx->initial_bar, "sep_isoline", NULL);
 
-/*  AC field F5 */
-	ctx->ac_field_bar = TwNewBar("AC_Field");
-	TwDefine(" AC_Field iconified=true "); 
-	TwDefine(" AC_Field color='100 70 70' alpha=200"); // change default tweak bar color
-	tw_glfw2_set_bar_size(ctx->ac_field_bar, 220, 530);
-	TwDefine(" AC_Field help='F5: show/hide AC Field bar' "); // change default tweak bar size and color
-	TwAddVarRW(ctx->ac_field_bar, "AC field on/off", TW_TYPE_BOOL32, &ctx->AC_FIELD_ON, "keyIncr='f' label='AC/DC on/off' true='on' false='off' help='On/off ac field'");
-    TwAddVarRW(ctx->ac_field_bar, "Mode recording on/off", TW_TYPE_BOOL32, &ctx->AC_MODE_REC, "label='Mode Rec. on/off' true='on' false='off' help='On/Off recording dynamical mode'");
-    TwAddVarRW(ctx->ac_field_bar, "Average Dynamical Mode", TW_TYPE_INT32, &ctx->rec_num_mode, "label='Num Mode Average' help='Number over which dynamical mode is averaged'");
-    TwAddVarCB(ctx->ac_field_bar, "NumImages", TW_TYPE_INT32, CB_SetNumImages, CB_GetNumImages,  ctx, "min=1 help='period of sin-field or width of gaussian pulse field' ");
+/*  Time-dependent external field F5 */
+	ctx->BextAC_bar = TwNewBar("BextAC");
+	TwDefine(" BextAC iconified=true ");
+	TwDefine(" BextAC color='100 70 70' alpha=200"); // change default tweak bar color
+	tw_glfw2_set_bar_size(ctx->BextAC_bar, 220, 530);
+	TwDefine(" BextAC help='F5: show/hide Bext AC bar' "); // change default tweak bar size and color
+	TwAddVarRW(ctx->BextAC_bar, "BextACEnabled", TW_TYPE_BOOL32, &ctx->BextACEnabled, "keyIncr='f' label='Bext AC enabled' true='on' false='off' help='Enable the time-dependent external-field component'");
+    TwAddVarRW(ctx->BextAC_bar, "BextACModeRecording", TW_TYPE_BOOL32, &ctx->BextACModeRecording, "label='Mode recording' true='on' false='off' help='Record the phase-resolved dynamical mode'");
+    TwAddVarRW(ctx->BextAC_bar, "Average Dynamical Mode", TW_TYPE_INT32, &ctx->rec_num_mode, "label='Num Mode Average' help='Number over which dynamical mode is averaged'");
+    TwAddVarCB(ctx->BextAC_bar, "ModeRecordingPhaseCount", TW_TYPE_INT32, CB_SetNumImages, CB_GetNumImages, ctx, "label='Phase count' min=1 help='Number of phase bins used for dynamical-mode recording' ");
 
-	TwAddVarRW(ctx->ac_field_bar, "AC field", TW_TYPE_FLOAT, &ctx->Hac,	"label='AC field'  help='The value of AC field amplitude' "); 
+	TwAddVarRW(ctx->BextAC_bar, "BextACAmplitude", TW_TYPE_FLOAT, &ctx->BextACAmplitude, "label='Bext AC amplitude' help='Set the time-dependent external-field amplitude' ");
 
-	TwAddVarRW(ctx->ac_field_bar, "ACfieldDir", TW_TYPE_DIR3F, &ctx->VHac, "label='Field direction' opened=true help='Change the direction of applied field' ");
+	TwAddVarRW(ctx->BextAC_bar, "BextACDirection", TW_TYPE_DIR3F, &ctx->BextACDirection, "label='Bext AC direction' opened=true help='Change the time-dependent external-field direction' ");
 
-	TwAddSeparator(ctx->ac_field_bar, "sep0", NULL);
+	TwAddSeparator(ctx->BextAC_bar, "sep0", NULL);
 
 	ctx->temp_color[0] = 55;
 	ctx->temp_color[1] = 55;
 	ctx->temp_color[2] = 155;
 
-	TwSetParam(ctx->ac_field_bar, "ACfieldDir", "arrowcolor", TW_PARAM_INT32, 3, ctx->temp_color);
+	TwSetParam(ctx->BextAC_bar, "BextACDirection", "arrowcolor", TW_PARAM_INT32, 3, ctx->temp_color);
 	{
-    TwEnumVal       enenACFieldTw[] = { {SIN_FIELD,     "AC Sin(omega*t) "      },
-                                        {GAUSSIAN_FIELD,"Gaussian field pulse" },
-                                        {SINC_FIELD,"Sinc(omega*[t-t_offset])"},
-                                        {CIRCULAR_FIELD,"Circular field (omega*t)"}};
-    TwType          TV_TYPE_INI_STATE = TwDefineEnum("AC-field", enenACFieldTw, 4);
-	TwAddVarRW(ctx->ac_field_bar, "Type of AC field", TV_TYPE_INI_STATE, &ctx->WhichACField, "help='Choose type of signal for time dependent magnetic field'");
+	TwEnumVal       enBextACWaveformTw[] = { {BEXT_AC_SIN, "Sin(omega*t)"},
+	                                    {BEXT_AC_GAUSSIAN, "Gaussian pulse"},
+	                                    {BEXT_AC_SINC, "Sinc(omega*[t-offset])"},
+	                                    {BEXT_AC_CIRCULAR, "Circular (omega*t)"}};
+	TwType          TV_TYPE_INI_STATE = TwDefineEnum("BextACWaveform", enBextACWaveformTw, 4);
+	TwAddVarRW(ctx->BextAC_bar, "BextACWaveform", TV_TYPE_INI_STATE, &ctx->BextACWaveform, "label='Bext AC waveform' help='Choose the time-dependent external-field waveform'");
 	}
 
-	TwAddVarRW(ctx->ac_field_bar, "t_offset", TW_TYPE_FLOAT,  &ctx->t_offset, "min=0 help='offset of time scale.' ");
-	TwAddVarRW(ctx->ac_field_bar, "pulse width", TW_TYPE_FLOAT,  &ctx->GPulseWidth, "min=0 help='width of Gaussian pulse.' ");
-	TwAddVarCB(ctx->ac_field_bar, "Period/Width", TW_TYPE_DOUBLE, CB_SetACPeriod, CB_GetACPeriod,  ctx, "min=0 help='period of sin-field or width of gaussian pulse field' ");
-	TwAddVarCB(ctx->ac_field_bar, "Omega=2*pi*P", TW_TYPE_DOUBLE, CB_SetOmega, CB_GetOmega,  ctx, "min=0 help='period of sin-field or width of gaussian pulse field' ");
+	TwAddVarRW(ctx->BextAC_bar, "BextACTimeOffset", TW_TYPE_FLOAT, &ctx->BextACTimeOffset, "label='Time offset' min=0 help='Set the pulse time offset' ");
+	TwAddVarRW(ctx->BextAC_bar, "BextACPulseWidth", TW_TYPE_FLOAT, &ctx->BextACPulseWidth, "label='Pulse width/cutoff' min=0 help='Set the Gaussian width or sinc cutoff time' ");
+	TwAddVarCB(ctx->BextAC_bar, "BextACPeriod", TW_TYPE_DOUBLE, CB_SetBextACPeriod, CB_GetBextACPeriod, ctx, "label='Bext AC period' min=0 help='Set the time-dependent field period' ");
+	TwAddVarCB(ctx->BextAC_bar, "BextACOmega", TW_TYPE_DOUBLE, CB_SetBextACOmega, CB_GetBextACOmega, ctx, "label='Bext AC omega' min=0 help='Set omega; omega=2*pi/period' ");
 
 
 /*  Info bar F11 */
@@ -2226,19 +2225,19 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarRO(ctx->info_bar, "Run/Stop", TW_TYPE_BOOL32,  &ctx->Play, "true='RUNING' false='STOPED' ");
 	TwAddVarRO(ctx->info_bar, "RECORD", TW_TYPE_BOOL32,  &ctx->Record, "true='On' false='Off' ");
 	TwAddSeparator(ctx->info_bar, "sep+21", NULL);
-	//TwAddVarRO(info_bar, "AC field", TW_TYPE_BOOL32,  &AC_FIELD_ON, "true='On' false='Off' help='AC filed on/off'");
-	TwAddButton(ctx->info_bar, "AC field", NULL, NULL, " ");
-	TwAddVarRO(ctx->info_bar, " Bx ", TW_TYPE_DOUBLE,  &ctx->Bac[0], " ");
-	TwAddVarRO(ctx->info_bar, " By ", TW_TYPE_DOUBLE,  &ctx->Bac[1], " ");
-	TwAddVarRO(ctx->info_bar, " Bz ", TW_TYPE_DOUBLE,  &ctx->Bac[2], " ");
+	//TwAddVarRO(info_bar, "BextACEnabled", TW_TYPE_BOOL32, &BextACEnabled, "true='On' false='Off'");
+	TwAddButton(ctx->info_bar, "Bext AC", NULL, NULL, " ");
+	TwAddVarRO(ctx->info_bar, " BextAC x ", TW_TYPE_DOUBLE, &ctx->BextAC[0], " ");
+	TwAddVarRO(ctx->info_bar, " BextAC y ", TW_TYPE_DOUBLE, &ctx->BextAC[1], " ");
+	TwAddVarRO(ctx->info_bar, " BextAC z ", TW_TYPE_DOUBLE, &ctx->BextAC[2], " ");
 
 	TwAddSeparator(ctx->info_bar, "sep+11", NULL);
 
-	//TwAddVarRO(info_bar, "DC field", TW_TYPE_FLOAT, NULL, " label='DC field'");
-	TwAddButton(ctx->info_bar, "DC field", NULL, NULL, " ");
-	TwAddVarRO(ctx->info_bar, " Bx", TW_TYPE_FLOAT,  &ctx->Bdc[0], " ");
-	TwAddVarRO(ctx->info_bar, " By", TW_TYPE_FLOAT,  &ctx->Bdc[1], " ");
-	TwAddVarRO(ctx->info_bar, " Bz", TW_TYPE_FLOAT,  &ctx->Bdc[2], " ");
+	//TwAddVarRO(info_bar, "Bext DC", TW_TYPE_FLOAT, NULL, "label='Bext DC'");
+	TwAddButton(ctx->info_bar, "Bext DC", NULL, NULL, " ");
+	TwAddVarRO(ctx->info_bar, " BextDC x", TW_TYPE_FLOAT, &ctx->BextDC[0], " ");
+	TwAddVarRO(ctx->info_bar, " BextDC y", TW_TYPE_FLOAT, &ctx->BextDC[1], " ");
+	TwAddVarRO(ctx->info_bar, " BextDC z", TW_TYPE_FLOAT, &ctx->BextDC[2], " ");
 
 	TwAddSeparator(ctx->info_bar, "sep-0", NULL);
 	TwAddVarRO(ctx->info_bar, "NPB", TW_TYPE_INT32,  &ctx->AtomsPerBlock, "help='number of atoms per block' ");
@@ -2299,16 +2298,16 @@ void GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action, int 
 
 	int special = GLFWSpecialToWindowKey(key);
 	if (special && action != GLFW_RELEASE) {
-		HandleSpecialKey(ctx, special, 0, 0);
+		HandleSpecialKey(ctx, special);
 		return;
 	}
 	if (key == GLFW_KEY_ESCAPE && action != GLFW_RELEASE) {
-		HandleKeyDown(ctx, TW_KEY_ESCAPE, 0, 0);
+		HandleKeyDown(ctx, TW_KEY_ESCAPE);
 		return;
 	}
 	if (action == GLFW_RELEASE && key >= 'A' && key <= 'Z') {
 		unsigned char character = (unsigned char)((mods & GLFW_MOD_SHIFT) ? key : key - 'A' + 'a');
-		HandleKeyUp(ctx, character, 0, 0);
+		HandleKeyUp(ctx, character);
 	}
 }
 
@@ -2316,7 +2315,7 @@ void GLFWCharCallback(GLFWwindow *window, unsigned int character)
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	if (character > 255 || TwEventCharGLFW((int)character, GLFW_PRESS)) return;
-	HandleKeyDown(ctx, (unsigned char)character, 0, 0);
+	HandleKeyDown(ctx, (unsigned char)character);
 }
 
 void GLFWMouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
@@ -2414,7 +2413,7 @@ void HandleMouseDrag(magnoom_ctx *ctx, int x, int y)
 }
 
 // the keyboard callback:
-void HandleKeyDown( magnoom_ctx *ctx, unsigned char key, int x, int y )
+void HandleKeyDown( magnoom_ctx *ctx, unsigned char key )
 {   
     {
       // your code here to handle the event	
@@ -2552,7 +2551,7 @@ void HandleKeyDown( magnoom_ctx *ctx, unsigned char key, int x, int y )
 }
 
 
-void HandleKeyUp( magnoom_ctx *ctx, unsigned char key, int x, int y )
+void HandleKeyUp( magnoom_ctx *ctx, unsigned char key )
 {
 		switch( key )
 		{			
@@ -2603,7 +2602,7 @@ void HandleKeyUp( magnoom_ctx *ctx, unsigned char key, int x, int y )
 }
 
 
-void HandleSpecialKey( magnoom_ctx *ctx, int key, int x, int y ){
+void HandleSpecialKey( magnoom_ctx *ctx, int key ){
 int isiconified;
     {
       // your code here to handle the event	
@@ -2672,11 +2671,11 @@ int isiconified;
 				}
 				break;
 			case  WINDOW_KEY_F5:
-				TwGetParam(ctx->ac_field_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
+				TwGetParam(ctx->BextAC_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
-					TwDefine(" AC_Field iconified=false ");				
+					TwDefine(" BextAC iconified=false ");
 				}else{
-					TwDefine(" AC_Field iconified=true ");
+					TwDefine(" BextAC iconified=true ");
 				}
 				break;
 			case  WINDOW_KEY_F11:
@@ -2718,9 +2717,9 @@ void ExecuteCommand( magnoom_ctx *ctx, int id )
 	}
 }
 
-void ChangeInitialState ( magnoom_ctx *ctx, int id )
+void ChangeInitialState(magnoom_ctx *ctx)
 {
-	InitSpinComponents( ctx, ctx->Px, ctx->Py, ctx->Pz, ctx->S, id );
+	InitSpinComponents(ctx, ctx->Px, ctx->Py, ctx->Pz, ctx->S, ctx->WhichInitialState);
 	for (int i=0;i<ctx->NOS;i++) { VEC_X(ctx->bS,i)=VEC_X(ctx->S,i); VEC_Y(ctx->bS,i)=VEC_Y(ctx->S,i); VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i);}
 	ChangeVectorMode (ctx,  1 );
 	ctx->SpecialEvent=1;
@@ -2733,11 +2732,11 @@ void ChangeVectorMode( magnoom_ctx *ctx, int id )
 		case 0: // change of mode e.g. from point to arrow
 		ReallocateArrayDrawing(ctx);
 		// Fill array for prototype (arrow or cane) array 
-		UpdatePrototypeVerNorInd(ctx, ctx->vertexProto, ctx->normalProto, ctx->indicesProto, ctx->arrowFaces, ctx->WhichVectorMode,0); 
+		UpdateProtoVerNorInd_Spins(ctx);
 		// Fill big array for indecies for all arrows, cans, cones or boxes 
-		UpdateIndices(ctx, ctx->indicesProto , ctx->IdNumProto, ctx->indices, ctx->IdNum, ctx->VCNumProto);
+		UpdateIndices(ctx);
 		case 1:	// change only the layer(s) for drawing
-		UpdateVerticesNormalsColors(ctx, ctx->vertexProto, ctx->normalProto, ctx->VCNumProto, ctx->vertices, ctx->normals, ctx->colors, ctx->VCNum, ctx->Px, ctx->Py, ctx->Pz, ctx->bS, ctx->WhichVectorMode);
+		UpdateVerticesNormalsColors(ctx);
 		// FILTER slice mode uses N_filter subset
 		if (ctx->WhichSliceMode == FILTER) {
 			ctx->spin_mesh.index_count  = ctx->N_filter * ctx->IdNumProto;
@@ -2917,23 +2916,23 @@ void ReallocateArrayDrawing(magnoom_ctx *ctx)
 	}
 }
 
-void ReallocateArrayDrawing_H(magnoom_ctx *ctx)
+void ReallocateArrayDrawing_BextDC(magnoom_ctx *ctx)
 {
-	free(ctx->vertexProto_H); free(ctx->normalProto_H); free(ctx->indicesProto_H);	
-	free(ctx->vertices_H); free(ctx->normals_H); free(ctx->colors_H); free(ctx->indices_H);			
+	free(ctx->vertexProto_BextDC); free(ctx->normalProto_BextDC); free(ctx->indicesProto_BextDC);
+	free(ctx->vertices_BextDC); free(ctx->normals_BextDC); free(ctx->colors_BextDC); free(ctx->indices_BextDC);
 	// arrowFaces - number of arrow faces
-	int ElNum_H = 5*ctx->arrowFaces_H-4; // number of triangles per arrow
-	ctx->IdNum_H = 3*ElNum_H; // number of indixes per arrow
-	ctx->VCNum_H = 3*(2*(1+ctx->arrowFaces_H)-2+4*ctx->arrowFaces_H+3*ctx->arrowFaces_H);
-	// Allocate memory for H arrow prototype  
-	ctx->vertexProto_H  	= (float  *)malloc(ctx->VCNum_H * sizeof( float  ));
-	ctx->normalProto_H  	= (float  *)malloc(ctx->VCNum_H * sizeof( float  ));
-	ctx->indicesProto_H 	= (GLuint *)malloc(ctx->IdNum_H * sizeof( GLuint ));	
-	// Allocate memory for H arrow 
-	ctx->vertices_H		= (float  *)malloc(ctx->VCNum_H * sizeof( float  ));
-	ctx->normals_H 		= (float  *)malloc(ctx->VCNum_H * sizeof( float  ));
-	ctx->colors_H 		= (float  *)malloc(ctx->VCNum_H * sizeof( float  ));
-	ctx->indices_H		= (GLuint *)malloc(ctx->IdNum_H * sizeof( GLuint ));				
+	int ElNum_BextDC = 5*ctx->arrowFaces_BextDC-4; // number of triangles per arrow
+	ctx->IdNum_BextDC = 3*ElNum_BextDC; // number of indixes per arrow
+	ctx->VCNum_BextDC = 3*(2*(1+ctx->arrowFaces_BextDC)-2+4*ctx->arrowFaces_BextDC+3*ctx->arrowFaces_BextDC);
+	// Allocate memory for the Bext DC arrow prototype
+	ctx->vertexProto_BextDC  	= (float  *)malloc(ctx->VCNum_BextDC * sizeof( float  ));
+	ctx->normalProto_BextDC  	= (float  *)malloc(ctx->VCNum_BextDC * sizeof( float  ));
+	ctx->indicesProto_BextDC 	= (GLuint *)malloc(ctx->IdNum_BextDC * sizeof( GLuint ));
+	// Allocate memory for the Bext DC arrow
+	ctx->vertices_BextDC		= (float  *)malloc(ctx->VCNum_BextDC * sizeof( float  ));
+	ctx->normals_BextDC 		= (float  *)malloc(ctx->VCNum_BextDC * sizeof( float  ));
+	ctx->colors_BextDC 		= (float  *)malloc(ctx->VCNum_BextDC * sizeof( float  ));
+	ctx->indices_BextDC		= (GLuint *)malloc(ctx->IdNum_BextDC * sizeof( GLuint ));
 }
 
 void ReallocateArrayDrawing_BOX(magnoom_ctx *ctx)
@@ -2985,7 +2984,7 @@ void ReallocateArrayDrawing_PBC(magnoom_ctx *ctx)
 	ctx->indices_PBC_C	= (GLuint *)malloc(ctx->VCNum_PBC * sizeof( GLuint ));					
 }
 
-void UpdatePrototypeVerNorInd(magnoom_ctx *ctx, float * V, float * N, GLuint * I, int faces, int mode, int style)//faces = arrowFaces
+static void FillProtoVerNorInd(magnoom_ctx *ctx, float * V, float * N, GLuint * I, int faces, int mode, int style)//faces = arrowFaces
 {
 	int   i, j;
 	float H = 1.00f;	// total length
@@ -3323,9 +3322,24 @@ void UpdatePrototypeVerNorInd(magnoom_ctx *ctx, float * V, float * N, GLuint * I
 	}	
 }
 
+void UpdateProtoVerNorInd_Spins(magnoom_ctx *ctx)
+{
+	FillProtoVerNorInd(ctx, ctx->vertexProto, ctx->normalProto, ctx->indicesProto,
+		ctx->arrowFaces, ctx->WhichVectorMode, 0);
+}
 
-void UpdateIndices(magnoom_ctx *ctx, GLuint * Iinp , int Kinp, GLuint * Iout, int Kout, int VerN)
+void UpdateProtoVerNorInd_BextDC(magnoom_ctx *ctx)
+{
+	FillProtoVerNorInd(ctx, ctx->vertexProto_BextDC, ctx->normalProto_BextDC, ctx->indices_BextDC,
+		ctx->arrowFaces_BextDC, ARROW1, 1);
+}
+
+void UpdateIndices(magnoom_ctx *ctx)
 {	// VerN number of vertesiec components per one prototype arrow
+	const GLuint *Iinp = ctx->indicesProto;
+	const int Kinp = ctx->IdNumProto;
+	GLuint *Iout = ctx->indices;
+	const int VerN = ctx->VCNumProto;
 	int i,j;
 	int NOS_L=0;
 	int NOB_L=0;
@@ -3390,11 +3404,18 @@ void UpdateIndices(magnoom_ctx *ctx, GLuint * Iinp , int Kinp, GLuint * Iout, in
 
 
 
-void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, int Kinp,
-							float * Vout, float * Nout, float * Cout, int Kout,
-							float * Px, float * Py, float * Pz,
-							double * spinArr, int mode)
+void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 {
+	const float *Vinp = ctx->vertexProto;
+	const float *Ninp = ctx->normalProto;
+	const int Kinp = ctx->VCNumProto;
+	float *Vout = ctx->vertices;
+	float *Nout = ctx->normals;
+	float *Cout = ctx->colors;
+	const float *Px = ctx->Px;
+	const float *Py = ctx->Py;
+	const float *Pz = ctx->Pz;
+	const double *spinArr = ctx->bS;
 	//float tmpV1[3], tmpV2[3], tmpV3[3], RGB[3], U, A;
 	float S[3], RGB[3], U, A;
 	float vlength;
@@ -3933,11 +3954,20 @@ void UpdateVerticesNormalsColors (magnoom_ctx *ctx, float * Vinp, float * Ninp, 
 	}
 }
 
-void UpdateVerticesNormalsColors_H(magnoom_ctx *ctx, float * Vinp, float * Ninp, int Kinp, 
-							float * Vout, float * Nout, float * Cout,
-							float Px, float Py, float Pz,
-							float Vx, float Vy, float Vz)
+void UpdateVerticesNormalsColors_BextDC(magnoom_ctx *ctx)
 {
+	const float *Vinp = ctx->vertexProto_BextDC;
+	const float *Ninp = ctx->normalProto_BextDC;
+	const int Kinp = ctx->VCNum_BextDC;
+	float *Vout = ctx->vertices_BextDC;
+	float *Nout = ctx->normals_BextDC;
+	float *Cout = ctx->colors_BextDC;
+	const float Px = ctx->Box[0][0]*0.6;
+	const float Py = ctx->Box[1][1]*0.6;
+	const float Pz = ctx->Box[2][2]*0.6;
+	const float Vx = ctx->BextDCDirection[0];
+	const float Vy = ctx->BextDCDirection[1];
+	const float Vz = ctx->BextDCDirection[2];
 	int i;
     float Sx=Vx;
     float Sy=Vy;
@@ -3946,9 +3976,9 @@ void UpdateVerticesNormalsColors_H(magnoom_ctx *ctx, float * Vinp, float * Ninp,
 	if (Sz==-1){
 		for (int k=0; k<Kinp/3; k++){// k runs over ctx->vertices 
 			i = 3*k;	// vertex index
-			Vout[i+0] = (-Vinp[i+0])*ctx->Hf*ctx->Scale_H + Px;
-			Vout[i+1] = ( Vinp[i+1])*ctx->Hf*ctx->Scale_H + Py;
-			Vout[i+2] = (-Vinp[i+2])*ctx->Hf*ctx->Scale_H + Pz;	
+			Vout[i+0] = (-Vinp[i+0])*ctx->BextDCMagnitude*ctx->Scale_BextDC + Px;
+			Vout[i+1] = ( Vinp[i+1])*ctx->BextDCMagnitude*ctx->Scale_BextDC + Py;
+			Vout[i+2] = (-Vinp[i+2])*ctx->BextDCMagnitude*ctx->Scale_BextDC + Pz;
 		
 			Nout[i+0] = -Ninp[i+0];
 			Nout[i+1] =  Ninp[i+1];
@@ -3968,9 +3998,9 @@ void UpdateVerticesNormalsColors_H(magnoom_ctx *ctx, float * Vinp, float * Ninp,
 			i = 3*k;	// vertex index
 			U = 1.0f/(Sx*Sx + Sy*Sy+(1e-37f)); 		
 			A = (-Sy*Vinp[3*k+0] + Sx*Vinp[3*k+1])*(1. - Sz)*U; 
-			Vout[i+0] = (-Sy*A + Vinp[3*k+0]*Sz + Sx*Vinp[3*k+2]			)*ctx->Hf*ctx->Scale_H + Px;
-			Vout[i+1] = ( Sx*A + Vinp[3*k+1]*Sz + Sy*Vinp[3*k+2]			)*ctx->Hf*ctx->Scale_H + Py;
-			Vout[i+2] = ( Vinp[3*k+2]*Sz - (Sx*Vinp[3*k+0]+Sy*Vinp[3*k+1])	)*ctx->Hf*ctx->Scale_H + Pz;	
+			Vout[i+0] = (-Sy*A + Vinp[3*k+0]*Sz + Sx*Vinp[3*k+2]			)*ctx->BextDCMagnitude*ctx->Scale_BextDC + Px;
+			Vout[i+1] = ( Sx*A + Vinp[3*k+1]*Sz + Sy*Vinp[3*k+2]			)*ctx->BextDCMagnitude*ctx->Scale_BextDC + Py;
+			Vout[i+2] = ( Vinp[3*k+2]*Sz - (Sx*Vinp[3*k+0]+Sy*Vinp[3*k+1])	)*ctx->BextDCMagnitude*ctx->Scale_BextDC + Pz;
 
 			A = (-Sy*Ninp[3*k+0] + Sx*Ninp[3*k+1])*(1. - Sz)*U; 		
 			Nout[i+0] =-Sy*A + Ninp[3*k+0]*Sz + Sx*Ninp[3*k+2];
@@ -3990,8 +4020,8 @@ void UpdateVerticesNormalsColors_H(magnoom_ctx *ctx, float * Vinp, float * Ninp,
 }
 
 void
-parallelepiped( magnoom_ctx *ctx, float abc[][3], float tr[3], float scale1, float scale2, float scale3, 
-	float color[3], int offset_index, float* V, float* N, float* C, GLuint* I)
+parallelepiped(const float abc[][3], const float tr[3], float scale1, float scale2, float scale3,
+	const float color[3], int offset_index, float* V, float* N, float* C, GLuint* I)
 {
 /*
   p23 o-----------o p123
@@ -4195,8 +4225,13 @@ parallelepiped( magnoom_ctx *ctx, float abc[][3], float tr[3], float scale1, flo
 }
 
 
-void UpdateVerticesNormalsColors_BOX(magnoom_ctx *ctx, float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
+void UpdateVerticesNormalsColors_BOX(magnoom_ctx *ctx)
 {
+	float *vertices = ctx->vertices_BOX;
+	float *normals = ctx->normals_BOX;
+	float *colors = ctx->colors_BOX;
+	GLuint *indices = ctx->indices_BOX;
+	const float (*box)[3] = ctx->Box;
 	float 	d = ctx->WireWidth;
 	float 	Tr[3] = {-(box[0][0]+box[1][0]+box[2][0])/2.f,
 					 -(box[0][1]+box[1][1]+box[2][1])/2.f,
@@ -4211,40 +4246,44 @@ void UpdateVerticesNormalsColors_BOX(magnoom_ctx *ctx, float * vertices, float *
 	float length_c = ctx->uABC[2] * sqrt(ctx->abc[2][0]*ctx->abc[2][0] + ctx->abc[2][1]*ctx->abc[2][1] + ctx->abc[2][2]*ctx->abc[2][2])+d;
 	float color[3]={0.7,0.7,0.7};
 
-	parallelepiped(ctx,  ctx->abc, tr, length_a, d, d, color, 0, vertices, normals, colors, indices );//(0,0,0)-->(1,0,0)
-	parallelepiped(ctx,  ctx->abc, tr, d, length_b, d, color, 1, vertices, normals, colors, indices );//(0,0,0)-->(0,1,0)
-	parallelepiped(ctx,  ctx->abc, tr, d, d, length_c, color, 2, vertices, normals, colors, indices );//(0,0,0)-->(0,0,1)
+	parallelepiped(ctx->abc, tr, length_a, d, d, color, 0, vertices, normals, colors, indices );//(0,0,0)-->(1,0,0)
+	parallelepiped(ctx->abc, tr, d, length_b, d, color, 1, vertices, normals, colors, indices );//(0,0,0)-->(0,1,0)
+	parallelepiped(ctx->abc, tr, d, d, length_c, color, 2, vertices, normals, colors, indices );//(0,0,0)-->(0,0,1)
 
 	tr[0] = Tr[0]+ctx->abc[1][0]*ctx->uABC[1]; tr[1] = Tr[1]+ctx->abc[1][1]*ctx->uABC[1]; tr[2] = Tr[2]+ctx->abc[1][2]*ctx->uABC[1];
-	parallelepiped(ctx,  ctx->abc, tr, length_a, d, d, color, 3, vertices, normals, colors, indices );//(0,1,0)-->(1,1,0)
+	parallelepiped(ctx->abc, tr, length_a, d, d, color, 3, vertices, normals, colors, indices );//(0,1,0)-->(1,1,0)
 
 	tr[0]=Tr[0]+ctx->abc[2][0]*ctx->uABC[2]; tr[1]=Tr[1]+ctx->abc[2][1]*ctx->uABC[2]; tr[2]=Tr[2]+ctx->abc[2][2]*ctx->uABC[2];
-	parallelepiped(ctx,  ctx->abc, tr, length_a, d, d, color, 4, vertices, normals, colors, indices );//(0,0,1)-->(0,1,1)
+	parallelepiped(ctx->abc, tr, length_a, d, d, color, 4, vertices, normals, colors, indices );//(0,0,1)-->(0,1,1)
 
 	tr[0]+=ctx->abc[1][0]*ctx->uABC[1]; tr[1]+=ctx->abc[1][1]*ctx->uABC[1]; tr[2]+=ctx->abc[1][2]*ctx->uABC[1];
-	parallelepiped(ctx,  ctx->abc, tr, length_a, d, d, color, 5, vertices, normals, colors, indices );//(1,0,1)-->(1,1,1)
+	parallelepiped(ctx->abc, tr, length_a, d, d, color, 5, vertices, normals, colors, indices );//(1,0,1)-->(1,1,1)
 
 	tr[0]=Tr[0]+ctx->abc[0][0]*ctx->uABC[0]; tr[1]=Tr[1]+ctx->abc[0][1]*ctx->uABC[0]; tr[2]=Tr[2]+ctx->abc[0][2]*ctx->uABC[0];
-	parallelepiped(ctx,  ctx->abc, tr, d, length_b, d, color, 6, vertices, normals, colors, indices );//(1,0,0)-->(1,1,0)
+	parallelepiped(ctx->abc, tr, d, length_b, d, color, 6, vertices, normals, colors, indices );//(1,0,0)-->(1,1,0)
 
 	tr[0]=Tr[0]+ctx->abc[2][0]*ctx->uABC[2]; tr[1]=Tr[1]+ctx->abc[2][1]*ctx->uABC[2]; tr[2]=Tr[2]+ctx->abc[2][2]*ctx->uABC[2];
-	parallelepiped(ctx,  ctx->abc, tr, d, length_b, d, color, 7, vertices, normals, colors, indices );//(0,0,1)-->(0,1,1)
+	parallelepiped(ctx->abc, tr, d, length_b, d, color, 7, vertices, normals, colors, indices );//(0,0,1)-->(0,1,1)
 
 	tr[0]+=ctx->abc[0][0]*ctx->uABC[0]; tr[1]+=ctx->abc[0][1]*ctx->uABC[0]; tr[2]+=ctx->abc[0][2]*ctx->uABC[0];
-	parallelepiped(ctx,  ctx->abc, tr, d, length_b, d, color, 8, vertices, normals, colors, indices );//(0,1,1)-->(1,1,1)
+	parallelepiped(ctx->abc, tr, d, length_b, d, color, 8, vertices, normals, colors, indices );//(0,1,1)-->(1,1,1)
 
 	tr[0]=Tr[0]+ctx->abc[0][0]*ctx->uABC[0]; tr[1]=Tr[1]+ctx->abc[0][1]*ctx->uABC[0]; tr[2]=Tr[2]+ctx->abc[0][2]*ctx->uABC[0];
-	parallelepiped(ctx,  ctx->abc, tr, d, d, length_c, color, 9, vertices, normals, colors, indices );//(1,0,0)-->(1,0,1)
+	parallelepiped(ctx->abc, tr, d, d, length_c, color, 9, vertices, normals, colors, indices );//(1,0,0)-->(1,0,1)
 
 	tr[0]=Tr[0]+ctx->abc[1][0]*ctx->uABC[1]; tr[1]=Tr[1]+ctx->abc[1][1]*ctx->uABC[1]; tr[2]=Tr[2]+ctx->abc[1][2]*ctx->uABC[1];
-	parallelepiped(ctx,  ctx->abc, tr, d, d, length_c, color, 10, vertices, normals, colors, indices );//(0,1,0)-->(0,1,1)
+	parallelepiped(ctx->abc, tr, d, d, length_c, color, 10, vertices, normals, colors, indices );//(0,1,0)-->(0,1,1)
 
 	tr[0]+=ctx->abc[0][0]*ctx->uABC[0]; tr[1]+=ctx->abc[0][1]*ctx->uABC[0]; tr[2]+=ctx->abc[0][2]*ctx->uABC[0];
-	parallelepiped(ctx,  ctx->abc, tr, d, d, length_c, color, 11, vertices, normals, colors, indices );//(1,1,0)-->(1,1,1)
+	parallelepiped(ctx->abc, tr, d, d, length_c, color, 11, vertices, normals, colors, indices );//(1,1,0)-->(1,1,1)
 }
 
-void UpdateVerticesNormalsColors_BASIS(magnoom_ctx *ctx, float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
+void UpdateVerticesNormalsColors_BASIS(magnoom_ctx *ctx)
 {
+	float *vertices = ctx->vertices_BASIS;
+	float *normals = ctx->normals_BASIS;
+	float *colors = ctx->colors_BASIS;
+	GLuint *indices = ctx->indices_BASIS;
 	float 	d = ctx->WireWidth;
 	float	cube[3][3] = {
 				{	1.0f, 0.0f, 0.0f }, // a
@@ -4257,17 +4296,44 @@ void UpdateVerticesNormalsColors_BASIS(magnoom_ctx *ctx, float * vertices, float
 	float colorB[3]={0, 0, 1};
 	float color0[3]={0.1,0.1,0.1};
 	
-	parallelepiped(ctx,  cube, tr, length, d, d, colorR, 0, vertices, normals, colors, indices );//X
-	parallelepiped(ctx,  cube, tr, d, length, d, colorG, 1, vertices, normals, colors, indices );//Y
-	parallelepiped(ctx,  cube, tr, d, d, length, colorB, 2, vertices, normals, colors, indices );//Z
+	parallelepiped(cube, tr, length, d, d, colorR, 0, vertices, normals, colors, indices );//X
+	parallelepiped(cube, tr, d, length, d, colorG, 1, vertices, normals, colors, indices );//Y
+	parallelepiped(cube, tr, d, d, length, colorB, 2, vertices, normals, colors, indices );//Z
 	d *= 1.5; tr[0]=-d/2; tr[1]=-d/2; tr[2]=-d/2;
 
-	parallelepiped(ctx,  cube, tr, d, d, d, color0, 3, vertices, normals, colors, indices );//O
+	parallelepiped(cube, tr, d, d, d, color0, 3, vertices, normals, colors, indices );//O
 
 }
 
-void UpdateVerticesNormalsColors_PBC(magnoom_ctx *ctx, int K0, float * vertices, float * normals, float * colors, GLuint * indices, float box[3][3])
+void UpdateVerticesNormalsColors_PBC(magnoom_ctx *ctx, int K0)
 {
+	float *vertices;
+	float *normals;
+	float *colors;
+	GLuint *indices;
+	switch (K0) {
+		case 0:
+			vertices = ctx->vertices_PBC_A;
+			normals = ctx->normals_PBC_A;
+			colors = ctx->colors_PBC_A;
+			indices = ctx->indices_PBC_A;
+			break;
+		case 1:
+			vertices = ctx->vertices_PBC_B;
+			normals = ctx->normals_PBC_B;
+			colors = ctx->colors_PBC_B;
+			indices = ctx->indices_PBC_B;
+			break;
+		case 2:
+			vertices = ctx->vertices_PBC_C;
+			normals = ctx->normals_PBC_C;
+			colors = ctx->colors_PBC_C;
+			indices = ctx->indices_PBC_C;
+			break;
+		default:
+			return;
+	}
+	const float (*box)[3] = ctx->Box;
 	float 	d = ctx->WireWidth;
 	float 	Tr[3] = {-(box[0][0]+box[1][0]+box[2][0]+d)/2.f,
 					 -(box[0][1]+box[1][1]+box[2][1]+d)/2.f,
@@ -4288,86 +4354,94 @@ void UpdateVerticesNormalsColors_PBC(magnoom_ctx *ctx, int K0, float * vertices,
 	tr[1] = Tr[1]+ctx->abc[K0][1]*(ctx->uABC[K0]+6*d);
 	tr[2] = Tr[2]+ctx->abc[K0][2]*(ctx->uABC[K0]+6*d);
 
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 0, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 0, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K0][0]*(ctx->uABC[K0]+16*d); 
 	tr[1]=Tr[1]+ctx->abc[K0][1]*(ctx->uABC[K0]+16*d);
 	tr[2]=Tr[2]+ctx->abc[K0][2]*(ctx->uABC[K0]+16*d);
-    parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 1, vertices, normals, colors, indices );
+    parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 1, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K0][0]*(-10*d); 
 	tr[1]=Tr[1]+ctx->abc[K0][1]*(-10*d);
 	tr[2]=Tr[2]+ctx->abc[K0][2]*(-10*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 2, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 2, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K0][0]*(-20*d); 
 	tr[1]=Tr[1]+ctx->abc[K0][1]*(-20*d);
 	tr[2]=Tr[2]+ctx->abc[K0][2]*(-20*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 3, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 3, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K1][0]*ctx->uABC[K1]+ctx->abc[K0][0]*(ctx->uABC[K0]+6*d);
 	tr[1]=Tr[1]+ctx->abc[K1][1]*ctx->uABC[K1]+ctx->abc[K0][1]*(ctx->uABC[K0]+6*d);
 	tr[2]=Tr[2]+ctx->abc[K1][2]*ctx->uABC[K1]+ctx->abc[K0][2]*(ctx->uABC[K0]+6*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 4, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 4, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K1][0]*ctx->uABC[K1]+ctx->abc[K0][0]*(ctx->uABC[K0]+16*d);
 	tr[1]=Tr[1]+ctx->abc[K1][1]*ctx->uABC[K1]+ctx->abc[K0][1]*(ctx->uABC[K0]+16*d);
 	tr[2]=Tr[2]+ctx->abc[K1][2]*ctx->uABC[K1]+ctx->abc[K0][2]*(ctx->uABC[K0]+16*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 5, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 5, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K1][0]*ctx->uABC[K1]+ctx->abc[K0][0]*(-10*d);
 	tr[1]=Tr[1]+ctx->abc[K1][1]*ctx->uABC[K1]+ctx->abc[K0][1]*(-10*d);
 	tr[2]=Tr[2]+ctx->abc[K1][2]*ctx->uABC[K1]+ctx->abc[K0][2]*(-10*d);	
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 6, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 6, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K1][0]*ctx->uABC[K1]+ctx->abc[K0][0]*(-20*d);
 	tr[1]=Tr[1]+ctx->abc[K1][1]*ctx->uABC[K1]+ctx->abc[K0][1]*(-20*d);
 	tr[2]=Tr[2]+ctx->abc[K1][2]*ctx->uABC[K1]+ctx->abc[K0][2]*(-20*d);	
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 7, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 7, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K2][0]*ctx->uABC[K2]+ctx->abc[K0][0]*(ctx->uABC[K0]+6*d);
 	tr[1]=Tr[1]+ctx->abc[K2][1]*ctx->uABC[K2]+ctx->abc[K0][1]*(ctx->uABC[K0]+6*d);
 	tr[2]=Tr[2]+ctx->abc[K2][2]*ctx->uABC[K2]+ctx->abc[K0][2]*(ctx->uABC[K0]+6*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 8, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 8, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K2][0]*ctx->uABC[K2]+ctx->abc[K0][0]*(ctx->uABC[K0]+16*d);
 	tr[1]=Tr[1]+ctx->abc[K2][1]*ctx->uABC[K2]+ctx->abc[K0][1]*(ctx->uABC[K0]+16*d);
 	tr[2]=Tr[2]+ctx->abc[K2][2]*ctx->uABC[K2]+ctx->abc[K0][2]*(ctx->uABC[K0]+16*d);
 
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 9, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 9, vertices, normals, colors, indices );
 	tr[0]=Tr[0]+ctx->abc[K2][0]*ctx->uABC[K2]+ctx->abc[K0][0]*(-10*d);
 	tr[1]=Tr[1]+ctx->abc[K2][1]*ctx->uABC[K2]+ctx->abc[K0][1]*(-10*d);
 	tr[2]=Tr[2]+ctx->abc[K2][2]*ctx->uABC[K2]+ctx->abc[K0][2]*(-10*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 10, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 10, vertices, normals, colors, indices );
 	tr[0]=Tr[0]+ctx->abc[K2][0]*ctx->uABC[K2]+ctx->abc[K0][0]*(-20*d);
 	tr[1]=Tr[1]+ctx->abc[K2][1]*ctx->uABC[K2]+ctx->abc[K0][1]*(-20*d);
 	tr[2]=Tr[2]+ctx->abc[K2][2]*ctx->uABC[K2]+ctx->abc[K0][2]*(-20*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 11, vertices, normals, colors, indices );	
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 11, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K1][0]*ctx->uABC[K1]+ctx->abc[K2][0]*ctx->uABC[K2]+ctx->abc[K0][0]*(ctx->uABC[K0]+6*d);
 	tr[1]=Tr[1]+ctx->abc[K1][1]*ctx->uABC[K1]+ctx->abc[K2][1]*ctx->uABC[K2]+ctx->abc[K0][1]*(ctx->uABC[K0]+6*d);
 	tr[2]=Tr[2]+ctx->abc[K1][2]*ctx->uABC[K1]+ctx->abc[K2][2]*ctx->uABC[K2]+ctx->abc[K0][2]*(ctx->uABC[K0]+6*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 12, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 12, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K1][0]*ctx->uABC[K1]+ctx->abc[K2][0]*ctx->uABC[K2]+ctx->abc[K0][0]*(ctx->uABC[K0]+16*d);
 	tr[1]=Tr[1]+ctx->abc[K1][1]*ctx->uABC[K1]+ctx->abc[K2][1]*ctx->uABC[K2]+ctx->abc[K0][1]*(ctx->uABC[K0]+16*d);
 	tr[2]=Tr[2]+ctx->abc[K1][2]*ctx->uABC[K1]+ctx->abc[K2][2]*ctx->uABC[K2]+ctx->abc[K0][2]*(ctx->uABC[K0]+16*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 13, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 13, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K1][0]*ctx->uABC[K1]+ctx->abc[K2][0]*ctx->uABC[K2]+ctx->abc[K0][0]*(-10*d);
 	tr[1]=Tr[1]+ctx->abc[K1][1]*ctx->uABC[K1]+ctx->abc[K2][1]*ctx->uABC[K2]+ctx->abc[K0][1]*(-10*d);
 	tr[2]=Tr[2]+ctx->abc[K1][2]*ctx->uABC[K1]+ctx->abc[K2][2]*ctx->uABC[K2]+ctx->abc[K0][2]*(-10*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 14, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 14, vertices, normals, colors, indices );
 
 	tr[0]=Tr[0]+ctx->abc[K1][0]*ctx->uABC[K1]+ctx->abc[K2][0]*ctx->uABC[K2]+ctx->abc[K0][0]*(-20*d);
 	tr[1]=Tr[1]+ctx->abc[K1][1]*ctx->uABC[K1]+ctx->abc[K2][1]*ctx->uABC[K2]+ctx->abc[K0][1]*(-20*d);
 	tr[2]=Tr[2]+ctx->abc[K1][2]*ctx->uABC[K1]+ctx->abc[K2][2]*ctx->uABC[K2]+ctx->abc[K0][2]*(-20*d);
-	parallelepiped(ctx,  ctx->abc, tr, length_a, length_b, length_c, color, 15, vertices, normals, colors, indices );
+	parallelepiped(ctx->abc, tr, length_a, length_b, length_c, color, 15, vertices, normals, colors, indices );
 }
 
-void UpdateSpinPositions(magnoom_ctx *ctx, float abc[][3], int uABC[3], float BD[][3], int NBD, float box[][3], float * Px, float * Py, float * Pz)
+void UpdateSpinPositions(magnoom_ctx *ctx)
 {
-	float Tr[3] = {	
+	const float (*abc)[3] = ctx->abc;
+	const int *uABC = ctx->uABC;
+	const float (*BD)[3] = ctx->Block;
+	const int NBD = ctx->AtomsPerBlock;
+	const float (*box)[3] = ctx->Box;
+	float *Px = ctx->Px;
+	float *Py = ctx->Py;
+	float *Pz = ctx->Pz;
+	float Tr[3] = {
 					(box[0][0]+box[1][0]+box[2][0])/2.f,
 					(box[0][1]+box[1][1]+box[2][1])/2.f,
 					(box[0][2]+box[1][2]+box[2][2])/2.f

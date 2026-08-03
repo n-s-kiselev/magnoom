@@ -322,14 +322,14 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			VEC_Z(ctx->S,n) = ctx->chDir[2]*ctx->Kind[n];	
 
 			//tilted FM
-			// VEC_X(ctx->S,n) = sin(VHtheta*PI/180)*cos(VHphi*PI/180);
-			// VEC_Y(ctx->S,n) = sin(VHtheta*PI/180)*sin(VHphi*PI/180);
-			// VEC_Z(ctx->S,n) = cos(VHtheta*PI/180);	
+			// VEC_X(ctx->S,n) = sin(BextDCTheta*PI/180)*cos(BextDCPhi*PI/180);
+			// VEC_Y(ctx->S,n) = sin(BextDCTheta*PI/180)*sin(BextDCPhi*PI/180);
+			// VEC_Z(ctx->S,n) = cos(BextDCTheta*PI/180);
 
 			//cone
-			// VEC_X(ctx->S,n) = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*cos(pz[n]*2*PI/64);
-			// VEC_Y(ctx->S,n) = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*sin(pz[n]*2*PI/64);
-			// VEC_Z(ctx->S,n) = Hf/(ctx->Dij[0]*ctx->Dij[0]);	
+			// VEC_X(ctx->S,n) = sin(acos(BextDCMagnitude/(ctx->Dij[0]*ctx->Dij[0])))*cos(pz[n]*2*PI/64);
+			// VEC_Y(ctx->S,n) = sin(acos(BextDCMagnitude/(ctx->Dij[0]*ctx->Dij[0])))*sin(pz[n]*2*PI/64);
+			// VEC_Z(ctx->S,n) = BextDCMagnitude/(ctx->Dij[0]*ctx->Dij[0]);
 			// int kz = n%(ctx->uABC[0]*ctx->uABC[1]);
 			// VEC_X(ctx->S,n) = sin(acos(0.7975))*cos(pz[n]*2*PI/128);
 			// VEC_Y(ctx->S,n) = sin(acos(0.7975))*sin(pz[n]*2*PI/128);
@@ -770,9 +770,9 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 
 				VEC_X(s,n)=nx; VEC_Y(s,n)=ny;
 
-				// VEC_X(ctx->S,n) = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*cos(pz[n]*2*PI/128);
-				// VEC_Y(ctx->S,n) = sin(acos(Hf/(ctx->Dij[0]*ctx->Dij[0])))*sin(pz[n]*2*PI/128);
-				// VEC_Z(ctx->S,n) = Hf/(ctx->Dij[0]*ctx->Dij[0]);	
+				// VEC_X(ctx->S,n) = sin(acos(BextDCMagnitude/(ctx->Dij[0]*ctx->Dij[0])))*cos(pz[n]*2*PI/128);
+				// VEC_Y(ctx->S,n) = sin(acos(BextDCMagnitude/(ctx->Dij[0]*ctx->Dij[0])))*sin(pz[n]*2*PI/128);
+				// VEC_Z(ctx->S,n) = BextDCMagnitude/(ctx->Dij[0]*ctx->Dij[0]);
 				
 			
 			}	
@@ -895,7 +895,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			// 	}
 
 			// 	T = 2*atan(chDir[0]/(r2/b+1)/tan(acos(rz/r2)/2));
-			// 	Theta = acos(Hf*ctx->Jij[0]/(ctx->Dij[0]*ctx->Dij[0])) * (1-T/PI) * exp(-T*chDir[1]);
+			// 	Theta = acos(BextDCMagnitude*ctx->Jij[0]/(ctx->Dij[0]*ctx->Dij[0])) * (1-T/PI) * exp(-T*chDir[1]);
 
 			// 	rx = sin(T)*cos(F);
 			// 	ry = sin(T)*sin(F);

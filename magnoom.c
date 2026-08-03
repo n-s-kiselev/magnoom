@@ -78,7 +78,7 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 /* Enum types needed by magnoom_ctx fields (formerly in magnoom.h/visualization.c) */
 /*****************************************************************************/
 typedef enum    {A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode;
-typedef enum    {SIN_FIELD, GAUSSIAN_FIELD, SINC_FIELD, CIRCULAR_FIELD} enACField;
+typedef enum    {BEXT_AC_SIN, BEXT_AC_GAUSSIAN, BEXT_AC_SINC, BEXT_AC_CIRCULAR} enBextACWaveform;
 enum            IntegrationScheme{HEUN,SIB,RK23,RK45,RELAX};
 enum            Average_mode{ALONG_A,ALONG_B, ALONG_C, ALONG_0};
 
@@ -211,21 +211,21 @@ typedef struct magnoom_ctx {
 	float           Ku2;
 	float           Kc;
 
-	/* DC/AC applied field */
-	float           VHf[3];
-	float           VHtheta;
-	float           VHphi;
-	float           Hf;
-	float           Bdc[3];
-	float           VHac[3];
-	float           Hac;
-	double          Bac[3];
-	double          Omega_dc;
-	double          Period_dc;
-	float           GPulseWidth;
-	float           t_offset;
-	float           HacTime;
-	enACField       WhichACField;
+	/* External magnetic field: static (DC) and time-dependent (AC) components */
+	float           BextDCDirection[3];
+	float           BextDCTheta;
+	float           BextDCPhi;
+	float           BextDCMagnitude;
+	float           BextDC[3];
+	float           BextACDirection[3];
+	float           BextACAmplitude;
+	double          BextAC[3];
+	double          BextACOmega;
+	double          BextACPeriod;
+	float           BextACPulseWidth;
+	float           BextACTimeOffset;
+	float           BextACScalar;
+	enBextACWaveform       BextACWaveform;
 
 	int             WhichIntegrationScheme;
 	int             WhichAverageMode;
@@ -252,8 +252,8 @@ typedef struct magnoom_ctx {
 	unsigned int    ITERATION;
 	unsigned int    Max_Numb_Iteration;
 	int             Record;
-	int             AC_FIELD_ON;
-	int             AC_MODE_REC;
+	int             BextACEnabled;
+	int             BextACModeRecording;
 
 	/* FPS & IPS */
 	int             currentTime;
@@ -377,9 +377,9 @@ typedef struct magnoom_ctx {
 	float           Scale;
 	float           Pivot;
 	float           WireWidth;
-	float           Scale_H;
+	float           Scale_BextDC;
 	int             arrowFaces;
-	int             arrowFaces_H;
+	int             arrowFaces_BextDC;
 	int             N_Multisample;
 
 	/* axes/box toggles + legacy display-list handles */
@@ -398,7 +398,7 @@ typedef struct magnoom_ctx {
 	TwBar*          view_bar;
 	TwBar*          control_bar;
 	TwBar*          initial_bar;
-	TwBar*          ac_field_bar;
+	TwBar*          BextAC_bar;
 	TwBar*          info_bar;
 	TwBar*          my_window;
 
@@ -438,17 +438,17 @@ typedef struct magnoom_ctx {
 	GLfloat*        vertexProto;
 	GLfloat*        normalProto;
 	GLuint*         indicesProto;
-	GLfloat*        vertexProto_H;
-	GLfloat*        normalProto_H;
-	GLuint*         indicesProto_H;
+	GLfloat*        vertexProto_BextDC;
+	GLfloat*        normalProto_BextDC;
+	GLuint*         indicesProto_BextDC;
 	GLfloat*        vertices;
 	GLfloat*        normals;
 	GLfloat*        colors;
 	GLuint*         indices;
-	GLfloat*        vertices_H;
-	GLfloat*        normals_H;
-	GLfloat*        colors_H;
-	GLuint*         indices_H;
+	GLfloat*        vertices_BextDC;
+	GLfloat*        normals_BextDC;
+	GLfloat*        colors_BextDC;
+	GLuint*         indices_BextDC;
 	GLfloat*        vertices_BOX;
 	GLfloat*        normals_BOX;
 	GLfloat*        colors_BOX;
@@ -477,8 +477,8 @@ typedef struct magnoom_ctx {
 	int             ElNum;
 	int             IdNum;
 	int             VCNum;
-	int             IdNum_H;
-	int             VCNum_H;
+	int             IdNum_BextDC;
+	int             VCNum_BextDC;
 	int             IdNum_BOX;
 	int             VCNum_BOX;
 	int             IdNum_BASIS;
@@ -488,7 +488,7 @@ typedef struct magnoom_ctx {
 
 	/* vbo_mesh descriptors replacing parallel GPU-ID and count fields */
 	vbo_mesh        spin_mesh;
-	vbo_mesh        field_mesh;
+	vbo_mesh        BextDC_mesh;
 	vbo_mesh        box_mesh;
 	vbo_mesh        basis_mesh;
 	vbo_mesh        pbc_mesh[3];
@@ -556,12 +556,12 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->VKu1[0]=0.0f; ctx->VKu1[1]=0.0f; ctx->VKu1[2]=1.0f;
 	ctx->VKu2[0]=0.0f; ctx->VKu2[1]=0.0f; ctx->VKu2[2]=1.0f;
 
-	/* DC/AC applied field */
-	ctx->VHf[0]=0.0f; ctx->VHf[1]=0.0f; ctx->VHf[2]=1.0f;
-	ctx->VHac[0]=0.0f; ctx->VHac[1]=0.0f; ctx->VHac[2]=1.0f;
-	ctx->Omega_dc = 0.005;
-	ctx->GPulseWidth = 20.0f;
-	ctx->WhichACField = SIN_FIELD;
+	/* External magnetic field: static (DC) and time-dependent (AC) components */
+	ctx->BextDCDirection[0]=0.0f; ctx->BextDCDirection[1]=0.0f; ctx->BextDCDirection[2]=1.0f;
+	ctx->BextACDirection[0]=0.0f; ctx->BextACDirection[1]=0.0f; ctx->BextACDirection[2]=1.0f;
+	ctx->BextACOmega = 0.005;
+	ctx->BextACPulseWidth = 20.0f;
+	ctx->BextACWaveform = BEXT_AC_SIN;
 
 	ctx->WhichIntegrationScheme = SIB;
 	ctx->WhichAverageMode = ALONG_0;
@@ -626,7 +626,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->Scale = 1.5f;
 	ctx->Pivot = 0.55f;
 	ctx->WireWidth = 0.2f;
-	ctx->Scale_H = 10.0f;
+	ctx->Scale_BextDC = 10.0f;
 	ctx->axis[0]=0.7f; ctx->axis[1]=0.7f; ctx->axis[2]=0.0f;
 	ctx->angle = 0.8f;
 
@@ -660,7 +660,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	/* vector-drawing mode / appearance */
 	ctx->WhichVectorMode = BOX1;
 	ctx->arrowFaces = 6;
-	ctx->arrowFaces_H = 30;
+	ctx->arrowFaces_BextDC = 30;
 	ctx->N_Multisample = 16;
 
 	/* axes/box toggles */
@@ -679,11 +679,11 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	/*************************************************************/
 	/* Computed defaults (formerly InitializeGlobalState's body). */
 	/*************************************************************/
-	ctx->Bdc[0] = ctx->Hf*ctx->VHf[0];
-	ctx->Bdc[1] = ctx->Hf*ctx->VHf[1];
-	ctx->Bdc[2] = ctx->Hf*ctx->VHf[2];
-	ctx->Hac = ctx->Hf*(float)sin(PI/180.0);
-	ctx->Period_dc = TPI/ctx->Omega_dc;
+	ctx->BextDC[0] = ctx->BextDCMagnitude*ctx->BextDCDirection[0];
+	ctx->BextDC[1] = ctx->BextDCMagnitude*ctx->BextDCDirection[1];
+	ctx->BextDC[2] = ctx->BextDCMagnitude*ctx->BextDCDirection[2];
+	ctx->BextACAmplitude = ctx->BextDCMagnitude*(float)sin(PI/180.0);
+	ctx->BextACPeriod = TPI/ctx->BextACOmega;
 
 	ctx->RadiusOfShell = (float *)calloc((size_t)ctx->ShellNumber, sizeof(float));
 	ctx->NeighborsPerAtom = (int *)calloc((size_t)ctx->AtomsPerBlock, sizeof(int));
@@ -1789,8 +1789,8 @@ main (int argc, char **argv){
 	calc_thread_arg thread_args[THREADS_NUMBER];
 	RestartCalcThreads(&mag_ctx, thread_id, thread_args);
 
-	GetBox(&mag_ctx, mag_ctx.abc, mag_ctx.uABC, mag_ctx.Box);
-	UpdateSpinPositions(&mag_ctx, mag_ctx.abc, mag_ctx.uABC, mag_ctx.Block, mag_ctx.AtomsPerBlock, mag_ctx.Box, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz);
+	GetBox(&mag_ctx);
+	UpdateSpinPositions(&mag_ctx);
 	UpdateKind(&mag_ctx);
 	InitSpinComponents( &mag_ctx, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.S, 0);
 	for (int i=0;i<mag_ctx.NOS;i++) { VEC_X(mag_ctx.bS,i)=VEC_X(mag_ctx.S,i); VEC_Y(mag_ctx.bS,i)=VEC_Y(mag_ctx.S,i); VEC_Z(mag_ctx.bS,i)=VEC_Z(mag_ctx.S,i);}
@@ -1800,10 +1800,10 @@ main (int argc, char **argv){
     //  Allocate memory for vetices, mag_ctx.normals, mag_ctx.colors and indicies array used in drawing subrutines
 	ReallocateArrayDrawing(&mag_ctx);
 	// Fill array for prototype (arrow or cane) array 
-	UpdatePrototypeVerNorInd(&mag_ctx, mag_ctx.vertexProto, mag_ctx.normalProto, mag_ctx.indicesProto, mag_ctx.arrowFaces, mag_ctx.WhichVectorMode,0);
+	UpdateProtoVerNorInd_Spins(&mag_ctx);
 	// Fill big array for indecies for all arrows, cans, cones or boxes 
-	UpdateIndices(&mag_ctx, mag_ctx.indicesProto , mag_ctx.IdNumProto, mag_ctx.indices, mag_ctx.IdNum, mag_ctx.VCNumProto); 
-	UpdateVerticesNormalsColors(&mag_ctx, mag_ctx.vertexProto, mag_ctx.normalProto, mag_ctx.VCNumProto, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.VCNum, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.bS, mag_ctx.WhichVectorMode);
+	UpdateIndices(&mag_ctx);
+	UpdateVerticesNormalsColors(&mag_ctx);
 	InitVBOMesh(&mag_ctx.spin_mesh, GL_DYNAMIC_DRAW);
 	mag_ctx.spin_mesh.uses_normals = (mag_ctx.WhichVectorMode == BOX1 || mag_ctx.WhichVectorMode == ARROW1 || mag_ctx.WhichVectorMode == CONE1) ? 1 : 0;
 	mag_ctx.spin_mesh.component_count = mag_ctx.VCNum;
@@ -1813,25 +1813,25 @@ main (int argc, char **argv){
 	CreateVBOMesh(&mag_ctx.spin_mesh);
 	UploadVBOMesh(&mag_ctx.spin_mesh, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.indices, VBO_UPLOAD_ALL);
 
-    mag_ctx.VHf[0]=sin(PI*mag_ctx.VHtheta/180)*cos(PI*mag_ctx.VHphi/180);
-	mag_ctx.VHf[1]=sin(PI*mag_ctx.VHtheta/180)*sin(PI*mag_ctx.VHphi/180);
-	mag_ctx.VHf[2]=cos(PI*mag_ctx.VHtheta/180);
+    mag_ctx.BextDCDirection[0]=sin(PI*mag_ctx.BextDCTheta/180)*cos(PI*mag_ctx.BextDCPhi/180);
+	mag_ctx.BextDCDirection[1]=sin(PI*mag_ctx.BextDCTheta/180)*sin(PI*mag_ctx.BextDCPhi/180);
+	mag_ctx.BextDCDirection[2]=cos(PI*mag_ctx.BextDCTheta/180);
 
-	ReallocateArrayDrawing_H(&mag_ctx);
-    UpdatePrototypeVerNorInd(&mag_ctx, mag_ctx.vertexProto_H, mag_ctx.normalProto_H, mag_ctx.indices_H, mag_ctx.arrowFaces_H, ARROW1,1);
-    UpdateVerticesNormalsColors_H(&mag_ctx, mag_ctx.vertexProto_H, mag_ctx.normalProto_H, mag_ctx.VCNum_H, mag_ctx.vertices_H, mag_ctx.normals_H, mag_ctx.colors_H, mag_ctx.Box[0][0]*0.6, mag_ctx.Box[1][1]*0.6, mag_ctx.Box[2][2]*0.6, mag_ctx.VHf[0], mag_ctx.VHf[1], mag_ctx.VHf[2]);
-	InitVBOMesh(&mag_ctx.field_mesh, GL_STATIC_DRAW);
-	mag_ctx.field_mesh.uses_normals = 1;
-	mag_ctx.field_mesh.component_count = mag_ctx.VCNum_H;
-	mag_ctx.field_mesh.component_capacity = mag_ctx.VCNum_H;
-	mag_ctx.field_mesh.index_count = mag_ctx.IdNum_H;
-	mag_ctx.field_mesh.index_capacity = mag_ctx.IdNum_H;
-	CreateVBOMesh(&mag_ctx.field_mesh);
-    UploadVBOMesh(&mag_ctx.field_mesh, mag_ctx.vertices_H, mag_ctx.normals_H, mag_ctx.colors_H, mag_ctx.indices_H, VBO_UPLOAD_ALL);
+	ReallocateArrayDrawing_BextDC(&mag_ctx);
+	UpdateProtoVerNorInd_BextDC(&mag_ctx);
+    UpdateVerticesNormalsColors_BextDC(&mag_ctx);
+	InitVBOMesh(&mag_ctx.BextDC_mesh, GL_STATIC_DRAW);
+	mag_ctx.BextDC_mesh.uses_normals = 1;
+	mag_ctx.BextDC_mesh.component_count = mag_ctx.VCNum_BextDC;
+	mag_ctx.BextDC_mesh.component_capacity = mag_ctx.VCNum_BextDC;
+	mag_ctx.BextDC_mesh.index_count = mag_ctx.IdNum_BextDC;
+	mag_ctx.BextDC_mesh.index_capacity = mag_ctx.IdNum_BextDC;
+	CreateVBOMesh(&mag_ctx.BextDC_mesh);
+    UploadVBOMesh(&mag_ctx.BextDC_mesh, mag_ctx.vertices_BextDC, mag_ctx.normals_BextDC, mag_ctx.colors_BextDC, mag_ctx.indices_BextDC, VBO_UPLOAD_ALL);
 
 	/* --- BOX mesh: static, startup-only --- */
 	ReallocateArrayDrawing_BOX(&mag_ctx);
-	UpdateVerticesNormalsColors_BOX(&mag_ctx, mag_ctx.vertices_BOX, mag_ctx.normals_BOX, mag_ctx.colors_BOX, mag_ctx.indices_BOX, mag_ctx.Box);
+	UpdateVerticesNormalsColors_BOX(&mag_ctx);
 	InitVBOMesh(&mag_ctx.box_mesh, GL_STATIC_DRAW);
 	mag_ctx.box_mesh.uses_normals = 1;
 	mag_ctx.box_mesh.component_count = mag_ctx.VCNum_BOX;
@@ -1843,7 +1843,7 @@ main (int argc, char **argv){
 
 	/* --- BASIS mesh: static, startup-only --- */
 	ReallocateArrayDrawing_BASIS(&mag_ctx);
-	UpdateVerticesNormalsColors_BASIS(&mag_ctx, mag_ctx.vertices_BASIS, mag_ctx.normals_BASIS, mag_ctx.colors_BASIS, mag_ctx.indices_BASIS, mag_ctx.Box);
+	UpdateVerticesNormalsColors_BASIS(&mag_ctx);
 	InitVBOMesh(&mag_ctx.basis_mesh, GL_STATIC_DRAW);
 	mag_ctx.basis_mesh.uses_normals = 1;
 	mag_ctx.basis_mesh.component_count = mag_ctx.VCNum_BASIS;
@@ -1873,9 +1873,9 @@ main (int argc, char **argv){
 	mag_ctx.pbc_mesh[2].component_capacity = mag_ctx.VCNum_PBC;
 	mag_ctx.pbc_mesh[2].index_count = mag_ctx.IdNum_PBC;
 	mag_ctx.pbc_mesh[2].index_capacity = mag_ctx.IdNum_PBC;
-	UpdateVerticesNormalsColors_PBC(&mag_ctx, 0, mag_ctx.vertices_PBC_A, mag_ctx.normals_PBC_A, mag_ctx.colors_PBC_A, mag_ctx.indices_PBC_A, mag_ctx.Box);
-	UpdateVerticesNormalsColors_PBC(&mag_ctx, 1, mag_ctx.vertices_PBC_B, mag_ctx.normals_PBC_B, mag_ctx.colors_PBC_B, mag_ctx.indices_PBC_B, mag_ctx.Box);
-	UpdateVerticesNormalsColors_PBC(&mag_ctx, 2, mag_ctx.vertices_PBC_C, mag_ctx.normals_PBC_C, mag_ctx.colors_PBC_C, mag_ctx.indices_PBC_C, mag_ctx.Box);  
+	UpdateVerticesNormalsColors_PBC(&mag_ctx, 0);
+	UpdateVerticesNormalsColors_PBC(&mag_ctx, 1);
+	UpdateVerticesNormalsColors_PBC(&mag_ctx, 2);
 	CreateVBOMesh(&mag_ctx.pbc_mesh[0]);
 	UploadVBOMesh(&mag_ctx.pbc_mesh[0], mag_ctx.vertices_PBC_A, mag_ctx.normals_PBC_A, mag_ctx.colors_PBC_A, mag_ctx.indices_PBC_A, VBO_UPLOAD_ALL);
 	CreateVBOMesh(&mag_ctx.pbc_mesh[1]);
@@ -1896,7 +1896,7 @@ main (int argc, char **argv){
 	for (int i = 0; i < THREADS_NUMBER; ++i) pthread_join(thread_id[i], NULL);
 	// Destroy GPU buffers (needs active GL context):
 	DestroyVBOMesh(&mag_ctx.spin_mesh);
-	DestroyVBOMesh(&mag_ctx.field_mesh);
+	DestroyVBOMesh(&mag_ctx.BextDC_mesh);
 	DestroyVBOMesh(&mag_ctx.box_mesh);
 	DestroyVBOMesh(&mag_ctx.basis_mesh);
 	DestroyVBOMesh(&mag_ctx.pbc_mesh[0]);
@@ -1925,13 +1925,13 @@ main (int argc, char **argv){
 	free(mag_ctx.Px);    			free(mag_ctx.Py);    			free(mag_ctx.Pz);
 	free(mag_ctx.BPx);   			free(mag_ctx.BPy);   			free(mag_ctx.BPz);
 	free(mag_ctx.RHue);  			free(mag_ctx.GHue);  			free(mag_ctx.BHue);
-	free(mag_ctx.vertices);			free(mag_ctx.vertices_H); 		free(mag_ctx.vertices_BOX); 	free(mag_ctx.vertices_PBC_A);
-	free(mag_ctx.normals);			free(mag_ctx.normals_H); 		free(mag_ctx.normals_BOX); 		free(mag_ctx.normals_PBC_A);
-	free(mag_ctx.colors);			free(mag_ctx.colors_H); 		free(mag_ctx.colors_BOX); 		free(mag_ctx.colors_PBC_A);
-	free(mag_ctx.indices);			free(mag_ctx.indices_H); 		free(mag_ctx.indices_BOX); 		free(mag_ctx.indices_PBC_A);
-	free(mag_ctx.vertexProto);		free(mag_ctx.vertexProto_H);
-	free(mag_ctx.normalProto);		free(mag_ctx.normalProto_H);
-	free(mag_ctx.indicesProto);		free(mag_ctx.indicesProto_H);
+	free(mag_ctx.vertices);			free(mag_ctx.vertices_BextDC); 		free(mag_ctx.vertices_BOX); 	free(mag_ctx.vertices_PBC_A);
+	free(mag_ctx.normals);			free(mag_ctx.normals_BextDC); 		free(mag_ctx.normals_BOX); 		free(mag_ctx.normals_PBC_A);
+	free(mag_ctx.colors);			free(mag_ctx.colors_BextDC); 		free(mag_ctx.colors_BOX); 		free(mag_ctx.colors_PBC_A);
+	free(mag_ctx.indices);			free(mag_ctx.indices_BextDC); 		free(mag_ctx.indices_BOX); 		free(mag_ctx.indices_PBC_A);
+	free(mag_ctx.vertexProto);		free(mag_ctx.vertexProto_BextDC);
+	free(mag_ctx.normalProto);		free(mag_ctx.normalProto_BextDC);
+	free(mag_ctx.indicesProto);		free(mag_ctx.indicesProto_BextDC);
 
 	free(mag_ctx.RadiusOfShell);
 	free(mag_ctx.NeighborsPerAtom);

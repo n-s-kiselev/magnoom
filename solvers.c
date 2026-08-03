@@ -22,8 +22,8 @@ GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 	const float *vku2 = ctx->VKu2;
 	const float ku2 = ctx->Ku2;
 	const float kc = ctx->Kc;
-	const float *VHfield = ctx->VHf;
-	const float Hfield = ctx->Hf;
+	const float *BextDCDirection = ctx->BextDCDirection;
+	const float BextDCMagnitude = ctx->BextDCMagnitude;
 	double *heffx = ctx->Heffx;
 	double *heffy = ctx->Heffy;
 	double *heffz = ctx->Heffz;
@@ -48,10 +48,10 @@ GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					//H-field (Zeeman energy):
-					heffx[i] = Hfield*VHfield[0]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[0];
-					heffy[i] = Hfield*VHfield[1]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[1];
-					heffz[i] = Hfield*VHfield[2]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[2];
+					// External-field Zeeman contribution:
+					heffx[i] = BextDCMagnitude*BextDCDirection[0]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[0];
+					heffy[i] = BextDCMagnitude*BextDCDirection[1]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[1];
+					heffz[i] = BextDCMagnitude*BextDCDirection[2]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[2];
 					if(nc==0||nc==Nc-1){
 					heffx[i] /= 2;
 					heffy[i] /= 2;
@@ -198,8 +198,8 @@ GetTotalEnergyMoment(magnoom_ctx *ctx)
 		// metka test stochastic LLG
 		double vtemp[3];
 		// opposite to the rotation of the vector of external field
-		RotateVector(VEC_X(s,i),VEC_Y(s,i),VEC_Z(s,i),0,0,1,-ctx->VHphi,vtemp); //rotate about y by theta of the external field
-		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-ctx->VHtheta,vtemp); //rotate about z by phi of the external field
+		RotateVector(VEC_X(s,i),VEC_Y(s,i),VEC_Z(s,i),0,0,1,-ctx->BextDCPhi,vtemp); //rotate about y by theta of the external field
+		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-ctx->BextDCTheta,vtemp); //rotate about z by phi of the external field
 		Mtot[0] = Mtot[0] + vtemp[0];
 		Mtot[1] = Mtot[1] + vtemp[1];
 		Mtot[2] = Mtot[2] + vtemp[2];
@@ -225,12 +225,12 @@ GetTotalEnergyMomentE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz, do
 	{
 
 		// Etot[i] = -Hx[i]*sx[i] - Hy[i]*sy[i] - Hz[i]*sz[i];
-		Etot[i] = 4*PI*PI*(ctx->Hf/HD)*(1-sx[i]*sin(ctx->VHtheta*PI/180)*cos(ctx->VHphi*PI/180)-sy[i]*sin(ctx->VHtheta*PI/180)*sin(ctx->VHphi*PI/180)-sz[i]*cos(ctx->VHtheta*PI/180))/(LD*LD*LD);
+		Etot[i] = 4*PI*PI*(ctx->BextDCMagnitude/HD)*(1-sx[i]*sin(ctx->BextDCTheta*PI/180)*cos(ctx->BextDCPhi*PI/180)-sy[i]*sin(ctx->BextDCTheta*PI/180)*sin(ctx->BextDCPhi*PI/180)-sz[i]*cos(ctx->BextDCTheta*PI/180))/(LD*LD*LD);
 		// metka test stochastic LLG
 		double vtemp[3];
 		// opposite to the rotation of the vector of external field
-		RotateVector(sx[i],sy[i],sz[i],0,0,1,-ctx->VHphi,vtemp); //rotate about y by theta of the external field
-		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-ctx->VHtheta,vtemp); //rotate about z by phi of the external field
+		RotateVector(sx[i],sy[i],sz[i],0,0,1,-ctx->BextDCPhi,vtemp); //rotate about y by theta of the external field
+		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-ctx->BextDCTheta,vtemp); //rotate about z by phi of the external field
 		Mtot[0] = Mtot[0] + vtemp[0];
 		Mtot[1] = Mtot[1] + vtemp[1];
 		Mtot[2] = Mtot[2] + vtemp[2];		
@@ -245,9 +245,9 @@ GetTotalEnergyMomentE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz, do
 double
 GetTotalEnergyFerro(magnoom_ctx *ctx)
 {
-	double sx = ctx->VHf[0];
-	double sy = ctx->VHf[1];
-	double sz = ctx->VHf[2];
+	double sx = ctx->BextDCDirection[0];
+	double sy = ctx->BextDCDirection[1];
+	double sz = ctx->BextDCDirection[2];
 	const int numNeighbors = ctx->NeighborPairs;
 	const int *aidxBlock = ctx->AIdxBlock;
 	const int *nidxGridA = ctx->NIdxGridA;
@@ -265,8 +265,8 @@ GetTotalEnergyFerro(magnoom_ctx *ctx)
 	const float *vku2 = ctx->VKu2;
 	const float ku2 = ctx->Ku2;
 	const float kc = ctx->Kc;
-	const float *VHfield = ctx->VHf;
-	const float Hfield = ctx->Hf;
+	const float *BextDCDirection = ctx->BextDCDirection;
+	const float BextDCMagnitude = ctx->BextDCMagnitude;
 	double *Etot = ctx->Etot;
 	const int N = ctx->NOS;
 	double tmp0=1.0/sqrt(sx*sx+sy*sy+sz*sz);
@@ -277,9 +277,9 @@ GetTotalEnergyFerro(magnoom_ctx *ctx)
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	for (int i=0; i<N; i++)
 	{
-	//H-field (Zeeman energy):
-	//Etot[i] =-Hfield*(VHfield[0]*sx+VHfield[1]*sy+VHfield[2]*sz);
-	Etot[i] =-Hfield*((VHfield[0]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[0])*sx+(VHfield[1]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[1])*sy+(VHfield[2]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[2])*sz);
+	// External-field Zeeman contribution:
+	//Etot[i] =-BextDCMagnitude*(BextDCDirection[0]*sx+BextDCDirection[1]*sy+BextDCDirection[2]*sz);
+	Etot[i] =-BextDCMagnitude*((BextDCDirection[0]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[0])*sx+(BextDCDirection[1]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[1])*sy+(BextDCDirection[2]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[2])*sz);
 	//uniaxial anisotropy1:
 	tmp0 = sx*vku1[0] + sy*vku1[1] + sz*vku1[2];
 	Etot[i]-= ku1 * tmp0 * tmp0;
@@ -369,8 +369,8 @@ GetTotalEnergy(magnoom_ctx *ctx)
 	const float *vku2 = ctx->VKu2;
 	const float ku2 = ctx->Ku2;
 	const float kc = ctx->Kc;
-	const float *VHfield = ctx->VHf;
-	const float Hfield = ctx->Hf;
+	const float *BextDCDirection = ctx->BextDCDirection;
+	const float BextDCMagnitude = ctx->BextDCMagnitude;
 	double *Etot = ctx->Etot;
 	double *Mtot = ctx->Mtot;
 	const int N = ctx->NOS;
@@ -381,8 +381,8 @@ GetTotalEnergy(magnoom_ctx *ctx)
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	for (int i=0; i<N; i++)
 	{
-	//H-field (Zeeman energy):
-	Etot[i] =-Hfield*((VHfield[0]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[0])*VEC_X(s,i)+(VHfield[1]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[1])*VEC_Y(s,i)+(VHfield[2]+ctx->AC_FIELD_ON*ctx->HacTime*ctx->VHac[2])*VEC_Z(s,i));
+	// External-field Zeeman contribution:
+	Etot[i] =-BextDCMagnitude*((BextDCDirection[0]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[0])*VEC_X(s,i)+(BextDCDirection[1]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[1])*VEC_Y(s,i)+(BextDCDirection[2]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[2])*VEC_Z(s,i));
 	//uniaxial anisotropy:
 	tmp0 = VEC_X(s,i)*vku1[0] + VEC_Y(s,i)*vku1[1] + VEC_Z(s,i)*vku1[2];
 	Etot[i]-= ku1 * tmp0 * tmp0;
@@ -465,7 +465,7 @@ GetTotalEnergy(magnoom_ctx *ctx)
 double
 GetTotalEnergyE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* VHfield, float Hfield,
+					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* BextDCDirection, float BextDCMagnitude,
 					double* Etot,double* Mtot, int N)
 {
 	double tmp0=0;
@@ -482,7 +482,7 @@ GetTotalEnergyE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
 		for(int i = 0; i < Nx; i++){
 			for(int j = 0; j < Ny; j++){
 				int n = i + j*Nx, n1 = (i-1+Nx)%Nx+j*Nx, n2 = i + ((j-1+Ny)%Ny)*Nx;
-				Etot[n] = 4*PI*PI*(ctx->Hf/HD)*(1-sx[n]*sin(ctx->VHtheta*PI/180)*cos(ctx->VHphi*PI/180)-sy[n]*sin(ctx->VHtheta*PI/180)*sin(ctx->VHphi*PI/180)-sz[n]*cos(ctx->VHtheta*PI/180))/(LD*LD) -\
+				Etot[n] = 4*PI*PI*(ctx->BextDCMagnitude/HD)*(1-sx[n]*sin(ctx->BextDCTheta*PI/180)*cos(ctx->BextDCPhi*PI/180)-sy[n]*sin(ctx->BextDCTheta*PI/180)*sin(ctx->BextDCPhi*PI/180)-sz[n]*cos(ctx->BextDCTheta*PI/180))/(LD*LD) -\
 				(sx[n]*sx[n1]+sy[n]*sy[n1]+sz[n]*sz[n1]-1) + (1./LD)*2.*PI*(sy[n]*sz[n1]-sz[n]*sy[n1]) -\
 				(sx[n]*sx[n2]+sy[n]*sy[n2]+sz[n]*sz[n2]-1) + (1./LD)*2.*PI*(sz[n]*sx[n2]-sx[n]*sz[n2]);
 				tmp0 = tmp0 + Etot[n];
@@ -1501,42 +1501,42 @@ Relax(	magnoom_ctx *ctx, int thread,
 
 
 
-double GetACfield(magnoom_ctx *ctx)
+double EvaluateBextAC(magnoom_ctx *ctx)
 {
 	double R=0;
 	double temp;
-	switch (ctx->WhichACField){
-		case SIN_FIELD:
-			R = ctx->AC_FIELD_ON*ctx->Hac*sin(ctx->Omega_dc*ctx->t_step*ctx->ITERATION);
+	switch (ctx->BextACWaveform){
+		case BEXT_AC_SIN:
+			R = ctx->BextACEnabled*ctx->BextACAmplitude*sin(ctx->BextACOmega*ctx->t_step*ctx->ITERATION);
 		break;
 
-		case GAUSSIAN_FIELD:
-			temp = (ctx->t_step*ctx->ITERATION-ctx->t_offset)/ctx->GPulseWidth;
-			R = ctx->AC_FIELD_ON*ctx->Hac*exp(-0.5*temp*temp );
+		case BEXT_AC_GAUSSIAN:
+			temp = (ctx->t_step*ctx->ITERATION-ctx->BextACTimeOffset)/ctx->BextACPulseWidth;
+			R = ctx->BextACEnabled*ctx->BextACAmplitude*exp(-0.5*temp*temp );
 		break;
 
-		case SINC_FIELD:
-			if (ctx->t_step*ctx->ITERATION<=ctx->GPulseWidth){
-				if (ctx->t_step*ctx->ITERATION==ctx->t_offset){
-					R = ctx->AC_FIELD_ON*ctx->Hac*1;
+		case BEXT_AC_SINC:
+			if (ctx->t_step*ctx->ITERATION<=ctx->BextACPulseWidth){
+				if (ctx->t_step*ctx->ITERATION==ctx->BextACTimeOffset){
+					R = ctx->BextACEnabled*ctx->BextACAmplitude*1;
 				}else{
-					R = ctx->AC_FIELD_ON*ctx->Hac*sin((ctx->Omega_dc*(ctx->t_step*ctx->ITERATION-ctx->t_offset)))/(ctx->Omega_dc*(ctx->t_step*ctx->ITERATION-ctx->t_offset));
+					R = ctx->BextACEnabled*ctx->BextACAmplitude*sin((ctx->BextACOmega*(ctx->t_step*ctx->ITERATION-ctx->BextACTimeOffset)))/(ctx->BextACOmega*(ctx->t_step*ctx->ITERATION-ctx->BextACTimeOffset));
 				}
 			}else{ R = 0.0; }
 		break;
 
-		case CIRCULAR_FIELD:
-			if(ctx->AC_FIELD_ON!=0){
-				ctx->VHac[0] = cos(ctx->Omega_dc*ctx->t_step*ctx->ITERATION);
-				ctx->VHac[1] = sin(ctx->Omega_dc*ctx->t_step*ctx->ITERATION);
-				ctx->VHac[2] = 0.0f;
-				R = ctx->AC_FIELD_ON*ctx->Hac;
+		case BEXT_AC_CIRCULAR:
+			if(ctx->BextACEnabled!=0){
+				ctx->BextACDirection[0] = cos(ctx->BextACOmega*ctx->t_step*ctx->ITERATION);
+				ctx->BextACDirection[1] = sin(ctx->BextACOmega*ctx->t_step*ctx->ITERATION);
+				ctx->BextACDirection[2] = 0.0f;
+				R = ctx->BextACEnabled*ctx->BextACAmplitude;
 			}
 		break;
 	}
-	ctx->Bac[0] = R * ctx->VHac[0];
-	ctx->Bac[1] = R * ctx->VHac[1];
-	ctx->Bac[2] = R * ctx->VHac[2];
+	ctx->BextAC[0] = R * ctx->BextACDirection[0];
+	ctx->BextAC[1] = R * ctx->BextACDirection[1];
+	ctx->BextAC[2] = R * ctx->BextACDirection[2];
 	return R;
 }
 	
@@ -1605,7 +1605,7 @@ void *CALC_THREAD(void *void_ptr)
 	{
 		while(ctx->ENGINE_MUTEX != DO_IT && !ctx->EngineShutdown){ usleep(ctx->SleepTime);}
 		if (ctx->EngineShutdown) break;
-		ctx->HacTime = GetACfield(ctx);
+		ctx->BextACScalar = EvaluateBextAC(ctx);
 		
 		switch (ctx->WhichIntegrationScheme){
 			case HEUN: 
@@ -1711,11 +1711,11 @@ void *CALC_THREAD(void *void_ptr)
 			}
 
 			//save mode snapshot
-			if (ctx->AC_MODE_REC*ctx->AC_FIELD_ON!=0){
-				float phase = ctx->Omega_dc*ctx->t_step*ctx->ITERATION*iTPI;
+			if (ctx->BextACModeRecording*ctx->BextACEnabled!=0){
+				float phase = ctx->BextACOmega*ctx->t_step*ctx->ITERATION*iTPI;
 				phase = phase - floor(phase);
 				int Im=-1;
-				float tolerance=0.5*ctx->t_step/ctx->Period_dc;
+				float tolerance=0.5*ctx->t_step/ctx->BextACPeriod;
 
 				for (int i=0; i<=ctx->num_images; i++){
 					if ( ABS(phase - i/(float)ctx->num_images)<tolerance){
@@ -1740,8 +1740,8 @@ void *CALC_THREAD(void *void_ptr)
 						printf("Image %d\n", ctx->current_rec_num_mode);
 						if (ctx->current_rec_num_mode==ctx->num_images*ctx->rec_num_mode){	
 							ctx->Play=0;
-							ctx->AC_MODE_REC=0;
-							ctx->AC_FIELD_ON=0;
+							ctx->BextACModeRecording=0;
+							ctx->BextACEnabled=0;
 							ctx->current_rec_num_mode=0;
 							for (int j=0; j<ctx->num_images; j++){
 								for (int i=0; i<ctx->NOS; i++){

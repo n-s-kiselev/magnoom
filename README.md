@@ -14,6 +14,15 @@ Magnoom is cross-platform software for atomistic spin-dynamics simulations with 
   [OOMMF](https://math.nist.gov/oommf/) and
   [MuMax3](https://mumax.github.io/), including [OVF](https://math.nist.gov/oommf/doc/userguide20b0/userguide/Vector_Field_File_Format_OV.html)
 
+## External magnetic field
+
+Magnoom separates the external magnetic field into two components:
+
+- `BextDC` is the static component, controlled by its magnitude and direction angles.
+- `BextAC` is the time-dependent component, controlled by its amplitude, direction, waveform, and timing parameters.
+
+The AC component supports sinusoidal, Gaussian pulse, sinc pulse, and circular waveforms. The F5 `BextAC` control bar also provides phase-resolved dynamical-mode recording controls. The arrow shown in the 3D view represents `BextDC`; its visual scale does not change the field used by the solvers.
+
 ## Building
 
 Magnoom uses a single cross-platform [nob.h](https://github.com/tsoding/nob.h) build system. Bootstrap it once from the repository root:
