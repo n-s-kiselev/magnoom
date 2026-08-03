@@ -11,12 +11,12 @@ typedef enum {XUP, YUP, ZUP, ADD_SET, RESET, QUIT, PLAY, RECORD} enButton;
 void ChangeVectorMode( magnoom_ctx *, int );
 void ChangeColorMap( magnoom_ctx *, int );
 void ChangeInitialState( magnoom_ctx *, int );
-void Buttons( magnoom_ctx *, int );
-void keyboardDown( magnoom_ctx *, unsigned char, int, int );
-void keyboardUp( magnoom_ctx *, unsigned char, int, int );
-void KeyboardAdd( magnoom_ctx *, int, int, int );
-void MouseButton( magnoom_ctx *, int, int, int, int );
-void MouseMotion( magnoom_ctx *, int, int );
+void ExecuteCommand( magnoom_ctx *, int );
+void HandleKeyDown( magnoom_ctx *, unsigned char, int, int );
+void HandleKeyUp( magnoom_ctx *, unsigned char, int, int );
+void HandleSpecialKey( magnoom_ctx *, int, int, int );
+void HandleMouseButton( magnoom_ctx *, int, int, int, int );
+void HandleMouseDrag( magnoom_ctx *, int, int );
 float ElapsedSeconds( );
 // color control functions
 void HSVtoRGB(magnoom_ctx *, float[3], float [3] , int, int);
@@ -46,12 +46,12 @@ void drawVBO(magnoom_ctx *);
 
 void idle(magnoom_ctx *);
 void setupTweakBar(magnoom_ctx *);
-void GLFWKey(GLFWwindow *, int, int, int, int);
-void GLFWChar(GLFWwindow *, unsigned int);
-void GLFWMouseButton(GLFWwindow *, int, int, int);
-void GLFWMouseMotion(GLFWwindow *, double, double);
-void GLFWMouseWheel(GLFWwindow *, double, double);
-void GLFWResize(GLFWwindow *, int, int);
+void GLFWKeyCallback(GLFWwindow *, int, int, int, int);
+void GLFWCharCallback(GLFWwindow *, unsigned int);
+void GLFWMouseButtonCallback(GLFWwindow *, int, int, int);
+void GLFWCursorPosCallback(GLFWwindow *, double, double);
+void GLFWScrollCallback(GLFWwindow *, double, double);
+void GLFWFramebufferSizeCallback(GLFWwindow *, int, int);
 
 
 
@@ -60,7 +60,7 @@ float ElapsedSeconds( )	{
 	return (float)glfwGetTime();
 }
 
-void Resize( magnoom_ctx *ctx, int window_width, int window_height) // called when user resizes the window
+void ApplyFramebufferSize( magnoom_ctx *ctx, int window_width, int window_height)
 {
 	ctx->asp_rat     = (float)((   ((double)window_width)/((double)window_height)   ));
 	ctx->asp_rat_inv = (float)((   ((double)window_height)/((double)window_width)   ));
@@ -284,12 +284,12 @@ void setupOpenGL (magnoom_ctx *ctx)
 		ctx->CameraPosition[i][6]=ctx->PerspSet[0];
 	}
 
-	glfwSetKeyCallback(ctx->MainWindow, GLFWKey);
-	glfwSetCharCallback(ctx->MainWindow, GLFWChar);
-	glfwSetMouseButtonCallback(ctx->MainWindow, GLFWMouseButton);
-	glfwSetCursorPosCallback(ctx->MainWindow, GLFWMouseMotion);
-	glfwSetScrollCallback(ctx->MainWindow, GLFWMouseWheel);
-	glfwSetFramebufferSizeCallback(ctx->MainWindow, GLFWResize);
+	glfwSetKeyCallback(ctx->MainWindow, GLFWKeyCallback);
+	glfwSetCharCallback(ctx->MainWindow, GLFWCharCallback);
+	glfwSetMouseButtonCallback(ctx->MainWindow, GLFWMouseButtonCallback);
+	glfwSetCursorPosCallback(ctx->MainWindow, GLFWCursorPosCallback);
+	glfwSetScrollCallback(ctx->MainWindow, GLFWScrollCallback);
+	glfwSetFramebufferSizeCallback(ctx->MainWindow, GLFWFramebufferSizeCallback);
 
 	// Initialize AntTweakBar
 	float xscale = 1.0f, yscale = 1.0f;
@@ -304,7 +304,7 @@ void setupOpenGL (magnoom_ctx *ctx)
 	}
 	int framebufferWidth = 0, framebufferHeight = 0;
 	glfwGetFramebufferSize(ctx->MainWindow, &framebufferWidth, &framebufferHeight);
-	GLFWResize(ctx->MainWindow, framebufferWidth, framebufferHeight);
+	GLFWFramebufferSizeCallback(ctx->MainWindow, framebufferWidth, framebufferHeight);
 	setupTweakBar(ctx);
 
 	glEnable(GL_DEPTH_TEST);
@@ -2291,7 +2291,7 @@ static int GLFWSpecialToWindowKey(int key)
 	}
 }
 
-void GLFWKey(GLFWwindow *window, int key, int scancode, int action, int mods)
+void GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)scancode;
@@ -2299,27 +2299,27 @@ void GLFWKey(GLFWwindow *window, int key, int scancode, int action, int mods)
 
 	int special = GLFWSpecialToWindowKey(key);
 	if (special && action != GLFW_RELEASE) {
-		KeyboardAdd(ctx, special, 0, 0);
+		HandleSpecialKey(ctx, special, 0, 0);
 		return;
 	}
 	if (key == GLFW_KEY_ESCAPE && action != GLFW_RELEASE) {
-		keyboardDown(ctx, TW_KEY_ESCAPE, 0, 0);
+		HandleKeyDown(ctx, TW_KEY_ESCAPE, 0, 0);
 		return;
 	}
 	if (action == GLFW_RELEASE && key >= 'A' && key <= 'Z') {
 		unsigned char character = (unsigned char)((mods & GLFW_MOD_SHIFT) ? key : key - 'A' + 'a');
-		keyboardUp(ctx, character, 0, 0);
+		HandleKeyUp(ctx, character, 0, 0);
 	}
 }
 
-void GLFWChar(GLFWwindow *window, unsigned int character)
+void GLFWCharCallback(GLFWwindow *window, unsigned int character)
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	if (character > 255 || TwEventCharGLFW((int)character, GLFW_PRESS)) return;
-	keyboardDown(ctx, (unsigned char)character, 0, 0);
+	HandleKeyDown(ctx, (unsigned char)character, 0, 0);
 }
 
-void GLFWMouseButton(GLFWwindow *window, int button, int action, int mods)
+void GLFWMouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)mods;
@@ -2329,20 +2329,20 @@ void GLFWMouseButton(GLFWwindow *window, int button, int action, int mods)
 	int windowButton = button == GLFW_MOUSE_BUTTON_LEFT ? WINDOW_MOUSE_LEFT
 	                 : button == GLFW_MOUSE_BUTTON_RIGHT ? WINDOW_MOUSE_RIGHT
 	                 : WINDOW_MOUSE_MIDDLE;
-	MouseButton(ctx, windowButton, action == GLFW_PRESS ? WINDOW_BUTTON_DOWN : WINDOW_BUTTON_UP,
+	HandleMouseButton(ctx, windowButton, action == GLFW_PRESS ? WINDOW_BUTTON_DOWN : WINDOW_BUTTON_UP,
 	            (int)(x * ctx->MouseScaleX), (int)(y * ctx->MouseScaleY));
 }
 
-void GLFWMouseMotion(GLFWwindow *window, double x, double y)
+void GLFWCursorPosCallback(GLFWwindow *window, double x, double y)
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	int pixelX = (int)(x * ctx->MouseScaleX);
 	int pixelY = (int)(y * ctx->MouseScaleY);
 	if (TwEventMousePosGLFW(pixelX, pixelY)) return;
-	MouseMotion(ctx, pixelX, pixelY);
+	HandleMouseDrag(ctx, pixelX, pixelY);
 }
 
-void GLFWMouseWheel(GLFWwindow *window, double xoffset, double yoffset)
+void GLFWScrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)xoffset;
@@ -2351,7 +2351,7 @@ void GLFWMouseWheel(GLFWwindow *window, double xoffset, double yoffset)
 	ctx->TransXYZ[2] += (float)yoffset * 0.5f;
 }
 
-void GLFWResize(GLFWwindow *window, int width, int height)
+void GLFWFramebufferSizeCallback(GLFWwindow *window, int width, int height)
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	if (width < 1) width = 1;
@@ -2360,93 +2360,61 @@ void GLFWResize(GLFWwindow *window, int width, int height)
 	glfwGetWindowSize(window, &windowWidth, &windowHeight);
 	ctx->MouseScaleX = windowWidth > 0 ? (double)width / windowWidth : 1.0;
 	ctx->MouseScaleY = windowHeight > 0 ? (double)height / windowHeight : 1.0;
-	Resize(ctx, width, height);
+	ApplyFramebufferSize(ctx, width, height);
 }
 
 
-void MouseButton( magnoom_ctx *ctx, int button, int state, int x, int y ) // called when the mouse button transitions down or up
+void HandleMouseButton(magnoom_ctx *ctx, int button, int state, int x, int y)
 {
-	int b = 0;			// LEFT, MIDDLE, or RIGHT
-	{
-      // your code here to handle the event
-		switch( button )
-		{
-			case WINDOW_MOUSE_LEFT:		// 0
-				b = LEFT;		break;
+	int button_mask;
+	switch (button) {
+		case WINDOW_MOUSE_LEFT:   button_mask = LEFT;   break;
+		case WINDOW_MOUSE_MIDDLE: button_mask = MIDDLE; break;
+		case WINDOW_MOUSE_RIGHT:  button_mask = RIGHT;  break;
+		default: return;
+	}
 
-			case WINDOW_MOUSE_MIDDLE:	// 1
-				b = MIDDLE;		break;
-
-			case WINDOW_MOUSE_RIGHT:		// 2
-				b = RIGHT;		break;
-
-			case 3:		                // scrol up
-			ctx->TransXYZ[2]+=0.5;	break;
-
-			case 4:		                // scrol down
-			ctx->TransXYZ[2]-=0.5;	break;
-
-			default:
-				b = 0;
-				//fprintf( stderr, "Unknown mouse button: %d\n", button );
-		}
-
-		// button down sets the bit, up clears the bit:
-		if( state == WINDOW_BUTTON_DOWN )
-		{
-			ctx->Xmouse = x;
-			ctx->Ymouse = y;
-			ctx->ActiveButton |= b;		// set the proper bit
-		}else{
-			ctx->ActiveButton &= ~b;		// clear the proper bit
-		}
+	if (state == WINDOW_BUTTON_DOWN) {
+		ctx->Xmouse = x;
+		ctx->Ymouse = y;
+		ctx->ActiveButton |= button_mask;
+	} else {
+		ctx->ActiveButton &= ~button_mask;
 	}
 }
 
 
-void MouseMotion( magnoom_ctx *ctx, int x, int y ) // called when the mouse moves while a button is down
+void HandleMouseDrag(magnoom_ctx *ctx, int x, int y)
 {
-	const int 	dx = x - ctx->Xmouse;// change in mouse coords
-	const int 	dy = y - ctx->Ymouse;
-	float 	quat1[4];//NSK
-	float 	quat2[4];//NSK
-	{
-      // your code here to handle the event
-      if( ( ctx->ActiveButton & LEFT ) != 0 )
-		{
-			// ctx->Rot[2] += ( dx )*0.1f;
-			// ctx->Rot[0] += ( dy )*0.1f;
-			// RotAxis[0] = dy;
-			// RotAxis[1] = dx;
-			if (ctx->angle!=0){
-			// SetQuaternionFromAxisAngle(axis, angle, quat);
-			// MultiplyQuaternions(q_Rotation, quat, q_Rotation);
-			SetQuaternionFromAxisAngle(ctx->axisY, dx*0.01, quat2);
-			SetQuaternionFromAxisAngle(ctx->axisX, dy*0.01, quat1);
-			MultiplyQuaternions(quat2, quat1, quat1);
-			MultiplyQuaternions( quat1, ctx->q_Rotation, ctx->q_Rotation);
-            //metka1 GetEulerFromQuaternion(q_Rotation, ctx->Rot);
-			}		
-		}
+	const int dx = x - ctx->Xmouse;
+	const int dy = y - ctx->Ymouse;
 
-		if( ( ctx->ActiveButton & MIDDLE ) != 0 )
-		{
-			ctx->TransXYZ[2]+=(dx-dy)*0.05;	
+	if (ctx->ActiveButton & LEFT) {
+		if (ctx->angle != 0) {
+			float x_rotation[4];
+			float y_rotation[4];
+			SetQuaternionFromAxisAngle(ctx->axisY, dx*0.01, y_rotation);
+			SetQuaternionFromAxisAngle(ctx->axisX, dy*0.01, x_rotation);
+			MultiplyQuaternions(y_rotation, x_rotation, x_rotation);
+			MultiplyQuaternions(x_rotation, ctx->q_Rotation, ctx->q_Rotation);
 		}
+	}
 
-		if( ( ( ctx->ActiveButton & RIGHT ) != 0 ) & (true))//WhichProjection == PERSP
-		{
-			ctx->TransXYZ[0]+=dx*0.1;
-			ctx->TransXYZ[1]-=dy*0.1;
-		}
+	if (ctx->ActiveButton & MIDDLE) {
+		ctx->TransXYZ[2] += (dx-dy)*0.05;
+	}
 
-		ctx->Xmouse = x;			// new current position
-		ctx->Ymouse = y;	
-    }
+	if (ctx->ActiveButton & RIGHT) {
+		ctx->TransXYZ[0] += dx*0.1;
+		ctx->TransXYZ[1] -= dy*0.1;
+	}
+
+	ctx->Xmouse = x;
+	ctx->Ymouse = y;
 }
 
 // the keyboard callback:
-void keyboardDown( magnoom_ctx *ctx, unsigned char key, int x, int y )
+void HandleKeyDown( magnoom_ctx *ctx, unsigned char key, int x, int y )
 {   
     {
       // your code here to handle the event	
@@ -2559,21 +2527,21 @@ void keyboardDown( magnoom_ctx *ctx, unsigned char key, int x, int y )
 
 			case 'x':
 			case 'X':
-				Buttons(ctx,  XUP );
+				ExecuteCommand(ctx,  XUP );
 			break;
 
 			case 'y':
 			case 'Y':
-				Buttons(ctx,  YUP );
+				ExecuteCommand(ctx,  YUP );
 			break;
 
 			case 'z':
 			case 'Z':
-				Buttons(ctx,  ZUP );
+				ExecuteCommand(ctx,  ZUP );
 			break;
 
 			case TW_KEY_ESCAPE:
-				Buttons(ctx,  QUIT );
+				ExecuteCommand(ctx,  QUIT );
 				break;
 
 			//default:
@@ -2584,7 +2552,7 @@ void keyboardDown( magnoom_ctx *ctx, unsigned char key, int x, int y )
 }
 
 
-void keyboardUp( magnoom_ctx *ctx, unsigned char key, int x, int y )
+void HandleKeyUp( magnoom_ctx *ctx, unsigned char key, int x, int y )
 {
 		switch( key )
 		{			
@@ -2635,7 +2603,7 @@ void keyboardUp( magnoom_ctx *ctx, unsigned char key, int x, int y )
 }
 
 
-void KeyboardAdd( magnoom_ctx *ctx, int key, int x, int y ){
+void HandleSpecialKey( magnoom_ctx *ctx, int key, int x, int y ){
 int isiconified;
     {
       // your code here to handle the event	
@@ -2725,7 +2693,7 @@ int isiconified;
 	}
 }
 
-void Buttons( magnoom_ctx *ctx, int id )
+void ExecuteCommand( magnoom_ctx *ctx, int id )
 {
 	switch( id )
 	{
