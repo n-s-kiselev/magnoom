@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Magnoom
+Comment=Atomistic spin-dynamics simulation and visualization
+Exec=magnoom
+Icon=magnoom
+Categories=Science;Education;
+Terminal=false
+StartupWMClass=Magnoom

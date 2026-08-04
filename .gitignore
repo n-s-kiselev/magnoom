@@ -30,11 +30,19 @@
 magnoom
 /nob
 /nob.old
+/nob.exe.old
+/nob_icons
+/nob_icons.old
+/nob_icons.exe.old
 /build/
 
 # Output files
 *.csv
 *.png
+!/assets/icon/*.png
+/assets/icon/.magnoom-*.new
+/assets/icon/.magnoom-*.bak
+/assets/icon/.magnoom-publish-*
 
 # Archives (should not be vendored as opaque blobs; use source or a submodule)
 *.zip
@@ -46,4 +54,5 @@ AGENTS.md
 CLAUDE.md
 PLANS.md
 /docs
-/temp
+/temp/*
+!/temp/unused.c

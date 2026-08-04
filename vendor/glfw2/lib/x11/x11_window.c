@@ -29,6 +29,7 @@
 //========================================================================
 
 #include "internal.h"
+#include "magnoom_x11_icon.h"
 
 #include <limits.h>
 
@@ -904,6 +905,27 @@ static GLboolean createWindow( int width, int height,
         {
             _glfwPlatformCloseWindow();
             return GL_FALSE;
+        }
+
+        // Magnoom integration: identify the application and provide the icon
+        // used by EWMH-compliant window managers and desktop environments.
+        {
+            XClassHint *classHint = XAllocClassHint();
+            if( classHint )
+            {
+                classHint->res_name = "magnoom";
+                classHint->res_class = "Magnoom";
+                XSetClassHint( _glfwLibrary.display, _glfwWin.window, classHint );
+                XFree( classHint );
+            }
+
+            Atom netWmIcon = XInternAtom( _glfwLibrary.display,
+                                          "_NET_WM_ICON", False );
+            XChangeProperty( _glfwLibrary.display, _glfwWin.window,
+                             netWmIcon, XA_CARDINAL, 32, PropModeReplace,
+                             (const unsigned char*) magnoom_x11_icon,
+                             sizeof(magnoom_x11_icon) /
+                                 sizeof(magnoom_x11_icon[0]) );
         }
     }
 
@@ -1991,4 +2013,3 @@ void _glfwPlatformSetMouseCursorPos( int x, int y )
 
     XWarpPointer( _glfwLibrary.display, None, _glfwWin.window, 0,0,0,0, x, y );
 }
-

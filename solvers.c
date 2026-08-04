@@ -1,5 +1,4 @@
-void
-GetEffectiveField(	magnoom_ctx *ctx, const double* s,
+void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 					int naini, 	int nafin,
 					int nbini, 	int nbfin,
 					int ncini, 	int ncfin)
@@ -141,44 +140,7 @@ GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 	}
 }
 
-//series for function:
-//     a*k1 + a^2*k2
-//  ------------------ = Sum(a^(n)*coef[n-1],n=1,6)
-//	1 + a*q1 + a^2*q2
-//
-void fun2(double k1, double k2, double q1, double q2, double coef[6]){
-	double q12 = q1*q1, c1 = q12*q12-3*q12*q2+q2*q2;
-	coef[0] = k1;
-	coef[1] = k2-k1*q1;
-	coef[2] = -k2*q1+k1*(q12-q2);
-	coef[3] = k2*q12-k1*q1*q12-k2*q2+2*k1*q1*q2;
-	coef[4] = -k2*(q1*q12-2*q1*q2)+k1*c1;
-	coef[5] = k2*c1-k1*q1*(q12*q12-4*q12*q2+3*q2*q2);
-}
-
-//series for function:
-//     a*k1 + a^2*k2 + a^3*k3 + a^4*k4
-//  ------------------------------------ = Sum(a^(n)*coef[n-1],n=1,6)
-//	1 + a*q1 + a^2*q2 + a^3*q3 + a^4*q4
-//
-void fun4(double k1, double k2, double k3, double k4,
- double q1, double q2, double q3, double q4, double* coef){
- 	double c1,c2,c3,c4, q12 = q1*q1, q13 = q12*q1;
- 	c1 = q12*q12-3*q12*q2+q2*q2+2*q1*q3-q4;
- 	c2 = q12*q13-4*q13*q2+3*q1*q2*q2+3*q12*q3-2*q2*q3-2*q1*q4;
- 	c3 = q12-q2;
- 	c4 = q13-2*q1*q2+q3;
-	coef[0] = k1;
-	coef[1] = k2-k1*q1;
-	coef[2] = k3-k2*q1+k1*c3;
-	coef[3] = k4-k3*q1+k2*c3-k1*c4;
-	coef[4] = -k4*q1+k3*c3-k2*c4+k1*c1;
-	coef[5] = k4*c3-k3*c4+k2*c1-k1*c2;
-}
-
-
-double
-GetTotalEnergyMoment(magnoom_ctx *ctx)
+double GetTotalEnergyMoment(magnoom_ctx *ctx)
 {
 	const double *s = ctx->bS;
 	const double *Hx = ctx->Heffx;
@@ -211,39 +173,7 @@ GetTotalEnergyMoment(magnoom_ctx *ctx)
 	return tmp0/N;
 }
 
-double
-GetTotalEnergyMomentE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz, double* Hx, double* Hy, double* Hz, double* Etot, double* Mtot, int N)
-{
-	double tmp0 = 0;
-	Mtot[0] = 0;
-	Mtot[1] = 0;
-	Mtot[2] = 0;
-	double LD = 2*PI/ctx->Dij[0], HD = ctx->Dij[0]*ctx->Dij[0];
-	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
-
-	for (int i=0; i<N; i++)
-	{
-
-		// Etot[i] = -Hx[i]*sx[i] - Hy[i]*sy[i] - Hz[i]*sz[i];
-		Etot[i] = 4*PI*PI*(ctx->BextDCMagnitude/HD)*(1-sx[i]*sin(ctx->BextDCTheta*PI/180)*cos(ctx->BextDCPhi*PI/180)-sy[i]*sin(ctx->BextDCTheta*PI/180)*sin(ctx->BextDCPhi*PI/180)-sz[i]*cos(ctx->BextDCTheta*PI/180))/(LD*LD*LD);
-		// metka test stochastic LLG
-		double vtemp[3];
-		// opposite to the rotation of the vector of external field
-		RotateVector(sx[i],sy[i],sz[i],0,0,1,-ctx->BextDCPhi,vtemp); //rotate about y by theta of the external field
-		RotateVector(vtemp[0],vtemp[1],vtemp[2],0,1,0,-ctx->BextDCTheta,vtemp); //rotate about z by phi of the external field
-		Mtot[0] = Mtot[0] + vtemp[0];
-		Mtot[1] = Mtot[1] + vtemp[1];
-		Mtot[2] = Mtot[2] + vtemp[2];		
-		// Mtot[0] = Mtot[0] + sx[i];
-		// Mtot[1] = Mtot[1] + sy[i];
-		// Mtot[2] = Mtot[2] + sz[i];
-		tmp0 = tmp0 + Etot[i];
-	}
-	return tmp0;
-}
-
-double
-GetTotalEnergyFerro(magnoom_ctx *ctx)
+double GetTotalEnergyFerro(magnoom_ctx *ctx)
 {
 	double sx = ctx->BextDCDirection[0];
 	double sy = ctx->BextDCDirection[1];
@@ -461,46 +391,6 @@ GetTotalEnergy(magnoom_ctx *ctx)
 	}
 	return tmp0;
 }
-
-double
-GetTotalEnergyE0(	magnoom_ctx *ctx, double* sx, double* sy, double* sz,
-					int numNeighbors, int* aidxBlock, int* nidxBlock, int* nidxGridA, int* nidxGridB, int* nidxGridC, int* shellIdx,
-					float* Jij, float* Bij, float* Dij, float* VDMx, float* VDMy, float* VDMz, float* vku1, float ku1, float* vku2, float ku2, float kc, float* BextDCDirection, float BextDCMagnitude,
-					double* Etot,double* Mtot, int N)
-{
-	double tmp0=0;
-	Mtot[0] = 0;
-	Mtot[1] = 0;
-	Mtot[2] = 0;
-	double LD = 2*PI/Dij[0], HD = Dij[0]*Dij[0];
-
-
-	int Nx = ctx->uABC[0], Ny = ctx->uABC[1], Nz = ctx->uABC[2];
-	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
-	tmp0=0;
-	// if(Nz == 1 && Nx > 1 && Ny > 1){
-		for(int i = 0; i < Nx; i++){
-			for(int j = 0; j < Ny; j++){
-				int n = i + j*Nx, n1 = (i-1+Nx)%Nx+j*Nx, n2 = i + ((j-1+Ny)%Ny)*Nx;
-				Etot[n] = 4*PI*PI*(ctx->BextDCMagnitude/HD)*(1-sx[n]*sin(ctx->BextDCTheta*PI/180)*cos(ctx->BextDCPhi*PI/180)-sy[n]*sin(ctx->BextDCTheta*PI/180)*sin(ctx->BextDCPhi*PI/180)-sz[n]*cos(ctx->BextDCTheta*PI/180))/(LD*LD) -\
-				(sx[n]*sx[n1]+sy[n]*sy[n1]+sz[n]*sz[n1]-1) + (1./LD)*2.*PI*(sy[n]*sz[n1]-sz[n]*sy[n1]) -\
-				(sx[n]*sx[n2]+sy[n]*sy[n2]+sz[n]*sz[n2]-1) + (1./LD)*2.*PI*(sz[n]*sx[n2]-sx[n]*sz[n2]);
-				tmp0 = tmp0 + Etot[n];
-			}
-		}
-	// }
-	// if(Nz > 1 && Nx > 1 && Ny > 1){
-
-	// }
-
-	
-	
-
-	return tmp0;
-}
-
-
-
 
 // void
 // GetFluctuations( float* rx, float* ry, float* rz, int N ){
@@ -1428,10 +1318,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 	}
 }
 
-
-
-void
-Relax(	magnoom_ctx *ctx, int thread,
+void Relax(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
@@ -1440,63 +1327,59 @@ Relax(	magnoom_ctx *ctx, int thread,
 	bool *proj = ctx->Proj;
 	
 	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
-	
-		
 
-			double Hx, Hy, Hz, temp;// components of the effective field
-			int Na = ctx->uABC[0];
-			int Nb = ctx->uABC[1];
-			int nb1, nc1;
-			int i,s;
+	double Hx, Hy, Hz, temp;// components of the effective field
+	int Na = ctx->uABC[0];
+	int Nb = ctx->uABC[1];
+	int nb1, nc1;
+	int i,s;
 
-			double ALPHA,g1,g2, d1,d2;
-			ALPHA = ctx->damping;
+	double ALPHA,g1,g2, d1,d2;
+	ALPHA = ctx->damping;
 
-			for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
+	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
+	{
+		for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
+		{
+			nc1 = Na * Nb * nc;
+			for (int nb=nbini; nb<nbfin; nb++)
 			{
-				for (int nc=ncini; nc<ncfin; nc++)//nc(or na or nb) is a neghbor in the direction of c (or a or b)-vector
+				nb1 = Na * nb;
+				for (int na=naini; na<nafin; na++)
 				{
-					nc1 = Na * Nb * nc;
-					for (int nb=nbini; nb<nbfin; nb++)
-					{
-						nb1 = Na * nb;
-						for (int na=naini; na<nafin; na++)
-						{
-							i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-							Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
-							//find max torque
-							temp = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
-							Hx = ctx->Heffx[i]-temp*VEC_X(in,i);
-							Hy = ctx->Heffy[i]-temp*VEC_Y(in,i);	
-							Hz = ctx->Heffz[i]-temp*VEC_Z(in,i);
-							temp = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
-							if (temp > ctx->Max_torque[thread]) ctx->Max_torque[thread] = temp;
-							// constant step descent
-							proj[i] = (VEC_Z(in,i)>0)? true : false;
-							s = (proj[i])? 1 : -1;
-							g1 = VEC_X(in,i)/(1+s*VEC_Z(in,i));
-							g2 = VEC_Y(in,i)/(1+s*VEC_Z(in,i));
-							
-							Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
-							d1 = (Hx*(VEC_Y(in,i)*VEC_Y(in,i)+s*VEC_Z(in,i)*(1+s*VEC_Z(in,i))) - Hy*VEC_X(in,i)*VEC_Y(in,i) - Hz*VEC_X(in,i)*(s+VEC_Z(in,i)));
-							d2 = (-Hx*VEC_X(in,i)*VEC_Y(in,i) + Hy*(VEC_X(in,i)*VEC_X(in,i)+s*VEC_Z(in,i)*(1+s*VEC_Z(in,i))) - Hz*VEC_Y(in,i)*(s+VEC_Z(in,i)));
+					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					//find max torque
+					temp = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
+					Hx = ctx->Heffx[i]-temp*VEC_X(in,i);
+					Hy = ctx->Heffy[i]-temp*VEC_Y(in,i);
+					Hz = ctx->Heffz[i]-temp*VEC_Z(in,i);
+					temp = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
+					if (temp > ctx->Max_torque[thread]) ctx->Max_torque[thread] = temp;
+					// constant step descent
+					proj[i] = (VEC_Z(in,i)>0)? true : false;
+					s = (proj[i])? 1 : -1;
+					g1 = VEC_X(in,i)/(1+s*VEC_Z(in,i));
+					g2 = VEC_Y(in,i)/(1+s*VEC_Z(in,i));
 
-							g1 += ALPHA*d1;
-							g2 += ALPHA*d2;
+					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					d1 = (Hx*(VEC_Y(in,i)*VEC_Y(in,i)+s*VEC_Z(in,i)*(1+s*VEC_Z(in,i))) - Hy*VEC_X(in,i)*VEC_Y(in,i) - Hz*VEC_X(in,i)*(s+VEC_Z(in,i)));
+					d2 = (-Hx*VEC_X(in,i)*VEC_Y(in,i) + Hy*(VEC_X(in,i)*VEC_X(in,i)+s*VEC_Z(in,i)*(1+s*VEC_Z(in,i))) - Hz*VEC_Y(in,i)*(s+VEC_Z(in,i)));
 
-							VEC_X(in,i) = 2*g1/(1+g1*g1+g2*g2);
-							VEC_Y(in,i) = 2*g2/(1+g1*g1+g2*g2);
-							VEC_Z(in,i) = s*(1-g1*g1-g2*g2)/(1+g1*g1+g2*g2);
+					g1 += ALPHA*d1;
+					g2 += ALPHA*d2;
 
-							VEC_X(ctx->bS,i)=VEC_X(in,i);
-							VEC_Y(ctx->bS,i)=VEC_Y(in,i);
-							VEC_Z(ctx->bS,i)=VEC_Z(in,i);					
-						}
-					}
+					VEC_X(in,i) = 2*g1/(1+g1*g1+g2*g2);
+					VEC_Y(in,i) = 2*g2/(1+g1*g1+g2*g2);
+					VEC_Z(in,i) = s*(1-g1*g1-g2*g2)/(1+g1*g1+g2*g2);
+
+					VEC_X(ctx->bS,i)=VEC_X(in,i);
+					VEC_Y(ctx->bS,i)=VEC_Y(in,i);
+					VEC_Z(ctx->bS,i)=VEC_Z(in,i);
 				}
 			}
-	
-	
+		}
+	}
 }
 
 
@@ -1538,6 +1421,99 @@ double EvaluateBextAC(magnoom_ctx *ctx)
 	ctx->BextAC[1] = R * ctx->BextACDirection[1];
 	ctx->BextAC[2] = R * ctx->BextACDirection[2];
 	return R;
+}
+
+static void RecordBextACMode(magnoom_ctx *ctx)
+{
+	// Save mode snapshot.
+	if (ctx->BextACModeRecording*ctx->BextACEnabled!=0){
+		float phase = ctx->BextACOmega*ctx->t_step*ctx->ITERATION*iTPI;
+		phase = phase - floor(phase);
+		int Im=-1;
+		float tolerance=0.5*ctx->t_step/ctx->BextACPeriod;
+
+		for (int i=0; i<=ctx->num_images; i++){
+			if ( ABS(phase - i/(float)ctx->num_images)<tolerance){
+				Im = i%ctx->num_images;
+			}
+		}
+		if (Im!=-1){
+			ctx->current_rec_num_mode++;
+			for (int i=0; i<ctx->NOS; i++){
+				// for delta m:
+				IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,0)+(VEC_X(ctx->S,i)-VEC_X(ctx->t3S,i));
+				IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,1)+(VEC_Y(ctx->S,i)-VEC_Y(ctx->t3S,i));
+				IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,2)+(VEC_Z(ctx->S,i)-VEC_Z(ctx->t3S,i));
+				// for m:
+				IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,0) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,0) + VEC_X(ctx->S,i);
+				IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,1) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,1) + VEC_Y(ctx->S,i);
+				IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,2) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,2) + VEC_Z(ctx->S,i);
+			}
+			printf("tolerance %1.8f \n", tolerance);
+			// printf("ABS(phase - i/(float)num_images)= %1.8f \n", ABS(phase - Im/(float)num_images));
+			printf("Phase %1.8f (%d) (%1.8f)\n", phase,Im,Im/(float)ctx->num_images);
+			printf("Image %d\n", ctx->current_rec_num_mode);
+			if (ctx->current_rec_num_mode==ctx->num_images*ctx->rec_num_mode){
+				ctx->Play=0;
+				ctx->BextACModeRecording=0;
+				ctx->BextACEnabled=0;
+				ctx->current_rec_num_mode=0;
+				for (int j=0; j<ctx->num_images; j++){
+					for (int i=0; i<ctx->NOS; i++){
+					// for dm:
+						IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)/ctx->rec_num_mode;
+						IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)/ctx->rec_num_mode;
+						IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)/ctx->rec_num_mode;
+					// for m:
+						IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)/ctx->rec_num_mode;
+						IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)/ctx->rec_num_mode;
+						IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)/ctx->rec_num_mode;
+						float Norm=sqrt(IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)+IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)+IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2));
+						IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)/Norm;
+						IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)/Norm;
+						IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)/Norm;
+
+					}
+					/* only dm */
+						// char ovf_filename[64] = "";
+						// snprintf(ovf_filename,64,"dm%d.ovf",j);
+						// Save_OVF_b8(Image_x[j], Image_y[j], Image_z[j], ovf_filename);
+					/* only m */
+						// char vtk_filename[64] = "";
+						// snprintf(vtk_filename,64,"phase%d.vtk",j);
+						// Save_VTK(Image_x[j], Image_y[j], Image_z[j],0, vtk_filename);
+					/* m and dm */
+						char vtk_filename[64] = "";
+						snprintf(vtk_filename,64,"phase%d.vtk",j);
+						Save_VTK_6(ctx, &ctx->Image[(size_t)j*ctx->NOS*3], &ctx->dImage[(size_t)j*ctx->NOS*3], 0, vtk_filename);
+					/*dTheta dPhi*/
+						for (int i=0; i<ctx->NOS; i++){
+						// get theta and phi for the equilibrium state:
+							float T=acos(VEC_Z(ctx->t3S,i));
+							float F=atan2(VEC_Y(ctx->t3S,i),VEC_X(ctx->t3S,i));
+						// get spin i
+							vec4 s, r;
+							mat4x4 My, Mz;
+							s[0]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0);
+							s[1]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1);
+							s[2]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2);
+							s[3]=0.f;
+							mat4x4_identity(My);
+							mat4x4_rotate_Y(My, My, T);
+							mat4x4_identity(Mz);
+							mat4x4_rotate_Z(Mz, Mz, F);
+							mat4x4_mul_vec4(r, My, s);
+							mat4x4_mul_vec4(s, Mz, r);
+							IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)=s[0];
+							IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)=s[1];
+							IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)=s[2];
+						}
+							snprintf(vtk_filename,64,"dTdF%d.vtk",j);
+							Save_VTK(ctx, &ctx->dImage[(size_t)j*ctx->NOS*3],0, vtk_filename);
+					}
+			}
+		}
+	}
 }
 	
 
@@ -1643,8 +1619,7 @@ void *CALC_THREAD(void *void_ptr)
 				if (ctx->Max_torque[i] > ctx->MAX_TORQUE) ctx->MAX_TORQUE = ctx->Max_torque[i];
 				ctx->Max_torque[i] = 0;
 			}
-			
-			
+
 			ctx->ITERATION++;
 			if (ctx->ITERATION==ctx->Max_Numb_Iteration){
 			    ctx->Play=0;
@@ -1660,7 +1635,6 @@ void *CALC_THREAD(void *void_ptr)
 				pthread_mutex_unlock(&ctx->culc_mutex);
 			}
 
-
 			//normalize all spins every 100 iterations
 			if (ctx->WhichIntegrationScheme != RELAX && ctx->ITERATION%100==0) 
 			{
@@ -1675,8 +1649,6 @@ void *CALC_THREAD(void *void_ptr)
 					}		
 				}
 			}
-
-
 
 			//save to file if recording is on
 			if (ctx->Record!=0 && ctx->ITERATION%ctx->rec_iteration == 0){
@@ -1710,95 +1682,7 @@ void *CALC_THREAD(void *void_ptr)
 				}
 			}
 
-			//save mode snapshot
-			if (ctx->BextACModeRecording*ctx->BextACEnabled!=0){
-				float phase = ctx->BextACOmega*ctx->t_step*ctx->ITERATION*iTPI;
-				phase = phase - floor(phase);
-				int Im=-1;
-				float tolerance=0.5*ctx->t_step/ctx->BextACPeriod;
-
-				for (int i=0; i<=ctx->num_images; i++){
-					if ( ABS(phase - i/(float)ctx->num_images)<tolerance){
-						Im = i%ctx->num_images;
-					}
-				}
-				if (Im!=-1){
-						ctx->current_rec_num_mode++;
-						for (int i=0; i<ctx->NOS; i++){
-							// for delta m:
-							IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,0)+(VEC_X(ctx->S,i)-VEC_X(ctx->t3S,i));
-							IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,1)+(VEC_Y(ctx->S,i)-VEC_Y(ctx->t3S,i));
-							IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->dImage,Im,ctx->NOS,i,2)+(VEC_Z(ctx->S,i)-VEC_Z(ctx->t3S,i));
-							// for m:
-							IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,0) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,0) + VEC_X(ctx->S,i);
-							IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,1) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,1) + VEC_Y(ctx->S,i);
-							IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,2) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,2) + VEC_Z(ctx->S,i);
-						}
-						printf("tolerance %1.8f \n", tolerance);
-						// printf("ABS(phase - i/(float)num_images)= %1.8f \n", ABS(phase - Im/(float)num_images));
-						printf("Phase %1.8f (%d) (%1.8f)\n", phase,Im,Im/(float)ctx->num_images);
-						printf("Image %d\n", ctx->current_rec_num_mode);
-						if (ctx->current_rec_num_mode==ctx->num_images*ctx->rec_num_mode){	
-							ctx->Play=0;
-							ctx->BextACModeRecording=0;
-							ctx->BextACEnabled=0;
-							ctx->current_rec_num_mode=0;
-							for (int j=0; j<ctx->num_images; j++){
-								for (int i=0; i<ctx->NOS; i++){
-								// for dm:
-									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)/ctx->rec_num_mode;
-									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)/ctx->rec_num_mode;
-									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)/ctx->rec_num_mode;
-								// for m:
-									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)/ctx->rec_num_mode;
-									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)/ctx->rec_num_mode;
-									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)/ctx->rec_num_mode;
-									float Norm=sqrt(IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)+IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)+IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)*IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2));					
-									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0)/Norm;
-									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1)/Norm;
-									IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)/Norm;
-
-								}
-								/* only dm */
-									// char ovf_filename[64] = "";
-									// snprintf(ovf_filename,64,"dm%d.ovf",j);
-									// Save_OVF_b8(Image_x[j], Image_y[j], Image_z[j], ovf_filename);
-								/* only m */
-									// char vtk_filename[64] = "";
-									// snprintf(vtk_filename,64,"phase%d.vtk",j);
-									// Save_VTK(Image_x[j], Image_y[j], Image_z[j],0, vtk_filename);
-								/* m and dm */
-									char vtk_filename[64] = "";
-									snprintf(vtk_filename,64,"phase%d.vtk",j);
-									Save_VTK_6(ctx, &ctx->Image[(size_t)j*ctx->NOS*3], &ctx->dImage[(size_t)j*ctx->NOS*3], 0, vtk_filename);
-								/*dTheta dPhi*/
-								for (int i=0; i<ctx->NOS; i++){
-								// get theta and phi for the equilibrium state:
-									float T=acos(VEC_Z(ctx->t3S,i));
-									float F=atan2(VEC_Y(ctx->t3S,i),VEC_X(ctx->t3S,i));
-								// get spin i
-									vec4 s, r;
-									mat4x4 My, Mz;
-									s[0]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,0);
-									s[1]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,1);
-									s[2]=(float)IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2);
-									s[3]=0.f;
-									mat4x4_identity(My);
-									mat4x4_rotate_Y(My, My, T);
-									mat4x4_identity(Mz);
-									mat4x4_rotate_Z(Mz, Mz, F);
-									mat4x4_mul_vec4(r, My, s);
-									mat4x4_mul_vec4(s, Mz, r);
-									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,0)=s[0];
-									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,1)=s[1];
-									IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)=s[2];	
-								}
-									snprintf(vtk_filename,64,"dTdF%d.vtk",j);
-									Save_VTK(ctx, &ctx->dImage[(size_t)j*ctx->NOS*3],0, vtk_filename);
-							}
-					}
-				}
-			}
+			RecordBextACMode(ctx);
 
 			if (ctx->DATA_TRANSFER_MUTEX==WAIT_DATA){
 				for (int i=0;i<ctx->NOS;i++){
@@ -1811,8 +1695,6 @@ void *CALC_THREAD(void *void_ptr)
 					ctx->currentIteration=ctx->ITERATION;
 				pthread_mutex_unlock(&ctx->show_mutex);	
 			}
-
-
 			// All workers leave together after completing the current iteration.
 			if (ctx->EngineShutdownRequested) ctx->EngineShutdown = true;
 
@@ -1820,9 +1702,7 @@ void *CALC_THREAD(void *void_ptr)
 			sem_post(ctx->sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(ctx->sem_out[threadindex]);
-
 		}else{
-			
 			//all other calculation threads
 			sem_wait(ctx->sem_in[threadindex]);
 			// first button which open the first door in the next (second) thread
@@ -1831,10 +1711,8 @@ void *CALC_THREAD(void *void_ptr)
 			sem_wait(ctx->sem_out[threadindex]);
 			// second button which open the second door in the next (second) thread
 			sem_post(ctx->sem_out[(threadindex+1)%THREADS_NUMBER]);
-			
 		}
-
-}
+	}
 /* the function must return something - NULL will do */
 return NULL;
 }

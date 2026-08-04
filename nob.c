@@ -15,6 +15,9 @@
 #define GLFW_OBJECT BUILD_DIR "glfw2.o"
 #define MAGNOOM_OBJECT BUILD_DIR "magnoom.o"
 #define OUTPUT BUILD_DIR "magnoom"
+#define ICON_DIR "assets/icon/"
+#define WINDOWS_RESOURCE_OBJECT BUILD_DIR "magnoom-resource.o"
+#define MACOS_APP BUILD_DIR "Magnoom.app/"
 #define NOB_HEADER "vendor/nob/nob.h"
 
 #if defined(_WIN32)
@@ -109,10 +112,14 @@ static bool build_glad(void)
 
 static bool build_glfw(void)
 {
-    const char *inputs[] = { GLFW_SOURCE, "nob.c", NOB_HEADER };
+    const char *inputs[] = {
+        GLFW_SOURCE, "vendor/glfw2/lib/x11/x11_window.c",
+        ICON_DIR "magnoom_x11_icon.h", "nob.c", NOB_HEADER,
+    };
     if (!build_needed(GLFW_OBJECT, inputs, NOB_ARRAY_LEN(inputs))) return true;
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "cc", "-O2", "-I" GLFW_INCLUDE, "-Ivendor/glfw2/lib", "-DGLFW_NO_GLU");
+    nob_cmd_append(&cmd, "cc", "-O2", "-I" GLFW_INCLUDE, "-Ivendor/glfw2/lib",
+                   "-I" ICON_DIR, "-DGLFW_NO_GLU");
 #if defined(_WIN32)
     nob_cmd_append(&cmd, "-D_GLFW2_WIN32", "-Ivendor/glfw2/lib/win32");
 #elif defined(__APPLE__)
@@ -124,6 +131,22 @@ static bool build_glfw(void)
 #endif
     nob_cmd_append(&cmd, "-c", GLFW_SOURCE, "-o", GLFW_OBJECT);
     return nob_cmd_run(&cmd);
+}
+
+static bool build_windows_resource(void)
+{
+#if defined(_WIN32)
+    const char *inputs[] = {
+        ICON_DIR "magnoom.rc", ICON_DIR "magnoom.ico", "nob.c", NOB_HEADER,
+    };
+    if (!build_needed(WINDOWS_RESOURCE_OBJECT, inputs, NOB_ARRAY_LEN(inputs))) return true;
+
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, "windres", ICON_DIR "magnoom.rc", WINDOWS_RESOURCE_OBJECT);
+    return nob_cmd_run(&cmd);
+#else
+    return true;
+#endif
 }
 
 static bool build_magnoom_object(void)
@@ -146,12 +169,22 @@ static bool build_magnoom_object(void)
 
 static bool build_magnoom(void)
 {
+#if defined(_WIN32)
+    const char *inputs[] = {
+        MAGNOOM_OBJECT, ATB_LIB, GLAD_OBJECT, GLFW_OBJECT, WINDOWS_RESOURCE_OBJECT,
+    };
+#else
     const char *inputs[] = { MAGNOOM_OBJECT, ATB_LIB, GLAD_OBJECT, GLFW_OBJECT };
+#endif
     const char *output = OUTPUT EXE_EXT;
     if (!build_needed(output, inputs, NOB_ARRAY_LEN(inputs))) return true;
 
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "c++", MAGNOOM_OBJECT, GLAD_OBJECT, ATB_LIB, GLFW_OBJECT, "-o", output);
+    nob_cmd_append(&cmd, "c++", MAGNOOM_OBJECT, GLAD_OBJECT, ATB_LIB, GLFW_OBJECT);
+#if defined(_WIN32)
+    nob_cmd_append(&cmd, WINDOWS_RESOURCE_OBJECT);
+#endif
+    nob_cmd_append(&cmd, "-o", output);
 #if defined(__APPLE__)
     nob_cmd_append(&cmd, "-framework", "OpenGL", "-framework", "Cocoa",
                    "-framework", "AppKit", "-framework", "Foundation", "-framework", "IOKit",
@@ -168,6 +201,58 @@ static bool build_magnoom(void)
     return nob_cmd_run(&cmd);
 }
 
+static bool copy_if_needed(const char *source, const char *destination, bool *copied)
+{
+    const char *inputs[] = { source };
+    if (!build_needed(destination, inputs, NOB_ARRAY_LEN(inputs))) return true;
+    if (!nob_copy_file(source, destination)) return false;
+    if (copied) *copied = true;
+    return true;
+}
+
+static bool package_platform_assets(void)
+{
+#if defined(__APPLE__)
+    bool bundle_changed = false;
+    if (!nob_mkdir_if_not_exists(MACOS_APP) ||
+        !nob_mkdir_if_not_exists(MACOS_APP "Contents/") ||
+        !nob_mkdir_if_not_exists(MACOS_APP "Contents/MacOS/") ||
+        !nob_mkdir_if_not_exists(MACOS_APP "Contents/Resources/")) return false;
+
+    if (!copy_if_needed(OUTPUT, MACOS_APP "Contents/MacOS/magnoom", &bundle_changed) ||
+        !copy_if_needed("assets/macos/Info.plist", MACOS_APP "Contents/Info.plist",
+                        &bundle_changed) ||
+        !copy_if_needed(ICON_DIR "magnoom.icns",
+                        MACOS_APP "Contents/Resources/magnoom.icns",
+                        &bundle_changed)) return false;
+
+    if (!bundle_changed &&
+        nob_file_exists(MACOS_APP "Contents/_CodeSignature/CodeResources")) return true;
+
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, "codesign", "--force", "--deep", "--sign", "-", MACOS_APP);
+    return nob_cmd_run(&cmd);
+#elif defined(_WIN32)
+    return true;
+#else
+    if (!nob_mkdir_if_not_exists(BUILD_DIR "share/") ||
+        !nob_mkdir_if_not_exists(BUILD_DIR "share/applications/") ||
+        !nob_mkdir_if_not_exists(BUILD_DIR "share/icons/") ||
+        !nob_mkdir_if_not_exists(BUILD_DIR "share/icons/hicolor/") ||
+        !nob_mkdir_if_not_exists(BUILD_DIR "share/icons/hicolor/256x256/") ||
+        !nob_mkdir_if_not_exists(BUILD_DIR "share/icons/hicolor/256x256/apps/") ||
+        !nob_mkdir_if_not_exists(BUILD_DIR "share/icons/hicolor/512x512/") ||
+        !nob_mkdir_if_not_exists(BUILD_DIR "share/icons/hicolor/512x512/apps/")) return false;
+
+    return copy_if_needed("assets/linux/magnoom.desktop",
+                          BUILD_DIR "share/applications/magnoom.desktop", NULL) &&
+           copy_if_needed(ICON_DIR "magnoom-256.png",
+                          BUILD_DIR "share/icons/hicolor/256x256/apps/magnoom.png", NULL) &&
+           copy_if_needed(ICON_DIR "magnoom-512.png",
+                          BUILD_DIR "share/icons/hicolor/512x512/apps/magnoom.png", NULL);
+#endif
+}
+
 static bool clear_directory(const char *folder)
 {
     if (!nob_file_exists(folder)) return true;
@@ -175,7 +260,12 @@ static bool clear_directory(const char *folder)
     if (!nob_read_entire_dir(folder, &children)) return false;
     for (size_t i = 0; i < children.count; ++i) {
         if (strcmp(children.items[i], ".") == 0 || strcmp(children.items[i], "..") == 0) continue;
-        if (!nob_delete_file(nob_temp_sprintf("%s%s", folder, children.items[i]))) return false;
+        const char *path = nob_temp_sprintf("%s%s", folder, children.items[i]);
+        if (nob_get_file_type(path) == NOB_FILE_DIRECTORY) {
+            if (!clear_directory(nob_temp_sprintf("%s/", path))) return false;
+        } else if (!nob_delete_file(path)) {
+            return false;
+        }
     }
     return nob_delete_file(folder);
 }
@@ -189,7 +279,7 @@ static bool clean(void)
     if (nob_file_exists(GLFW_OBJECT)) ok = nob_delete_file(GLFW_OBJECT) && ok;
     if (nob_file_exists(MAGNOOM_OBJECT)) ok = nob_delete_file(MAGNOOM_OBJECT) && ok;
     if (nob_file_exists(OUTPUT EXE_EXT)) ok = nob_delete_file(OUTPUT EXE_EXT) && ok;
-    if (nob_file_exists(BUILD_DIR)) ok = nob_delete_file(BUILD_DIR) && ok;
+    ok = clear_directory(BUILD_DIR) && ok;
     return ok;
 }
 
@@ -240,7 +330,8 @@ int main(int argc, char **argv)
     if (!ensure_submodules()) return 1;
     if (!nob_mkdir_if_not_exists(BUILD_DIR) || !nob_mkdir_if_not_exists(ATB_BUILD_DIR)) return 1;
     if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() ||
-        !build_magnoom_object() || !build_magnoom()) return 1;
+        !build_windows_resource() || !build_magnoom_object() ||
+        !build_magnoom() || !package_platform_assets()) return 1;
     nob_log(NOB_INFO, "built %s", OUTPUT EXE_EXT);
     return 0;
 }

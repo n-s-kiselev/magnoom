@@ -57,14 +57,27 @@ gcc nob.c -o nob.exe
 The build produces:
 
 - `build/magnoom` (`build/magnoom.exe` on Windows) — the application
+- `build/Magnoom.app` on macOS — an application bundle with the Magnoom icon
+- `build/share/` on Linux — staged desktop-launcher and hicolor icon files
 - `build/libAntTweakBar.a` — the statically linked AntTweakBar library
 - intermediate objects under `build/`
+
+On macOS, launch `build/Magnoom.app` to use the application name and Dock icon;
+the raw `build/magnoom` executable remains available for terminal use. On
+Windows, the icon is embedded directly in `build/magnoom.exe`. On Linux, the
+window publishes its icon and `Magnoom` application class directly, while the
+files under `build/share/` can be copied into a standard installation prefix
+to provide a desktop launcher.
 
 Magnoom's application sources are compiled as C99. The vendored AntTweakBar implementation remains C++, so the final executable is linked with the C++ compiler driver.
 
 The `nob` executable automatically rebuilds itself when `nob.c` or its vendored `nob.h` changes. All normal build products are contained in `build/`, except for the bootstrapped `nob` executable itself.
 
 `nob.c` is the only build system for this repository. No CMake, Makefile, Visual Studio project, or package-manager build is required. The only network access a build may trigger is the one-time git submodule fetch described above; there is no package-manager dependency resolution.
+
+The optional `nob_icons.c` tool regenerates platform icon assets from
+`assets/icon/magnoom.svg` using Inkscape. It is separate from the normal build;
+see `assets/icon/icon_instructions.md` for usage.
 
 ## Dependencies
 
@@ -73,7 +86,7 @@ The complete source for the application dependencies is stored under [`vendor`](
 - [AntTweakBar](https://github.com/n-s-kiselev/AntTweakBar-Legacy) — the real-time OpenGL parameter interface, included as a git submodule at `vendor/AntTweakBar-Legacy` and built as a static library from the subset of its sources Magnoom needs (see `nob.c`'s `atb_common_sources`)
 - [GLFW](https://www.glfw.org/) [v*2.7.9*](https://sourceforge.net/projects/glfw/files/glfw/2.7.9/) — window creation, input, and the event loop, built from `vendor/glfw2`
 - [GLAD](https://glad.dav1d.de/) — OpenGL function loading, built from `vendor/glad`
-- [stb_image_write](https://github.com/nothings/stb) — PNG image export, stored in `vendor/stb`
+- [stb_image](https://github.com/nothings/stb) and [stb_image_write](https://github.com/nothings/stb) — PNG decoding for the optional icon exporter and PNG image export for Magnoom, stored in `vendor/stb`
 - [nob.h](https://github.com/tsoding/nob.h) — build-system implementation, stored in `vendor/nob`
 
 Magnoom uses an OpenGL compatibility context because its renderer uses the fixed-function API (no shaders).
