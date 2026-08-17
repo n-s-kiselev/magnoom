@@ -25,19 +25,29 @@ The AC component supports sinusoidal, Gaussian pulse, sinc pulse, and circular w
 
 ## Building
 
-Magnoom uses a single cross-platform [nob.h](https://github.com/tsoding/nob.h) build system. Bootstrap it once from the repository root:
+Clone Magnoom with its AntTweakBar submodule, then enter the repository:
+
+```sh
+git clone --recurse-submodules https://github.com/n-s-kiselev/magnoom.git
+cd magnoom
+```
+
+If you already cloned without `--recurse-submodules`, initialize AntTweakBar from
+the repository root:
+
+```sh
+git submodule update --init
+```
+
+`vendor/AntTweakBar-Legacy` is a git submodule. The `nob` build tool also
+initializes it automatically on the first build if it is missing.
+
+Magnoom uses a single cross-platform [nob.h](https://github.com/tsoding/nob.h)
+build system. Bootstrap it once from the repository root:
 
 ```sh
 cc nob.c -o nob
 ```
-
-`vendor/AntTweakBar-Legacy` is a git submodule. If it isn't already initialized (e.g. after a plain `git clone` without `--recurse-submodules`), `./nob` initializes it automatically on the first build; no manual `git submodule` command is required. To initialize it yourself instead, either clone with:
-
-```sh
-git clone --recurse-submodules https://github.com/n-s-kiselev/magnoom.git
-```
-
-or run `git submodule update --init` in an existing checkout.
 
 Then run:
 
