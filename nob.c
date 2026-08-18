@@ -14,6 +14,9 @@
 #define GLFW_SOURCE "vendor/glfw2/glfw2_unity.c"
 #define GLFW_OBJECT BUILD_DIR "glfw2.o"
 #define MAGNOOM_OBJECT BUILD_DIR "magnoom.o"
+#define BLOCK_SETTER_TEST_SOURCE "tests/block_setter_test.c"
+#define BLOCK_SETTER_TEST_OBJECT BUILD_DIR "block_setter_test.o"
+#define BLOCK_SETTER_TEST_OUTPUT BUILD_DIR "block_setter_test"
 #define OUTPUT BUILD_DIR "magnoom"
 #define ICON_DIR "assets/icon/"
 #define WINDOWS_RESOURCE_OBJECT BUILD_DIR "magnoom-resource.o"
@@ -167,6 +170,23 @@ static bool build_magnoom_object(void)
     return nob_cmd_run(&cmd);
 }
 
+static bool build_block_setter_test_object(void)
+{
+    const char *inputs[] = {
+        BLOCK_SETTER_TEST_SOURCE, "magnoom.c", "solvers.c", "lattice_geometry.c",
+        "initial_states.c", "math_utils.c", "visualization.c", "linmath.h",
+        ATB_LIB, GLAD_OBJECT, GLFW_OBJECT, "vendor/stb/stb_image_write.h",
+        "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,
+    };
+    if (!build_needed(BLOCK_SETTER_TEST_OBJECT, inputs, NOB_ARRAY_LEN(inputs))) return true;
+
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, "cc", "-std=c99", "-O2", "-Wall", "-fno-strict-aliasing", "-DTW_STATIC",
+                   "-I" ATB_INCLUDE, "-I" GLAD_INCLUDE, "-I" GLFW_INCLUDE,
+                   "-c", BLOCK_SETTER_TEST_SOURCE, "-o", BLOCK_SETTER_TEST_OBJECT);
+    return nob_cmd_run(&cmd);
+}
+
 static bool build_magnoom(void)
 {
 #if defined(_WIN32)
@@ -198,6 +218,35 @@ static bool build_magnoom(void)
 #else
     nob_cmd_append(&cmd, "-lGL", "-lX11", "-lXrandr", "-lpthread", "-ldl", "-lm");
 #endif
+    return nob_cmd_run(&cmd);
+}
+
+static bool build_block_setter_test(void)
+{
+    const char *inputs[] = { BLOCK_SETTER_TEST_OBJECT, ATB_LIB, GLAD_OBJECT, GLFW_OBJECT };
+    const char *output = BLOCK_SETTER_TEST_OUTPUT EXE_EXT;
+    if (!build_needed(output, inputs, NOB_ARRAY_LEN(inputs))) return true;
+
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, "c++", BLOCK_SETTER_TEST_OBJECT, GLAD_OBJECT, ATB_LIB, GLFW_OBJECT,
+                   "-o", output);
+#if defined(__APPLE__)
+    nob_cmd_append(&cmd, "-framework", "OpenGL", "-framework", "Cocoa",
+                   "-framework", "AppKit", "-framework", "Foundation", "-framework", "IOKit",
+                   "-framework", "CoreVideo", "-pthread",
+                   "-Wno-deprecated-declarations", "-lobjc");
+#elif defined(_WIN32)
+    nob_cmd_append(&cmd, "-static", "-lopengl32", "-lgdi32", "-lwinmm");
+#else
+    nob_cmd_append(&cmd, "-lGL", "-lX11", "-lXrandr", "-lpthread", "-ldl", "-lm");
+#endif
+    return nob_cmd_run(&cmd);
+}
+
+static bool run_block_setter_test(void)
+{
+    Nob_Cmd cmd = {0};
+    nob_cmd_append(&cmd, BLOCK_SETTER_TEST_OUTPUT EXE_EXT);
     return nob_cmd_run(&cmd);
 }
 
@@ -308,16 +357,22 @@ static bool ensure_submodules(void)
 
 static void usage(const char *program)
 {
-    printf("usage: %s [-clean] [-help]\n", program);
+    printf("usage: %s [-clean] [-test] [-help]\n", program);
     printf("  -clean  remove generated build files and exit\n");
+    printf("  -test   build and run automated tests\n");
     printf("  -help   print this help and exit\n");
 }
 
 int main(int argc, char **argv)
 {
     NOB_GO_REBUILD_URSELF_PLUS(argc, argv, NOB_HEADER);
+    bool run_tests = false;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-clean") == 0) return clean() ? 0 : 1;
+        if (strcmp(argv[i], "-test") == 0) {
+            run_tests = true;
+            continue;
+        }
         if (strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0) {
             usage(argv[0]);
             return 0;
@@ -329,6 +384,11 @@ int main(int argc, char **argv)
 
     if (!ensure_submodules()) return 1;
     if (!nob_mkdir_if_not_exists(BUILD_DIR) || !nob_mkdir_if_not_exists(ATB_BUILD_DIR)) return 1;
+    if (run_tests) {
+        if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() ||
+            !build_block_setter_test_object() || !build_block_setter_test()) return 1;
+        return run_block_setter_test() ? 0 : 1;
+    }
     if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() ||
         !build_windows_resource() || !build_magnoom_object() ||
         !build_magnoom() || !package_platform_assets()) return 1;

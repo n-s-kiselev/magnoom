@@ -54,6 +54,7 @@ Then run:
 ```sh
 ./nob          # build Magnoom and its vendored dependencies
 ./nob -clean   # remove all generated build output
+./nob -test    # build and run the automated tests
 ./nob -help    # list the supported options
 ```
 
@@ -80,6 +81,14 @@ files under `build/share/` can be copied into a standard installation prefix
 to provide a desktop launcher.
 
 Magnoom's application sources are compiled as C99. The vendored AntTweakBar implementation remains C++, so the final executable is linked with the C++ compiler driver.
+
+The active crystal basis is selected in `magnoom.c` immediately after
+`readConfigFile()`. The one-atom simple-cubic basis is enabled by default;
+commented B20, FCC2, and FCC3 alternatives are provided beside it. Keep each
+alternative's lattice vectors and atom positions together when selecting it.
+`magnoom_ctx_set_block()` copies up to 100 Cartesian atom positions, validates
+them against the half-open unit cell, and must run before neighbor maps and
+spin or drawing arrays are created.
 
 The `nob` executable automatically rebuilds itself when `nob.c` or its vendored `nob.h` changes. All normal build products are contained in `build/`, except for the bootstrapped `nob` executable itself.
 

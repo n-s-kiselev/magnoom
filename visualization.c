@@ -1695,114 +1695,125 @@ void UpdateKind(magnoom_ctx *ctx)
     }
 }
 
-void readConfigFile(magnoom_ctx *ctx)
+static bool ParseConfigFloat(const char *text, float *result)
 {
-	char  configfilename[64] = "magnoom.cfg";
-	char  line[256];//whole line of header should be not longer then 256 characters
-	int   lineLength=0;
-    char  keyW1 [256];//key word 1
-    char  keyW2 [256];//key word 2
-    char  keyW3 [256];//key word 3
+	char *end = NULL;
+	errno = 0;
+	float value = strtof(text, &end);
+	if (end == text || *end != '\0' || errno == ERANGE || !isfinite(value)) return false;
+	*result = value;
+	return true;
+}
 
-    FILE * FilePointer = fopen(configfilename, "rb");
-	if(FilePointer!=NULL) {	
-		lineLength=ReadHeaderLine(FilePointer, line);//read and check the first nonempty line which starts with '#'
-		if (lineLength==-1) {// if there are no one line which starts with '#'
-			printf("%s has a wrong format! \n", configfilename);
-		    printf("new magnoom.cfg will be created.\n");
-		}else{
-		    sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
-		    if(strncmp(keyW1, "begin",5)!=0 || strncmp(keyW2, "magnoom",7)!=0 || strncmp(keyW3, "config",  6)!=0){
-		        //if the first line isn't "# magnoom config file"
-		    	printf("%s has wrong header of wrong file format! \n", configfilename);
-		    	lineLength=-1;
-		    }
-		}
-		//READING HEADER
-		if (lineLength!=-1){
-			do{
-				lineLength = ReadHeaderLine(FilePointer, line);
-				sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
-				//printf("%s %s %s\n", keyW1, keyW2, keyW3);
-				if (strncmp(keyW1, "ax:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[0][0] );
-					printf("ax=%f\n", ctx->abc[0][0]);					
-				}else if (strncmp(keyW1, "ay:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[0][1] );
-					printf("ay=%f\n", ctx->abc[0][1]);
-				}else if (strncmp(keyW1, "az:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[0][2] );
-					printf("az=%f\n", ctx->abc[0][2]);					
-				}else if (strncmp(keyW1, "bx:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[1][0] );
-					printf("bx=%f\n", ctx->abc[1][0]);					
-				}else if (strncmp(keyW1, "by:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[1][1] );
-					printf("by=%f\n", ctx->abc[1][1]);
-				}else if (strncmp(keyW1, "bz:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[1][2] );
-					printf("bz=%f\n", ctx->abc[1][2]);					
-				}else if (strncmp(keyW1, "cx:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[2][0] );
-					printf("cx=%f\n", ctx->abc[2][0]);					
-				}else if (strncmp(keyW1, "cy:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[2][1] );
-					printf("cy=%f\n", ctx->abc[2][1]);
-				}else if (strncmp(keyW1, "cz:",3)==0) {
-					sscanf(keyW2, "%f", &ctx->abc[2][2] );
-					printf("cz=%f\n", ctx->abc[2][2]);					
-				}else if (strncmp(keyW1, "Na:",3)==0) {
-					sscanf(keyW2, "%d", &ctx->uABC[0] );
-					printf("Na=%d\n", ctx->uABC[0]);					
-				}else if (strncmp(keyW1, "Nb:",3)==0) {
-					sscanf(keyW2, "%d", &ctx->uABC[1] );
-					printf("Nb=%d\n", ctx->uABC[1]);
-				}else if (strncmp(keyW1, "Nc:",3)==0) {
-					sscanf(keyW2, "%d", &ctx->uABC[2] );
-					printf("Nc=%d\n", ctx->uABC[2]);					
-				}else if (strncmp(keyW1, "Shells:",7)==0) {
-					sscanf(keyW2, "%d", &ctx->ShellNumber );
-					printf("Shells=%d\n", ctx->ShellNumber);					
-				}else if (strncmp(keyW1, "BCa:",3)==0) {
-					sscanf(keyW2, "%d", &ctx->Boundary[0] );
-					printf("BCa=%d\n", ctx->Boundary[0]);					
-				}else if (strncmp(keyW1, "BCb:",3)==0) {
-					sscanf(keyW2, "%d", &ctx->Boundary[1] );
-					printf("BCc=%d\n", ctx->Boundary[1]);					
-				}else if (strncmp(keyW1, "BCc:",3)==0) {
-					sscanf(keyW2, "%d", &ctx->Boundary[2] );
-					printf("BCc=%d\n", ctx->Boundary[2]);					
-				}
-			}while(strncmp(keyW1, "end",3)!=0 || strncmp(keyW2, "magnoom",7)!=0 || strncmp(keyW3, "config",  6)!=0);
-		}     
-			ctx->AtomsPerBlock = sizeof(ctx->Block)/sizeof(float)/3;
-			free(ctx->RadiusOfShell);
-			ctx->RadiusOfShell = (float *)calloc(ctx->ShellNumber , sizeof(float));  
-			free(ctx->NeighborsPerAtom);
-			ctx->NeighborsPerAtom = (int *)calloc(ctx->AtomsPerBlock, sizeof(int));
-			// total number of neighbour pairs per whole map of neighbours
- 			ctx->NOS=ctx->AtomsPerBlock*ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2]; // number of spins
-			ctx->NOS_AL=ctx->AtomsPerBlock*ctx->uABC[1]*ctx->uABC[2]; // number of spins per A layer
-			ctx->NOS_BL=ctx->AtomsPerBlock*ctx->uABC[0]*ctx->uABC[2]; // number of spins per B layer
-			ctx->NOS_CL=ctx->AtomsPerBlock*ctx->uABC[0]*ctx->uABC[1]; // number of spins per C layer
+static bool ParseConfigInt(const char *text, int *result)
+{
+	char *end = NULL;
+	errno = 0;
+	long value = strtol(text, &end, 10);
+	if (end == text || *end != '\0' || errno == ERANGE || value < INT_MIN || value > INT_MAX) return false;
+	*result = (int)value;
+	return true;
+}
 
-			ctx->iNOS = 1.0/ctx->NOS;
+bool readConfigFile(magnoom_ctx *ctx)
+{
+	const char configfilename[] = "magnoom.cfg";
+	char line[256];
+	char keyW1[256], keyW2[256], keyW3[256];
+	bool began = false;
+	bool ended = false;
 
-			ctx->NOB=ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2]; // number of Blocks
-			ctx->NOB_AL=ctx->uABC[1]*ctx->uABC[2]; // number of spins per A layer
-			ctx->NOB_BL=ctx->uABC[0]*ctx->uABC[2]; // number of spins per B layer
-			ctx->NOB_CL=ctx->uABC[0]*ctx->uABC[1]; // number of spins per C layer
-
-			ctx->GreedFilterMaxA=ctx->uABC[0]-1;
-			ctx->GreedFilterMaxB=ctx->uABC[1]-1;
-			ctx->GreedFilterMaxC=ctx->uABC[2]-1;
-		// when everything is done
-		printf("Done!\n");
-		fclose(FilePointer);
-	}else{
+	FILE *FilePointer = fopen(configfilename, "rb");
+	if (FilePointer == NULL) {
 		printf("Cannot open file: %s \n", configfilename);
 		printf("new magnoom.cfg will be created.\n");
+		return true;
 	}
+
+	while (fgets(line, sizeof(line), FilePointer) != NULL) {
+		if (strchr(line, '\n') == NULL && !feof(FilePointer)) {
+			fprintf(stderr, "%s contains a line longer than %zu characters.\n",
+				configfilename, sizeof(line)-1);
+			fclose(FilePointer);
+			return false;
+		}
+		if (line[0] != '#') continue;
+
+		keyW1[0] = keyW2[0] = keyW3[0] = '\0';
+		int fields = sscanf(line, "# %255s %255s %255s", keyW1, keyW2, keyW3);
+		if (!began) {
+			if (fields != 3 || strcmp(keyW1, "begin") != 0 ||
+				strcmp(keyW2, "magnoom") != 0 || strcmp(keyW3, "config") != 0) {
+				fprintf(stderr, "%s has a wrong header or file format.\n", configfilename);
+				fclose(FilePointer);
+				return false;
+			}
+			began = true;
+			continue;
+		}
+		if (fields == 3 && strcmp(keyW1, "end") == 0 &&
+			strcmp(keyW2, "magnoom") == 0 && strcmp(keyW3, "config") == 0) {
+			ended = true;
+			break;
+		}
+
+		float *float_target = NULL;
+		int *int_target = NULL;
+		if      (strcmp(keyW1, "ax:") == 0) float_target = &ctx->abc[0][0];
+		else if (strcmp(keyW1, "ay:") == 0) float_target = &ctx->abc[0][1];
+		else if (strcmp(keyW1, "az:") == 0) float_target = &ctx->abc[0][2];
+		else if (strcmp(keyW1, "bx:") == 0) float_target = &ctx->abc[1][0];
+		else if (strcmp(keyW1, "by:") == 0) float_target = &ctx->abc[1][1];
+		else if (strcmp(keyW1, "bz:") == 0) float_target = &ctx->abc[1][2];
+		else if (strcmp(keyW1, "cx:") == 0) float_target = &ctx->abc[2][0];
+		else if (strcmp(keyW1, "cy:") == 0) float_target = &ctx->abc[2][1];
+		else if (strcmp(keyW1, "cz:") == 0) float_target = &ctx->abc[2][2];
+		else if (strcmp(keyW1, "Na:") == 0) int_target = &ctx->uABC[0];
+		else if (strcmp(keyW1, "Nb:") == 0) int_target = &ctx->uABC[1];
+		else if (strcmp(keyW1, "Nc:") == 0) int_target = &ctx->uABC[2];
+		else if (strcmp(keyW1, "Shells:") == 0) int_target = &ctx->ShellNumber;
+		else if (strcmp(keyW1, "BCa:") == 0) int_target = &ctx->Boundary[0];
+		else if (strcmp(keyW1, "BCb:") == 0) int_target = &ctx->Boundary[1];
+		else if (strcmp(keyW1, "BCc:") == 0) int_target = &ctx->Boundary[2];
+
+		if (float_target != NULL && (fields < 2 || !ParseConfigFloat(keyW2, float_target))) {
+			fprintf(stderr, "%s contains an invalid value for %s.\n", configfilename, keyW1);
+			fclose(FilePointer);
+			return false;
+		}
+		if (int_target != NULL && (fields < 2 || !ParseConfigInt(keyW2, int_target))) {
+			fprintf(stderr, "%s contains an invalid value for %s.\n", configfilename, keyW1);
+			fclose(FilePointer);
+			return false;
+		}
+		if (float_target != NULL) printf("%s %f\n", keyW1, *float_target);
+		if (int_target != NULL) printf("%s %d\n", keyW1, *int_target);
+	}
+
+	if (!began || !ended) {
+		fprintf(stderr, "%s is missing its begin or end marker.\n", configfilename);
+		fclose(FilePointer);
+		return false;
+	}
+	if (ctx->uABC[0] <= 0 || ctx->uABC[1] <= 0 || ctx->uABC[2] <= 0 ||
+		ctx->ShellNumber <= 0 || ctx->ShellNumber > MAX_SHELLS) {
+		fprintf(stderr, "%s must define positive dimensions and between 1 and %d shells.\n",
+			configfilename, MAX_SHELLS);
+		fclose(FilePointer);
+		return false;
+	}
+
+	float *new_radius_of_shell = (float *)calloc((size_t)ctx->ShellNumber, sizeof(float));
+	if (new_radius_of_shell == NULL) {
+		fprintf(stderr, "Unable to allocate shell radii from %s.\n", configfilename);
+		fclose(FilePointer);
+		return false;
+	}
+	free(ctx->RadiusOfShell);
+	ctx->RadiusOfShell = new_radius_of_shell;
+	printf("Done!\n");
+	fclose(FilePointer);
+	return true;
 }
 
 

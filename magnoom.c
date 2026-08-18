@@ -11,6 +11,9 @@
 #include "vendor/glfw2/TwGLFW2.h"
 
 #include <math.h>
+#include <errno.h>
+#include <float.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -54,6 +57,8 @@ enum engine_mutex_flags{DO_IT,WAIT};
 enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 
 #define THREADS_NUMBER 3
+#define MAX_ATOMS_PER_BLOCK 100
+#define MAX_SHELLS 6
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "vendor/stb/stb_image_write.h"
@@ -279,7 +284,7 @@ typedef struct magnoom_ctx {
 
 	/* Geometry */
 	float           abc[3][3];
-	float           Block[1][3];
+	float           (*Block)[3];
 	int             uABC[3];
 	int             ShellNumber;
 	int             AtomsPerBlock;
@@ -516,13 +521,148 @@ typedef struct { int index; magnoom_ctx *ctx; } calc_thread_arg;
 	((images)[(((size_t)(imageIndex)*(size_t)(nodesNum) + (size_t)(n))*3 + (size_t)(d))])
 
 /*****************************************************************************/
+/* Replace the Cartesian atom positions in the basic unit cell. This is a    */
+/* startup-only operation: call it after abc/uABC are final and before       */
+/* neighbor maps, spin arrays, drawing arrays, or worker threads exist.      */
+/*****************************************************************************/
+bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positions[][3])
+{
+	if (ctx == NULL || positions == NULL || atom_count <= 0) {
+		fprintf(stderr, "magnoom_ctx_set_block: expected a context, atom positions, and a positive atom count.\n");
+		return false;
+	}
+	if (atom_count > MAX_ATOMS_PER_BLOCK) {
+		fprintf(stderr, "magnoom_ctx_set_block: at most %d atoms per block are supported.\n", MAX_ATOMS_PER_BLOCK);
+		return false;
+	}
+	if (ctx->NeighborPairs != 0 || ctx->AIdxBlock != NULL || ctx->S != NULL ||
+		ctx->bS != NULL || ctx->Px != NULL || ctx->vertices != NULL) {
+		fprintf(stderr, "magnoom_ctx_set_block: the block can only be changed before derived geometry is allocated.\n");
+		return false;
+	}
+	if (ctx->uABC[0] <= 0 || ctx->uABC[1] <= 0 || ctx->uABC[2] <= 0) {
+		fprintf(stderr, "magnoom_ctx_set_block: lattice dimensions must be positive.\n");
+		return false;
+	}
+
+	double a[3], b[3], c[3];
+	for (int d = 0; d < 3; ++d) {
+		a[d] = ctx->abc[0][d];
+		b[d] = ctx->abc[1][d];
+		c[d] = ctx->abc[2][d];
+		if (!isfinite(a[d]) || !isfinite(b[d]) || !isfinite(c[d])) {
+			fprintf(stderr, "magnoom_ctx_set_block: lattice vectors must be finite.\n");
+			return false;
+		}
+	}
+
+	double b_cross_c[3] = {
+		b[1]*c[2] - b[2]*c[1],
+		b[2]*c[0] - b[0]*c[2],
+		b[0]*c[1] - b[1]*c[0]
+	};
+	double c_cross_a[3] = {
+		c[1]*a[2] - c[2]*a[1],
+		c[2]*a[0] - c[0]*a[2],
+		c[0]*a[1] - c[1]*a[0]
+	};
+	double a_cross_b[3] = {
+		a[1]*b[2] - a[2]*b[1],
+		a[2]*b[0] - a[0]*b[2],
+		a[0]*b[1] - a[1]*b[0]
+	};
+	double determinant = a[0]*b_cross_c[0] + a[1]*b_cross_c[1] + a[2]*b_cross_c[2];
+	double a_length = sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
+	double b_length = sqrt(b[0]*b[0] + b[1]*b[1] + b[2]*b[2]);
+	double c_length = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
+	double volume_scale = a_length*b_length*c_length;
+	if (!isfinite(volume_scale) || volume_scale <= 0.0 ||
+		fabs(determinant) <= volume_scale*(32.0*FLT_EPSILON)) {
+		fprintf(stderr, "magnoom_ctx_set_block: lattice vectors do not define a valid three-dimensional unit cell.\n");
+		return false;
+	}
+
+	for (int atom = 0; atom < atom_count; ++atom) {
+		double p[3] = {positions[atom][0], positions[atom][1], positions[atom][2]};
+		if (!isfinite(p[0]) || !isfinite(p[1]) || !isfinite(p[2])) {
+			fprintf(stderr, "magnoom_ctx_set_block: atom %d has a nonfinite position.\n", atom);
+			return false;
+		}
+		double fractional[3] = {
+			(p[0]*b_cross_c[0] + p[1]*b_cross_c[1] + p[2]*b_cross_c[2])/determinant,
+			(p[0]*c_cross_a[0] + p[1]*c_cross_a[1] + p[2]*c_cross_a[2])/determinant,
+			(p[0]*a_cross_b[0] + p[1]*a_cross_b[1] + p[2]*a_cross_b[2])/determinant
+		};
+		for (int d = 0; d < 3; ++d) {
+			if (!isfinite(fractional[d]) || fractional[d] < 0.0 || fractional[d] >= 1.0) {
+				fprintf(stderr,
+					"magnoom_ctx_set_block: atom %d at (%g, %g, %g) is outside the half-open unit cell; fractional position is (%g, %g, %g).\n",
+					atom, p[0], p[1], p[2], fractional[0], fractional[1], fractional[2]);
+				return false;
+			}
+		}
+	}
+
+	size_t na = (size_t)ctx->uABC[0];
+	size_t nb = (size_t)ctx->uABC[1];
+	size_t nc = (size_t)ctx->uABC[2];
+	if (na > SIZE_MAX/nb || na*nb > SIZE_MAX/nc) {
+		fprintf(stderr, "magnoom_ctx_set_block: lattice dimensions overflow the supported size.\n");
+		return false;
+	}
+	size_t block_count = na*nb*nc;
+	/* ARROW1 at the UI limit of 20 faces uses 540 scalar vertex components per spin. */
+	if ((size_t)atom_count > SIZE_MAX/block_count ||
+		(size_t)atom_count*block_count > INT_MAX/540 ||
+		(size_t)atom_count > SIZE_MAX/sizeof(*ctx->Block) ||
+		(size_t)atom_count > SIZE_MAX/sizeof(*ctx->NeighborsPerAtom)) {
+		fprintf(stderr, "magnoom_ctx_set_block: the requested geometry exceeds the supported index range.\n");
+		return false;
+	}
+
+	float (*new_block)[3] = (float (*)[3])malloc((size_t)atom_count*sizeof(*new_block));
+	int *new_neighbors_per_atom = (int *)calloc((size_t)atom_count, sizeof(*new_neighbors_per_atom));
+	if (new_block == NULL || new_neighbors_per_atom == NULL) {
+		free(new_block);
+		free(new_neighbors_per_atom);
+		fprintf(stderr, "magnoom_ctx_set_block: unable to allocate the new block.\n");
+		return false;
+	}
+	memcpy(new_block, positions, (size_t)atom_count*sizeof(*new_block));
+
+	float (*old_block)[3] = ctx->Block;
+	int *old_neighbors_per_atom = ctx->NeighborsPerAtom;
+	ctx->Block = new_block;
+	ctx->NeighborsPerAtom = new_neighbors_per_atom;
+	ctx->AtomsPerBlock = atom_count;
+	ctx->NOB = (int)block_count;
+	ctx->NOB_AL = ctx->uABC[1]*ctx->uABC[2];
+	ctx->NOB_BL = ctx->uABC[0]*ctx->uABC[2];
+	ctx->NOB_CL = ctx->uABC[0]*ctx->uABC[1];
+	ctx->NOS = atom_count*ctx->NOB;
+	ctx->NOS_AL = atom_count*ctx->NOB_AL;
+	ctx->NOS_BL = atom_count*ctx->NOB_BL;
+	ctx->NOS_CL = atom_count*ctx->NOB_CL;
+	ctx->iNOS = 1.0/ctx->NOS;
+	ctx->NOSK = 0;
+	ctx->GreedFilterMaxA = ctx->uABC[0]-1;
+	ctx->GreedFilterMaxB = ctx->uABC[1]-1;
+	ctx->GreedFilterMaxC = ctx->uABC[2]-1;
+	free(old_block);
+	free(old_neighbors_per_atom);
+	return true;
+}
+
+/*****************************************************************************/
 /* magnoom_ctx_init: sets every field to its current compile-time default,   */
 /* folding in the former InitializeGlobalState()'s derived-value computation.*/
-/* Returns false (matching InitializeGlobalState's contract) if the neighbor-*/
-/* map allocations fail.                                                    */
+/* Returns false (matching InitializeGlobalState's contract) if the geometry */
+/* allocations fail.                                                        */
 /*****************************************************************************/
 bool magnoom_ctx_init(magnoom_ctx *ctx)
 {
+	if (ctx == NULL) return false;
+	memset(ctx, 0, sizeof(*ctx));
 
 	/* Slicing parameters */
 	ctx->A_layer_min = 1;
@@ -591,10 +731,9 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f; ctx->abc[0][2]=0.0f;
 	ctx->abc[1][0]=0.0f; ctx->abc[1][1]=1.0f; ctx->abc[1][2]=0.0f;
 	ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f; ctx->abc[2][2]=1.0f;
-	ctx->Block[0][0]=0.5f; ctx->Block[0][1]=0.5f; ctx->Block[0][2]=0.5f;
 	ctx->uABC[0]=10; ctx->uABC[1]=10; ctx->uABC[2]=10;
 	ctx->ShellNumber = 1;
-	ctx->AtomsPerBlock = sizeof(ctx->Block)/sizeof(float)/3;
+	const float default_block[][3] = {{0.5f, 0.5f, 0.5f}};
 
 	/* magnoom.c concurrency primitives */
 	ctx->ENGINE_MUTEX = WAIT;
@@ -686,18 +825,12 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->BextACPeriod = TPI/ctx->BextACOmega;
 
 	ctx->RadiusOfShell = (float *)calloc((size_t)ctx->ShellNumber, sizeof(float));
-	ctx->NeighborsPerAtom = (int *)calloc((size_t)ctx->AtomsPerBlock, sizeof(int));
-	if (ctx->RadiusOfShell == NULL || ctx->NeighborsPerAtom == NULL) return false;
-
-	ctx->NOS = ctx->AtomsPerBlock*ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2];
-	ctx->NOS_AL = ctx->AtomsPerBlock*ctx->uABC[1]*ctx->uABC[2];
-	ctx->NOS_BL = ctx->AtomsPerBlock*ctx->uABC[0]*ctx->uABC[2];
-	ctx->NOS_CL = ctx->AtomsPerBlock*ctx->uABC[0]*ctx->uABC[1];
-	ctx->iNOS = 1.0/ctx->NOS;
-	ctx->NOB = ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2];
-	ctx->NOB_AL = ctx->uABC[1]*ctx->uABC[2];
-	ctx->NOB_BL = ctx->uABC[0]*ctx->uABC[2];
-	ctx->NOB_CL = ctx->uABC[0]*ctx->uABC[1];
+	if (ctx->RadiusOfShell == NULL ||
+		!magnoom_ctx_set_block(ctx, 1, default_block)) {
+		free(ctx->RadiusOfShell);
+		ctx->RadiusOfShell = NULL;
+		return false;
+	}
 
 	ctx->asp_rat = (float)ctx->window_width/(float)ctx->window_height;
 	ctx->asp_rat_inv = (float)ctx->window_height/(float)ctx->window_width;
@@ -1682,6 +1815,7 @@ void RestartCalcThreads(magnoom_ctx *ctx, pthread_t * thread_id, calc_thread_arg
 /*                        Program Main Thread                            */
 /*************************************************************************/
 
+#ifndef MAGNOOM_NO_MAIN
 int
 main (int argc, char **argv){
 	magnoom_ctx mag_ctx = {0};
@@ -1709,10 +1843,65 @@ main (int argc, char **argv){
 	////////////////////////////////////////////////
 
 	////////////////////////////////////////////////
-	readConfigFile(&mag_ctx);
+	if (!readConfigFile(&mag_ctx)) {
+		fprintf(stderr, "Unable to apply magnoom.cfg.\n");
+		free(mag_ctx.Block);
+		free(mag_ctx.RadiusOfShell);
+		free(mag_ctx.NeighborsPerAtom);
+		return 1;
+	}
 	////////////////////////////////////////////////
 
+	/* Active basis: simple cubic, one atom. Comment these two lines and */
+	/* uncomment one complete crystal example below to select another basis. */
+	const float basis[][3] = {{0.5f, 0.5f, 0.5f}};
+	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
+	// B20 basis (u = 0.138), cubic unit cell:
+	// const float uB20 = 0.138f;
+	// const float basis[][3] = {
+	// 	{0.0f,             0.0f,             0.0f},
+	// 	{0.5f,             0.5f-2.0f*uB20, 1.0f-2.0f*uB20},
+	// 	{1.0f-2.0f*uB20, 0.5f,             0.5f-2.0f*uB20},
+	// 	{0.5f-2.0f*uB20, 1.0f-2.0f*uB20, 0.5f}
+	// };
+	// mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f; mag_ctx.abc[0][2]=0.0f;
+	// mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=1.0f; mag_ctx.abc[1][2]=0.0f;
+	// mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f; mag_ctx.abc[2][2]=1.0f;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	// FCC2 basis, orthogonal unit cell:
+	// const float sqrt2 = sqrtf(2.0f);
+	// const float basis[][3] = {
+	// 	{0.0f, 0.0f,             0.0f},
+	// 	{0.0f, sqrt2/2.0f,      0.0f},
+	// 	{0.5f, sqrt2/4.0f,      sqrt2/4.0f},
+	// 	{0.5f, 3.0f*sqrt2/4.0f, sqrt2/4.0f},
+	// 	{0.0f, sqrt2/2.0f,      sqrt2/2.0f}
+	// };
+	// mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f;  mag_ctx.abc[0][2]=0.0f;
+	// mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=sqrt2; mag_ctx.abc[1][2]=0.0f;
+	// mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f;  mag_ctx.abc[2][2]=sqrt2;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	// FCC3 basis, nonorthogonal unit cell:
+	// const float sqrt2 = sqrtf(2.0f);
+	// const float sqrt3 = sqrtf(3.0f);
+	// const float sqrt6 = sqrtf(6.0f);
+	// const float basis[][3] = {{0.0f, 0.0f, 0.0f}};
+	// mag_ctx.abc[0][0]=sqrt2;      mag_ctx.abc[0][1]=0.0f;       mag_ctx.abc[0][2]=0.0f;
+	// mag_ctx.abc[1][0]=sqrt2/2.0f; mag_ctx.abc[1][1]=sqrt6/2.0f; mag_ctx.abc[1][2]=0.0f;
+	// mag_ctx.abc[2][0]=sqrt2/2.0f; mag_ctx.abc[2][1]=sqrt6/6.0f; mag_ctx.abc[2][2]=sqrt3/sqrt2;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	if (mag_ctx.RadiusOfShell == NULL ||
+		!magnoom_ctx_set_block(&mag_ctx, atom_count, basis)) {
+		fprintf(stderr, "Unable to configure the selected crystal basis.\n");
+		free(mag_ctx.Block);
+		free(mag_ctx.RadiusOfShell);
+		free(mag_ctx.NeighborsPerAtom);
+		return 1;
+	}
 
 	GetShells(mag_ctx.abc, mag_ctx.Block, mag_ctx.AtomsPerBlock, mag_ctx.ShellNumber, mag_ctx.RadiusOfShell);
 	for(int i=0;i<mag_ctx.ShellNumber;i++) printf("R[%d]=%f\n",i,mag_ctx.RadiusOfShell[i] );
@@ -1935,6 +2124,7 @@ main (int argc, char **argv){
 
 	free(mag_ctx.RadiusOfShell);
 	free(mag_ctx.NeighborsPerAtom);
+	free(mag_ctx.Block);
 
 	free(mag_ctx.Proj);
 
@@ -1942,3 +2132,4 @@ main (int argc, char **argv){
 
 	return 0;
 }
+#endif
