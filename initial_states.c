@@ -265,9 +265,6 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 	float T = 0.f;
 	float F = 0.f;
 	// T, F are theta and phi for spherical spase coordinates 
-	float t = 0.f;
-	float f = 0.f;
-	// t, f are theta and phi for spin components 
 	float r = 0.f;
 
 	switch (id)
@@ -598,7 +595,6 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 		// }
 		if(ctx->chSize>0)
 		{
-			float tmp;
 			for (int n=0; n<ctx->NOS; n++)
 			// {	
 			// 	r = sqrt(px[n]*px[n]+py[n]*py[n]+pz[n]*pz[n]);
@@ -612,7 +608,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 
 			// 	t = r*r/chSize;//metka initially t = r/chSize;
 			// 	t = 1.0 + 4.22/(t*t);
-			// 	tmp = PI*(1.0-1.0/sqrt(t));
+			// 	float tmp = PI*(1.0-1.0/sqrt(t));
 			// 			// Filipp anzats 
 			// 			// t = 2*r/chSize;
 			// 			// t = t*t;

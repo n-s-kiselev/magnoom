@@ -93,6 +93,7 @@ typedef enum    {RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L
 typedef enum    {DEFAULT_G, CILINDER_G, SPHERE_G} enGeom;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
+typedef enum    {LIGHT_OFF, LIGHT_FIXED, LIGHT_ADAPTIVE} enLightingMode;
 
 /*****************************************************************************/
 /* vbo_mesh: descriptor for GPU buffer groups used in fixed-function drawing */
@@ -361,7 +362,7 @@ typedef struct magnoom_ctx {
 	GLfloat         shininess;
 	float           g_LightMultiplier;
 	float           g_LightDirection[3];
-	int             Light_On;
+	enLightingMode  WhichLightingMode;
 
 	/* initial-state generation parameters */
 	enIniState      WhichInitialState;
@@ -653,6 +654,17 @@ bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positio
 	return true;
 }
 
+void PrintTranslationVectors(const magnoom_ctx *ctx)
+{
+	printf("Translation vectors used in simulation:\n");
+	printf("a = (%.9g, %.9g, %.9g)\n",
+		(double)ctx->abc[0][0], (double)ctx->abc[0][1], (double)ctx->abc[0][2]);
+	printf("b = (%.9g, %.9g, %.9g)\n",
+		(double)ctx->abc[1][0], (double)ctx->abc[1][1], (double)ctx->abc[1][2]);
+	printf("c = (%.9g, %.9g, %.9g)\n",
+		(double)ctx->abc[2][0], (double)ctx->abc[2][1], (double)ctx->abc[2][2]);
+}
+
 /*****************************************************************************/
 /* magnoom_ctx_init: sets every field to its current compile-time default,   */
 /* folding in the former InitializeGlobalState()'s derived-value computation.*/
@@ -773,10 +785,10 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->ambient[0]=0.33f; ctx->ambient[1]=0.22f; ctx->ambient[2]=0.03f; ctx->ambient[3]=0.0f;
 	ctx->diffuse[0]=0.78f; ctx->diffuse[1]=0.57f; ctx->diffuse[2]=0.11f; ctx->diffuse[3]=1.0f;
 	ctx->specular[0]=0.1f; ctx->specular[1]=0.1f; ctx->specular[2]=0.08f; ctx->specular[3]=1.0f;
-	ctx->shininess = 200.0f;
+	ctx->shininess = 128.0f;
 	ctx->g_LightMultiplier = 1.0f;
-	ctx->g_LightDirection[0]=0.5f; ctx->g_LightDirection[1]=0.5f; ctx->g_LightDirection[2]=-0.5f;
-	ctx->Light_On = 1;
+	ctx->g_LightDirection[0]=0.0f; ctx->g_LightDirection[1]=0.0f; ctx->g_LightDirection[2]=1.0f;
+	ctx->WhichLightingMode = LIGHT_ADAPTIVE;
 
 	/* initial-state generation parameters */
 	ctx->WhichInitialState = RND;
@@ -1300,7 +1312,7 @@ void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, char vtk_filename[64]
         temp0 += ctx->abc[2][2]*ctx->abc[2][2];
         temp3 = sqrt(temp0);
 
-        snprintf(ctx->shortBufer,80,"SPACING %.6g %.6g %.6g \n",temp1, temp2, temp3);
+        snprintf(ctx->shortBufer,80,"SPACING %.6g %.6g %.6g \n",temp1*a_lattice, temp2*a_lattice, temp3*a_lattice);
         fputs (ctx->shortBufer,pFile);
 
         snprintf(ctx->shortBufer,80,"POINT_DATA %d \n",ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2]);
@@ -1852,8 +1864,8 @@ main (int argc, char **argv){
 	}
 	////////////////////////////////////////////////
 
-	/* Active basis: simple cubic, one atom. Comment these two lines and */
-	/* uncomment one complete crystal example below to select another basis. */
+	/* Keep exactly one complete crystal basis below active. */
+	/* Simple cubic, one atom: */
 	const float basis[][3] = {{0.5f, 0.5f, 0.5f}};
 	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
@@ -1868,6 +1880,22 @@ main (int argc, char **argv){
 	// mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f; mag_ctx.abc[0][2]=0.0f;
 	// mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=1.0f; mag_ctx.abc[1][2]=0.0f;
 	// mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f; mag_ctx.abc[2][2]=1.0f;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	/* EuSi fractional coordinates converted to normalized Cartesian positions. */
+	// const float c_EuSi = 3.9845f;
+	// const float a_EuSi = 4.6955f/c_EuSi;
+	// const float b_EuSi = 11.1528f/c_EuSi;
+	// const float u_Eu = 0.3595f;
+	// const float basis[][3] = {
+	// 	{0.25f, 0.0f,          u_Eu*b_EuSi},
+	// 	{0.75f, 0.0f,          (1.0f-u_Eu)*b_EuSi},
+	// 	{0.75f, 0.5f*a_EuSi, (0.5f-u_Eu)*b_EuSi},
+	// 	{0.25f, 0.5f*a_EuSi, (0.5f+u_Eu)*b_EuSi}
+	// };
+	// mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f;   mag_ctx.abc[0][2]=0.0f;
+	// mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=a_EuSi; mag_ctx.abc[1][2]=0.0f;
+	// mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f;   mag_ctx.abc[2][2]=b_EuSi;
 	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
 	// FCC2 basis, orthogonal unit cell:
@@ -1902,8 +1930,9 @@ main (int argc, char **argv){
 		free(mag_ctx.NeighborsPerAtom);
 		return 1;
 	}
+	PrintTranslationVectors(&mag_ctx);
 
-	GetShells(mag_ctx.abc, mag_ctx.Block, mag_ctx.AtomsPerBlock, mag_ctx.ShellNumber, mag_ctx.RadiusOfShell);
+	GetShells(&mag_ctx);
 	for(int i=0;i<mag_ctx.ShellNumber;i++) printf("R[%d]=%f\n",i,mag_ctx.RadiusOfShell[i] );
 	mag_ctx.NeighborPairs = GetNeighborsNumber(mag_ctx.abc, mag_ctx.Block, mag_ctx.AtomsPerBlock, mag_ctx.ShellNumber, mag_ctx.RadiusOfShell, mag_ctx.NeighborsPerAtom);
 	// Allocate arrays for neighbours map:

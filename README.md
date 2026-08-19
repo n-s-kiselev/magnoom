@@ -23,6 +23,14 @@ Magnoom separates the external magnetic field into two components:
 
 The AC component supports sinusoidal, Gaussian pulse, sinc pulse, and circular waveforms. The F5 `BextAC` control bar also provides phase-resolved dynamical-mode recording controls. The arrow shown in the 3D view represents `BextDC`; its visual scale does not change the field used by the solvers.
 
+## Visualization lighting
+
+Press `l` or use the View bar's `Lighting` control to cycle between three modes:
+
+- `Off` disables lighting for all 3D geometry.
+- `Fixed` uses the configurable directional light.
+- `Adaptive` places a point light at the camera so it follows the view.
+
 ## Building
 
 Clone Magnoom with its AntTweakBar submodule, then enter the repository:
@@ -84,7 +92,7 @@ Magnoom's application sources are compiled as C99. The vendored AntTweakBar impl
 
 The active crystal basis is selected in `magnoom.c` immediately after
 `readConfigFile()`. The one-atom simple-cubic basis is enabled by default;
-commented B20, FCC2, and FCC3 alternatives are provided beside it. Keep each
+commented B20, EuSi, FCC2, and FCC3 alternatives are provided beside it. Keep each
 alternative's lattice vectors and atom positions together when selecting it.
 `magnoom_ctx_set_block()` copies up to 100 Cartesian atom positions, validates
 them against the half-open unit cell, and must run before neighbor maps and

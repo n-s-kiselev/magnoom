@@ -142,7 +142,8 @@ void Display (magnoom_ctx *ctx)
 	glClearColor( ctx->BackgroundColors[ctx->WhichBackgroundColor][0], ctx->BackgroundColors[ctx->WhichBackgroundColor][1], ctx->BackgroundColors[ctx->WhichBackgroundColor][2], 0. );// setup the clear values
 	glDrawBuffer( GL_BACK );// erase the background
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_ACCUM_BUFFER_BIT);
-	glMatrixMode( GL_PROJECTION ); glLoadIdentity( );
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
 
 	if( ctx->WhichProjection == PERSP ) {
 		mat4x4 projection;
@@ -151,48 +152,57 @@ void Display (magnoom_ctx *ctx)
 	}
 	else{
 		Vtemp[0] = ctx->CameraEye[0] - ctx->CameraC[0];
-		Vtemp[1] = ctx->CameraEye[1] - ctx->CameraC[0];
-		Vtemp[2] = ctx->CameraEye[2] - ctx->CameraC[0]+ctx->TransXYZ[2];
+		Vtemp[1] = ctx->CameraEye[1] - ctx->CameraC[1];
+		Vtemp[2] = ctx->CameraEye[2] - ctx->CameraC[2]+ctx->TransXYZ[2];
 		Hight = Unitf(Vtemp,Vtemp); //distance to the point which camera looks at
 		Hight = -Hight*tan(D2R*ctx->PerspSet[0]/2.f); // hight of the view frame at the plane perp to cam view line
 		glOrtho( Hight*ctx->asp_rat, -Hight*ctx->asp_rat, Hight,  -Hight,  ctx->PerspSet[2], ctx->PerspSet[3] );
 	//         (     left,          right,      bottom,   top,       near,        far     )
 	}
-	// place the objects into the scene:
-
-	//NSK glMatrixMode( GL_MODELVIEW ); glLoadIdentity( );
-
 
 	// set the eye position, look-at position, and up-vector:
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 	mat4x4 view;
 	mat4x4_look_at(view, ctx->CameraEye, ctx->CameraC, ctx->CameraUp);
 	glMultMatrixf(&view[0][0]);
 
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glEnable(GL_NORMALIZE);
-	float v[4]; 
-    v[0] = v[1] = v[2] = ctx->g_LightMultiplier*0.4f; v[3] = 1.0f;
-    glLightfv(GL_LIGHT0, GL_AMBIENT, v);
-    v[0] = v[1] = v[2] = ctx->g_LightMultiplier*0.8f; v[3] = 1.0f;
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, v);
+	glEnable(GL_LIGHT0);
+	glEnable(GL_NORMALIZE);
+	GLfloat light_ambient[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+	GLfloat light_color[4] = {
+		ctx->g_LightMultiplier,
+		ctx->g_LightMultiplier,
+		ctx->g_LightMultiplier,
+		1.0f
+	};
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_color);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_color);
 
-	//Add ambient light
-	// GLfloat lightPos0[] = {CameraEye[0], CameraEye[1], CameraEye[2], 1.0f}; //Positioned at (4, 0, 8)
-	// glLightfv(GL_LIGHT0, GL_POSITION, lightPos0);
-	v[0] = -ctx->g_LightDirection[0]; v[1] = -ctx->g_LightDirection[1]; v[2] = -ctx->g_LightDirection[2]; v[3] = 0.0f;
-	glLightfv(GL_LIGHT0, GL_POSITION, v);
-	
-	//Add directed light
-	// GLfloat lightColor1[] = {0.2f, 0.2f, 0.2f, 1.0f}; //Color (0.5, 0.2, 0.2)
-	// glLightfv(GL_LIGHT1, GL_DIFFUSE, lightColor1);
-	// v[0] = -g_LightDirection[0]; v[1] = -g_LightDirection[1]; v[2] = -g_LightDirection[2]; v[3] = 0.0f;
-	// glLightfv(GL_LIGHT1, GL_POSITION, v);
+	GLfloat light_position[4];
+	if (ctx->WhichLightingMode == LIGHT_ADAPTIVE) {
+		light_position[0] = ctx->CameraEye[0];
+		light_position[1] = ctx->CameraEye[1];
+		light_position[2] = ctx->CameraEye[2];
+		light_position[3] = 1.0f;
+	} else {
+		light_position[0] = ctx->g_LightDirection[0];
+		light_position[1] = ctx->g_LightDirection[1];
+		light_position[2] = ctx->g_LightDirection[2];
+		light_position[3] = 0.0f;
+	}
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+	glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 1.0f);
+	glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.0f);
+	glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.0f);
 
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ctx->ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, ctx->diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, ctx->specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, ctx->shininess);
+	if (ctx->WhichLightingMode == LIGHT_OFF) glDisable(GL_LIGHTING);
+	else                                     glEnable(GL_LIGHTING);
+
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, ctx->specular);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, ctx->shininess);
+	glPushMatrix();
 
 	// translate the scene:
 	ctx->TransXYZ[0]+=ctx->dTransXYZ[0];
@@ -233,19 +243,12 @@ void Display (magnoom_ctx *ctx)
 	// possibly draw the axes:
 	if( ctx->AxesOn != 0 ) DrawVBOMeshIndexed(&ctx->basis_mesh, GL_TRIANGLES, ctx->basis_mesh.index_count, 0);
 
-	glPopMatrix();//NSK
+	glPopMatrix();
 
-    glDisable(GL_LIGHTING);
+	glDisable(GL_LIGHTING);
 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
-    glMatrixMode( GL_MODELVIEW);
-    glLoadIdentity();
-    
-    // Draw tweak bars
-    TwDraw();
+	// Draw tweak bars
+	TwDraw();
 }
 
 void setupOpenGL (magnoom_ctx *ctx)
@@ -312,13 +315,11 @@ void setupOpenGL (magnoom_ctx *ctx)
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_COLOR_MATERIAL);
-	glEnable(GL_LIGHTING); //Enable lighting
-	glEnable(GL_LIGHT0); //Enable light #0
-	//glEnable(GL_LIGHT1); //Enable light #1
-	//glEnable(GL_NORMALIZE); //Automatically normalize ctx->normals
+	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+	GLfloat global_ambient[4] = {0.15f, 0.15f, 0.15f, 1.0f};
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, global_ambient);
 	glShadeModel(GL_SMOOTH); //Enable smooth shading
 
-	glEnable(GL_COLOR_MATERIAL);
 	glCullFace(GL_FRONT);//GL_FRONT//GL_FRONT_AND_BACK
 	glEnable(GL_CULL_FACE);
 
@@ -1786,7 +1787,6 @@ bool readConfigFile(magnoom_ctx *ctx)
 			fclose(FilePointer);
 			return false;
 		}
-		if (float_target != NULL) printf("%s %f\n", keyW1, *float_target);
 		if (int_target != NULL) printf("%s %d\n", keyW1, *int_target);
 	}
 
@@ -1871,9 +1871,16 @@ void setupTweakBar(magnoom_ctx *ctx)
 	// TwDefine(" View/CameraRW opened=false ");
 
 	/****** Light ******/
-	TwAddVarRW(ctx->view_bar, "Light_On_Off", TW_TYPE_BOOL32, &ctx->Light_On, " label='Light On/Off' key=l help='Reflectins' group='Light'");
-	TwAddVarRW(ctx->view_bar, "Intensity", TW_TYPE_FLOAT, &ctx->g_LightMultiplier, " label='Light intensity' min=0.1 max=4 step=0.02 help='Increase/decrease the light power.' group='Light' ");
-	TwAddVarRW(ctx->view_bar, "LightDir", TW_TYPE_DIR3F, &ctx->g_LightDirection, " label='Light direction' opened=false help='Change the light direction.' group='Light'");
+	{
+	TwEnumVal enLightingModeTw[] = {
+		{LIGHT_OFF, "Off"}, {LIGHT_FIXED, "Fixed"}, {LIGHT_ADAPTIVE, "Adaptive"}
+	};
+	TwType TW_TYPE_LIGHTING_MODE = TwDefineEnum("LightingMode", enLightingModeTw, 3);
+	TwAddVarRW(ctx->view_bar, "Lighting", TW_TYPE_LIGHTING_MODE, &ctx->WhichLightingMode,
+		" label='Lighting' keyIncr='l' help='Cycle lighting: Off, Fixed, Adaptive.' group='Light'");
+	}
+	TwAddVarRW(ctx->view_bar, "Intensity", TW_TYPE_FLOAT, &ctx->g_LightMultiplier, " label='Light intensity' min=0.1 max=2 step=0.02 help='Increase/decrease the light power.' group='Light' ");
+	TwAddVarRW(ctx->view_bar, "LightDir", TW_TYPE_DIR3F, &ctx->g_LightDirection, " label='Fixed light direction' opened=false help='Change the direction used by Fixed lighting.' group='Light'");
 	ctx->temp_color[0] = 230;
 	ctx->temp_color[1] = 230;
 	ctx->temp_color[2] = 255;
@@ -3245,22 +3252,28 @@ static void FillProtoVerNorInd(magnoom_ctx *ctx, float * V, float * N, GLuint * 
 			Enorm2( v[0], v[1], v[2], tmp1);
 			Enorm2( v[0], v[4], v[1], tmp2);
 			Enorm2( v[0], v[2], v[4], tmp3);
+			float handedness = tmp1[0]*v[4][0] + tmp1[1]*v[4][1] + tmp1[2]*v[4][2] < 0.0f ? -1.0f : 1.0f;
+			for (int component = 0; component < 3; ++component) {
+				tmp1[component] *= handedness;
+				tmp2[component] *= handedness;
+				tmp3[component] *= handedness;
+			}
 
-			V[++i] = v[0][0]; N[i] = tmp1[0]; V[i+12] = v[4][0]; N[i+12] = tmp1[0];
-			V[++i] = v[0][0]; N[i] = tmp1[1]; V[i+12] = v[4][1]; N[i+12] = tmp1[1];
-			V[++i] = v[0][0]; N[i] = tmp1[2]; V[i+12] = v[4][2]; N[i+12] = tmp1[2];
+			V[++i] = v[0][0]; N[i] = -tmp1[0]; V[i+12] = v[4][0]; N[i+12] = tmp1[0];
+			V[++i] = v[0][0]; N[i] = -tmp1[1]; V[i+12] = v[4][1]; N[i+12] = tmp1[1];
+			V[++i] = v[0][0]; N[i] = -tmp1[2]; V[i+12] = v[4][2]; N[i+12] = tmp1[2];
 
-			V[++i] = v[1][0]; N[i] = tmp1[0]; V[i+12] = v[6][0]; N[i+12] = tmp1[0];
-			V[++i] = v[1][1]; N[i] = tmp1[1]; V[i+12] = v[6][1]; N[i+12] = tmp1[1];
-			V[++i] = v[1][2]; N[i] = tmp1[2]; V[i+12] = v[6][2]; N[i+12] = tmp1[2];
+			V[++i] = v[1][0]; N[i] = -tmp1[0]; V[i+12] = v[6][0]; N[i+12] = tmp1[0];
+			V[++i] = v[1][1]; N[i] = -tmp1[1]; V[i+12] = v[6][1]; N[i+12] = tmp1[1];
+			V[++i] = v[1][2]; N[i] = -tmp1[2]; V[i+12] = v[6][2]; N[i+12] = tmp1[2];
 
-			V[++i] = v[2][0]; N[i] = tmp1[0]; V[i+12] = v[5][0]; N[i+12] = tmp1[0];
-			V[++i] = v[2][1]; N[i] = tmp1[1]; V[i+12] = v[5][1]; N[i+12] = tmp1[1];
-			V[++i] = v[2][2]; N[i] = tmp1[2]; V[i+12] = v[5][2]; N[i+12] = tmp1[2];
-			
-			V[++i] = v[3][0]; N[i] = tmp1[0]; V[i+12] = v[7][0]; N[i+12] = tmp1[0];
-			V[++i] = v[3][1]; N[i] = tmp1[1]; V[i+12] = v[7][1]; N[i+12] = tmp1[1];
-			V[++i] = v[3][2]; N[i] = tmp1[2]; V[i+12] = v[7][2]; N[i+12] = tmp1[2];	
+			V[++i] = v[2][0]; N[i] = -tmp1[0]; V[i+12] = v[5][0]; N[i+12] = tmp1[0];
+			V[++i] = v[2][1]; N[i] = -tmp1[1]; V[i+12] = v[5][1]; N[i+12] = tmp1[1];
+			V[++i] = v[2][2]; N[i] = -tmp1[2]; V[i+12] = v[5][2]; N[i+12] = tmp1[2];
+
+			V[++i] = v[3][0]; N[i] = -tmp1[0]; V[i+12] = v[7][0]; N[i+12] = tmp1[0];
+			V[++i] = v[3][1]; N[i] = -tmp1[1]; V[i+12] = v[7][1]; N[i+12] = tmp1[1];
+			V[++i] = v[3][2]; N[i] = -tmp1[2]; V[i+12] = v[7][2]; N[i+12] = tmp1[2];
             i+=12;
 			I[++j] = 0; I[++j] = 1; I[++j] = 2; // first  triangle bottom
 			I[++j] = 2; I[++j] = 1; I[++j] = 3; // second triangle bottom
@@ -3268,21 +3281,21 @@ static void FillProtoVerNorInd(magnoom_ctx *ctx, float * V, float * N, GLuint * 
 			I[++j] = 6; I[++j] = 5; I[++j] = 7; // fourth triangle top
 
             // right/left
-            V[++i] = v[0][0]; N[i] = tmp2[0]; V[i+12] = v[3][0]; N[i+12] = tmp2[0];
-            V[++i] = v[0][0]; N[i] = tmp2[1]; V[i+12] = v[3][1]; N[i+12] = tmp2[1];
-            V[++i] = v[0][0]; N[i] = tmp2[2]; V[i+12] = v[3][2]; N[i+12] = tmp2[2];
+			V[++i] = v[0][0]; N[i] = -tmp2[0]; V[i+12] = v[3][0]; N[i+12] = tmp2[0];
+			V[++i] = v[0][0]; N[i] = -tmp2[1]; V[i+12] = v[3][1]; N[i+12] = tmp2[1];
+			V[++i] = v[0][0]; N[i] = -tmp2[2]; V[i+12] = v[3][2]; N[i+12] = tmp2[2];
 
-            V[++i] = v[4][0]; N[i] = tmp2[0]; V[i+12] = v[7][0]; N[i+12] = tmp2[0];
-            V[++i] = v[4][1]; N[i] = tmp2[1]; V[i+12] = v[7][1]; N[i+12] = tmp2[1];
-            V[++i] = v[4][2]; N[i] = tmp2[2]; V[i+12] = v[7][2]; N[i+12] = tmp2[2];
+			V[++i] = v[4][0]; N[i] = -tmp2[0]; V[i+12] = v[7][0]; N[i+12] = tmp2[0];
+			V[++i] = v[4][1]; N[i] = -tmp2[1]; V[i+12] = v[7][1]; N[i+12] = tmp2[1];
+			V[++i] = v[4][2]; N[i] = -tmp2[2]; V[i+12] = v[7][2]; N[i+12] = tmp2[2];
 
-            V[++i] = v[1][0]; N[i] = tmp2[0]; V[i+12] = v[2][0]; N[i+12] = tmp2[0];
-            V[++i] = v[1][1]; N[i] = tmp2[1]; V[i+12] = v[2][1]; N[i+12] = tmp2[1];
-            V[++i] = v[1][2]; N[i] = tmp2[2]; V[i+12] = v[2][2]; N[i+12] = tmp2[2];
-            
-            V[++i] = v[5][0]; N[i] = tmp2[0]; V[i+12] = v[6][0]; N[i+12] = tmp2[0];
-            V[++i] = v[5][1]; N[i] = tmp2[1]; V[i+12] = v[6][1]; N[i+12] = tmp2[1];
-            V[++i] = v[5][2]; N[i] = tmp2[2]; V[i+12] = v[6][2]; N[i+12] = tmp2[2];  
+			V[++i] = v[1][0]; N[i] = -tmp2[0]; V[i+12] = v[2][0]; N[i+12] = tmp2[0];
+			V[++i] = v[1][1]; N[i] = -tmp2[1]; V[i+12] = v[2][1]; N[i+12] = tmp2[1];
+			V[++i] = v[1][2]; N[i] = -tmp2[2]; V[i+12] = v[2][2]; N[i+12] = tmp2[2];
+
+			V[++i] = v[5][0]; N[i] = -tmp2[0]; V[i+12] = v[6][0]; N[i+12] = tmp2[0];
+			V[++i] = v[5][1]; N[i] = -tmp2[1]; V[i+12] = v[6][1]; N[i+12] = tmp2[1];
+			V[++i] = v[5][2]; N[i] = -tmp2[2]; V[i+12] = v[6][2]; N[i+12] = tmp2[2];
             i+=12;
 			I[++j] = 8+0; I[++j] = 8+1; I[++j] = 8+2; // first  triangle 
 			I[++j] = 8+2; I[++j] = 8+1; I[++j] = 8+3; // second triangle 
@@ -3290,26 +3303,33 @@ static void FillProtoVerNorInd(magnoom_ctx *ctx, float * V, float * N, GLuint * 
 			I[++j] = 8+6; I[++j] = 8+5; I[++j] = 8+7; // fourth triangle 
 
             // front/back
-            V[++i] = v[0][0]; N[i] = tmp3[0]; V[i+12] = v[1][0]; N[i+12] = tmp3[0];
-            V[++i] = v[0][0]; N[i] = tmp3[1]; V[i+12] = v[1][1]; N[i+12] = tmp3[1];
-            V[++i] = v[0][0]; N[i] = tmp3[2]; V[i+12] = v[1][2]; N[i+12] = tmp3[2];
+			V[++i] = v[0][0]; N[i] = -tmp3[0]; V[i+12] = v[1][0]; N[i+12] = tmp3[0];
+			V[++i] = v[0][0]; N[i] = -tmp3[1]; V[i+12] = v[1][1]; N[i+12] = tmp3[1];
+			V[++i] = v[0][0]; N[i] = -tmp3[2]; V[i+12] = v[1][2]; N[i+12] = tmp3[2];
 
-            V[++i] = v[2][0]; N[i] = tmp3[0]; V[i+12] = v[5][0]; N[i+12] = tmp3[0];
-            V[++i] = v[2][1]; N[i] = tmp3[1]; V[i+12] = v[5][1]; N[i+12] = tmp3[1];
-            V[++i] = v[2][2]; N[i] = tmp3[2]; V[i+12] = v[5][2]; N[i+12] = tmp3[2];
+			V[++i] = v[2][0]; N[i] = -tmp3[0]; V[i+12] = v[5][0]; N[i+12] = tmp3[0];
+			V[++i] = v[2][1]; N[i] = -tmp3[1]; V[i+12] = v[5][1]; N[i+12] = tmp3[1];
+			V[++i] = v[2][2]; N[i] = -tmp3[2]; V[i+12] = v[5][2]; N[i+12] = tmp3[2];
 
-            V[++i] = v[4][0]; N[i] = tmp3[0]; V[i+12] = v[3][0]; N[i+12] = tmp3[0];
-            V[++i] = v[4][1]; N[i] = tmp3[1]; V[i+12] = v[3][1]; N[i+12] = tmp3[1];
-            V[++i] = v[4][2]; N[i] = tmp3[2]; V[i+12] = v[3][2]; N[i+12] = tmp3[2];
-            
-            V[++i] = v[6][0]; N[i] = tmp3[0]; V[i+12] = v[7][0]; N[i+12] = tmp3[0];
-            V[++i] = v[6][1]; N[i] = tmp3[1]; V[i+12] = v[7][1]; N[i+12] = tmp3[1];
-            V[++i] = v[6][2]; N[i] = tmp3[2]; V[i+12] = v[7][2]; N[i+12] = tmp3[2];  
+			V[++i] = v[4][0]; N[i] = -tmp3[0]; V[i+12] = v[3][0]; N[i+12] = tmp3[0];
+			V[++i] = v[4][1]; N[i] = -tmp3[1]; V[i+12] = v[3][1]; N[i+12] = tmp3[1];
+			V[++i] = v[4][2]; N[i] = -tmp3[2]; V[i+12] = v[3][2]; N[i+12] = tmp3[2];
+
+			V[++i] = v[6][0]; N[i] = -tmp3[0]; V[i+12] = v[7][0]; N[i+12] = tmp3[0];
+			V[++i] = v[6][1]; N[i] = -tmp3[1]; V[i+12] = v[7][1]; N[i+12] = tmp3[1];
+			V[++i] = v[6][2]; N[i] = -tmp3[2]; V[i+12] = v[7][2]; N[i+12] = tmp3[2];
 
 			I[++j] = 2*8+0; I[++j] = 2*8+1; I[++j] = 2*8+2; // first  triangle 
 			I[++j] = 2*8+2; I[++j] = 2*8+1; I[++j] = 2*8+3; // second triangle 
 			I[++j] = 2*8+4; I[++j] = 2*8+5; I[++j] = 2*8+6; // third  triangle 
 			I[++j] = 2*8+6; I[++j] = 2*8+5; I[++j] = 2*8+7; // fourth triangle 
+			if (handedness < 0.0f) {
+				for (int triangle = 0; triangle < 12; ++triangle) {
+					GLuint swap = I[3*triangle + 1];
+					I[3*triangle + 1] = I[3*triangle + 2];
+					I[3*triangle + 2] = swap;
+				}
+			}
 	break;
 
 	case uPOINT:
@@ -3544,7 +3564,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 								// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
 								// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-								A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
+								A = (-S[1]*Ninp[3*k+0] + S[0]*Ninp[3*k+1])*(1. - S[2])*U;
 
 								Nout[i+0] =-S[1]*A + Ninp[3*k+0]*S[2] + S[0]*Ninp[3*k+2];
 								Nout[i+1] = S[0]*A + Ninp[3*k+1]*S[2] + S[1]*Ninp[3*k+2];
@@ -3624,7 +3644,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 							// Nout[i+1] = tmpV3[1];		// y-component of vertex normal
 							// Nout[i+2] = tmpV3[2];		// z-component of vertex normal
 
-							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U;
+							A = (-S[1]*Ninp[3*k+0] + S[0]*Ninp[3*k+1])*(1. - S[2])*U;
 
 							Nout[i+0] =-S[1]*A + Ninp[3*k+0]*S[2] + S[0]*Ninp[3*k+2];
 							Nout[i+1] = S[0]*A + Ninp[3*k+1]*S[2] + S[1]*Ninp[3*k+2];
@@ -4065,6 +4085,12 @@ parallelepiped(const float abc[][3], const float tr[3], float scale1, float scal
 	Enorm( p0, p2, p3, normal1);// left and right ~a
 	Enorm( p0, p1, p3, normal2);// front and back ~b
 	Enorm( p0, p1, p2, normal3);// top and bottom ~c
+	float handedness = normal1[0]*p1[0] + normal1[1]*p1[1] + normal1[2]*p1[2] < 0.0f ? -1.0f : 1.0f;
+	for (int component = 0; component < 3; ++component) {
+		normal1[component] *= handedness;
+		normal2[component] *= handedness;
+		normal3[component] *= handedness;
+	}
 	p0[0]  +=tr[0]; p0[1]  +=tr[1]; p0[2]  +=tr[2];
 	p1[0]  +=tr[0]; p1[1]  +=tr[1]; p1[2]  +=tr[2];
 	p2[0]  +=tr[0]; p2[1]  +=tr[1]; p2[2]  +=tr[2];
@@ -4105,21 +4131,21 @@ parallelepiped(const float abc[][3], const float tr[3], float scale1, float scal
 	I[++j] = offset_index*6*4 + k * 4 + 1; //p123
 
 	//bottom ctx->vertices + ctx->normals, two triangles: p0-p1-p12, p0-p12-p2
-	V[++i] = p0[0]; N[i] = normal3[0]; C[i]=color[0];
-	V[++i] = p0[1]; N[i] = normal3[1]; C[i]=color[1];
-	V[++i] = p0[2]; N[i] = normal3[2]; C[i]=color[2];
+	V[++i] = p0[0]; N[i] = -normal3[0]; C[i]=color[0];
+	V[++i] = p0[1]; N[i] = -normal3[1]; C[i]=color[1];
+	V[++i] = p0[2]; N[i] = -normal3[2]; C[i]=color[2];
 
-	V[++i] = p12[0]; N[i] = normal3[0]; C[i]=color[0];
-	V[++i] = p12[1]; N[i] = normal3[1]; C[i]=color[1];
-	V[++i] = p12[2]; N[i] = normal3[2]; C[i]=color[2];
+	V[++i] = p12[0]; N[i] = -normal3[0]; C[i]=color[0];
+	V[++i] = p12[1]; N[i] = -normal3[1]; C[i]=color[1];
+	V[++i] = p12[2]; N[i] = -normal3[2]; C[i]=color[2];
 
-	V[++i] = p1[0]; N[i] = normal3[0]; C[i]=color[0];
-	V[++i] = p1[1]; N[i] = normal3[1]; C[i]=color[1];
-	V[++i] = p1[2]; N[i] = normal3[2]; C[i]=color[2];
+	V[++i] = p1[0]; N[i] = -normal3[0]; C[i]=color[0];
+	V[++i] = p1[1]; N[i] = -normal3[1]; C[i]=color[1];
+	V[++i] = p1[2]; N[i] = -normal3[2]; C[i]=color[2];
 
-	V[++i] = p2[0]; N[i] = normal3[0]; C[i]=color[0];
-	V[++i] = p2[1]; N[i] = normal3[1]; C[i]=color[1];
-	V[++i] = p2[2]; N[i] = normal3[2]; C[i]=color[2];
+	V[++i] = p2[0]; N[i] = -normal3[0]; C[i]=color[0];
+	V[++i] = p2[1]; N[i] = -normal3[1]; C[i]=color[1];
+	V[++i] = p2[2]; N[i] = -normal3[2]; C[i]=color[2];
 	//bottom ctx->indices p0-p1-p12:
 	k = 1;
 	I[++j] = offset_index*6*4 + k * 4 + 2; //p0
@@ -4157,21 +4183,21 @@ parallelepiped(const float abc[][3], const float tr[3], float scale1, float scal
 	I[++j] = offset_index*6*4 + k * 4 + 3; //p1
 
 	//back ctx->vertices + ctx->normals, two triangles: p2-p12-p123, p2-p123-p23
-	V[++i] = p2[0]; N[i] = normal2[0]; C[i]=color[0];
-	V[++i] = p2[1]; N[i] = normal2[1]; C[i]=color[1];
-	V[++i] = p2[2]; N[i] = normal2[2]; C[i]=color[2];
+	V[++i] = p2[0]; N[i] = -normal2[0]; C[i]=color[0];
+	V[++i] = p2[1]; N[i] = -normal2[1]; C[i]=color[1];
+	V[++i] = p2[2]; N[i] = -normal2[2]; C[i]=color[2];
 
-	V[++i] = p12[0]; N[i] = normal2[0]; C[i]=color[0];
-	V[++i] = p12[1]; N[i] = normal2[1]; C[i]=color[1];
-	V[++i] = p12[2]; N[i] = normal2[2]; C[i]=color[2];
+	V[++i] = p12[0]; N[i] = -normal2[0]; C[i]=color[0];
+	V[++i] = p12[1]; N[i] = -normal2[1]; C[i]=color[1];
+	V[++i] = p12[2]; N[i] = -normal2[2]; C[i]=color[2];
 
-	V[++i] = p123[0]; N[i] = normal2[0]; C[i]=color[0];
-	V[++i] = p123[1]; N[i] = normal2[1]; C[i]=color[1];
-	V[++i] = p123[2]; N[i] = normal2[2]; C[i]=color[2];
+	V[++i] = p123[0]; N[i] = -normal2[0]; C[i]=color[0];
+	V[++i] = p123[1]; N[i] = -normal2[1]; C[i]=color[1];
+	V[++i] = p123[2]; N[i] = -normal2[2]; C[i]=color[2];
 
-	V[++i] = p23[0]; N[i] = normal2[0]; C[i]=color[0];
-	V[++i] = p23[1]; N[i] = normal2[1]; C[i]=color[1];
-	V[++i] = p23[2]; N[i] = normal2[2]; C[i]=color[2];
+	V[++i] = p23[0]; N[i] = -normal2[0]; C[i]=color[0];
+	V[++i] = p23[1]; N[i] = -normal2[1]; C[i]=color[1];
+	V[++i] = p23[2]; N[i] = -normal2[2]; C[i]=color[2];
 	//back ctx->indices p2-p12-p123:
 	k = 3;
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p2
@@ -4209,21 +4235,21 @@ parallelepiped(const float abc[][3], const float tr[3], float scale1, float scal
 	I[++j] = offset_index*6*4 + k * 4 + 3; //p12	
  
 	//left ctx->vertices + ctx->normals, two triangles: p0-p2-p23, p0-p23-p3
-	V[++i] = p0[0]; N[i] = normal1[0]; C[i]=color[0];
-	V[++i] = p0[1]; N[i] = normal1[1]; C[i]=color[1];
-	V[++i] = p0[2]; N[i] = normal1[2]; C[i]=color[2];
+	V[++i] = p0[0]; N[i] = -normal1[0]; C[i]=color[0];
+	V[++i] = p0[1]; N[i] = -normal1[1]; C[i]=color[1];
+	V[++i] = p0[2]; N[i] = -normal1[2]; C[i]=color[2];
 
-	V[++i] = p2[0]; N[i] = normal1[0]; C[i]=color[0];
-	V[++i] = p2[1]; N[i] = normal1[1]; C[i]=color[1];
-	V[++i] = p2[2]; N[i] = normal1[2]; C[i]=color[2];
+	V[++i] = p2[0]; N[i] = -normal1[0]; C[i]=color[0];
+	V[++i] = p2[1]; N[i] = -normal1[1]; C[i]=color[1];
+	V[++i] = p2[2]; N[i] = -normal1[2]; C[i]=color[2];
 
-	V[++i] = p23[0]; N[i] = normal1[0]; C[i]=color[0];
-	V[++i] = p23[1]; N[i] = normal1[1]; C[i]=color[1];
-	V[++i] = p23[2]; N[i] = normal1[2]; C[i]=color[2];
+	V[++i] = p23[0]; N[i] = -normal1[0]; C[i]=color[0];
+	V[++i] = p23[1]; N[i] = -normal1[1]; C[i]=color[1];
+	V[++i] = p23[2]; N[i] = -normal1[2]; C[i]=color[2];
 
-	V[++i] = p3[0]; N[i] = normal1[0]; C[i]=color[0];
-	V[++i] = p3[1]; N[i] = normal1[1]; C[i]=color[1];
-	V[++i] = p3[2]; N[i] = normal1[2]; C[i]=color[2];
+	V[++i] = p3[0]; N[i] = -normal1[0]; C[i]=color[0];
+	V[++i] = p3[1]; N[i] = -normal1[1]; C[i]=color[1];
+	V[++i] = p3[2]; N[i] = -normal1[2]; C[i]=color[2];
 	//left ctx->indices p0-p2-p23:
 	k = 5;
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p0
@@ -4233,6 +4259,15 @@ parallelepiped(const float abc[][3], const float tr[3], float scale1, float scal
 	I[++j] = offset_index*6*4 + k * 4 + 0; //p0
 	I[++j] = offset_index*6*4 + k * 4 + 2; //p23
 	I[++j] = offset_index*6*4 + k * 4 + 3; //p3	
+
+	if (handedness < 0.0f) {
+		int first_index = offset_index*6*2*3;
+		for (int triangle = 0; triangle < 12; ++triangle) {
+			GLuint swap = I[first_index + 3*triangle + 1];
+			I[first_index + 3*triangle + 1] = I[first_index + 3*triangle + 2];
+			I[first_index + 3*triangle + 2] = swap;
+		}
+	}
 }
 
 
@@ -4498,14 +4533,12 @@ void drawVBO(magnoom_ctx *ctx)
 	int is_solid = (ctx->WhichVectorMode == BOX1 || ctx->WhichVectorMode == ARROW1 || ctx->WhichVectorMode == CONE1);
 
 	if (is_solid) {
-		if (ctx->Light_On) glEnable(GL_LIGHTING);
-		else              glDisable(GL_LIGHTING);
 		ctx->spin_mesh.uses_normals = 1;
 		DrawVBOMeshIndexed(&ctx->spin_mesh, GL_TRIANGLES, spin_count, 0);
-		glEnable(GL_LIGHTING);
 		return;
 	}
 
+	GLboolean restore_lighting = glIsEnabled(GL_LIGHTING);
 	glDisable(GL_LIGHTING);
 	ctx->spin_mesh.uses_normals = 0;
 
@@ -4513,7 +4546,7 @@ void drawVBO(magnoom_ctx *ctx)
 		DrawVBOMeshIndexed(&ctx->spin_mesh, GL_POINTS, spin_count, 0);
 		glPointSize(10.f * ctx->Scale);
 		glDrawElements(GL_POINTS, spin_count, GL_UNSIGNED_INT, (void*)0);
-		glEnable(GL_LIGHTING);
+		if (restore_lighting) glEnable(GL_LIGHTING);
 		return;
 	}
 
@@ -4560,7 +4593,7 @@ void drawVBO(magnoom_ctx *ctx)
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-		glEnable(GL_LIGHTING);
+		if (restore_lighting) glEnable(GL_LIGHTING);
 	}
 }
 

@@ -4,7 +4,7 @@
    version="1.1"
    id="svg20"
    sodipodi:docname="magnoom.svg"
-   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   inkscape:version="1.4.3 (0d15f750, 2025-12-25)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -18,13 +18,13 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="0.19059309"
-     inkscape:cx="566.65224"
-     inkscape:cy="-1419.254"
-     inkscape:window-width="3840"
-     inkscape:window-height="2066"
-     inkscape:window-x="-11"
-     inkscape:window-y="-11"
+     inkscape:zoom="0.11997157"
+     inkscape:cx="946.05744"
+     inkscape:cy="629.31574"
+     inkscape:window-width="1470"
+     inkscape:window-height="808"
+     inkscape:window-x="0"
+     inkscape:window-y="33"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg20" />
   <defs
@@ -109,50 +109,21 @@
            id="feMergeNode10" />
       </feMerge>
     </filter>
-    <filter
-       inkscape:collect="always"
-       style="color-interpolation-filters:sRGB"
-       id="filter25"
-       x="-0.014302793"
-       y="-0.016088203"
-       width="1.0286056"
-       height="1.0321764">
-      <feGaussianBlur
-         inkscape:collect="always"
-         stdDeviation="4.9815801"
-         id="feGaussianBlur25" />
-    </filter>
   </defs>
   <rect
      width="1024"
      height="1024"
      rx="220"
      fill="url(#background)"
-     id="rect10" />
-  <text
-     xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1079.19px;font-family:'Arial Black';-inkscape-font-specification:'Arial Black, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#f9f9f9;fill-opacity:1;stroke:#f7d46a;stroke-width:0.944884;stroke-linecap:square;stroke-dashoffset:4.93228;stroke-opacity:1;filter:url(#filter25)"
-     x="523.30902"
-     y="904.06183"
-     id="text30"
-     transform="matrix(1.0030022,0,0,0.9970068,16,14)"><tspan
-       id="tspan30"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1079.19px;font-family:'Arial Black';-inkscape-font-specification:'Arial Black, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#f9f9f9;fill-opacity:1;stroke:#f7d46a;stroke-width:0.944884;stroke-opacity:1"
-       x="523.30902"
-       y="904.06183"
-       sodipodi:role="line">M</tspan></text>
-  <text
-     xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1079.19px;font-family:'Arial Black';-inkscape-font-specification:'Arial Black, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#ff6600;fill-opacity:1;stroke:#f7d46a;stroke-width:0.944884;stroke-linecap:square;stroke-dashoffset:4.93228;stroke-opacity:1;filter:url(#filter25)"
-     x="523.30902"
-     y="904.06183"
+     id="rect10"
+     style="fill:#ffffff" />
+  <path
+     style="font-size:856.148px;font-family:Krungthep;-inkscape-font-specification:'Krungthep, Normal';text-align:center;text-anchor:middle;fill:#0055d4;stroke:#f7d46a;stroke-width:0.944886;stroke-linecap:square;stroke-dashoffset:4.93228"
+     d="m 197.36791,794.06268 v -642.111 h 32.43998 L 534.81062,583.77576 767.91029,151.95168 h 143.13725 v 642.111 H 767.91029 V 401.43856 L 552.05806,779.41896 268.93653,401.43856 v 392.62412 z"
      id="text1"
-     transform="scale(1.0030022,0.9970068)"><tspan
-       id="tspan1"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1079.19px;font-family:'Arial Black';-inkscape-font-specification:'Arial Black, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ff6600;fill-opacity:1;stroke:#f7d46a;stroke-width:0.944884;stroke-opacity:1"
-       x="523.30902"
-       y="904.06183"
-       sodipodi:role="line">M</tspan></text>
+     transform="scale(0.92384214,1.082436)"
+     aria-label="M"
+     sodipodi:nodetypes="ccccccccccccc" />
   <g
      id="g31"
      transform="matrix(0.85904518,0,0,0.7607554,87.714171,143.83239)"

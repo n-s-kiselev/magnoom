@@ -123,8 +123,6 @@ static int tw_glfw2_window_should_close(GLFWwindow *window)
 { (void)window; return !glfwGetWindowParam(GLFW_OPENED); }
 static void tw_glfw2_set_window_should_close(GLFWwindow *window, int close)
 { (void)window; if (close) glfwCloseWindow(); }
-static void tw_glfw2_set_title(GLFWwindow *window, const char *title)
-{ (void)window; glfwSetWindowTitle(title); }
 static void tw_glfw2_set_window_user_pointer(GLFWwindow *window, void *pointer)
 { window->user_pointer = pointer; }
 static void *tw_glfw2_get_window_user_pointer(GLFWwindow *window)
@@ -159,7 +157,6 @@ static void tw_glfw2_set_size(GLFWwindow *window, TwGLFW2WindowSizeFun fun)
 #define glfwGetCursorPos tw_glfw2_get_cursor_pos
 #define glfwWindowShouldClose tw_glfw2_window_should_close
 #define glfwSetWindowShouldClose tw_glfw2_set_window_should_close
-#define glfwSetWindowTitle tw_glfw2_set_title
 #define glfwSetWindowUserPointer tw_glfw2_set_window_user_pointer
 #define glfwGetWindowUserPointer tw_glfw2_get_window_user_pointer
 #define glfwSetKeyCallback tw_glfw2_set_key

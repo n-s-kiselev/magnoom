@@ -828,11 +828,9 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
 					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 
-					//Li-Zhang
+					//Li-Zhang first order
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 				
 					Hx1 = Hx + c1*(VEC_X(in,ip)-VEC_X(in,im))/2;
 					Hy1 = Hy + c1*(VEC_Y(in,ip)-VEC_Y(in,im))/2;
@@ -841,6 +839,13 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
 					Hx2 = Hx + c2*(VEC_X(in,ip)-VEC_X(in,im))/2;
 					Hy2 = Hy + c2*(VEC_Y(in,ip)-VEC_Y(in,im))/2;
 					Hz2 = Hz + c2*(VEC_Z(in,ip)-VEC_Z(in,im))/2;
+
+					//Li-Zhang second order
+					// int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
+					// int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
+					// int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					// int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+
 					// Hx1 = Hx + c1*(VEC_X(in,imm)/12 - 2*VEC_X(in,im)/3 + 2*VEC_X(in,ip)/3 -VEC_X(in,ipp)/12);
 					// Hy1 = Hy + c1*(VEC_Y(in,imm)/12 - 2*VEC_Y(in,im)/3 + 2*VEC_Y(in,ip)/3 -VEC_Y(in,ipp)/12);
 					// Hz1 = Hz + c1*(VEC_Z(in,imm)/12 - 2*VEC_Z(in,im)/3 + 2*VEC_Z(in,ip)/3 -VEC_Z(in,ipp)/12);
@@ -897,8 +902,8 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					// int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					// int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);	// <-- compare this line to corresponding one in prediction step
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
 					Hx1 = Hx + c1*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
@@ -1021,8 +1026,8 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					// int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					// int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					// Hx1 = Hx + c1*(VEC_X(in,imm)/12 - 2*VEC_X(in,im)/3 + 2*VEC_X(in,ip)/3 -VEC_X(in,ipp)/12);
 					// Hy1 = Hy + c1*(VEC_Y(in,imm)/12 - 2*VEC_Y(in,im)/3 + 2*VEC_Y(in,ip)/3 -VEC_Y(in,ipp)/12);
 					// Hz1 = Hz + c1*(VEC_Z(in,imm)/12 - 2*VEC_Z(in,im)/3 + 2*VEC_Z(in,ip)/3 -VEC_Z(in,ipp)/12);
@@ -1096,8 +1101,8 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					// int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					// int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					// Hx1 = Hx + c1*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
 					// Hy1 = Hy + c1*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
 					// Hz1 = Hz + c1*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
@@ -1172,8 +1177,8 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					// int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					// int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					// Hx1 = Hx + c1*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
 					// Hy1 = Hy + c1*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
 					// Hz1 = Hz + c1*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
@@ -1246,8 +1251,8 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
 					int im = Ip + ctx->AtomsPerBlock * ( (na-1+Na)%Na + nb1 + nc1 );
-					int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
-					int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
+					// int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
+					// int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					// Hx1 = Hx + c1*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
 					// Hy1 = Hy + c1*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
 					// Hz1 = Hz + c1*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);

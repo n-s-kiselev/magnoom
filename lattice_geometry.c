@@ -180,8 +180,14 @@
 // int			NOB_CL=uABC[0]*uABC[1]; // number of spins per C layer
 
 void	
-GetShells(float abc[][3], float block[][3], int atomsPerBlock, int ShellNum, float * R)
+GetShells(magnoom_ctx *ctx)
 {
+	float (*abc)[3] = ctx->abc;
+	float (*block)[3] = ctx->Block;
+	int atomsPerBlock = ctx->AtomsPerBlock;
+	int ShellNum = ctx->ShellNumber;
+	float *R = ctx->RadiusOfShell;
+
 	//atomsPerBlock is a number of atoms in the basic domain
 	float min_distance, test_distance, curr_Radius, Radius, test_Radius;
 	float x0,x1,y0,y1,z0,z1,dx,dy,dz;
@@ -248,7 +254,7 @@ GetNeighborsNumber(
 	//atomsPerBlock is a number of atoms in the basic domain
 	float delta, test_Radius, Radius;
 	float x0,x1,y0,y1,z0,z1,dx,dy,dz;
-	int NumInShell, TotNum=0;
+	int TotNum=0;
 	int Jin, Kin, Lin;
 	if (abc[0][0]==0 && (abc[0][1]==0 && abc[0][2]==0)) {Jin = 0;} else {Jin = 15;}
 	if (abc[1][0]==0 && (abc[1][1]==0 && abc[1][2]==0)) {Kin = 0;} else {Kin = 15;}
@@ -262,7 +268,6 @@ GetNeighborsNumber(
 			for (int shell = 0; shell < ShellNum; ++shell) // runs ove shells 
 			{
 				Radius = R [shell];
-				NumInShell=0;
 				for(int J=-Jin;J<=Jin;J++) // translation of basic domain along vector 'a' J times
 				{
 					for(int K=-Kin;K<=Kin;K++)// translation of basic domain along vector 'b' K times
@@ -281,7 +286,6 @@ GetNeighborsNumber(
 								delta = fabs (Radius - test_Radius);
 								if (delta<1e-6) //atom Idx1 is in shell 
 								{
-									NumInShell += 1;
 									NeighborsNum[I0] +=1; 
 								}
 							}//Idx0
@@ -411,4 +415,3 @@ SetExch1( float abc[][3], float block[][3], int arrSize,
 		B0[i] = Bijs[S];
     }
 }
-
