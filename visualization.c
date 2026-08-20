@@ -2,7 +2,7 @@ enum WindowMouseButton { WINDOW_MOUSE_LEFT, WINDOW_MOUSE_MIDDLE, WINDOW_MOUSE_RI
 enum WindowButtonState { WINDOW_BUTTON_DOWN, WINDOW_BUTTON_UP };
 enum WindowSpecialKey {
 	WINDOW_KEY_UP = 1, WINDOW_KEY_DOWN, WINDOW_KEY_F1, WINDOW_KEY_F2,
-	WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6, WINDOW_KEY_F11
+	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F12
 };
 
 // which button:
@@ -2230,13 +2230,12 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarCB(ctx->BextAC_bar, "BextACOmega", TW_TYPE_DOUBLE, CB_SetBextACOmega, CB_GetBextACOmega, ctx, "label='Bext AC omega' min=0 help='Set omega; omega=2*pi/period' ");
 
 
-/*  Info bar F11 */
+/*  Info bar F12 */
 	ctx->info_bar = TwNewBar("Info");
 	TwDefine(" Info refresh=0.5 ");
 	TwDefine(" Info iconified = false movable = false alwaysbottom=true resizable=false fontstyle=default fontsize=2"); 
-	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
+	TwDefine(" Info help='F12: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
-	TwDefine(" Info help='F11: show/hide info-bar' "); // change default tweak bar size and color
 	tw_glfw2_set_bar_size(ctx->info_bar, 170, 620);
 	tw_glfw2_set_bar_position(ctx->info_bar, 1, 30);
 	tw_glfw2_set_bar_values_width(ctx->info_bar, 130);
@@ -2300,10 +2299,10 @@ static int GLFWSpecialToWindowKey(int key)
 		case GLFW_KEY_DOWN: return WINDOW_KEY_DOWN;
 		case GLFW_KEY_F1: return WINDOW_KEY_F1;
 		case GLFW_KEY_F2: return WINDOW_KEY_F2;
+		case GLFW_KEY_F3: return WINDOW_KEY_F3;
 		case GLFW_KEY_F4: return WINDOW_KEY_F4;
 		case GLFW_KEY_F5: return WINDOW_KEY_F5;
-		case GLFW_KEY_F6: return WINDOW_KEY_F6;
-		case GLFW_KEY_F11: return WINDOW_KEY_F11;
+		case GLFW_KEY_F12: return WINDOW_KEY_F12;
 		default: return 0;
 	}
 }
@@ -2672,7 +2671,7 @@ int isiconified;
 					TwDefine(" View iconified=true ");
 				}
 				break;
-			case  WINDOW_KEY_F4:
+			case  WINDOW_KEY_F3:
 				TwGetParam(ctx->control_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Parameters&Controls iconified=false ");				
@@ -2680,7 +2679,7 @@ int isiconified;
 					TwDefine(" Parameters&Controls iconified=true ");
 				}
 				break;
-			case  WINDOW_KEY_F6:
+			case  WINDOW_KEY_F4:
 				TwGetParam(ctx->initial_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Initial_State iconified=false ");				
@@ -2696,7 +2695,7 @@ int isiconified;
 					TwDefine(" BextAC iconified=true ");
 				}
 				break;
-			case  WINDOW_KEY_F11:
+			case  WINDOW_KEY_F12:
 				TwGetParam(ctx->info_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
 					TwDefine(" Info iconified=false ");				
