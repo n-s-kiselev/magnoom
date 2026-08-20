@@ -1584,7 +1584,7 @@ void *CALC_THREAD(void *void_ptr)
 
 	while(!ctx->EngineShutdown)
 	{
-		while(ctx->ENGINE_MUTEX != DO_IT && !ctx->EngineShutdown){ usleep(ctx->SleepTime);}
+		while(ctx->ENGINE_MUTEX != DO_IT && !ctx->EngineShutdown){ glfwSleep((double)ctx->SleepTime / 1000000.0);}
 		if (ctx->EngineShutdown) break;
 		ctx->BextACScalar = EvaluateBextAC(ctx);
 		

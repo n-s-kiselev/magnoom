@@ -24,7 +24,6 @@
 #if defined(_WIN32)
 	#include <windows.h>
 	#include <process.h>
-	#define usleep(t)  Sleep( (DWORD)((t)*0.001f) )
 	#define snprintf _snprintf			
 	#define SEM_VALUE_MAX 32767
 	#define SEM_FAILED NULL
@@ -49,7 +48,7 @@
 #endif
 
 static const char SOFTWARE_NAME[] = "Magnoom";
-static const char SOFTWARE_VERSION[] = "1.02";
+static const char SOFTWARE_VERSION[] = "1.03";
 
 #define ABS(x) ((x)<0?-(x):(x))
 

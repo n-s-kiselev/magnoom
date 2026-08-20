@@ -32,6 +32,7 @@
 #include "magnoom_x11_icon.h"
 
 #include <limits.h>
+#include <X11/XKBlib.h>
 
 /* Declared in AntTweakBar.h; forward-declared here rather than including
  * that header, so this vendored GLFW2 source doesn't need AntTweakBar's
@@ -254,7 +255,7 @@ static int translateKey( int keycode )
     // Try secondary keysym, for numeric keypad keys
     // Note: This way we always force "NumLock = ON", which at least
     // enables GLFW users to detect numeric keypad keys
-    key = XKeycodeToKeysym( _glfwLibrary.display, keycode, 1 );
+    key = XkbKeycodeToKeysym( _glfwLibrary.display, keycode, 0, 1 );
     switch( key )
     {
         // Numeric keypad
@@ -276,7 +277,7 @@ static int translateKey( int keycode )
     }
 
     // Now try pimary keysym
-    key = XKeycodeToKeysym( _glfwLibrary.display, keycode, 0 );
+    key = XkbKeycodeToKeysym( _glfwLibrary.display, keycode, 0, 0 );
     switch( key )
     {
         // Special keys (non character keys)
