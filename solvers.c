@@ -1,3 +1,28 @@
+static void magnoom_worker_barrier(magnoom_ctx *ctx, int thread)
+{
+	if (thread == THREADS_NUMBER - 1) {
+		sem_post(ctx->sem_in[0]);
+		sem_wait(ctx->sem_in[thread]);
+		sem_post(ctx->sem_out[0]);
+		sem_wait(ctx->sem_out[thread]);
+	} else {
+		sem_wait(ctx->sem_in[thread]);
+		sem_post(ctx->sem_in[thread + 1]);
+		sem_wait(ctx->sem_out[thread]);
+		sem_post(ctx->sem_out[thread + 1]);
+	}
+}
+
+static int magnoom_first_nonfinite_spin(const magnoom_ctx *ctx)
+{
+	for (int i = 0; i < ctx->NOS; ++i) {
+		if (ctx->Kind[i] != 0 &&
+			(!isfinite(VEC_X(ctx->S, i)) || !isfinite(VEC_Y(ctx->S, i)) ||
+			 !isfinite(VEC_Z(ctx->S, i)))) return i;
+	}
+	return -1;
+}
+
 void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 					int naini, 	int nafin,
 					int nbini, 	int nbfin,
@@ -560,6 +585,7 @@ StochasticLLG(	magnoom_ctx *ctx, int thread,
 		}
 	}
 
+	magnoom_worker_barrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//final step of midpoint solver:
@@ -704,6 +730,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 		}
 	}
 
+	magnoom_worker_barrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//corrector step:
@@ -801,7 +828,8 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
 
 	double xi = Xi; 
 	double u = Curr_u;
-	double c1 = (xi-alpha)*u, c2=(1+xi*alpha)*u/alpha;
+	double c1 = (xi-alpha)*u;
+	double c2 = u == 0.0 || alpha == 0.0f ? 0.0 : (1+xi*alpha)*u/alpha;
 	// c2 = (alpha>1e-20)? (1+xi*alpha)*u/alpha : 0;
 
 	//electric DC current vector (VCu) and density (Cu)
@@ -886,6 +914,7 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
 		}
 	}
 
+	magnoom_worker_barrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//corrector step:
@@ -965,13 +994,14 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
 
 
 void
-StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
+StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
 {
 	double *in = ctx->S;
 	double *tn = ctx->tS;
+	double *next = ctx->rkS;
 	const float *rx = ctx->RNx;
 	const float *ry = ctx->RNy;
 	const float *rz = ctx->RNz;
@@ -1006,7 +1036,8 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 
 	double xi = Xi; 
 	double u = Curr_u;
-	double c1 = (xi-alpha)*u, c2=(1+xi*alpha)*u/alpha;
+	double c1 = (xi-alpha)*u;
+	double c2 = u == 0.0 || alpha == 0.0f ? 0.0 : (1+xi*alpha)*u/alpha;
 
 	//k1:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -1081,6 +1112,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 		}
 	}
 	//Heff(y_n+k1/2):
+	magnoom_worker_barrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//k2:
@@ -1150,15 +1182,16 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 					VEC_Y(ctx->t2S,i)+= Cy/3.0;
 					VEC_Z(ctx->t2S,i)+= Cz/3.0;
 					//y_n+k2/2 will be used on the next step
-					VEC_X(tn,i) = VEC_X(in,i) + Cx*0.5;
-					VEC_Y(tn,i) = VEC_Y(in,i) + Cy*0.5;
-					VEC_Z(tn,i) = VEC_Z(in,i) + Cz*0.5;						
+					VEC_X(next,i) = VEC_X(in,i) + Cx*0.5;
+					VEC_Y(next,i) = VEC_Y(in,i) + Cy*0.5;
+					VEC_Z(next,i) = VEC_Z(in,i) + Cz*0.5;
 				}
 			}
 		}
 	}
 	//Heff(y_n+k2/2):
-	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
+	magnoom_worker_barrier(ctx, thread);
+	GetEffectiveField(ctx, next, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k3:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
@@ -1171,7 +1204,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);
+					nx = VEC_X(next,i);	ny = VEC_Y(next,i);	nz = VEC_Z(next,i);
 					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
@@ -1186,13 +1219,13 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 					// Hx2 = Hx + c2*(VEC_X(tn,imm)/12 - 2*VEC_X(tn,im)/3 + 2*VEC_X(tn,ip)/3 -VEC_X(tn,ipp)/12);
 					// Hy2 = Hy + c2*(VEC_Y(tn,imm)/12 - 2*VEC_Y(tn,im)/3 + 2*VEC_Y(tn,ip)/3 -VEC_Y(tn,ipp)/12);
 					// Hz2 = Hz + c2*(VEC_Z(tn,imm)/12 - 2*VEC_Z(tn,im)/3 + 2*VEC_Z(tn,ip)/3 -VEC_Z(tn,ipp)/12);
-					Hx1 = Hx + c1*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
-					Hy1 = Hy + c1*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
-					Hz1 = Hz + c1*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
+					Hx1 = Hx + c1*(VEC_X(next,ip)-VEC_X(next,im))/2;
+					Hy1 = Hy + c1*(VEC_Y(next,ip)-VEC_Y(next,im))/2;
+					Hz1 = Hz + c1*(VEC_Z(next,ip)-VEC_Z(next,im))/2;
 
-					Hx2 = Hx + c2*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
-					Hy2 = Hy + c2*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
-					Hz2 = Hz + c2*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
+					Hx2 = Hx + c2*(VEC_X(next,ip)-VEC_X(next,im))/2;
+					Hy2 = Hy + c2*(VEC_Y(next,ip)-VEC_Y(next,im))/2;
+					Hz2 = Hz + c2*(VEC_Z(next,ip)-VEC_Z(next,im))/2;
 
 					// deterministic terms of Landau–Lifshitz equation:
 					// Fx = Alpha_p * Hx + Alpha_d * (ny * Hz - nz * Hy);
@@ -1232,6 +1265,7 @@ StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
 		}
 	}
 	//Heff(y_n+k3):
+	magnoom_worker_barrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k4:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -1460,6 +1494,9 @@ static void RecordBextACMode(magnoom_ctx *ctx)
 			printf("Image %d\n", ctx->current_rec_num_mode);
 			if (ctx->current_rec_num_mode==ctx->num_images*ctx->rec_num_mode){
 				ctx->Play=0;
+				pthread_mutex_lock(&ctx->culc_mutex);
+				ctx->ENGINE_MUTEX=STOP_REQUESTED;
+				pthread_mutex_unlock(&ctx->culc_mutex);
 				ctx->BextACModeRecording=0;
 				ctx->BextACEnabled=0;
 				ctx->current_rec_num_mode=0;
@@ -1596,7 +1633,14 @@ void *CALC_THREAD(void *void_ptr)
 
 	while(!ctx->EngineShutdown)
 	{
-		while(ctx->ENGINE_MUTEX != DO_IT && !ctx->EngineShutdown){ glfwSleep((double)ctx->SleepTime / 1000000.0);}
+		int engine_state;
+		do {
+			pthread_mutex_lock(&ctx->culc_mutex);
+			engine_state = ctx->ENGINE_MUTEX;
+			pthread_mutex_unlock(&ctx->culc_mutex);
+			if (engine_state == WAIT && !ctx->EngineShutdown)
+				glfwSleep((double)ctx->SleepTime / 1000000.0);
+		} while (engine_state == WAIT && !ctx->EngineShutdown);
 		if (ctx->EngineShutdown) break;
 		ctx->BextACScalar = EvaluateBextAC(ctx);
 		
@@ -1614,22 +1658,30 @@ void *CALC_THREAD(void *void_ptr)
 				StochasticLLG_RK23(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
-			case RK45: 
-				StochasticLLG_RK45(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
+			case RK4:
+				StochasticLLG_RK4(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
 			case RELAX: 	
 				Relax(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 		}
-		if (threadindex==0 && ctx->Temperature > 0) GetFluctuations(ctx);
-
 		if (threadindex==THREADS_NUMBER-1){ 
 			
 			//first thread opens the first (in) door in the next (second) thread
 			sem_post(ctx->sem_in[(threadindex+1)%THREADS_NUMBER]);
 			// first (in)door will be open from the last thread (first sem_post)
 			sem_wait(ctx->sem_in[threadindex]);
+
+			int nonfinite_spin = magnoom_first_nonfinite_spin(ctx);
+			bool finite_step = nonfinite_spin < 0;
+			if (!finite_step) {
+				fprintf(stderr,
+					"Solver stopped after iteration %d: spin %d became nonfinite (dt=%g).\n",
+					ctx->ITERATION, nonfinite_spin, (double)ctx->t_step);
+				ctx->Play = 0;
+			}
+			if (finite_step && ctx->Temperature > 0) GetFluctuations(ctx);
 			
 			ctx->MAX_TORQUE=0;
 			for (int i=0;i<THREADS_NUMBER;i++){
@@ -1653,7 +1705,7 @@ void *CALC_THREAD(void *void_ptr)
 			}
 
 			//normalize all spins every 100 iterations
-			if (ctx->WhichIntegrationScheme != RELAX && ctx->ITERATION%100==0) 
+			if (finite_step && ctx->WhichIntegrationScheme != RELAX && ctx->ITERATION%100==0)
 			{
 				// printf("ich bin hier!\n");
 				for (int i=0;i<ctx->NOS;i++)
@@ -1668,7 +1720,7 @@ void *CALC_THREAD(void *void_ptr)
 			}
 
 			//save to file if recording is on
-			if (ctx->Record!=0 && ctx->ITERATION%ctx->rec_iteration == 0){
+			if (finite_step && ctx->Record!=0 && ctx->ITERATION%ctx->rec_iteration == 0){
 
 				ctx->outputEtotal = GetTotalEnergyMoment(ctx);
 				pthread_mutex_lock(&ctx->record_mutex);
@@ -1692,7 +1744,7 @@ void *CALC_THREAD(void *void_ptr)
 				pthread_mutex_unlock(&ctx->record_mutex);
 			}
 
-			RecordBextACMode(ctx);
+			if (finite_step) RecordBextACMode(ctx);
 
 			if (ctx->DATA_TRANSFER_MUTEX==WAIT_DATA){
 				for (int i=0;i<ctx->NOS;i++){
@@ -1707,11 +1759,18 @@ void *CALC_THREAD(void *void_ptr)
 			}
 			// All workers leave together after completing the current iteration.
 			if (ctx->EngineShutdownRequested) ctx->EngineShutdown = true;
+			pthread_mutex_lock(&ctx->culc_mutex);
+			if (!finite_step || ctx->ENGINE_MUTEX == STOP_REQUESTED)
+				ctx->ENGINE_MUTEX = WAIT;
+			pthread_mutex_unlock(&ctx->culc_mutex);
 
 			// now it opens the second (out) door in the next (second) thread
 			sem_post(ctx->sem_out[(threadindex+1)%THREADS_NUMBER]);
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(ctx->sem_out[threadindex]);
+			pthread_mutex_lock(&ctx->culc_mutex);
+			if (ctx->ENGINE_MUTEX == WAIT) ctx->EngineIdle = true;
+			pthread_mutex_unlock(&ctx->culc_mutex);
 		}else{
 			//all other calculation threads
 			sem_wait(ctx->sem_in[threadindex]);

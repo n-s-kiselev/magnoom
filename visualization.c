@@ -404,14 +404,12 @@ void TW_CALL CB_Set_Run( const void *value, void *clientData )
 	ctx->Play = *( int *)value;
     if (ctx->Play!=0){
         pthread_mutex_lock(&ctx->culc_mutex);
+			ctx->EngineIdle=false;
             ctx->ENGINE_MUTEX=DO_IT;
             ctx->SleepTime=100;
         pthread_mutex_unlock(&ctx->culc_mutex);
     }else{
-        pthread_mutex_lock(&ctx->culc_mutex);
-            ctx->ENGINE_MUTEX=WAIT;
-            ctx->SleepTime=3000;
-        pthread_mutex_unlock(&ctx->culc_mutex);  
+		magnoom_stop_engine(ctx);
     }
     // printf("IchBinHier!\n");
 
@@ -420,7 +418,21 @@ void TW_CALL CB_Set_Run( const void *value, void *clientData )
 void TW_CALL CB_Get_Run(void *value, void *clientData)
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(float *)value = ctx->Play;
+	*(int *)value = ctx->Play;
+}
+
+void TW_CALL CB_SetIntegrationScheme(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
+	ctx->WhichIntegrationScheme = *(const int *)value;
+	magnoom_reset_solver_state(ctx);
+}
+
+void TW_CALL CB_GetIntegrationScheme(void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	*(int *)value = ctx->WhichIntegrationScheme;
 }
 
 
@@ -751,13 +763,16 @@ void TW_CALL CB_SetInitial( void *clientData )
 void TW_CALL CB_SetShape( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
 	UpdateKind(ctx);
+	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode(ctx, 1);
 }
 
 void TW_CALL CB_RotateAllSpins( void *clientData )
-{	
+{
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
 	if(fabs(ctx->chDir[0])+fabs(ctx->chDir[1])+fabs(ctx->chDir[2])!=0)
 	{
         double tmp[3];
@@ -767,27 +782,34 @@ void TW_CALL CB_RotateAllSpins( void *clientData )
 			VEC_Y(ctx->bS,i) = VEC_Y(ctx->S,i) = tmp[1];
 			VEC_Z(ctx->bS,i) = VEC_Z(ctx->S,i) = tmp[2];
 		}
+		magnoom_reset_solver_state(ctx);
 		ChangeVectorMode(ctx, 1);		
 	}
 }
 
 void TW_CALL CB_InvertX( void *clientData )
 {
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
 	for (int i=0; i<ctx->NOS; i++) {VEC_X(ctx->S,i) = -VEC_X(ctx->S,i); VEC_X(ctx->bS,i) = -VEC_X(ctx->bS,i);}
+	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode(ctx, 1);
 }
 
 void TW_CALL CB_InvertY( void *clientData )
 {
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
 	for (int i=0; i<ctx->NOS; i++) {VEC_Y(ctx->S,i) = -VEC_Y(ctx->S,i); VEC_Y(ctx->bS,i) = -VEC_Y(ctx->bS,i);}
+	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode(ctx, 1);
 }
 
 void TW_CALL CB_InvertZ( void *clientData ){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
 	for (int i=0; i<ctx->NOS; i++) {VEC_Z(ctx->S,i) = -VEC_Z(ctx->S,i); VEC_Z(ctx->bS,i) = -VEC_Z(ctx->bS,i);}
+	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -1348,6 +1370,7 @@ void TW_CALL CB_SaveCSV( void *clientData )
 void TW_CALL CB_ReadCSV( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
     char input_path[MAGNOOM_PATH_CAPACITY];
     if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
     FILE * pFile = fopen(input_path, "r");
@@ -1394,6 +1417,7 @@ void TW_CALL CB_ReadCSV( void *clientData )
 	} else {
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
 	}
+	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -1402,6 +1426,7 @@ void TW_CALL CB_ReadCSV( void *clientData )
 void TW_CALL CB_ReadOVF( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
 	char input_path[MAGNOOM_PATH_CAPACITY];
 	char  line[256];//whole line of header should be not longer then 256 characters
 	int   lineLength=0;
@@ -1544,12 +1569,14 @@ void TW_CALL CB_ReadOVF( void *clientData )
         VEC_Y(ctx->t3S,i)=VEC_Y(ctx->S,i);
         VEC_Z(ctx->t3S,i)=VEC_Z(ctx->S,i);                       
     }
+	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode(ctx, 1);
 }
 
 void TW_CALL CB_ReadBIN( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
 	char input_path[MAGNOOM_PATH_CAPACITY];
 	
 
@@ -1590,6 +1617,7 @@ void TW_CALL CB_ReadBIN( void *clientData )
 	    }
 	}
 	fclose (FilePointer);
+	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -1597,9 +1625,11 @@ void TW_CALL CB_ReadBIN( void *clientData )
 void TW_CALL CB_ReadVTK( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_stop_engine(ctx);
 	char input_path[MAGNOOM_PATH_CAPACITY];
 	if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
     Read_VTK(ctx, ctx->S, input_path);
+	magnoom_reset_solver_state(ctx);
     ChangeVectorMode(ctx, 1);
 }
 
@@ -2042,10 +2072,12 @@ void setupTweakBar(magnoom_ctx *ctx)
     TwEnumVal       enIntegrationScheme[] = {{HEUN, "Heun(1) "},
                                              {SIB,  " SIB(2) "},
                                              {RK23, " RK(23) "},
-                                             {RK45, " RK(45) "},
+	                                         {RK4, " RK4 (fixed step) "},
                                          	 {RELAX, " RELAX "}};
     TwType          TV_TYPE_INTEGRATION_SCHEME = TwDefineEnum("Solver", enIntegrationScheme, 5);
-    TwAddVarRW(ctx->control_bar, "Integration scheme", TV_TYPE_INTEGRATION_SCHEME, &ctx->WhichIntegrationScheme, "group='LLG' help='Choose the integration scheme'");
+    TwAddVarCB(ctx->control_bar, "Integration scheme", TV_TYPE_INTEGRATION_SCHEME,
+		CB_SetIntegrationScheme, CB_GetIntegrationScheme, ctx,
+		"group='LLG' help='Choose the integration scheme; changing it stops the simulation'");
     }
     //TwAddVarRW(control_bar, "Preces", TW_TYPE_BOOL32, &Precession, "label='precession' group='LLG' true='On' false='Off' help='On/Off precession'");
     TwAddVarRW(ctx->control_bar, "Damping", TW_TYPE_FLOAT, &ctx->damping, "label='Damping' min=0 max=100 step=0.000001 group='LLG' ");
@@ -2765,8 +2797,9 @@ void ExecuteCommand( magnoom_ctx *ctx, int id )
 
 void ChangeInitialState(magnoom_ctx *ctx)
 {
+	magnoom_stop_engine(ctx);
 	InitSpinComponents(ctx, ctx->Px, ctx->Py, ctx->Pz, ctx->S, ctx->WhichInitialState);
-	for (int i=0;i<ctx->NOS;i++) { VEC_X(ctx->bS,i)=VEC_X(ctx->S,i); VEC_Y(ctx->bS,i)=VEC_Y(ctx->S,i); VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i);}
+	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode (ctx,  1 );
 	ctx->SpecialEvent=1;
 }
