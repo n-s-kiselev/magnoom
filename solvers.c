@@ -1463,6 +1463,11 @@ static void RecordBextACMode(magnoom_ctx *ctx)
 				ctx->BextACModeRecording=0;
 				ctx->BextACEnabled=0;
 				ctx->current_rec_num_mode=0;
+				char phase_output_directory[MAGNOOM_PATH_CAPACITY];
+				pthread_mutex_lock(&ctx->record_mutex);
+				magnoom_copy_path(phase_output_directory, sizeof(phase_output_directory),
+					ctx->output_directory);
+				pthread_mutex_unlock(&ctx->record_mutex);
 				for (int j=0; j<ctx->num_images; j++){
 					for (int i=0; i<ctx->NOS; i++){
 					// for dm:
@@ -1489,8 +1494,12 @@ static void RecordBextACMode(magnoom_ctx *ctx)
 						// Save_VTK(Image_x[j], Image_y[j], Image_z[j],0, vtk_filename);
 					/* m and dm */
 						char vtk_filename[64] = "";
+						char output_path[MAGNOOM_PATH_CAPACITY];
 						snprintf(vtk_filename,64,"phase%d.vtk",j);
-						Save_VTK_6(ctx, &ctx->Image[(size_t)j*ctx->NOS*3], &ctx->dImage[(size_t)j*ctx->NOS*3], 0, vtk_filename);
+						if (magnoom_resolve_path(output_path, sizeof(output_path),
+							phase_output_directory, vtk_filename)) {
+							Save_VTK_6(ctx, &ctx->Image[(size_t)j*ctx->NOS*3], &ctx->dImage[(size_t)j*ctx->NOS*3], 0, output_path);
+						}
 					/*dTheta dPhi*/
 						for (int i=0; i<ctx->NOS; i++){
 						// get theta and phi for the equilibrium state:
@@ -1514,7 +1523,10 @@ static void RecordBextACMode(magnoom_ctx *ctx)
 							IMAGE_COMPONENT(ctx->dImage,j,ctx->NOS,i,2)=s[2];
 						}
 							snprintf(vtk_filename,64,"dTdF%d.vtk",j);
-							Save_VTK(ctx, &ctx->dImage[(size_t)j*ctx->NOS*3],0, vtk_filename);
+							if (magnoom_resolve_path(output_path, sizeof(output_path),
+								phase_output_directory, vtk_filename)) {
+								Save_VTK(ctx, &ctx->dImage[(size_t)j*ctx->NOS*3],0, output_path);
+							}
 					}
 			}
 		}
@@ -1659,6 +1671,7 @@ void *CALC_THREAD(void *void_ptr)
 			if (ctx->Record!=0 && ctx->ITERATION%ctx->rec_iteration == 0){
 
 				ctx->outputEtotal = GetTotalEnergyMoment(ctx);
+				pthread_mutex_lock(&ctx->record_mutex);
 				ctx->BigDataBank[0][ctx->recordsCounter] = (float)ctx->ITERATION;
 				ctx->BigDataBank[1][ctx->recordsCounter] = ctx->outputMtotal[0]*ctx->iNOS;
 				ctx->BigDataBank[2][ctx->recordsCounter] = ctx->outputMtotal[1]*ctx->iNOS;
@@ -1674,17 +1687,9 @@ void *CALC_THREAD(void *void_ptr)
 				// BigDataBank[6][recordsCounter] = bSz[1];				
 				ctx->recordsCounter++;
 				if (ctx->recordsCounter==100){
-					if (ctx->outFile!=NULL){
-						for (int i=0; i<ctx->recordsCounter; i++){
-							snprintf(ctx->BuferString,80,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",ctx->BigDataBank[0][i],ctx->BigDataBank[0][i]*ctx->t_step,ctx->BigDataBank[1][i],ctx->BigDataBank[2][i],ctx->BigDataBank[3][i],ctx->BigDataBank[4][i]);
-							//metka test LLG
-							// snprintf(BuferString,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",BigDataBank[0][i],BigDataBank[1][i],BigDataBank[2][i],BigDataBank[3][i],BigDataBank[4][i],BigDataBank[5][i],BigDataBank[6][i]);
-							fputs(ctx->BuferString,ctx->outFile);  							
-						}
-					}
-					printf("%s\n", "Recording to file table.csv is done!");
-					ctx->recordsCounter=0;
+					magnoom_flush_records_locked(ctx);
 				}
+				pthread_mutex_unlock(&ctx->record_mutex);
 			}
 
 			RecordBextACMode(ctx);

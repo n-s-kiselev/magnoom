@@ -88,6 +88,25 @@ window publishes its icon and `Magnoom` application class directly, while the
 files under `build/share/` can be copied into a standard installation prefix
 to provide a desktop launcher.
 
+## Simulation file locations
+
+The Initial State panel provides separate `Input directory` and `Output
+directory` fields. Both start as the directory containing the running Magnoom
+executable and can be edited for the current session. Relative input and output
+file names are resolved against these fields; an absolute file name overrides
+the corresponding directory.
+
+The output directory applies to manual CSV, OVF, VTK, BIN, and PNG exports as
+well as `table.csv`, `phase*.vtk`, and `dTdF*.vtk`. Changing it starts a new
+`table.csv` after flushing buffered records to the previous file. Magnoom does
+not create missing directories, and reports the resolved path when opening a
+file fails. Paths may contain spaces and dots and are limited to 4095 bytes.
+Windows paths use the MinGW C runtime's narrow-character encoding. If an
+installed executable directory is read-only, select a writable output
+directory before recording or exporting data. On Windows, use fully qualified
+drive or UNC paths; drive-relative paths such as `C:file.csv` and current-drive
+rooted paths such as `\file.csv` are rejected as ambiguous.
+
 Magnoom's application sources are compiled as C99. The vendored AntTweakBar implementation remains C++, so the final executable is linked with the C++ compiler driver.
 
 The active crystal basis is selected in `magnoom.c` immediately after

@@ -6,6 +6,10 @@
 //  Modified     : October 2016
 //  
 //  Build with the repository's nob.c build system (see README.md).
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <glad/glad.h>
 #include <AntTweakBar.h>
 #include "vendor/glfw2/TwGLFW2.h"
@@ -39,6 +43,7 @@
 	#define pthread_mutex_init(mutex_ptr,num) InitializeCriticalSection(mutex_ptr)
 	#define pthread_mutex_lock(mutex_ptr) EnterCriticalSection(mutex_ptr)
 	#define pthread_mutex_unlock(mutex_ptr) LeaveCriticalSection(mutex_ptr)
+	#define pthread_mutex_destroy(mutex_ptr) DeleteCriticalSection(mutex_ptr)
 	#define pthread_join(thread,retval) (WaitForSingleObject((thread), INFINITE), CloseHandle(thread), 0)
 #else
 	#include <unistd.h>
@@ -47,8 +52,12 @@
 	#define semaphore_ref sem_t*
 #endif
 
+#if defined(__APPLE__)
+	#include <mach-o/dyld.h>
+#endif
+
 static const char SOFTWARE_NAME[] = "Magnoom";
-static const char SOFTWARE_VERSION[] = "1.03";
+static const char SOFTWARE_VERSION[] = "1.04";
 
 #define ABS(x) ((x)<0?-(x):(x))
 
@@ -58,6 +67,7 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 #define THREADS_NUMBER 3
 #define MAX_ATOMS_PER_BLOCK 100
 #define MAX_SHELLS 6
+#define MAGNOOM_PATH_CAPACITY 4096
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "vendor/stb/stb_image_write.h"
@@ -279,8 +289,11 @@ typedef struct magnoom_ctx {
 	double          outputMtotal[3];
 	int             SleepTime;
 	char            shortBufer[200];
-	char            inputfilename[64];
-	char            outputfilename[64];
+	char            input_directory[MAGNOOM_PATH_CAPACITY];
+	char            output_directory[MAGNOOM_PATH_CAPACITY];
+	char            inputfilename[MAGNOOM_PATH_CAPACITY];
+	char            outputfilename[MAGNOOM_PATH_CAPACITY];
+	char            record_path[MAGNOOM_PATH_CAPACITY];
 
 	/* Geometry */
 	float           abc[3][3];
@@ -309,6 +322,7 @@ typedef struct magnoom_ctx {
 	/* magnoom.c: cross-thread concurrency primitives */
 	pthread_mutex_t culc_mutex;
 	pthread_mutex_t show_mutex;
+	pthread_mutex_t record_mutex;
 	int             ENGINE_MUTEX;
 	int             DATA_TRANSFER_MUTEX;
 	volatile bool   EngineShutdown;
@@ -503,6 +517,305 @@ typedef struct magnoom_ctx {
 /* index and ctx, since pthread's start-routine signature has room for only  */
 /* one void* argument. */
 typedef struct { int index; magnoom_ctx *ctx; } calc_thread_arg;
+
+static bool magnoom_copy_path(char *destination, size_t capacity, const char *source)
+{
+	size_t length;
+	if (destination == NULL || capacity == 0 || source == NULL) return false;
+	length = strlen(source);
+	if (length >= capacity) return false;
+	memcpy(destination, source, length + 1);
+	return true;
+}
+
+static bool magnoom_is_path_separator(char c)
+{
+#if defined(_WIN32)
+	return c == '/' || c == '\\';
+#else
+	return c == '/';
+#endif
+}
+
+static bool magnoom_path_is_absolute(const char *path)
+{
+	if (path == NULL || path[0] == '\0') return false;
+#if defined(_WIN32)
+	if (magnoom_is_path_separator(path[0]) && magnoom_is_path_separator(path[1])) return true;
+	return ((path[0] >= 'A' && path[0] <= 'Z') ||
+	        (path[0] >= 'a' && path[0] <= 'z')) &&
+	       path[1] == ':' && magnoom_is_path_separator(path[2]);
+#else
+	return path[0] == '/';
+#endif
+}
+
+static bool magnoom_join_path(char *destination, size_t capacity,
+	const char *directory, const char *filename)
+{
+	size_t directory_length, filename_length, required;
+	bool add_separator;
+	char separator;
+
+	if (destination == NULL || capacity == 0 || directory == NULL ||
+		filename == NULL || filename[0] == '\0') return false;
+#if defined(_WIN32)
+	if ((magnoom_is_path_separator(filename[0]) && !magnoom_is_path_separator(filename[1])) ||
+		(((filename[0] >= 'A' && filename[0] <= 'Z') ||
+		  (filename[0] >= 'a' && filename[0] <= 'z')) &&
+		 filename[1] == ':' && !magnoom_is_path_separator(filename[2]))) return false;
+#endif
+	if (directory[0] == '\0' || magnoom_path_is_absolute(filename))
+		return magnoom_copy_path(destination, capacity, filename);
+
+	directory_length = strlen(directory);
+	filename_length = strlen(filename);
+	add_separator = !magnoom_is_path_separator(directory[directory_length - 1]);
+	required = directory_length + (add_separator ? 1u : 0u) + filename_length + 1u;
+	if (required > capacity) return false;
+
+#if defined(_WIN32)
+	separator = '\\';
+#else
+	separator = '/';
+#endif
+	memcpy(destination, directory, directory_length);
+	if (add_separator) destination[directory_length++] = separator;
+	memcpy(destination + directory_length, filename, filename_length + 1);
+	return true;
+}
+
+static bool magnoom_replace_extension(char *destination, size_t capacity,
+	const char *path, const char *extension)
+{
+	const char *basename, *dot, *cursor;
+	size_t base_length, extension_length;
+
+	if (destination == NULL || capacity == 0 || path == NULL || path[0] == '\0' ||
+		extension == NULL || extension[0] == '\0') return false;
+	basename = path;
+	for (cursor = path; *cursor != '\0'; ++cursor) {
+		if (magnoom_is_path_separator(*cursor)) basename = cursor + 1;
+	}
+	dot = strrchr(basename, '.');
+	if (dot == basename) dot = NULL;
+	base_length = dot != NULL ? (size_t)(dot - path) : strlen(path);
+	extension_length = strlen(extension);
+	if (base_length + extension_length + 1 > capacity) return false;
+	memcpy(destination, path, base_length);
+	memcpy(destination + base_length, extension, extension_length + 1);
+	return true;
+}
+
+static bool magnoom_resolve_path(char *destination, size_t capacity,
+	const char *directory, const char *filename)
+{
+	if (!magnoom_join_path(destination, capacity, directory, filename)) {
+		fprintf(stderr, "Unable to resolve path from directory '%s' and file '%s': path is empty, unsupported, or too long.\n",
+			directory != NULL ? directory : "(null)", filename != NULL ? filename : "(null)");
+		return false;
+	}
+	return true;
+}
+
+static bool magnoom_resolve_path_with_extension(char *destination, size_t capacity,
+	const char *directory, const char *filename, const char *extension)
+{
+	char path[MAGNOOM_PATH_CAPACITY];
+	if (!magnoom_resolve_path(path, sizeof(path), directory, filename)) return false;
+	if (!magnoom_replace_extension(destination, capacity, path, extension)) {
+		fprintf(stderr, "Unable to replace the extension of '%s': path is too long.\n", path);
+		return false;
+	}
+	return true;
+}
+
+static bool magnoom_executable_directory(char *destination, size_t capacity, const char *argv0)
+{
+	char executable[MAGNOOM_PATH_CAPACITY];
+	bool found = false;
+	char *last_separator = NULL;
+
+#if defined(_WIN32)
+	DWORD length = GetModuleFileNameA(NULL, executable, (DWORD)sizeof(executable));
+	if (length > 0 && length < sizeof(executable)) {
+		executable[length] = '\0';
+		found = true;
+	}
+#elif defined(__APPLE__)
+	uint32_t size = (uint32_t)sizeof(executable);
+	if (_NSGetExecutablePath(executable, &size) == 0) found = true;
+#elif defined(__linux__)
+	ssize_t length = readlink("/proc/self/exe", executable, sizeof(executable) - 1);
+	if (length > 0 && (size_t)length < sizeof(executable) - 1) {
+		executable[length] = '\0';
+		found = true;
+	}
+#endif
+
+	if (!found && argv0 != NULL && argv0[0] != '\0')
+		found = magnoom_copy_path(executable, sizeof(executable), argv0);
+	if (!found) return magnoom_copy_path(destination, capacity, ".");
+
+	for (char *cursor = executable; *cursor != '\0'; ++cursor) {
+		if (magnoom_is_path_separator(*cursor)) last_separator = cursor;
+	}
+	if (last_separator == NULL) return magnoom_copy_path(destination, capacity, ".");
+	if (last_separator == executable ||
+		(last_separator == executable + 2 && executable[1] == ':')) {
+		last_separator[1] = '\0';
+	} else {
+		*last_separator = '\0';
+	}
+	return magnoom_copy_path(destination, capacity, executable);
+}
+
+static bool magnoom_resolve_input_path(const magnoom_ctx *ctx,
+	char *destination, size_t capacity)
+{
+	return magnoom_resolve_path(destination, capacity,
+		ctx->input_directory, ctx->inputfilename);
+}
+
+static bool magnoom_resolve_output_path(magnoom_ctx *ctx,
+	const char *filename, char *destination, size_t capacity)
+{
+	char directory[MAGNOOM_PATH_CAPACITY];
+	pthread_mutex_lock(&ctx->record_mutex);
+	magnoom_copy_path(directory, sizeof(directory), ctx->output_directory);
+	pthread_mutex_unlock(&ctx->record_mutex);
+	return magnoom_resolve_path(destination, capacity, directory, filename);
+}
+
+static bool magnoom_resolve_output_path_with_extension(magnoom_ctx *ctx,
+	const char *extension, char *destination, size_t capacity)
+{
+	char directory[MAGNOOM_PATH_CAPACITY];
+	pthread_mutex_lock(&ctx->record_mutex);
+	magnoom_copy_path(directory, sizeof(directory), ctx->output_directory);
+	pthread_mutex_unlock(&ctx->record_mutex);
+	return magnoom_resolve_path_with_extension(destination, capacity,
+		directory, ctx->outputfilename, extension);
+}
+
+static bool magnoom_flush_records_locked(magnoom_ctx *ctx)
+{
+	bool success = ctx->outFile != NULL;
+	if (ctx->recordsCounter <= 0) return true;
+	if (ctx->outFile != NULL) {
+		for (int i = 0; i < ctx->recordsCounter; ++i) {
+			snprintf(ctx->BuferString, sizeof(ctx->BuferString),
+				"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",
+				ctx->BigDataBank[0][i], ctx->BigDataBank[0][i]*ctx->t_step,
+				ctx->BigDataBank[1][i], ctx->BigDataBank[2][i],
+				ctx->BigDataBank[3][i], ctx->BigDataBank[4][i]);
+			if (fputs(ctx->BuferString, ctx->outFile) == EOF) {
+				success = false;
+				break;
+			}
+		}
+		if (success && fflush(ctx->outFile) == EOF) success = false;
+	}
+	if (success) {
+		printf("Recording to file %s is done!\n", ctx->record_path);
+	} else {
+		fprintf(stderr, "Unable to write buffered records to '%s': %s\n",
+			ctx->record_path[0] != '\0' ? ctx->record_path : "table.csv",
+			ctx->outFile != NULL ? strerror(errno) : "file is not open");
+	}
+	ctx->recordsCounter = 0;
+	return success;
+}
+
+static FILE *magnoom_open_record_stream(const char *directory,
+	char *resolved_path, size_t capacity)
+{
+	FILE *stream;
+	if (!magnoom_resolve_path(resolved_path, capacity, directory, "table.csv")) return NULL;
+	stream = fopen(resolved_path, "w");
+	if (stream == NULL) {
+		fprintf(stderr, "Cannot open output file '%s': %s\n", resolved_path, strerror(errno));
+		return NULL;
+	}
+	if (fputs("iter,time,Mx,My,Mz,E_tot,\n", stream) == EOF) {
+		fprintf(stderr, "Cannot initialize output file '%s': %s\n", resolved_path, strerror(errno));
+		fclose(stream);
+		return NULL;
+	}
+	return stream;
+}
+
+static bool magnoom_change_output_directory(magnoom_ctx *ctx, const char *directory)
+{
+	char checked_directory[MAGNOOM_PATH_CAPACITY];
+	char new_path[MAGNOOM_PATH_CAPACITY];
+	char old_path[MAGNOOM_PATH_CAPACITY];
+	FILE *new_stream;
+
+	if (!magnoom_copy_path(checked_directory, sizeof(checked_directory), directory)) {
+		fprintf(stderr, "Output directory is too long.\n");
+		return false;
+	}
+	if (!magnoom_resolve_path(new_path, sizeof(new_path), checked_directory, "table.csv")) return false;
+	if (strcmp(new_path, ctx->record_path) == 0 && ctx->outFile != NULL) {
+		pthread_mutex_lock(&ctx->record_mutex);
+		bool copied = magnoom_copy_path(ctx->output_directory,
+			sizeof(ctx->output_directory), checked_directory);
+		pthread_mutex_unlock(&ctx->record_mutex);
+		return copied;
+	}
+	pthread_mutex_lock(&ctx->record_mutex);
+	magnoom_flush_records_locked(ctx);
+	magnoom_copy_path(old_path, sizeof(old_path), ctx->record_path);
+	if (ctx->outFile != NULL) fclose(ctx->outFile);
+	ctx->outFile = NULL;
+	new_stream = magnoom_open_record_stream(checked_directory, new_path, sizeof(new_path));
+	if (new_stream == NULL) {
+		if (old_path[0] != '\0') {
+			ctx->outFile = fopen(old_path, "a");
+			if (ctx->outFile == NULL) {
+				fprintf(stderr, "Cannot reopen output file '%s': %s\n", old_path, strerror(errno));
+			}
+		}
+		pthread_mutex_unlock(&ctx->record_mutex);
+		return false;
+	}
+	ctx->outFile = new_stream;
+	magnoom_copy_path(ctx->output_directory, sizeof(ctx->output_directory), checked_directory);
+	magnoom_copy_path(ctx->record_path, sizeof(ctx->record_path), new_path);
+	pthread_mutex_unlock(&ctx->record_mutex);
+	return true;
+}
+
+static bool magnoom_reset_record_file(magnoom_ctx *ctx)
+{
+	char path[MAGNOOM_PATH_CAPACITY];
+	FILE *stream;
+
+	pthread_mutex_lock(&ctx->record_mutex);
+	if (ctx->outFile != NULL) fclose(ctx->outFile);
+	ctx->outFile = NULL;
+	ctx->record_path[0] = '\0';
+	ctx->recordsCounter = 0;
+	stream = magnoom_open_record_stream(ctx->output_directory, path, sizeof(path));
+	if (stream != NULL) {
+		ctx->outFile = stream;
+		magnoom_copy_path(ctx->record_path, sizeof(ctx->record_path), path);
+	}
+	pthread_mutex_unlock(&ctx->record_mutex);
+	return stream != NULL;
+}
+
+#ifndef MAGNOOM_NO_MAIN
+static void magnoom_close_record_file(magnoom_ctx *ctx)
+{
+	pthread_mutex_lock(&ctx->record_mutex);
+	magnoom_flush_records_locked(ctx);
+	if (ctx->outFile != NULL) fclose(ctx->outFile);
+	ctx->outFile = NULL;
+	pthread_mutex_unlock(&ctx->record_mutex);
+}
+#endif
 
 /*****************************************************************************/
 /* Interleaved vector-field accessors: Sx/Sy/Sz-style per-component arrays   */
@@ -735,6 +1048,8 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->rec_num_mode = 10;
 	ctx->num_images = 32;
 	ctx->SleepTime = 1000;
+	ctx->input_directory[0] = '\0';
+	ctx->output_directory[0] = '\0';
 	strcpy(ctx->inputfilename, "input.csv");
 	strcpy(ctx->outputfilename, "output.csv");
 
@@ -931,7 +1246,7 @@ void HSVtoRGB(magnoom_ctx *ctx, float Vec[3], float rgb[3], int inV, int inH ){
 
 
 
-void Save_OVF_b8(magnoom_ctx *ctx, double* S, char ovf_filename[64]){
+void Save_OVF_b8(magnoom_ctx *ctx, double* S, const char *ovf_filename){
     float temp0 = 0;
     float temp1 = 0;
     float temp2 = 0;
@@ -1025,18 +1340,24 @@ void Save_OVF_b8(magnoom_ctx *ctx, double* S, char ovf_filename[64]){
         fputs ("# End: Data Binary 4\n",pFile);
         fputs ("# End: Segment\n",pFile);
         fclose (pFile);
+		printf("Recording to the file %s is done!\n", ovf_filename);
+	} else {
+		fprintf(stderr, "Cannot open output file '%s': %s\n", ovf_filename, strerror(errno));
     }
-    printf("Recording to the file %s is done!\n", ovf_filename);
 }
 
 
-void SaveBin(magnoom_ctx *ctx, double* S, char bin_filename[64]){
+void SaveBin(magnoom_ctx *ctx, double* S, const char *bin_filename){
     unsigned short int num = 65535;
     struct tfshortint {
         unsigned short int t;
         unsigned short int f;
     };
     FILE * pFile = fopen (bin_filename,"wb");
+	if (pFile == NULL) {
+		fprintf(stderr, "Cannot open output file '%s': %s\n", bin_filename, strerror(errno));
+		return;
+	}
     for(int k = 0; k < ctx->uABC[2]; k++){
         for(int j = 0; j < ctx->uABC[1]; j++){
             for(int i = 0; i < ctx->uABC[0]; i++){
@@ -1066,7 +1387,7 @@ void SaveBin(magnoom_ctx *ctx, double* S, char bin_filename[64]){
 }
 
 
-void SavePng(magnoom_ctx *ctx, double* S, char png_filename[64], enSliceMode WhichSliceMode, int x1, int y1, int z1){
+void SavePng(magnoom_ctx *ctx, double* S, const char *png_filename, enSliceMode WhichSliceMode, int x1, int y1, int z1){
   if (WhichSliceMode!=FILTER)
   {
     int scale = 10;
@@ -1138,7 +1459,7 @@ void SavePng(magnoom_ctx *ctx, double* S, char png_filename[64], enSliceMode Whi
   }
 }
 
-void Save_VTS_b4(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float * Px, float * Py, float * Pz, float box[][3], char vts_filename[64]){
+void Save_VTS_b4(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float * Px, float * Py, float * Pz, float box[][3], const char *vts_filename){
     float a_lattice = 1.0e-9;
     FILE * pFile = fopen (vts_filename,"wb");
     if(pFile!=NULL) {
@@ -1199,7 +1520,7 @@ void Save_VTS_b4(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float * P
     printf("Recording to the file %s is done!\n", vts_filename);
 }
 
-void Save_VTS_ascii(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float * Px, float * Py, float * Pz, float box[][3], char vts_filename[64]){
+void Save_VTS_ascii(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float * Px, float * Py, float * Pz, float box[][3], const char *vts_filename){
     float a_lattice = 1.0;//.0e-9;
     FILE * pFile = fopen (vts_filename,"wb");
     if(pFile!=NULL) {
@@ -1277,7 +1598,7 @@ double end_swap_double(const double val, const int size)
     return ret;
     }
 
-void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, char vtk_filename[64])
+void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, const char *vtk_filename)
 {
     float temp0 = 0;
     float temp1 = 0;
@@ -1422,11 +1743,13 @@ void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, char vtk_filename[64]
         }
         fclose (pFile);
         printf("Recording to the file %s is done!\n", vtk_filename);
+	} else {
+		fprintf(stderr, "Cannot open output file '%s': %s\n", vtk_filename, strerror(errno));
     }
 }
 
 void Save_VTK_6(magnoom_ctx *ctx, double* S,
-                double* dS, const int mode, char vtk_filename[64])
+                double* dS, const int mode, const char *vtk_filename)
 {
     float temp0 = 0;
     float temp1 = 0;
@@ -1607,6 +1930,8 @@ void Save_VTK_6(magnoom_ctx *ctx, double* S,
         }
         fclose (pFile);
         printf("Recording to the file %s is done!\n", vtk_filename);
+	} else {
+		fprintf(stderr, "Cannot open output file '%s': %s\n", vtk_filename, strerror(errno));
     }
 }
 
@@ -1648,7 +1973,7 @@ int ReadVTKLines(FILE * fp, char * line)
     return pos-1;// the last symbol is the line end symbol
 }
 
-void Read_VTK(magnoom_ctx *ctx, double* S, char vtk_filename[64]){
+void Read_VTK(magnoom_ctx *ctx, double* S, const char *vtk_filename){
 char  line[256];//whole line of header should be not longer then 256 characters
 int   lineLength=0;
 int   valuedim=3;
@@ -1675,7 +2000,7 @@ if(FilePointer!=NULL) {
                strncmp(keyW4, "2.0",  3)!=0){
                 //if the first line isn't "vtk DataFile Version 2.0"
 
-                printf("%s has wrong header or wrong file format! (not vtk 2.0 file format):\n", ctx->inputfilename);
+                printf("%s has wrong header or wrong file format! (not vtk 2.0 file format):\n", vtk_filename);
                 printf("%s %s %s %s\n", keyW1, keyW2, keyW3, keyW4);
                 lineLength=-1;
             }
@@ -1741,11 +2066,11 @@ if(FilePointer!=NULL) {
                 }
             }
         }else{
-            printf("%s cannot read data in vtk file!\n", ctx->inputfilename);
+            printf("%s cannot read data in vtk file!\n", vtk_filename);
         }
         fclose(FilePointer);
         printf("Done!\n");// when everything is done
-    }else{printf("Cannot open file: %s \n", ctx->inputfilename);}
+    }else{fprintf(stderr, "Cannot open input file '%s': %s\n", vtk_filename, strerror(errno));}
 }
 
 #include "linmath.h"		/*All global variables and constants*/
@@ -1830,10 +2155,21 @@ void RestartCalcThreads(magnoom_ctx *ctx, pthread_t * thread_id, calc_thread_arg
 int
 main (int argc, char **argv){
 	magnoom_ctx mag_ctx = {0};
+	char executable_directory[MAGNOOM_PATH_CAPACITY];
+	(void)argc;
 	if (!magnoom_ctx_init(&mag_ctx)) {
 		fprintf(stderr, "Unable to initialize Magnoom data.\n");
 		return 1;
 	}
+	if (!magnoom_executable_directory(executable_directory,
+		sizeof(executable_directory), argv != NULL ? argv[0] : NULL)) {
+		fprintf(stderr, "Unable to determine the executable directory.\n");
+		return 1;
+	}
+	magnoom_copy_path(mag_ctx.input_directory,
+		sizeof(mag_ctx.input_directory), executable_directory);
+	magnoom_copy_path(mag_ctx.output_directory,
+		sizeof(mag_ctx.output_directory), executable_directory);
 		
 	for (int i=0; i<THREADS_NUMBER; i++){
 		char name[10]; 
@@ -1987,8 +2323,8 @@ main (int argc, char **argv){
 	}
 
 	// Open output file:
-	mag_ctx.outFile = fopen ("table.csv","w");
-	if (mag_ctx.outFile!=NULL) {fputs ("iter,time,Mx,My,Mz,E_tot,\n",mag_ctx.outFile);}
+	pthread_mutex_init(&mag_ctx.record_mutex,0);
+	magnoom_reset_record_file(&mag_ctx);
 
 	// Memory allocation:
 	mag_ctx.RHue = (float *)calloc(360, sizeof(float));
@@ -2156,7 +2492,8 @@ main (int argc, char **argv){
 
 	free(mag_ctx.Proj);
 
-	fclose (mag_ctx.outFile);
+	magnoom_close_record_file(&mag_ctx);
+	pthread_mutex_destroy(&mag_ctx.record_mutex);
 
 	return 0;
 }

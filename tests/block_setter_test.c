@@ -27,6 +27,43 @@ static void set_identity_cell(magnoom_ctx *ctx)
     memcpy(ctx->abc, identity, sizeof(identity));
 }
 
+static void test_path_helpers(void)
+{
+    char path[128];
+    char executable_directory[MAGNOOM_PATH_CAPACITY];
+
+#if defined(_WIN32)
+    CHECK(magnoom_join_path(path, sizeof(path), "C:\\data", "input.csv"));
+    CHECK(strcmp(path, "C:\\data\\input.csv") == 0);
+    CHECK(magnoom_path_is_absolute("C:\\data\\input.csv"));
+    CHECK(magnoom_path_is_absolute("\\\\server\\share\\input.csv"));
+    CHECK(!magnoom_path_is_absolute("C:input.csv"));
+    CHECK(!magnoom_join_path(path, sizeof(path), "D:\\data", "C:input.csv"));
+    CHECK(!magnoom_join_path(path, sizeof(path), "D:\\data", "\\input.csv"));
+    CHECK(magnoom_join_path(path, sizeof(path), "D:\\ignored", "C:\\absolute\\input.csv"));
+    CHECK(strcmp(path, "C:\\absolute\\input.csv") == 0);
+#else
+    CHECK(magnoom_join_path(path, sizeof(path), "/tmp/data", "input.csv"));
+    CHECK(strcmp(path, "/tmp/data/input.csv") == 0);
+    CHECK(magnoom_path_is_absolute("/tmp/data/input.csv"));
+    CHECK(!magnoom_path_is_absolute("tmp/data/input.csv"));
+    CHECK(magnoom_join_path(path, sizeof(path), "/ignored", "/absolute/input.csv"));
+    CHECK(strcmp(path, "/absolute/input.csv") == 0);
+#endif
+    CHECK(magnoom_join_path(path, sizeof(path), "/tmp/data/", "input.csv"));
+    CHECK(strcmp(path, "/tmp/data/input.csv") == 0);
+    CHECK(magnoom_replace_extension(path, sizeof(path),
+        "/tmp/user.name/output.csv", ".ovf"));
+    CHECK(strcmp(path, "/tmp/user.name/output.ovf") == 0);
+    CHECK(magnoom_replace_extension(path, sizeof(path), "/tmp/.state", ".vtk"));
+    CHECK(strcmp(path, "/tmp/.state.vtk") == 0);
+    CHECK(!magnoom_join_path(path, 8, "/tmp/data", "input.csv"));
+    CHECK(!magnoom_join_path(path, sizeof(path), "/tmp/data", ""));
+    CHECK(magnoom_executable_directory(executable_directory,
+        sizeof(executable_directory), "./block_setter_test"));
+    CHECK(executable_directory[0] != '\0');
+}
+
 static void check_cuboid_geometry(const float *vertices, const float *normals, const GLuint *indices)
 {
     float center[3] = {0.0f, 0.0f, 0.0f};
@@ -334,14 +371,15 @@ static void test_invalid_inputs_are_transactional(void)
 
 int main(void)
 {
+    test_path_helpers();
     test_default_block();
     test_cuboid_normals();
     test_crystal_examples();
     test_invalid_inputs_are_transactional();
     if (failures != 0) {
-        fprintf(stderr, "%d block setter test(s) failed.\n", failures);
+        fprintf(stderr, "%d Magnoom test(s) failed.\n", failures);
         return 1;
     }
-    printf("Block setter tests passed.\n");
+    printf("Magnoom tests passed.\n");
     return 0;
 }

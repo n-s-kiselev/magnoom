@@ -793,13 +793,34 @@ void TW_CALL CB_InvertZ( void *clientData ){
 
 void TW_CALL CB_CleanSxSySzFile( void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-  fclose (ctx->outFile);//outFile is a global variable - pointer FILE* see also CALC_THREAD in solvers.c
-	ctx->outFile = fopen ("table.csv","w");
+	magnoom_reset_record_file(ctx);
+}
 
-	
-	if (ctx->outFile!=NULL) {fputs ("iter,time,Mx,My,Mz,E_tot,\n",ctx->outFile);}
-    ctx->recordsCounter=0;
- 
+void TW_CALL CB_SetInputDirectory(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	if (!magnoom_copy_path(ctx->input_directory,
+		sizeof(ctx->input_directory), (const char *)value)) {
+		fprintf(stderr, "Input directory is too long.\n");
+	}
+}
+
+void TW_CALL CB_GetInputDirectory(void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_copy_path((char *)value, sizeof(ctx->input_directory), ctx->input_directory);
+}
+
+void TW_CALL CB_SetOutputDirectory(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_change_output_directory(ctx, (const char *)value);
+}
+
+void TW_CALL CB_GetOutputDirectory(void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	magnoom_copy_path((char *)value, sizeof(ctx->output_directory), ctx->output_directory);
 }
 
 void TW_CALL CB_SetSliceMode(const void *value, void *clientData ){
@@ -1148,8 +1169,11 @@ void TW_CALL CB_ResetIterations( void *clientData )
 void TW_CALL CB_SaveCSV( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+    char output_path[MAGNOOM_PATH_CAPACITY];
     FILE * pFile;
-    pFile = fopen (ctx->outputfilename,"w");
+    if (!magnoom_resolve_output_path(ctx, ctx->outputfilename,
+        output_path, sizeof(output_path))) return;
+    pFile = fopen(output_path,"w");
    
     if (pFile!=NULL)
     { 	
@@ -1224,8 +1248,7 @@ void TW_CALL CB_SaveCSV( void *clientData )
     				}
     			}
     		}
-    	    fclose (pFile);
-    	}else{// WhichAverageMode==ALONG_A or ALONG_B or ALONG_C
+		}else{// WhichAverageMode==ALONG_A or ALONG_B or ALONG_C
     		double tSpin[3];
     		float tPositin[3]; 
     		fputs ("px,py,pz,<nx>,<ny>,<nz>,|<n>|\n",pFile);
@@ -1312,18 +1335,22 @@ void TW_CALL CB_SaveCSV( void *clientData )
     					snprintf(ctx->shortBufer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/aN,tSpin[1]/aN,tSpin[2]/aN,modulus/aN);
     					fputs (ctx->shortBufer,pFile);
     				}
-    			}
-    		printf("averaged over c-->%s done!\n",ctx->outputfilename);
-    		}
+			}
+		printf("averaged output --> %s done!\n", output_path);
+		}
+		}
         fclose (pFile);
-    	}
+	} else {
+		fprintf(stderr, "Cannot open output file '%s': %s\n", output_path, strerror(errno));
     }
 }
 
 void TW_CALL CB_ReadCSV( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    FILE * pFile = fopen(ctx->inputfilename, "r");
+    char input_path[MAGNOOM_PATH_CAPACITY];
+    if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
+    FILE * pFile = fopen(input_path, "r");
     if(pFile) {
 		char c;
 		char line[120];
@@ -1364,7 +1391,9 @@ void TW_CALL CB_ReadCSV( void *clientData )
 		 	i++;
 		}while(c != EOF); 
     fclose(pFile);           
-    }
+	} else {
+		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
+	}
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -1373,6 +1402,7 @@ void TW_CALL CB_ReadCSV( void *clientData )
 void TW_CALL CB_ReadOVF( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	char input_path[MAGNOOM_PATH_CAPACITY];
 	char  line[256];//whole line of header should be not longer then 256 characters
 	int   lineLength=0;
 	int   valuedim=3;
@@ -1385,16 +1415,17 @@ void TW_CALL CB_ReadOVF( void *clientData )
     int   binType = 4;
 	float temp4_x, temp4_y, temp4_z;
 	double temp8_x, temp8_y, temp8_z;
-    FILE * FilePointer = fopen(ctx->inputfilename, "rb");
+	if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
+    FILE * FilePointer = fopen(input_path, "rb");
 	if(FilePointer!=NULL) {	
 		lineLength=ReadHeaderLine(FilePointer, line);//read and check the first nonempty line which starts with '#'
 		if (lineLength==-1) {// if there are no one line which starts with '#'
-			printf("%s has a wrong file format! \n", ctx->inputfilename);
+			printf("%s has a wrong file format! \n", input_path);
 		}else{
 		    sscanf(line, "# %s %s %s", keyW1, keyW2, keyW3 );
 		    if(strncmp(keyW1, "OOMMF",5)!=0 || strncmp(keyW2, "OVF",  3)!=0 || strncmp(keyW3, "2.0",  3)!=0){
 		        //if the first line isn't "OOMMF OFV 2.0"
-		    	printf("%s has wrong header of wrong file format! \n", ctx->inputfilename);
+			printf("%s has wrong header of wrong file format! \n", input_path);
 		    	lineLength=-1;
 		    }
 		}
@@ -1429,7 +1460,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 			int n;
 			if (strncmp(keyW2, "Text",4)==0){
 				//Text data format
-				printf("...reading data in text format: %s \n", ctx->inputfilename);
+				printf("...reading data in text format: %s \n", input_path);
 				for (int k=0; k<znodes; k++){
 					for (int j=0; j<ynodes; j++){
 						for (int i=0; i<xnodes; i++){
@@ -1449,7 +1480,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 					binType = 8;
 				}
 				//Binary data format
-				printf("...reading data of binary (%d) format: %s \n", binType, ctx->inputfilename);
+				printf("...reading data of binary (%d) format: %s \n", binType, input_path);
 				// fread (&bSx[0],binType,1,FilePointer);
 				// //printf("%f\n",nx[0]);
 				// for (int k=0; k<znodes; k++){
@@ -1498,15 +1529,15 @@ void TW_CALL CB_ReadOVF( void *clientData )
 					}
 				}else{printf("problem\n");}
 			}else{
-				printf("Do not know what to do with \"%s\" data format in %s\n", keyW2, ctx->inputfilename);
+				printf("Do not know what to do with \"%s\" data format in %s\n", keyW2, input_path);
 			}
 		}else{
-			printf("%s has wrong data format or dimentionality!\n", ctx->inputfilename);
+			printf("%s has wrong data format or dimentionality!\n", input_path);
 		}       
 		// when everything is done
 		printf("Done!\n");
 		fclose(FilePointer);
-	}else{printf("Cannot open file: %s \n", ctx->inputfilename);}
+	}else{fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));}
     //metka dlya schiutyvaniya equilibrium state for dm
     for (int i=0; i<ctx->NOS; i++){
         VEC_X(ctx->t3S,i)=VEC_X(ctx->S,i);
@@ -1519,6 +1550,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 void TW_CALL CB_ReadBIN( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	char input_path[MAGNOOM_PATH_CAPACITY];
 	
 
 	unsigned short int num = 65535;
@@ -1529,8 +1561,13 @@ void TW_CALL CB_ReadBIN( void *clientData )
    		unsigned short int t;
    		unsigned short int f;
   	};
-  	int Nx = ctx->uABC[0], Ny = ctx->uABC[1], Nz = ctx->uABC[2];
-  	FILE * FilePointer = fopen(ctx->inputfilename, "rb");
+	int Nx = ctx->uABC[0], Ny = ctx->uABC[1], Nz = ctx->uABC[2];
+	if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
+	FILE * FilePointer = fopen(input_path, "rb");
+	if (FilePointer == NULL) {
+		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
+		return;
+	}
   	for(int k = 0; k<Nz; k++){
 	    for(int j = 0; j<Ny; j++){
 			for(int i = 0; i <Nx;i++){
@@ -1560,7 +1597,9 @@ void TW_CALL CB_ReadBIN( void *clientData )
 void TW_CALL CB_ReadVTK( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    Read_VTK(ctx, ctx->S, ctx->inputfilename);
+	char input_path[MAGNOOM_PATH_CAPACITY];
+	if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
+    Read_VTK(ctx, ctx->S, input_path);
     ChangeVectorMode(ctx, 1);
 }
 
@@ -1568,26 +1607,19 @@ void TW_CALL CB_ReadVTK( void *clientData )
 void TW_CALL CB_Save_OVF_b8( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    char ovf_filename[64] = "";
-    strncpy(ovf_filename, ctx->outputfilename, strcspn (ctx->outputfilename, "."));
-    strcat(ovf_filename, ".ovf");
-    if(strncmp(ovf_filename, ".ovf",4)==0){
-        printf("Enter the file name. It cannot be empty!");
-    }else{
-        Save_OVF_b8(ctx, ctx->bS, ovf_filename);
-    }
+	char output_path[MAGNOOM_PATH_CAPACITY];
+	if (!magnoom_resolve_output_path_with_extension(ctx, ".ovf",
+		output_path, sizeof(output_path))) return;
+	Save_OVF_b8(ctx, ctx->bS, output_path);
 }
 
 void TW_CALL CB_Save_VTK_b4( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    char vtk_filename[64] = "";
-    strncpy(vtk_filename, ctx->outputfilename, strcspn (ctx->outputfilename, "."));
-    strcat(vtk_filename, ".vtk");
-    if(strncmp(vtk_filename, ".vtk",4)==0){
-        printf("Enter the file name. It cannot be empty!");
-    }else{
-        Save_VTK(ctx, ctx->bS, 0, vtk_filename);//metka 0->1
+	char output_path[MAGNOOM_PATH_CAPACITY];
+	if (!magnoom_resolve_output_path_with_extension(ctx, ".vtk",
+		output_path, sizeof(output_path))) return;
+	Save_VTK(ctx, ctx->bS, 0, output_path);//metka 0->1
 
         // Save_VTS_b4(bSx, bSy, bSz, ctx->Px, ctx->Py, ctx->Pz, Box, vts_filename);
         // Save_VTS_ascii(bSx, bSy, bSz, ctx->Px, ctx->Py, ctx->Pz, Box, vts_filename);
@@ -1601,33 +1633,24 @@ void TW_CALL CB_Save_VTK_b4( void *clientData )
         // }
         //     save_vtk(vts_filename,"name",3,Spins_xyz,"special_flag",1,ctx->Kind,ctx->uABC[0],ctx->uABC[1],ctx->uABC[2],ctx->uABC[0],ctx->uABC[1],ctx->uABC[2],1);
         // 
-    }
 }
 
 void TW_CALL CB_Save_BIN( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    char bin_filename[64] = "";
-    strncpy(bin_filename, ctx->outputfilename, strcspn (ctx->outputfilename, "."));
-    strcat(bin_filename, ".bin");
-    if(strncmp(bin_filename, ".bin",4)==0){
-        printf("Enter the file name. It cannot be empty!");
-    }else{
-        SaveBin(ctx, ctx->bS, bin_filename);//metka 0->1
-    }
+	char output_path[MAGNOOM_PATH_CAPACITY];
+	if (!magnoom_resolve_output_path_with_extension(ctx, ".bin",
+		output_path, sizeof(output_path))) return;
+	SaveBin(ctx, ctx->bS, output_path);//metka 0->1
 }
 
 void TW_CALL CB_Save_PNG( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    char png_filename[64] = "";
-    strncpy(png_filename, ctx->outputfilename, strcspn (ctx->outputfilename, "."));
-    strcat(png_filename, ".png");
-    if(strncmp(png_filename, ".png",4)==0){
-        printf("Enter the file name. It cannot be empty!");
-    }else{
-        SavePng(ctx, ctx->bS, png_filename, ctx->WhichSliceMode, ctx->A_layer_min-1, ctx->B_layer_min-1, ctx->C_layer_min-1);//metka 0->1
-    }
+	char output_path[MAGNOOM_PATH_CAPACITY];
+	if (!magnoom_resolve_output_path_with_extension(ctx, ".png",
+		output_path, sizeof(output_path))) return;
+	SavePng(ctx, ctx->bS, output_path, ctx->WhichSliceMode, ctx->A_layer_min-1, ctx->B_layer_min-1, ctx->C_layer_min-1);//metka 0->1
 }
 
 void UpdateKind(magnoom_ctx *ctx)
@@ -2166,6 +2189,9 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddButton(ctx->initial_bar, "Invert Z", CB_InvertZ, ctx, "label='invert n_z component' ");
 
 	TwAddSeparator(ctx->initial_bar, "sep02", NULL);
+	TwAddVarCB(ctx->initial_bar, "Input directory:", TW_TYPE_CSSTRING(sizeof(ctx->input_directory)),
+		CB_SetInputDirectory, CB_GetInputDirectory, ctx,
+		"help='Directory used for relative input file names; absolute file names override it'");
 	TwAddVarRW(ctx->initial_bar, "Input file name:", TW_TYPE_CSSTRING(sizeof(ctx->inputfilename)), ctx->inputfilename, "");
 	TwAddButton(ctx->initial_bar, "Read from CSV", CB_ReadCSV, ctx, "label='read from *.csv file' ");
 	TwAddButton(ctx->initial_bar, "Read from OVF", CB_ReadOVF, ctx, "label='read from *.ovf file' ");
@@ -2184,6 +2210,9 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwType			TV_TYPE_AVERAGE_MODE = TwDefineEnum("Average mode", enAverage_mode, 4);
 	TwAddVarRW(ctx->initial_bar, "Averaging mode", TV_TYPE_AVERAGE_MODE, &ctx->WhichAverageMode, "help='Choose type of average mode'");}
 
+	TwAddVarCB(ctx->initial_bar, "Output directory:", TW_TYPE_CSSTRING(sizeof(ctx->output_directory)),
+		CB_SetOutputDirectory, CB_GetOutputDirectory, ctx,
+		"help='Directory for all simulation outputs; changing it starts a new table.csv'");
 	TwAddVarRW(ctx->initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(ctx->outputfilename)), ctx->outputfilename, ""); 
 	TwAddButton(ctx->initial_bar, "Write to CSV", CB_SaveCSV, ctx, "label='write to *.csv file' ");	
 	TwAddButton(ctx->initial_bar, "Write to OVF", CB_Save_OVF_b8, ctx, "label='write to *.ovf file' ");	
