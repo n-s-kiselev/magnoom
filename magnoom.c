@@ -93,7 +93,7 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 /*****************************************************************************/
 typedef enum    {A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode;
 typedef enum    {BEXT_AC_SIN, BEXT_AC_GAUSSIAN, BEXT_AC_SINC, BEXT_AC_CIRCULAR} enBextACWaveform;
-enum            IntegrationScheme{HEUN,SIB,RK23,RK4,RELAX};
+enum            IntegrationScheme{HEUN,SIB,RK23,RK45,RELAX};
 enum            Average_mode{ALONG_A,ALONG_B, ALONG_C, ALONG_0};
 
 typedef enum    {ORTHO, PERSP} enProjections;
@@ -149,7 +149,6 @@ typedef struct magnoom_ctx {
 	double*         tS;     /* RK-integrator temporary, length 3*NOS        */
 	double*         t2S;    /* RK-integrator temporary, length 3*NOS        */
 	double*         t3S;    /* RK-integrator temporary, length 3*NOS        */
-	double*         rkS;    /* second RK4 stage buffer, length 3*NOS        */
 	double*         Image;  /* flat snapshot block, IMAGE_COMPONENT-indexed */
 	double*         dImage; /* flat derivative-snapshot block, same layout  */
 	float*          IsoLineX;
@@ -854,42 +853,17 @@ static void magnoom_stop_engine(magnoom_ctx *ctx)
 	}
 }
 
-static int magnoom_reset_solver_state(magnoom_ctx *ctx)
+static void magnoom_reset_solver_state(magnoom_ctx *ctx)
 {
-	int repaired = 0;
-
 	for (int i = 0; i < ctx->NOS; ++i) {
-		double x = VEC_X(ctx->S, i);
-		double y = VEC_Y(ctx->S, i);
-		double z = VEC_Z(ctx->S, i);
-		double norm2 = x*x + y*y + z*z;
-		if (ctx->Kind != NULL && ctx->Kind[i] == 0) {
-			x = y = z = 0.0;
-		} else if (!isfinite(x) || !isfinite(y) || !isfinite(z) ||
-			!isfinite(norm2) || norm2 <= DBL_MIN) {
-			x = y = 0.0;
-			z = 1.0;
-			repaired++;
-		}
-		VEC_X(ctx->S, i) = VEC_X(ctx->bS, i) = VEC_X(ctx->tS, i) = x;
-		VEC_Y(ctx->S, i) = VEC_Y(ctx->bS, i) = VEC_Y(ctx->tS, i) = y;
-		VEC_Z(ctx->S, i) = VEC_Z(ctx->bS, i) = VEC_Z(ctx->tS, i) = z;
+		VEC_X(ctx->bS, i) = VEC_X(ctx->tS, i) = VEC_X(ctx->S, i);
+		VEC_Y(ctx->bS, i) = VEC_Y(ctx->tS, i) = VEC_Y(ctx->S, i);
+		VEC_Z(ctx->bS, i) = VEC_Z(ctx->tS, i) = VEC_Z(ctx->S, i);
 	}
 
-	if (ctx->t2S != NULL) memset(ctx->t2S, 0, 3*(size_t)ctx->NOS*sizeof(*ctx->t2S));
-	if (ctx->rkS != NULL) memset(ctx->rkS, 0, 3*(size_t)ctx->NOS*sizeof(*ctx->rkS));
-	if (ctx->Heffx != NULL) memset(ctx->Heffx, 0, (size_t)ctx->NOS*sizeof(*ctx->Heffx));
-	if (ctx->Heffy != NULL) memset(ctx->Heffy, 0, (size_t)ctx->NOS*sizeof(*ctx->Heffy));
-	if (ctx->Heffz != NULL) memset(ctx->Heffz, 0, (size_t)ctx->NOS*sizeof(*ctx->Heffz));
 	if (ctx->RNx != NULL) memset(ctx->RNx, 0, (size_t)ctx->NOS*sizeof(*ctx->RNx));
 	if (ctx->RNy != NULL) memset(ctx->RNy, 0, (size_t)ctx->NOS*sizeof(*ctx->RNy));
 	if (ctx->RNz != NULL) memset(ctx->RNz, 0, (size_t)ctx->NOS*sizeof(*ctx->RNz));
-	memset(ctx->Max_torque, 0, sizeof(ctx->Max_torque));
-	ctx->MAX_TORQUE = 0.0;
-
-	if (repaired > 0)
-		fprintf(stderr, "Replaced %d nonfinite or zero active spin(s) while resetting solver state.\n", repaired);
-	return repaired;
 }
 
 /*****************************************************************************/
@@ -2171,7 +2145,6 @@ void ReallocateMemoryForAllOther(magnoom_ctx *ctx, int NOS){
 	ctx->tS  = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
 	ctx->t2S = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
 	ctx->t3S = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
-	ctx->rkS = (double *)calloc(3*(size_t)NOS, sizeof(double));
 
 	ctx->RNx = (float *)calloc(NOS, sizeof(float));
 	ctx->RNy = (float *)calloc(NOS, sizeof(float));
@@ -2395,10 +2368,6 @@ main (int argc, char **argv){
 	ReallocateMemoryForSpins(&mag_ctx, mag_ctx.NOS);
 	ReallocateMemoryForAllOther(&mag_ctx, mag_ctx.NOS);
 	ReallocateMemoryForImages(&mag_ctx, mag_ctx.num_images, mag_ctx.NOS);
-	if (mag_ctx.rkS == NULL) {
-		fprintf(stderr, "Unable to allocate the RK4 stage buffer.\n");
-		return 1;
-	}
 
 
 	pthread_mutex_init(&mag_ctx.culc_mutex,0);
@@ -2411,7 +2380,7 @@ main (int argc, char **argv){
 	UpdateSpinPositions(&mag_ctx);
 	UpdateKind(&mag_ctx);
 	InitSpinComponents( &mag_ctx, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.S, 0);
-	magnoom_reset_solver_state(&mag_ctx);
+	for (int i=0;i<mag_ctx.NOS;i++) { VEC_X(mag_ctx.bS,i)=VEC_X(mag_ctx.S,i); VEC_Y(mag_ctx.bS,i)=VEC_Y(mag_ctx.S,i); VEC_Z(mag_ctx.bS,i)=VEC_Z(mag_ctx.S,i);}
 
     // Set OpenGL context initial state.
 	setupOpenGL(&mag_ctx);
@@ -2535,7 +2504,7 @@ main (int argc, char **argv){
 	free(mag_ctx.VDMx);  			free(mag_ctx.VDMy);  			free(mag_ctx.VDMz);
 
 	free(mag_ctx.S);     			free(mag_ctx.bS);
-	free(mag_ctx.tS);    			free(mag_ctx.t2S);   			free(mag_ctx.t3S);			free(mag_ctx.rkS);
+	free(mag_ctx.tS);    			free(mag_ctx.t2S);   			free(mag_ctx.t3S);
 	/* mag_ctx.Image/dImage intentionally not freed here -- pre-existing     */
 	/* (unfixed) leak, preserved as-is.                                      */
 	free(mag_ctx.Heffx); 			free(mag_ctx.Heffy); 			free(mag_ctx.Heffz);

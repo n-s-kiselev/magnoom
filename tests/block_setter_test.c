@@ -67,45 +67,41 @@ static void test_path_helpers(void)
 static void test_solver_state_reset(void)
 {
     magnoom_ctx ctx = {0};
-    double spins[9] = {2.0, 0.0, 0.0, NAN, 1.0, 0.0, NAN, NAN, NAN};
-    double display[9] = {0};
+    double spins[9] = {2.0, -1.0, 0.5, 0.0, 1.0, 0.0, -0.25, 0.75, -2.0};
+    double original[9];
+    double display[9] = {NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN};
     double stage[9] = {NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN};
-    double increments[9] = {NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN};
-    double next_stage[9] = {NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN};
-    double field_x[3] = {NAN, NAN, NAN};
-    double field_y[3] = {NAN, NAN, NAN};
-    double field_z[3] = {NAN, NAN, NAN};
+    double increments[9] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    double field_x[3] = {2.0, 2.0, 2.0};
+    double field_y[3] = {2.0, 2.0, 2.0};
+    double field_z[3] = {2.0, 2.0, 2.0};
     float random_x[3] = {NAN, NAN, NAN};
     float random_y[3] = {NAN, NAN, NAN};
     float random_z[3] = {NAN, NAN, NAN};
-    int kind[3] = {1, 1, 0};
+
+    memcpy(original, spins, sizeof(spins));
 
     ctx.NOS = 3;
     ctx.S = spins;
     ctx.bS = display;
     ctx.tS = stage;
     ctx.t2S = increments;
-    ctx.rkS = next_stage;
     ctx.Heffx = field_x;
     ctx.Heffy = field_y;
     ctx.Heffz = field_z;
     ctx.RNx = random_x;
     ctx.RNy = random_y;
     ctx.RNz = random_z;
-    ctx.Kind = kind;
 
-    CHECK(magnoom_reset_solver_state(&ctx) == 1);
-    CHECK(VEC_X(ctx.S, 0) == 2.0 && VEC_Y(ctx.S, 0) == 0.0 && VEC_Z(ctx.S, 0) == 0.0);
-    CHECK(VEC_X(ctx.S, 1) == 0.0 && VEC_Y(ctx.S, 1) == 0.0 && VEC_Z(ctx.S, 1) == 1.0);
-    CHECK(VEC_X(ctx.S, 2) == 0.0 && VEC_Y(ctx.S, 2) == 0.0 && VEC_Z(ctx.S, 2) == 0.0);
+    magnoom_reset_solver_state(&ctx);
     for (int i = 0; i < 9; ++i) {
+        CHECK(spins[i] == original[i]);
         CHECK(display[i] == spins[i]);
         CHECK(stage[i] == spins[i]);
-        CHECK(increments[i] == 0.0);
-        CHECK(next_stage[i] == 0.0);
+        CHECK(increments[i] == 1.0);
     }
     for (int i = 0; i < 3; ++i) {
-        CHECK(field_x[i] == 0.0 && field_y[i] == 0.0 && field_z[i] == 0.0);
+        CHECK(field_x[i] == 2.0 && field_y[i] == 2.0 && field_z[i] == 2.0);
         CHECK(random_x[i] == 0.0f && random_y[i] == 0.0f && random_z[i] == 0.0f);
     }
 }
