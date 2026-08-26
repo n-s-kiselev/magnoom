@@ -2043,8 +2043,8 @@ void setupTweakBar(magnoom_ctx *ctx)
 	{
     TwEnumVal       enIntegrationScheme[] = {{HEUN, "Heun(1) "},
                                              {SIB,  " SIB(2) "},
-                                             {RK23, " RK(23) "},
-                                             {RK45, " RK(45) "},
+                                             {RK2, " RK2 (midpoint, fixed step) "},
+                                             {RK4, " RK4 (classical, fixed step) "},
                                              {RELAX, " RELAX "}};
     TwType          TV_TYPE_INTEGRATION_SCHEME = TwDefineEnum("Solver", enIntegrationScheme, 5);
     TwAddVarRW(ctx->control_bar, "Integration scheme", TV_TYPE_INTEGRATION_SCHEME, &ctx->WhichIntegrationScheme, "group='LLG' help='Choose the integration scheme'");

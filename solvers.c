@@ -770,7 +770,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 
 
 void
-StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
+StochasticLLG_RK2(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
@@ -965,7 +965,7 @@ StochasticLLG_RK23(	magnoom_ctx *ctx, int thread,
 
 
 void
-StochasticLLG_RK45(	magnoom_ctx *ctx, int thread,
+StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 				int naini, 	int nafin,
 				int nbini, 	int nbfin,
 				int ncini, 	int ncfin)
@@ -1617,12 +1617,12 @@ void *CALC_THREAD(void *void_ptr)
 				StochasticLLG(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
-			case RK23: 
-				StochasticLLG_RK23(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
+			case RK2:
+				StochasticLLG_RK2(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
-			case RK45:
-				StochasticLLG_RK45(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
+			case RK4:
+				StochasticLLG_RK4(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
 			case RELAX: 	

@@ -93,7 +93,7 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 /*****************************************************************************/
 typedef enum    {A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode;
 typedef enum    {BEXT_AC_SIN, BEXT_AC_GAUSSIAN, BEXT_AC_SINC, BEXT_AC_CIRCULAR} enBextACWaveform;
-enum            IntegrationScheme{HEUN,SIB,RK23,RK45,RELAX};
+enum            IntegrationScheme{HEUN,SIB,RK2,RK4,RELAX};
 enum            Average_mode{ALONG_A,ALONG_B, ALONG_C, ALONG_0};
 
 typedef enum    {ORTHO, PERSP} enProjections;
