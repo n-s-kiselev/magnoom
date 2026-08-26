@@ -96,6 +96,18 @@ executable and can be edited for the current session. Relative input and output
 file names are resolved against these fields; an absolute file name overrides
 the corresponding directory.
 
+The panel has one `Import` button and one `Export` button. Magnoom selects the
+format from the final lowercase file extension. Import supports `.csv`, `.ovf`,
+`.vtk`, and `.bin`; export additionally supports `.png`. Extensions are
+case-sensitive. Before importing, Magnoom checks that CSV contains exactly the
+expected bounded six-value spin rows, OVF has the expected header, dimensions,
+and data marker, VTK contains a complete binary-float vector field for the
+current grid, and BIN has the exact payload size required by the current grid.
+Missing, unsupported, export-only, or content-mismatched extensions produce a
+modal error message. Manual import stops the simulation and leaves it stopped;
+export writes the current spin state without changing whether the simulation is
+running.
+
 The output directory applies to manual CSV, OVF, VTK, BIN, and PNG exports as
 well as `table.csv`, `phase*.vtk`, and `dTdF*.vtk`. Changing it starts a new
 `table.csv` after flushing buffered records to the previous file. Magnoom does

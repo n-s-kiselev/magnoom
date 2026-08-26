@@ -57,7 +57,7 @@
 #endif
 
 static const char SOFTWARE_NAME[] = "Magnoom";
-static const char SOFTWARE_VERSION[] = "1.05";
+static const char SOFTWARE_VERSION[] = "1.06";
 
 #define ABS(x) ((x)<0?-(x):(x))
 
@@ -68,6 +68,8 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 #define MAX_ATOMS_PER_BLOCK 100
 #define MAX_SHELLS 6
 #define MAGNOOM_PATH_CAPACITY 4096
+#define MAGNOOM_MODAL_BAR_CAPACITY 32
+#define MAGNOOM_MODAL_MESSAGE_CAPACITY 512
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "vendor/stb/stb_image_write.h"
@@ -93,6 +95,9 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 /*****************************************************************************/
 typedef enum    {A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode;
 typedef enum    {BEXT_AC_SIN, BEXT_AC_GAUSSIAN, BEXT_AC_SINC, BEXT_AC_CIRCULAR} enBextACWaveform;
+typedef enum    {FILE_FORMAT_UNKNOWN = 0, FILE_FORMAT_CSV, FILE_FORMAT_OVF,
+                 FILE_FORMAT_VTK, FILE_FORMAT_BIN, FILE_FORMAT_PNG,
+                 FILE_FORMAT_COUNT} FileFormatEnum;
 enum            IntegrationScheme{HEUN,SIB,RK2,RK4,RELAX};
 enum            Average_mode{ALONG_A,ALONG_B, ALONG_C, ALONG_0};
 
@@ -421,6 +426,13 @@ typedef struct magnoom_ctx {
 	TwBar*          BextAC_bar;
 	TwBar*          info_bar;
 	TwBar*          my_window;
+	TwBar*          modal_bar;
+	TwBar*          modal_saved_bars[MAGNOOM_MODAL_BAR_CAPACITY];
+	int             modal_saved_visibility[MAGNOOM_MODAL_BAR_CAPACITY];
+	int             modal_saved_count;
+	bool            modal_open_requested;
+	bool            modal_close_requested;
+	char            modal_message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
 
 	/* slice/filter thresholds & flags */
 	int             N_filter;
@@ -519,6 +531,15 @@ typedef struct magnoom_ctx {
 /* one void* argument. */
 typedef struct { int index; magnoom_ctx *ctx; } calc_thread_arg;
 
+typedef struct magnoom_bin_spin {
+	unsigned short int t;
+	unsigned short int f;
+} magnoom_bin_spin;
+
+static const char *fileFormatNames[FILE_FORMAT_COUNT] = {
+	"unknown", "CSV", "OVF", "VTK", "BIN", "PNG"
+};
+
 static bool magnoom_copy_path(char *destination, size_t capacity, const char *source)
 {
 	size_t length;
@@ -536,6 +557,239 @@ static bool magnoom_is_path_separator(char c)
 #else
 	return c == '/';
 #endif
+}
+
+static const char *magnoom_get_file_extension(const char *filename)
+{
+	const char *basename, *dot, *cursor;
+
+	if (filename == NULL || filename[0] == '\0') return NULL;
+	basename = filename;
+	for (cursor = filename; *cursor != '\0'; ++cursor) {
+		if (magnoom_is_path_separator(*cursor)) basename = cursor + 1;
+	}
+	dot = strrchr(basename, '.');
+	if (dot == NULL || dot == basename || dot[1] == '\0') return NULL;
+	return dot;
+}
+
+static FileFormatEnum GetFileFormatFromExtension(const char *filename)
+{
+	const char *extension = magnoom_get_file_extension(filename);
+	if (extension == NULL) return FILE_FORMAT_UNKNOWN;
+	if (strcmp(extension, ".csv") == 0) return FILE_FORMAT_CSV;
+	if (strcmp(extension, ".ovf") == 0) return FILE_FORMAT_OVF;
+	if (strcmp(extension, ".vtk") == 0) return FILE_FORMAT_VTK;
+	if (strcmp(extension, ".bin") == 0) return FILE_FORMAT_BIN;
+	if (strcmp(extension, ".png") == 0) return FILE_FORMAT_PNG;
+	return FILE_FORMAT_UNKNOWN;
+}
+
+static bool magnoom_file_format_can_import(FileFormatEnum format)
+{
+	return format == FILE_FORMAT_CSV || format == FILE_FORMAT_OVF ||
+	       format == FILE_FORMAT_VTK || format == FILE_FORMAT_BIN;
+}
+
+static bool magnoom_file_format_can_export(FileFormatEnum format)
+{
+	return format > FILE_FORMAT_UNKNOWN && format < FILE_FORMAT_COUNT;
+}
+
+static bool magnoom_read_first_nonempty_line(FILE *file, char *line, size_t capacity)
+{
+	while (fgets(line, (int)capacity, file) != NULL) {
+		const char *cursor = line;
+		while (*cursor == ' ' || *cursor == '\t' || *cursor == '\r' || *cursor == '\n') ++cursor;
+		if (*cursor != '\0') {
+			if (cursor != line) memmove(line, cursor, strlen(cursor) + 1);
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool magnoom_csv_line_is_spin(const char *line)
+{
+	const char *cursor = line;
+	char *end;
+
+	for (int component = 0; component < 6; ++component) {
+		double value;
+		while (*cursor == ' ' || *cursor == '\t') ++cursor;
+		errno = 0;
+		value = strtod(cursor, &end);
+		if (end == cursor || errno == ERANGE || !isfinite(value) || fabs(value) > FLT_MAX) return false;
+		cursor = end;
+		while (*cursor == ' ' || *cursor == '\t') ++cursor;
+		if (component < 5) {
+			if (*cursor != ',') return false;
+			++cursor;
+		}
+	}
+	while (*cursor == ' ' || *cursor == '\t') ++cursor;
+	if (*cursor == ',') ++cursor;
+	while (*cursor == ' ' || *cursor == '\t' || *cursor == '\r' || *cursor == '\n') ++cursor;
+	return *cursor == '\0';
+}
+
+static bool magnoom_validate_csv_content(FILE *file, const magnoom_ctx *ctx)
+{
+	char line[512];
+	int rows = 0;
+
+	if (ctx == NULL || ctx->NOS <= 0) return false;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		size_t length = strlen(line);
+		const char *cursor = line;
+		if (length >= 120 || (length > 0 && line[length - 1] != '\n' && !feof(file))) return false;
+		while (*cursor == ' ' || *cursor == '\t' || *cursor == '\r' || *cursor == '\n') ++cursor;
+		if (*cursor == '\0') return false;
+		if (!magnoom_csv_line_is_spin(cursor)) return false;
+		rows++;
+	}
+	return rows == ctx->NOS;
+}
+
+static bool magnoom_validate_ovf_content(FILE *file, const magnoom_ctx *ctx)
+{
+	char line[512];
+	int xnodes = 0, ynodes = 0, znodes = 0, valuedim = 0;
+	bool data_marker = false;
+
+	if (ctx == NULL || !magnoom_read_first_nonempty_line(file, line, sizeof(line)) ||
+		strncmp(line, "# OOMMF OVF 2.0", strlen("# OOMMF OVF 2.0")) != 0) return false;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		if (sscanf(line, "# valuedim: %d", &valuedim) == 1) continue;
+		if (sscanf(line, "# xnodes: %d", &xnodes) == 1) continue;
+		if (sscanf(line, "# ynodes: %d", &ynodes) == 1) continue;
+		if (sscanf(line, "# znodes: %d", &znodes) == 1) continue;
+		if (strstr(line, "# Begin: Data") != NULL) {
+			data_marker = true;
+			break;
+		}
+	}
+	return data_marker && valuedim == 3 &&
+	       xnodes == ctx->uABC[0] && ynodes == ctx->uABC[1] && znodes == ctx->uABC[2];
+}
+
+static bool magnoom_validate_vtk_content(FILE *file, const magnoom_ctx *ctx)
+{
+	char line[512], scalar_name[128], scalar_type[128];
+	int xnodes = 0, ynodes = 0, znodes = 0, components = 0;
+	bool lookup_table = false, payload_complete = false;
+
+	if (ctx == NULL || !magnoom_read_first_nonempty_line(file, line, sizeof(line)) ||
+		strncmp(line, "# vtk DataFile Version 2.0", strlen("# vtk DataFile Version 2.0")) != 0) return false;
+	if (fgets(line, sizeof(line), file) == NULL) return false; /* title */
+	if (fgets(line, sizeof(line), file) == NULL) return false;
+	line[strcspn(line, "\r\n")] = '\0';
+	if (strcmp(line, "BINARY") != 0) return false;
+	if (fgets(line, sizeof(line), file) == NULL) return false;
+	line[strcspn(line, "\r\n")] = '\0';
+	if (strcmp(line, "DATASET STRUCTURED_POINTS") != 0) return false;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		if (sscanf(line, "DIMENSIONS %d %d %d", &xnodes, &ynodes, &znodes) == 3) continue;
+		if (sscanf(line, "SCALARS %127s %127s %d", scalar_name, scalar_type, &components) == 3) continue;
+		if (strncmp(line, "LOOKUP_TABLE default", strlen("LOOKUP_TABLE default")) == 0) {
+			long payload_start = ftell(file);
+			lookup_table = true;
+			if (payload_start >= 0 && xnodes > 0 && ynodes > 0 && znodes > 0) {
+				size_t nx = (size_t)xnodes, ny = (size_t)ynodes, nz = (size_t)znodes;
+				if (nx <= SIZE_MAX/ny && nx*ny <= SIZE_MAX/nz) {
+					size_t cells = nx*ny*nz;
+					if (cells <= (size_t)LONG_MAX/(3*sizeof(float))) {
+						long payload_size = (long)(cells*3*sizeof(float));
+						if (payload_start <= LONG_MAX - payload_size &&
+							fseek(file, payload_start + payload_size, SEEK_SET) == 0) {
+							int boundary = fgetc(file);
+							payload_complete = boundary == EOF || boundary == '\r' || boundary == '\n';
+						}
+					}
+				}
+			}
+			break;
+		}
+	}
+	return lookup_table && payload_complete && components == 3 &&
+	       strcmp(scalar_type, "float") == 0 &&
+	       xnodes == ctx->uABC[0] && ynodes == ctx->uABC[1] && znodes == ctx->uABC[2];
+}
+
+static bool ValidateFileFormat(const magnoom_ctx *ctx, const char *path,
+	FileFormatEnum format, char *error_message, size_t error_capacity)
+{
+	static const unsigned char png_signature[8] = {137, 80, 78, 71, 13, 10, 26, 10};
+	FILE *file;
+	bool valid = false;
+
+	if (error_message == NULL || error_capacity == 0) return false;
+	error_message[0] = '\0';
+	file = fopen(path, "rb");
+	if (file == NULL) {
+		snprintf(error_message, error_capacity, "Cannot open the input file: %s", strerror(errno));
+		error_message[error_capacity - 1] = '\0';
+		return false;
+	}
+
+	switch (format) {
+		case FILE_FORMAT_CSV:
+			valid = magnoom_validate_csv_content(file, ctx);
+			break;
+		case FILE_FORMAT_OVF:
+			valid = magnoom_validate_ovf_content(file, ctx);
+			break;
+		case FILE_FORMAT_VTK:
+			valid = magnoom_validate_vtk_content(file, ctx);
+			break;
+		case FILE_FORMAT_BIN: {
+			size_t cells = 0;
+			long length = -1;
+			if (ctx != NULL && ctx->uABC[0] > 0 && ctx->uABC[1] > 0 && ctx->uABC[2] > 0) {
+				size_t na = (size_t)ctx->uABC[0];
+				size_t nb = (size_t)ctx->uABC[1];
+				size_t nc = (size_t)ctx->uABC[2];
+				if (na <= SIZE_MAX / nb && na*nb <= SIZE_MAX / nc) {
+					cells = na*nb*nc;
+					if (fseek(file, 0, SEEK_END) == 0) length = ftell(file);
+				}
+			}
+			valid = length >= 0 && cells <= (size_t)LONG_MAX / sizeof(magnoom_bin_spin) &&
+			        (size_t)length == cells*sizeof(magnoom_bin_spin);
+			break;
+		}
+		case FILE_FORMAT_PNG: {
+			unsigned char signature[sizeof(png_signature)];
+			valid = fread(signature, 1, sizeof(signature), file) == sizeof(signature) &&
+			        memcmp(signature, png_signature, sizeof(signature)) == 0;
+			break;
+		}
+		default:
+			break;
+	}
+	fclose(file);
+
+	if (!valid) {
+		if (format == FILE_FORMAT_CSV) {
+			snprintf(error_message, error_capacity,
+				"CSV content must contain exactly %d bounded six-value spin rows.",
+				ctx != NULL ? ctx->NOS : 0);
+		} else if (format == FILE_FORMAT_BIN) {
+			snprintf(error_message, error_capacity,
+				"BIN content size does not match the current simulation grid.");
+		} else if (format == FILE_FORMAT_OVF || format == FILE_FORMAT_VTK) {
+			snprintf(error_message, error_capacity,
+				"The %s header, data marker, or dimensions do not match the current simulation grid.",
+				fileFormatNames[format]);
+		} else {
+			snprintf(error_message, error_capacity,
+				"The file content does not match the detected %s format.",
+				format > FILE_FORMAT_UNKNOWN && format < FILE_FORMAT_COUNT ?
+				fileFormatNames[format] : "unknown");
+		}
+		error_message[error_capacity - 1] = '\0';
+	}
+	return valid;
 }
 
 static bool magnoom_path_is_absolute(const char *path)
@@ -1383,10 +1637,6 @@ void Save_OVF_b8(magnoom_ctx *ctx, double* S, const char *ovf_filename){
 
 void SaveBin(magnoom_ctx *ctx, double* S, const char *bin_filename){
     unsigned short int num = 65535;
-    struct tfshortint {
-        unsigned short int t;
-        unsigned short int f;
-    };
     FILE * pFile = fopen (bin_filename,"wb");
 	if (pFile == NULL) {
 		fprintf(stderr, "Cannot open output file '%s': %s\n", bin_filename, strerror(errno));
@@ -1410,8 +1660,8 @@ void SaveBin(magnoom_ctx *ctx, double* S, const char *bin_filename){
             q = T*num;
             p = F*num;
 
-            struct tfshortint my_par = {q, p};
-            fwrite(&my_par, sizeof(struct tfshortint), 1, pFile);
+            magnoom_bin_spin my_par = {q, p};
+            fwrite(&my_par, sizeof(my_par), 1, pFile);
 
       }
     }
@@ -2476,6 +2726,7 @@ main (int argc, char **argv){
 		Display(&mag_ctx);
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
+		magnoom_service_modal(&mag_ctx);
 	}
 
 	mag_ctx.EngineShutdownRequested = true;

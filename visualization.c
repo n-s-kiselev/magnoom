@@ -1557,10 +1557,6 @@ void TW_CALL CB_ReadBIN( void *clientData )
 
 
 
-  	struct tfshortint {
-   		unsigned short int t;
-   		unsigned short int f;
-  	};
 	int Nx = ctx->uABC[0], Ny = ctx->uABC[1], Nz = ctx->uABC[2];
 	if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
 	FILE * FilePointer = fopen(input_path, "rb");
@@ -1571,8 +1567,8 @@ void TW_CALL CB_ReadBIN( void *clientData )
   	for(int k = 0; k<Nz; k++){
 	    for(int j = 0; j<Ny; j++){
 			for(int i = 0; i <Nx;i++){
-				struct tfshortint my_par_red;
-				if (fread(&my_par_red, sizeof(struct tfshortint), 1, FilePointer)){
+				magnoom_bin_spin my_par_red;
+				if (fread(&my_par_red, sizeof(my_par_red), 1, FilePointer)){
 					double nx,ny,nz;
 					unsigned short int p=my_par_red.t, q=my_par_red.f;
 
@@ -1653,6 +1649,175 @@ void TW_CALL CB_Save_PNG( void *clientData )
 	if (!magnoom_resolve_output_path_with_extension(ctx, ".png",
 		output_path, sizeof(output_path))) return;
 	SavePng(ctx, ctx->bS, output_path, ctx->WhichSliceMode, ctx->A_layer_min-1, ctx->B_layer_min-1, ctx->C_layer_min-1);//metka 0->1
+}
+
+static void magnoom_request_error_dialog(magnoom_ctx *ctx, const char *message)
+{
+	if (ctx->modal_bar != NULL || ctx->modal_open_requested) return;
+	if (!magnoom_copy_path(ctx->modal_message, sizeof(ctx->modal_message), message))
+		magnoom_copy_path(ctx->modal_message, sizeof(ctx->modal_message), "The file operation failed.");
+	ctx->modal_close_requested = false;
+	ctx->modal_open_requested = true;
+}
+
+#ifndef MAGNOOM_NO_MAIN
+static void TW_CALL CB_CloseErrorDialog(void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	ctx->modal_close_requested = true;
+}
+
+static void magnoom_set_bar_visibility(TwBar *bar, int visible)
+{
+	TwSetParam(bar, NULL, "visible", TW_PARAM_INT32, 1, &visible);
+}
+
+static void magnoom_restore_modal_bars(magnoom_ctx *ctx)
+{
+	for (int i = 0; i < ctx->modal_saved_count; ++i)
+		magnoom_set_bar_visibility(ctx->modal_saved_bars[i], ctx->modal_saved_visibility[i]);
+	ctx->modal_saved_count = 0;
+}
+
+static void magnoom_open_error_dialog(magnoom_ctx *ctx)
+{
+	char definition[256];
+	int framebuffer_width, framebuffer_height;
+	int bar_width, bar_height, position_x, position_y;
+	TwBar *bar;
+
+	if (ctx->modal_bar != NULL) return;
+	glfwGetFramebufferSize(ctx->MainWindow, &framebuffer_width, &framebuffer_height);
+	bar_width = framebuffer_width < 560 ? framebuffer_width : 560;
+	bar_height = 200;
+	if (bar_width < 220) bar_width = 220;
+	position_x = (framebuffer_width - bar_width)/2;
+	position_y = (framebuffer_height - bar_height)/2;
+	if (position_x < 0) position_x = 0;
+	if (position_y < 0) position_y = 0;
+
+	bar = TwNewBar("FileError");
+	if (bar == NULL) {
+		fprintf(stderr, "%s\n", ctx->modal_message);
+		return;
+	}
+	TwDefine(" FileError color='180 35 45' alpha=200");
+	TwDefine(" FileError resizable=false movable=false iconifiable=false");
+	snprintf(definition, sizeof(definition),
+		" FileError label='File error' size='%d %d' position='%d %d' ",
+		bar_width, bar_height, position_x, position_y);
+	if (!TwDefine(definition) ||
+		!TwAddButton(bar, "Message", NULL, NULL, "label='File operation failed.'") ||
+		!TwSetParam(bar, "Message", "label", TW_PARAM_CSTRING, 1, ctx->modal_message) ||
+		!TwAddButton(bar, "OK", CB_CloseErrorDialog, ctx, "label='OK'")) {
+		TwDeleteBar(bar);
+		fprintf(stderr, "%s\n", ctx->modal_message);
+		return;
+	}
+
+	ctx->modal_bar = bar;
+	ctx->modal_saved_count = 0;
+	int bar_count = TwGetBarCount();
+	for (int i = 0; i < bar_count && ctx->modal_saved_count < MAGNOOM_MODAL_BAR_CAPACITY; ++i) {
+		TwBar *current = TwGetBarByIndex(i);
+		int visible = 1;
+		if (current == bar) continue;
+		TwGetParam(current, NULL, "visible", TW_PARAM_INT32, 1, &visible);
+		ctx->modal_saved_bars[ctx->modal_saved_count] = current;
+		ctx->modal_saved_visibility[ctx->modal_saved_count] = visible;
+		ctx->modal_saved_count++;
+		magnoom_set_bar_visibility(current, 0);
+	}
+	TwSetTopBar(bar);
+}
+
+static void magnoom_service_modal(magnoom_ctx *ctx)
+{
+	if (ctx->modal_close_requested && ctx->modal_bar != NULL) {
+		TwDeleteBar(ctx->modal_bar);
+		ctx->modal_bar = NULL;
+		ctx->modal_close_requested = false;
+		magnoom_restore_modal_bars(ctx);
+	}
+	if (ctx->modal_open_requested && ctx->modal_bar == NULL) {
+		ctx->modal_open_requested = false;
+		magnoom_open_error_dialog(ctx);
+	}
+}
+#endif
+
+static bool magnoom_get_requested_file_format(magnoom_ctx *ctx, const char *filename,
+	bool importing, FileFormatEnum *format)
+{
+	const char *extension = magnoom_get_file_extension(filename);
+	char message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
+
+	if (extension == NULL) {
+		snprintf(message, sizeof(message), "The file name has no extension.");
+		magnoom_request_error_dialog(ctx, message);
+		return false;
+	}
+	*format = GetFileFormatFromExtension(filename);
+	if (*format == FILE_FORMAT_UNKNOWN) {
+		snprintf(message, sizeof(message), "The file extension is not supported.");
+		magnoom_request_error_dialog(ctx, message);
+		return false;
+	}
+	if (importing && !magnoom_file_format_can_import(*format)) {
+		snprintf(message, sizeof(message), "%s files are export-only and cannot be imported.",
+			fileFormatNames[*format]);
+		magnoom_request_error_dialog(ctx, message);
+		return false;
+	}
+	if (!importing && !magnoom_file_format_can_export(*format)) {
+		snprintf(message, sizeof(message), "%s files cannot be exported.", fileFormatNames[*format]);
+		magnoom_request_error_dialog(ctx, message);
+		return false;
+	}
+	return true;
+}
+
+void TW_CALL CB_Import(void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	char input_path[MAGNOOM_PATH_CAPACITY];
+	char error_message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
+	FileFormatEnum format;
+
+	magnoom_stop_engine(ctx);
+	if (!magnoom_get_requested_file_format(ctx, ctx->inputfilename, true, &format)) return;
+	if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) {
+		magnoom_request_error_dialog(ctx, "The input path is empty, unsupported, or too long.");
+		return;
+	}
+	if (!ValidateFileFormat(ctx, input_path, format, error_message, sizeof(error_message))) {
+		magnoom_request_error_dialog(ctx, error_message);
+		return;
+	}
+
+	switch (format) {
+		case FILE_FORMAT_CSV: CB_ReadCSV(ctx); break;
+		case FILE_FORMAT_OVF: CB_ReadOVF(ctx); break;
+		case FILE_FORMAT_VTK: CB_ReadVTK(ctx); break;
+		case FILE_FORMAT_BIN: CB_ReadBIN(ctx); break;
+		default: break;
+	}
+}
+
+void TW_CALL CB_Export(void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	FileFormatEnum format;
+
+	if (!magnoom_get_requested_file_format(ctx, ctx->outputfilename, false, &format)) return;
+	switch (format) {
+		case FILE_FORMAT_CSV: CB_SaveCSV(ctx); break;
+		case FILE_FORMAT_OVF: CB_Save_OVF_b8(ctx); break;
+		case FILE_FORMAT_VTK: CB_Save_VTK_b4(ctx); break;
+		case FILE_FORMAT_BIN: CB_Save_BIN(ctx); break;
+		case FILE_FORMAT_PNG: CB_Save_PNG(ctx); break;
+		default: break;
+	}
 }
 
 void UpdateKind(magnoom_ctx *ctx)
@@ -2195,10 +2360,8 @@ void setupTweakBar(magnoom_ctx *ctx)
 		CB_SetInputDirectory, CB_GetInputDirectory, ctx,
 		"help='Directory used for relative input file names; absolute file names override it'");
 	TwAddVarRW(ctx->initial_bar, "Input file name:", TW_TYPE_CSSTRING(sizeof(ctx->inputfilename)), ctx->inputfilename, "");
-	TwAddButton(ctx->initial_bar, "Read from CSV", CB_ReadCSV, ctx, "label='read from *.csv file' ");
-	TwAddButton(ctx->initial_bar, "Read from OVF", CB_ReadOVF, ctx, "label='read from *.ovf file' ");
-    TwAddButton(ctx->initial_bar, "Read from VTK", CB_ReadVTK, ctx, "label='read from *.vtk file' ");
-    TwAddButton(ctx->initial_bar, "Read from BIN", CB_ReadBIN, ctx, "label='read from *.bin file' ");
+	TwAddButton(ctx->initial_bar, "Import", CB_Import, ctx,
+		"label='Import' help='Import CSV, OVF, VTK, or BIN according to the input file extension'");
 
 	TwAddSeparator(ctx->initial_bar, "sep2", NULL);
 	TwAddVarRW(ctx->initial_bar, "Save slice", TW_TYPE_BOOL32, &ctx->save_slice, " label='Save slice' help='Save current slice only' ");
@@ -2216,11 +2379,8 @@ void setupTweakBar(magnoom_ctx *ctx)
 		CB_SetOutputDirectory, CB_GetOutputDirectory, ctx,
 		"help='Directory for all simulation outputs; changing it starts a new table.csv'");
 	TwAddVarRW(ctx->initial_bar, "Output file name:", TW_TYPE_CSSTRING(sizeof(ctx->outputfilename)), ctx->outputfilename, ""); 
-	TwAddButton(ctx->initial_bar, "Write to CSV", CB_SaveCSV, ctx, "label='write to *.csv file' ");	
-	TwAddButton(ctx->initial_bar, "Write to OVF", CB_Save_OVF_b8, ctx, "label='write to *.ovf file' ");	
-    TwAddButton(ctx->initial_bar, "Write to VTK", CB_Save_VTK_b4, ctx, "label='write to *.vtk file' "); 
-    TwAddButton(ctx->initial_bar, "Write to BIN", CB_Save_BIN, ctx, "label='write to *.bin file' "); 
-    TwAddButton(ctx->initial_bar, "Write to PNG", CB_Save_PNG, ctx, "label='write to *.png file' ");
+	TwAddButton(ctx->initial_bar, "Export", CB_Export, ctx,
+		"label='Export' help='Export CSV, OVF, VTK, BIN, or PNG according to the output file extension'");
 
     TwAddSeparator(ctx->initial_bar, "sep_isoline", NULL);
 
@@ -2342,7 +2502,12 @@ void GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action, int 
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)scancode;
+	if (ctx->modal_open_requested) {
+		if (action == GLFW_RELEASE) (void)TwEventKeyGLFW(key, action);
+		return;
+	}
 	if (TwEventKeyGLFW(key, action)) return;
+	if (ctx->modal_bar != NULL) return;
 
 	int special = GLFWSpecialToWindowKey(key);
 	if (special && action != GLFW_RELEASE) {
@@ -2362,7 +2527,9 @@ void GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action, int 
 void GLFWCharCallback(GLFWwindow *window, unsigned int character)
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
+	if (ctx->modal_open_requested) return;
 	if (character > 255 || TwEventCharGLFW((int)character, GLFW_PRESS)) return;
+	if (ctx->modal_bar != NULL) return;
 	HandleKeyDown(ctx, (unsigned char)character);
 }
 
@@ -2370,7 +2537,12 @@ void GLFWMouseButtonCallback(GLFWwindow *window, int button, int action, int mod
 {
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)mods;
+	if (ctx->modal_open_requested) {
+		if (action == GLFW_RELEASE) (void)TwEventMouseButtonGLFW(button, action);
+		return;
+	}
 	if (TwEventMouseButtonGLFW(button, action)) return;
+	if (ctx->modal_bar != NULL) return;
 	double x = 0.0, y = 0.0;
 	glfwGetCursorPos(window, &x, &y);
 	int windowButton = button == GLFW_MOUSE_BUTTON_LEFT ? WINDOW_MOUSE_LEFT
@@ -2385,7 +2557,9 @@ void GLFWCursorPosCallback(GLFWwindow *window, double x, double y)
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	int pixelX = (int)(x * ctx->MouseScaleX);
 	int pixelY = (int)(y * ctx->MouseScaleY);
+	if (ctx->modal_open_requested) return;
 	if (TwEventMousePosGLFW(pixelX, pixelY)) return;
+	if (ctx->modal_bar != NULL) return;
 	HandleMouseDrag(ctx, pixelX, pixelY);
 }
 
@@ -2394,7 +2568,9 @@ void GLFWScrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
 	(void)xoffset;
 	ctx->MouseWheelPosition += (int)yoffset;
+	if (ctx->modal_open_requested) return;
 	if (TwEventMouseWheelGLFW(ctx->MouseWheelPosition)) return;
+	if (ctx->modal_bar != NULL) return;
 	ctx->TransXYZ[2] += (float)yoffset * 0.5f;
 }
 

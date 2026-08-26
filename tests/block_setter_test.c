@@ -64,6 +64,107 @@ static void test_path_helpers(void)
     CHECK(executable_directory[0] != '\0');
 }
 
+static bool write_test_file(const char *path, const void *data, size_t size)
+{
+    FILE *file = fopen(path, "wb");
+    bool success = file != NULL && fwrite(data, 1, size, file) == size;
+    if (file != NULL && fclose(file) != 0) success = false;
+    return success;
+}
+
+static bool append_test_file(const char *path, const void *data, size_t size)
+{
+    FILE *file = fopen(path, "ab");
+    bool success = file != NULL && fwrite(data, 1, size, file) == size;
+    if (file != NULL && fclose(file) != 0) success = false;
+    return success;
+}
+
+static void test_file_format_detection(void)
+{
+    CHECK(GetFileFormatFromExtension("state.csv") == FILE_FORMAT_CSV);
+    CHECK(GetFileFormatFromExtension("state.ovf") == FILE_FORMAT_OVF);
+    CHECK(GetFileFormatFromExtension("state.vtk") == FILE_FORMAT_VTK);
+    CHECK(GetFileFormatFromExtension("state.bin") == FILE_FORMAT_BIN);
+    CHECK(GetFileFormatFromExtension("state.png") == FILE_FORMAT_PNG);
+    CHECK(GetFileFormatFromExtension("dir.with.dot/state.ovf") == FILE_FORMAT_OVF);
+    CHECK(GetFileFormatFromExtension("state") == FILE_FORMAT_UNKNOWN);
+    CHECK(GetFileFormatFromExtension("state.txt") == FILE_FORMAT_UNKNOWN);
+    CHECK(GetFileFormatFromExtension("state.OVF") == FILE_FORMAT_UNKNOWN);
+    CHECK(GetFileFormatFromExtension(".ovf") == FILE_FORMAT_UNKNOWN);
+    CHECK(magnoom_file_format_can_import(FILE_FORMAT_BIN));
+    CHECK(!magnoom_file_format_can_import(FILE_FORMAT_PNG));
+    CHECK(magnoom_file_format_can_export(FILE_FORMAT_PNG));
+    CHECK(!magnoom_file_format_can_export(FILE_FORMAT_UNKNOWN));
+}
+
+static void test_file_format_validation(void)
+{
+    static const char csv[] = "0,0,0,1,0,0,\n1,0,0,0,1,0,\n";
+    static const char csv_with_blank[] = "0,0,0,1,0,0,\n\n1,0,0,0,1,0,\n";
+    static const char csv_with_nan[] = "0,0,0,nan,0,0,\n1,0,0,0,1,0,\n";
+    static const char ovf[] =
+        "# OOMMF OVF 2.0\n"
+        "# valuedim: 3\n"
+        "# xnodes: 2\n"
+        "# ynodes: 1\n"
+        "# znodes: 1\n"
+        "# Begin: Data Text\n";
+    static const char vtk[] =
+        "# vtk DataFile Version 2.0\n"
+        "test\n"
+        "BINARY\n"
+        "DATASET STRUCTURED_POINTS\n"
+        "DIMENSIONS 2 1 1\n"
+        "SCALARS m float 3\n"
+        "LOOKUP_TABLE default\n";
+    static const char ascii_vtk[] =
+        "# vtk DataFile Version 2.0\n"
+        "BINARY\n"
+        "ASCII\n"
+        "DATASET STRUCTURED_POINTS\n"
+        "DIMENSIONS 2 1 1\n"
+        "SCALARS m float 3\n"
+        "LOOKUP_TABLE default\n";
+    static const unsigned char png[] = {137, 80, 78, 71, 13, 10, 26, 10};
+    const char *path = "build/file_format_validation.tmp";
+    char error_message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
+    magnoom_ctx ctx = {0};
+    magnoom_bin_spin binary[2] = {{1, 2}, {3, 4}};
+    float vtk_payload[6] = {0};
+
+    ctx.uABC[0] = 2;
+    ctx.uABC[1] = 1;
+    ctx.uABC[2] = 1;
+    ctx.NOS = 2;
+
+    CHECK(write_test_file(path, csv, sizeof(csv) - 1));
+    CHECK(ValidateFileFormat(&ctx, path, FILE_FORMAT_CSV, error_message, sizeof(error_message)));
+    CHECK(!ValidateFileFormat(&ctx, path, FILE_FORMAT_OVF, error_message, sizeof(error_message)));
+    CHECK(strstr(error_message, "OVF") != NULL);
+    CHECK(write_test_file(path, csv_with_blank, sizeof(csv_with_blank) - 1));
+    CHECK(!ValidateFileFormat(&ctx, path, FILE_FORMAT_CSV, error_message, sizeof(error_message)));
+    CHECK(write_test_file(path, csv_with_nan, sizeof(csv_with_nan) - 1));
+    CHECK(!ValidateFileFormat(&ctx, path, FILE_FORMAT_CSV, error_message, sizeof(error_message)));
+
+    CHECK(write_test_file(path, ovf, sizeof(ovf) - 1));
+    CHECK(ValidateFileFormat(&ctx, path, FILE_FORMAT_OVF, error_message, sizeof(error_message)));
+    CHECK(write_test_file(path, vtk, sizeof(vtk) - 1));
+    CHECK(append_test_file(path, vtk_payload, sizeof(vtk_payload)));
+    CHECK(ValidateFileFormat(&ctx, path, FILE_FORMAT_VTK, error_message, sizeof(error_message)));
+    CHECK(write_test_file(path, ascii_vtk, sizeof(ascii_vtk) - 1));
+    CHECK(append_test_file(path, vtk_payload, sizeof(vtk_payload)));
+    CHECK(!ValidateFileFormat(&ctx, path, FILE_FORMAT_VTK, error_message, sizeof(error_message)));
+    CHECK(write_test_file(path, png, sizeof(png)));
+    CHECK(ValidateFileFormat(&ctx, path, FILE_FORMAT_PNG, error_message, sizeof(error_message)));
+
+    CHECK(write_test_file(path, binary, sizeof(binary)));
+    CHECK(ValidateFileFormat(&ctx, path, FILE_FORMAT_BIN, error_message, sizeof(error_message)));
+    CHECK(write_test_file(path, binary, sizeof(binary) - 1));
+    CHECK(!ValidateFileFormat(&ctx, path, FILE_FORMAT_BIN, error_message, sizeof(error_message)));
+    CHECK(remove(path) == 0);
+}
+
 static void test_solver_state_reset(void)
 {
     magnoom_ctx ctx = {0};
@@ -414,6 +515,8 @@ static void test_invalid_inputs_are_transactional(void)
 int main(void)
 {
     test_path_helpers();
+    test_file_format_detection();
+    test_file_format_validation();
     test_solver_state_reset();
     test_default_block();
     test_cuboid_normals();
