@@ -29,7 +29,11 @@ bool k4_set(double K4[3][3][3][3], int i, int j, int k, int l, double value)
 
 bool anisotropy_set_k2(magnoom_ctx *ctx, int atom, int i, int j, double value)
 {
-	if (ctx == NULL || atom < -1 || atom >= ctx->AtomsPerBlock) return false;
+	if (ctx == NULL || ctx->AtomsPerBlock <= 0 || atom < -1 || atom >= ctx->AtomsPerBlock) return false;
+	if (ctx->anisotropy_mode == ANISOTROPY_GLOBAL) {
+		if (atom > 0) return true;
+		return k2_set(ctx->anisotropy_local[0].K2, i, j, value);
+	}
 	if (atom >= 0) return k2_set(ctx->anisotropy_local[atom].K2, i, j, value);
 	for (int site = 0; site < ctx->AtomsPerBlock; ++site) {
 		if (!k2_set(ctx->anisotropy_local[site].K2, i, j, value)) return false;
@@ -39,7 +43,11 @@ bool anisotropy_set_k2(magnoom_ctx *ctx, int atom, int i, int j, double value)
 
 bool anisotropy_set_k4(magnoom_ctx *ctx, int atom, int i, int j, int k, int l, double value)
 {
-	if (ctx == NULL || atom < -1 || atom >= ctx->AtomsPerBlock) return false;
+	if (ctx == NULL || ctx->AtomsPerBlock <= 0 || atom < -1 || atom >= ctx->AtomsPerBlock) return false;
+	if (ctx->anisotropy_mode == ANISOTROPY_GLOBAL) {
+		if (atom > 0) return true;
+		return k4_set(ctx->anisotropy_local[0].K4, i, j, k, l, value);
+	}
 	if (atom >= 0) return k4_set(ctx->anisotropy_local[atom].K4, i, j, k, l, value);
 	for (int site = 0; site < ctx->AtomsPerBlock; ++site) {
 		if (!k4_set(ctx->anisotropy_local[site].K4, i, j, k, l, value)) return false;
@@ -132,4 +140,34 @@ void anisotropy_rotate_all(magnoom_ctx *ctx)
 {
 	if (ctx == NULL) return;
 	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) anisotropy_rotate_site(ctx, atom);
+}
+
+int anisotropy_site_index(const magnoom_ctx *ctx, int atom)
+{
+	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock) return 0;
+	return ctx->anisotropy_mode == ANISOTROPY_GLOBAL ? 0 : atom;
+}
+
+bool anisotropy_build_from_legacy(magnoom_ctx *ctx)
+{
+	if (ctx == NULL || ctx->AtomsPerBlock <= 0 ||
+		!isfinite(ctx->Ku1) || !isfinite(ctx->Ku2) || !isfinite(ctx->Kc)) return false;
+	for (int i = 0; i < 3; ++i) {
+		if (!isfinite(ctx->VKu1[i]) || !isfinite(ctx->VKu2[i])) return false;
+	}
+
+	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
+		AnisotropyTensor *tensor = &ctx->anisotropy_local[atom];
+		memset(tensor, 0, sizeof(*tensor));
+		for (int i = 0; i < 3; ++i) {
+			for (int j = i; j < 3; ++j) {
+				double value = (double)ctx->Ku1*ctx->VKu1[i]*ctx->VKu1[j] +
+					(double)ctx->Ku2*ctx->VKu2[i]*ctx->VKu2[j];
+				if (!k2_set(tensor->K2, i, j, value)) return false;
+			}
+			if (!k4_set(tensor->K4, i, i, i, i, ctx->Kc)) return false;
+		}
+	}
+	anisotropy_rotate_all(ctx);
+	return true;
 }

@@ -683,6 +683,68 @@ void TW_CALL CB_GetBextDCPhi(void *value, void *clientData)
     *(float*)value = ctx->BextDCPhi;
 }
 
+void TW_CALL CB_SetVKu1(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	memcpy(ctx->VKu1, value, sizeof(ctx->VKu1));
+	(void)anisotropy_build_from_legacy(ctx);
+}
+
+void TW_CALL CB_GetVKu1(void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	memcpy(value, ctx->VKu1, sizeof(ctx->VKu1));
+}
+
+void TW_CALL CB_SetKu1(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	ctx->Ku1 = *(const float *)value;
+	(void)anisotropy_build_from_legacy(ctx);
+}
+
+void TW_CALL CB_GetKu1(void *value, void *clientData)
+{
+	*(float *)value = ((magnoom_ctx *)clientData)->Ku1;
+}
+
+void TW_CALL CB_SetVKu2(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	memcpy(ctx->VKu2, value, sizeof(ctx->VKu2));
+	(void)anisotropy_build_from_legacy(ctx);
+}
+
+void TW_CALL CB_GetVKu2(void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	memcpy(value, ctx->VKu2, sizeof(ctx->VKu2));
+}
+
+void TW_CALL CB_SetKu2(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	ctx->Ku2 = *(const float *)value;
+	(void)anisotropy_build_from_legacy(ctx);
+}
+
+void TW_CALL CB_GetKu2(void *value, void *clientData)
+{
+	*(float *)value = ((magnoom_ctx *)clientData)->Ku2;
+}
+
+void TW_CALL CB_SetKc(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	ctx->Kc = *(const float *)value;
+	(void)anisotropy_build_from_legacy(ctx);
+}
+
+void TW_CALL CB_GetKc(void *value, void *clientData)
+{
+	*(float *)value = ((magnoom_ctx *)clientData)->Kc;
+}
+
 
 
 // void TW_CALL CB_SetBextDCDirection(const void *value, void *clientData )
@@ -2242,27 +2304,27 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddSeparator(ctx->control_bar, "control_sep2", NULL);
 
 
-	TwAddVarRW(ctx->control_bar, "Kud1Dir", TW_TYPE_DIR3F, &ctx->VKu1, 
+	TwAddVarCB(ctx->control_bar, "Kud1Dir", TW_TYPE_DIR3F, CB_SetVKu1, CB_GetVKu1, ctx,
 	"label='Ku1 axis' opened=true help='The axis of the 1-st uniaxial anisotropy' ");
 	ctx->temp_color[0] = 55;
 	ctx->temp_color[1] = 155;
 	ctx->temp_color[2] = 55;
 	TwSetParam(ctx->control_bar, "Kud1Dir", "arrowcolor", TW_PARAM_INT32, 3, ctx->temp_color);
-	TwAddVarRW(ctx->control_bar, "Ku", TW_TYPE_FLOAT, &ctx->Ku1, 
+	TwAddVarCB(ctx->control_bar, "Ku", TW_TYPE_FLOAT, CB_SetKu1, CB_GetKu1, ctx,
 	"label='Ku1' help='The value of uniaxial anisotropy' ");
     //////////////////////////////////////////
     TwAddSeparator(ctx->control_bar, "sepbetweenKu1Ku2", NULL);
     //////////////////////////////////////////
-    TwAddVarRW(ctx->control_bar, "Kud2Dir", TW_TYPE_DIR3F, &ctx->VKu2, 
+    TwAddVarCB(ctx->control_bar, "Kud2Dir", TW_TYPE_DIR3F, CB_SetVKu2, CB_GetVKu2, ctx,
     "label='Ku2 axis' opened=true help='The axis of the 2-nd uniaxial anisotropy' ");
     TwSetParam(ctx->control_bar, "Kud2Dir", "arrowcolor", TW_PARAM_INT32, 3, ctx->temp_color);
-    TwAddVarRW(ctx->control_bar, "Ku1", TW_TYPE_FLOAT, &ctx->Ku2, 
+    TwAddVarCB(ctx->control_bar, "Ku1", TW_TYPE_FLOAT, CB_SetKu2, CB_GetKu2, ctx,
     "label='Ku2' help='The value of the 2-nd uniaxial anisotropy' ");
 
 	//////////////////////////////////////////
 	TwAddSeparator(ctx->control_bar, "sep0", NULL);
     //////////////////////////////////////////
-	TwAddVarRW(ctx->control_bar, "Kcub", TW_TYPE_FLOAT, &ctx->Kc, 
+	TwAddVarCB(ctx->control_bar, "Kcub", TW_TYPE_FLOAT, CB_SetKc, CB_GetKc, ctx,
 	"label='Kc' help='The value of cubic anisotropy' ");
     //////////////////////////////////////////
     TwAddSeparator(ctx->control_bar, "sep1", NULL);

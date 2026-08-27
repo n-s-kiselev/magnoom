@@ -16,11 +16,7 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 	const float *VDMx = ctx->VDMx;
 	const float *VDMy = ctx->VDMy;
 	const float *VDMz = ctx->VDMz;
-	const float *vku1 = ctx->VKu1;
-	const float ku1 = ctx->Ku1;
-	const float *vku2 = ctx->VKu2;
-	const float ku2 = ctx->Ku2;
-	const float kc = ctx->Kc;
+	const AnisotropyMode anisotropy_mode = ctx->anisotropy_mode;
 	const float *BextDCDirection = ctx->BextDCDirection;
 	const float BextDCMagnitude = ctx->BextDCMagnitude;
 	double *heffx = ctx->Heffx;
@@ -37,6 +33,8 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
 	{
+		const AnisotropyTensor *anisotropy =
+			&ctx->anisotropy_global[anisotropy_mode == ANISOTROPY_GLOBAL ? 0 : Ip];
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
@@ -57,20 +55,12 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 					heffz[i] /= 2;
 					}
 
-					//uniaxial anisotropy1:
-					tmp0 = VEC_X(s,i)*vku1[0] + VEC_Y(s,i)*vku1[1] + VEC_Z(s,i)*vku1[2];
-					heffx[i]+= 2 * ku1 * vku1[0] * tmp0;
-					heffy[i]+= 2 * ku1 * vku1[1] * tmp0;
-					heffz[i]+= 2 * ku1 * vku1[2] * tmp0;
-					//uniaxial anisotropy2:
-					tmp0 = VEC_X(s,i)*vku2[0] + VEC_Y(s,i)*vku2[1] + VEC_Z(s,i)*vku2[2];
-					heffx[i]+= 2 * ku2 * vku2[0] * tmp0;
-					heffy[i]+= 2 * ku2 * vku2[1] * tmp0;
-					heffz[i]+= 2 * ku2 * vku2[2] * tmp0;
-					//cubic anisotropy:
-					heffx[i]+= 4 * kc * VEC_X(s,i)*VEC_X(s,i)*VEC_X(s,i);
-					heffy[i]+= 4 * kc * VEC_Y(s,i)*VEC_Y(s,i)*VEC_Y(s,i);
-					heffz[i]+= 4 * kc * VEC_Z(s,i)*VEC_Z(s,i)*VEC_Z(s,i);			
+					double spin[3] = {VEC_X(s,i), VEC_Y(s,i), VEC_Z(s,i)};
+					double gradient[3];
+					anisotropy_energy_gradient(anisotropy, spin, gradient);
+					heffx[i] -= gradient[0];
+					heffy[i] -= gradient[1];
+					heffz[i] -= gradient[2];
 				}
 			}
 		}
@@ -190,11 +180,7 @@ double GetTotalEnergyFerro(magnoom_ctx *ctx)
 	const float *VDMx = ctx->VDMx;
 	const float *VDMy = ctx->VDMy;
 	const float *VDMz = ctx->VDMz;
-	const float *vku1 = ctx->VKu1;
-	const float ku1 = ctx->Ku1;
-	const float *vku2 = ctx->VKu2;
-	const float ku2 = ctx->Ku2;
-	const float kc = ctx->Kc;
+	const AnisotropyMode anisotropy_mode = ctx->anisotropy_mode;
 	const float *BextDCDirection = ctx->BextDCDirection;
 	const float BextDCMagnitude = ctx->BextDCMagnitude;
 	double *Etot = ctx->Etot;
@@ -207,17 +193,12 @@ double GetTotalEnergyFerro(magnoom_ctx *ctx)
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	for (int i=0; i<N; i++)
 	{
+	const int atom = anisotropy_mode == ANISOTROPY_GLOBAL ? 0 : i%ctx->AtomsPerBlock;
+	double spin[3] = {sx, sy, sz};
 	// External-field Zeeman contribution:
 	//Etot[i] =-BextDCMagnitude*(BextDCDirection[0]*sx+BextDCDirection[1]*sy+BextDCDirection[2]*sz);
 	Etot[i] =-BextDCMagnitude*((BextDCDirection[0]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[0])*sx+(BextDCDirection[1]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[1])*sy+(BextDCDirection[2]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[2])*sz);
-	//uniaxial anisotropy1:
-	tmp0 = sx*vku1[0] + sy*vku1[1] + sz*vku1[2];
-	Etot[i]-= ku1 * tmp0 * tmp0;
-	//uniaxial anisotropy2:
-	tmp0 = sx*vku2[0] + sy*vku2[1] + sz*vku2[2];
-	Etot[i]-= ku2 * tmp0 * tmp0;
-	//cubic anisotropy:
-	Etot[i]-= kc * (sx*sx*sx*sx + sy*sy*sy*sy + sz*sz*sz*sz);	
+	Etot[i] += anisotropy_energy(&ctx->anisotropy_global[atom], spin);
 	}
 	// pairwise spin interactions
 	int Ip, J, K, L;
@@ -294,11 +275,7 @@ GetTotalEnergy(magnoom_ctx *ctx)
 	const float *VDMx = ctx->VDMx;
 	const float *VDMy = ctx->VDMy;
 	const float *VDMz = ctx->VDMz;
-	const float *vku1 = ctx->VKu1;
-	const float ku1 = ctx->Ku1;
-	const float *vku2 = ctx->VKu2;
-	const float ku2 = ctx->Ku2;
-	const float kc = ctx->Kc;
+	const AnisotropyMode anisotropy_mode = ctx->anisotropy_mode;
 	const float *BextDCDirection = ctx->BextDCDirection;
 	const float BextDCMagnitude = ctx->BextDCMagnitude;
 	double *Etot = ctx->Etot;
@@ -311,16 +288,11 @@ GetTotalEnergy(magnoom_ctx *ctx)
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	for (int i=0; i<N; i++)
 	{
+	const int atom = anisotropy_mode == ANISOTROPY_GLOBAL ? 0 : i%ctx->AtomsPerBlock;
+	double spin[3] = {VEC_X(s,i), VEC_Y(s,i), VEC_Z(s,i)};
 	// External-field Zeeman contribution:
 	Etot[i] =-BextDCMagnitude*((BextDCDirection[0]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[0])*VEC_X(s,i)+(BextDCDirection[1]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[1])*VEC_Y(s,i)+(BextDCDirection[2]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[2])*VEC_Z(s,i));
-	//uniaxial anisotropy:
-	tmp0 = VEC_X(s,i)*vku1[0] + VEC_Y(s,i)*vku1[1] + VEC_Z(s,i)*vku1[2];
-	Etot[i]-= ku1 * tmp0 * tmp0;
-	//uniaxial anisotropy:
-	tmp0 = VEC_X(s,i)*vku2[0] + VEC_Y(s,i)*vku2[1] + VEC_Z(s,i)*vku2[2];
-	Etot[i]-= ku2 * tmp0 * tmp0;
-	//cubic anisotropy:
-	Etot[i]-= kc * (VEC_X(s,i)*VEC_X(s,i)*VEC_X(s,i)*VEC_X(s,i) + VEC_Y(s,i)*VEC_Y(s,i)*VEC_Y(s,i)*VEC_Y(s,i) + VEC_Z(s,i)*VEC_Z(s,i)*VEC_Z(s,i)*VEC_Z(s,i));	
+	Etot[i] += anisotropy_energy(&ctx->anisotropy_global[atom], spin);
 	Mtot[0] = Mtot[0] + VEC_X(s,i);
 	Mtot[1] = Mtot[1] + VEC_Y(s,i);
 	Mtot[2] = Mtot[2] + VEC_Z(s,i);

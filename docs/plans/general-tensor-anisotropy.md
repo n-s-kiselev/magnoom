@@ -21,10 +21,10 @@ representation for uniaxial, cubic, tetragonal, and lower-symmetry cases.
 
 ## 3. Current State
 
-The active physics still uses two global easy-axis vectors and constants plus
-one cubic constant. Stage 1 added unused fixed-capacity local/global tensor
-arrays and identity local-to-global frames to `magnoom_ctx`; effective field
-and energy routines still contain the legacy formulas until Stage 2.
+The active physics now uses per-atom tensors. The legacy easy-axis vectors and
+constants remain as inputs: `anisotropy_build_from_legacy()` converts them
+into per-atom tensors at startup and whenever a legacy GUI control changes.
+Effective field and energy routines use the rotated tensor cache.
 
 ## 4. Requirements
 
@@ -32,7 +32,7 @@ and energy routines still contain the legacy formulas until Stage 2.
 - [x] Store one configurable local-to-global 3x3 rotation per unit-cell atom.
 - [x] Enforce rank-2 and rank-4 symmetry in component setters.
 - [x] Support atom index `-1` for assignments to every active atom.
-- [ ] Preserve existing anisotropy behavior through the physics migration.
+- [x] Preserve existing anisotropy behavior through the physics migration.
 - [ ] Parse raw tensor and rotation records from `magnoom.cfg`.
 - [ ] Generate GUI controls only for components nonzero after startup parsing.
 
@@ -80,6 +80,11 @@ and energy routines still contain the legacy formulas until Stage 2.
 tensors, global rotated tensors, and local-to-global matrices. The matrix
 convention is `m_global[i] = R[i][a] m_local[a]`.
 
+Anisotropy mode is runtime-selectable. Global mode makes every solver lookup
+use atom 0's rotated tensor; Individual mode uses the basis-atom index. Mode
+changes preserve all stored tensors. A GUI action can copy atom 0's local K2
+and K4 tensors to every atom while preserving each atom's rotation matrix.
+
 Configuration records use zero-based atom indices and one-based tensor/matrix
 indices. Atom `-1` applies an assignment globally. Records are processed in
 order, so later records override earlier assignments.
@@ -110,6 +115,7 @@ Purpose:
 Changes:
 - Convert both uniaxial terms and the cubic term to tensors.
 - Use rotated per-atom tensors in field and energy routines.
+- Add runtime Global/Individual selection semantics, defaulting to Global.
 - Temporarily retain legacy GUI controls through tensor-rebuild callbacks.
 
 Validation:
@@ -117,7 +123,7 @@ Validation:
 - Existing build and platform checks.
 
 Status:
-- Pending
+- Completed
 
 ### Step 3: Configuration
 
@@ -143,7 +149,16 @@ Purpose:
 
 Changes:
 - Remove legacy anisotropy controls.
-- Generate canonical K2/K4 controls grouped by unit-cell atom.
+- Add a dedicated iconified F6 Anisotropy bar.
+- Add a runtime Global/Individual selector and an atom selector shown only in
+  Individual mode.
+- Create six reusable K2 and fifteen reusable K4 callback controls with a
+  fixed `0.000001` increment and explicit one-based index labels.
+- Redirect controls to atom 0 in Global mode or the selected atom in Individual
+  mode, showing only components active in that atom's sparsity mask.
+- Add a button that copies atom 0's local K2/K4 tensors to all atoms, preserves
+  destination rotations, refreshes all rotated caches, and expands destination
+  masks with atom 0's active components.
 - Update all permutations and the rotated cache from control callbacks.
 
 Validation:
@@ -187,6 +202,13 @@ None.
 - Added fixed-capacity local/global tensors and identity local frames.
 - Added symmetry-enforcing setters, atom `-1` assignment, energy and gradient
   contractions, and local-to-global tensor rotation without solver wiring.
+- Replaced the legacy uniaxial and cubic formulas in `GetEffectiveField`,
+  `GetTotalEnergyFerro`, and `GetTotalEnergy` with rotated tensor
+  contractions. Added runtime Global/Individual selection, defaulting to
+  Global, and kept legacy GUI controls through tensor-rebuild callbacks.
+- Verified old/new energy and effective-field equality with a temporary
+  uncommitted harness using nonzero `Ku1`, `Ku2`, `Kc`, and non-axis-aligned
+  easy axes; the harness passed and was removed.
 
 ## 15. Final Result
 

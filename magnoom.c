@@ -107,6 +107,7 @@ typedef enum    {RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L
 typedef enum    {DEFAULT_G, CILINDER_G, SPHERE_G} enGeom;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
+typedef enum    {ANISOTROPY_GLOBAL, ANISOTROPY_INDIVIDUAL} AnisotropyMode;
 
 typedef struct AnisotropyTensor {
 	double K2[3][3];
@@ -238,6 +239,7 @@ typedef struct magnoom_ctx {
 	AnisotropyTensor anisotropy_local[MAX_ATOMS_PER_BLOCK];
 	AnisotropyTensor anisotropy_global[MAX_ATOMS_PER_BLOCK];
 	double          anisotropy_rotation[MAX_ATOMS_PER_BLOCK][3][3];
+	AnisotropyMode  anisotropy_mode;
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	float           BextDCDirection[3];
@@ -1314,6 +1316,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	/* Magnetocrystalline anisotropy */
 	ctx->VKu1[0]=0.0f; ctx->VKu1[1]=0.0f; ctx->VKu1[2]=1.0f;
 	ctx->VKu2[0]=0.0f; ctx->VKu2[1]=0.0f; ctx->VKu2[2]=1.0f;
+	ctx->anisotropy_mode = ANISOTROPY_GLOBAL;
 	for (int atom = 0; atom < MAX_ATOMS_PER_BLOCK; ++atom) {
 		for (int i = 0; i < 3; ++i) ctx->anisotropy_rotation[atom][i][i] = 1.0;
 	}
@@ -2559,6 +2562,10 @@ main (int argc, char **argv){
 		free(mag_ctx.Block);
 		free(mag_ctx.RadiusOfShell);
 		free(mag_ctx.NeighborsPerAtom);
+		return 1;
+	}
+	if (!anisotropy_build_from_legacy(&mag_ctx)) {
+		fprintf(stderr, "Unable to initialize anisotropy tensors.\n");
 		return 1;
 	}
 	PrintTranslationVectors(&mag_ctx);
