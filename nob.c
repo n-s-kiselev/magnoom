@@ -155,7 +155,7 @@ static bool build_windows_resource(void)
 static bool build_magnoom_object(void)
 {
     const char *inputs[] = {
-        "magnoom.c", "solvers.c", "lattice_geometry.c", "initial_states.c",
+        "magnoom.c", "anisotropy.c", "solvers.c", "lattice_geometry.c", "initial_states.c",
         "math_utils.c", "visualization.c", "linmath.h",
         ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
         "vendor/stb/stb_image_write.h",
@@ -173,7 +173,7 @@ static bool build_magnoom_object(void)
 static bool build_block_setter_test_object(void)
 {
     const char *inputs[] = {
-        BLOCK_SETTER_TEST_SOURCE, "magnoom.c", "solvers.c", "lattice_geometry.c",
+        BLOCK_SETTER_TEST_SOURCE, "magnoom.c", "anisotropy.c", "solvers.c", "lattice_geometry.c",
         "initial_states.c", "math_utils.c", "visualization.c", "linmath.h",
         ATB_LIB, GLAD_OBJECT, GLFW_OBJECT, "vendor/stb/stb_image_write.h",
         "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,

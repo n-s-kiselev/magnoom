@@ -107,6 +107,11 @@ typedef enum    {RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L
 typedef enum    {DEFAULT_G, CILINDER_G, SPHERE_G} enGeom;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
+
+typedef struct AnisotropyTensor {
+	double K2[3][3];
+	double K4[3][3][3][3];
+} AnisotropyTensor;
 typedef enum    {LIGHT_OFF, LIGHT_FIXED, LIGHT_ADAPTIVE} enLightingMode;
 
 /*****************************************************************************/
@@ -230,6 +235,9 @@ typedef struct magnoom_ctx {
 	float           Ku1;
 	float           Ku2;
 	float           Kc;
+	AnisotropyTensor anisotropy_local[MAX_ATOMS_PER_BLOCK];
+	AnisotropyTensor anisotropy_global[MAX_ATOMS_PER_BLOCK];
+	double          anisotropy_rotation[MAX_ATOMS_PER_BLOCK][3][3];
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	float           BextDCDirection[3];
@@ -1306,6 +1314,9 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	/* Magnetocrystalline anisotropy */
 	ctx->VKu1[0]=0.0f; ctx->VKu1[1]=0.0f; ctx->VKu1[2]=1.0f;
 	ctx->VKu2[0]=0.0f; ctx->VKu2[1]=0.0f; ctx->VKu2[2]=1.0f;
+	for (int atom = 0; atom < MAX_ATOMS_PER_BLOCK; ++atom) {
+		for (int i = 0; i < 3; ++i) ctx->anisotropy_rotation[atom][i][i] = 1.0;
+	}
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	ctx->BextDCDirection[0]=0.0f; ctx->BextDCDirection[1]=0.0f; ctx->BextDCDirection[2]=1.0f;
@@ -2371,6 +2382,7 @@ void ReallocateMemoryForImages(magnoom_ctx *ctx, int NumImages, int NOS){
 
 #include "math_utils.c"		/*All mathematical fuctions*/
 #include "lattice_geometry.c"	/*All functions salculating size and neighbors*/
+#include "anisotropy.c"		/*Local and global anisotropy tensor operations*/
 #include "solvers.c"		/*CALC THREAD: LLG solvers*/
 #include "visualization.c"	/*VISUAL THREAD: All Visualization Functions*/
 #include "initial_states.c"	/*Set of functions for initial states*/
