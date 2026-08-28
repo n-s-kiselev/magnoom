@@ -23,8 +23,8 @@ representation for uniaxial, cubic, tetragonal, and lower-symmetry cases.
 
 The active physics uses per-atom local tensors and a pre-rotated global cache.
 Startup configuration accepts ordered raw K2, K4, and local-to-global rotation
-records. The F6 Anisotropy bar exposes the configured independent components
-and switches at runtime between Global atom-0 and Individual per-atom lookup.
+records. The F6 Anisotropy bar exposes every independent tensor component and
+switches at runtime between Global atom-0 and Individual per-atom lookup.
 
 ## 4. Requirements
 
@@ -34,7 +34,7 @@ and switches at runtime between Global atom-0 and Individual per-atom lookup.
 - [x] Support atom index `-1` for assignments to every active atom.
 - [x] Preserve existing anisotropy behavior through the physics migration.
 - [x] Parse raw tensor and rotation records from `magnoom.cfg`.
-- [x] Generate GUI controls only for components nonzero after startup parsing.
+- [x] Expose all independent K2 and K4 components in the GUI, including zeros.
 
 ## 5. Non-Goals
 
@@ -142,10 +142,10 @@ Validation:
 Status:
 - Completed
 
-### Step 4: Sparse GUI
+### Step 4: Tensor GUI
 
 Purpose:
-- Expose only the configured nonzero independent components.
+- Expose every independent tensor component regardless of its initial value.
 
 Changes:
 - Remove legacy anisotropy controls.
@@ -155,14 +155,13 @@ Changes:
 - Create six reusable K2 and fifteen reusable K4 callback controls with a
   fixed `0.000001` increment and explicit one-based index labels.
 - Redirect controls to atom 0 in Global mode or the selected atom in Individual
-  mode, showing only components active in that atom's sparsity mask.
+  mode.
 - Add a button that copies atom 0's local K2/K4 tensors to all atoms, preserves
-  destination rotations, refreshes all rotated caches, and expands destination
-  masks with atom 0's active components.
+  destination rotations, and refreshes all rotated caches.
 - Update all permutations and the rotated cache from control callbacks.
 
 Validation:
-- Inspect generated controls and live component updates manually.
+- Inspect all generated controls and live component updates manually.
 - Existing build and platform checks.
 
 Status:
@@ -175,7 +174,7 @@ Status:
 - Platform check: simulated Linux C99 compilation.
 - Regression check: temporary Stage 2 old/new energy and field comparison.
 - Formatting: `git diff --check`.
-- Manual checks: config parsing and sparse GUI after their respective stages.
+- Manual checks: config parsing and tensor GUI after their respective stages.
 
 ## 12. Risks and Mitigations
 
@@ -222,23 +221,20 @@ None.
   Anisotropy bar with runtime Global/Individual selection and an Individual
   atom popup.
 - Added reusable callbacks for all six independent K2 and fifteen independent
-  K4 components. Startup masks keep configured controls visible after edits,
-  and atom-0 copy preserves rotations while expanding destination masks.
-- Exercised mode routing, symmetric edits, cache refresh, mask persistence,
-  and atom-0 copy with a temporary callback harness.
+  K4 components, including components initialized to zero. Atom-0 copy
+  preserves rotations and refreshes all rotated caches.
+- Exercised mode routing, symmetric edits, cache refresh, and atom-0 copy with
+  a temporary callback harness.
 
 ## 15. Final Result
 
 General symmetric rank-2 and rank-4 anisotropy is stored per basis atom,
 configured through raw startup records, rotated outside solver hot loops, and
-used by all effective-field and energy paths. Runtime controls expose only the
-startup-configured independent components and support both shared atom-0 and
-per-atom behavior.
+used by all effective-field and energy paths. Runtime controls expose every
+independent component and support both shared atom-0 and per-atom behavior.
 
 ## 16. Remaining Limitations
 
-- Component visibility is fixed from nonzero startup values; a component that
-  starts at zero cannot be introduced from the GUI.
 - Rotation matrices are configured at startup and are not editable in the GUI.
 - Live GUI edits are intentionally unsynchronized with solver threads, matching
   the application's existing parameter-control behavior.

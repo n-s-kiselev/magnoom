@@ -145,12 +145,12 @@ earlier symmetric tensor assignments. `R[i][j]` maps local component `j` to
 global component `i`; each resulting rotation matrix must be orthonormal with
 determinant `+1`. Values must be finite.
 
-Press `F6` to open the Anisotropy bar. It exposes the six independent K2 and
-fifteen independent K4 components that are nonzero after startup configuration.
-Those controls remain available if their values are later changed to zero.
-Global mode applies atom 0's tensor to every spin; Individual mode provides an
-atom selector and uses each basis atom's tensor. The copy button copies atom
-0's local K2/K4 tensors to every atom without changing their rotation matrices.
+Press `F6` to open the Anisotropy bar. It always exposes all six independent K2
+and fifteen independent K4 components, including components initialized to
+zero. Global mode applies atom 0's tensor to every spin; Individual mode
+provides an atom selector and uses each basis atom's tensor. The copy button
+copies atom 0's local K2/K4 tensors to every atom without changing their
+rotation matrices.
 
 The `nob` executable automatically rebuilds itself when `nob.c` or its vendored `nob.h` changes. All normal build products are contained in `build/`, except for the bootstrapped `nob` executable itself.
 

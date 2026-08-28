@@ -692,22 +692,11 @@ static const char *anisotropy_k4_control_names[ANISOTROPY_K4_COMPONENT_COUNT] = 
 	"K1233", "K1333", "K2222", "K2223", "K2233", "K2333", "K3333"
 };
 
-static void anisotropy_refresh_control_visibility(magnoom_ctx *ctx)
+static void anisotropy_refresh_controls(magnoom_ctx *ctx)
 {
 	if (ctx == NULL || ctx->anisotropy_bar == NULL) return;
-	int atom = anisotropy_site_index(ctx, ctx->anisotropy_selected_atom);
 	int visible = ctx->anisotropy_mode == ANISOTROPY_INDIVIDUAL;
 	TwSetParam(ctx->anisotropy_bar, "Atom", "visible", TW_PARAM_INT32, 1, &visible);
-	for (int component = 0; component < ANISOTROPY_K2_COMPONENT_COUNT; ++component) {
-		visible = (ctx->anisotropy_k2_mask[atom] & (1u << component)) != 0;
-		TwSetParam(ctx->anisotropy_bar, anisotropy_k2_control_names[component],
-			"visible", TW_PARAM_INT32, 1, &visible);
-	}
-	for (int component = 0; component < ANISOTROPY_K4_COMPONENT_COUNT; ++component) {
-		visible = (ctx->anisotropy_k4_mask[atom] & (1u << component)) != 0;
-		TwSetParam(ctx->anisotropy_bar, anisotropy_k4_control_names[component],
-			"visible", TW_PARAM_INT32, 1, &visible);
-	}
 	TwRefreshBar(ctx->anisotropy_bar);
 }
 
@@ -717,7 +706,7 @@ void TW_CALL CB_SetAnisotropyMode(const void *value, void *clientData)
 	int mode = *(const int *)value;
 	if (mode != ANISOTROPY_GLOBAL && mode != ANISOTROPY_INDIVIDUAL) return;
 	ctx->anisotropy_mode = (AnisotropyMode)mode;
-	anisotropy_refresh_control_visibility(ctx);
+	anisotropy_refresh_controls(ctx);
 }
 
 void TW_CALL CB_GetAnisotropyMode(void *value, void *clientData)
@@ -731,7 +720,7 @@ void TW_CALL CB_SetAnisotropyAtom(const void *value, void *clientData)
 	int atom = *(const int *)value;
 	if (atom < 0 || atom >= ctx->AtomsPerBlock) return;
 	ctx->anisotropy_selected_atom = atom;
-	anisotropy_refresh_control_visibility(ctx);
+	anisotropy_refresh_controls(ctx);
 }
 
 void TW_CALL CB_GetAnisotropyAtom(void *value, void *clientData)
@@ -776,7 +765,7 @@ void TW_CALL CB_CopyAnisotropyAtom0(void *clientData)
 {
 	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
 	if (!anisotropy_copy_atom0_tensors(ctx)) return;
-	anisotropy_refresh_control_visibility(ctx);
+	anisotropy_refresh_controls(ctx);
 }
 
 
@@ -2620,7 +2609,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 		TwAddVarCB(ctx->anisotropy_bar, anisotropy_k4_control_names[component], TW_TYPE_FLOAT,
 			CB_SetAnisotropyComponent, CB_GetAnisotropyComponent, control, definition);
 	}
-	anisotropy_refresh_control_visibility(ctx);
+	anisotropy_refresh_controls(ctx);
 
 
 /*  Info bar F12 */

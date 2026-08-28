@@ -260,8 +260,6 @@ typedef struct magnoom_ctx {
 	AnisotropyMode  anisotropy_mode;
 	AnisotropyConfigRecord anisotropy_config_records[MAX_ANISOTROPY_CONFIG_RECORDS];
 	int             anisotropy_config_record_count;
-	unsigned int    anisotropy_k2_mask[MAX_ATOMS_PER_BLOCK];
-	unsigned int    anisotropy_k4_mask[MAX_ATOMS_PER_BLOCK];
 	int             anisotropy_selected_atom;
 	AnisotropyComponentControl anisotropy_component_controls[
 		ANISOTROPY_K2_COMPONENT_COUNT + ANISOTROPY_K4_COMPONENT_COUNT];

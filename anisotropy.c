@@ -152,34 +152,11 @@ void anisotropy_rotate_all(magnoom_ctx *ctx)
 	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) anisotropy_rotate_site(ctx, atom);
 }
 
-static void anisotropy_initialize_component_masks(magnoom_ctx *ctx)
-{
-	if (ctx == NULL) return;
-	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
-		unsigned int k2_mask = 0;
-		unsigned int k4_mask = 0;
-		for (int component = 0; component < ANISOTROPY_K2_COMPONENT_COUNT; ++component) {
-			const int *index = anisotropy_k2_components[component];
-			if (ctx->anisotropy_local[atom].K2[index[0]][index[1]] != 0.0)
-				k2_mask |= 1u << component;
-		}
-		for (int component = 0; component < ANISOTROPY_K4_COMPONENT_COUNT; ++component) {
-			const int *index = anisotropy_k4_components[component];
-			if (ctx->anisotropy_local[atom].K4[index[0]][index[1]][index[2]][index[3]] != 0.0)
-				k4_mask |= 1u << component;
-		}
-		ctx->anisotropy_k2_mask[atom] = k2_mask;
-		ctx->anisotropy_k4_mask[atom] = k4_mask;
-	}
-}
-
 bool anisotropy_copy_atom0_tensors(magnoom_ctx *ctx)
 {
 	if (ctx == NULL || ctx->AtomsPerBlock <= 0) return false;
 	for (int atom = 1; atom < ctx->AtomsPerBlock; ++atom) {
 		ctx->anisotropy_local[atom] = ctx->anisotropy_local[0];
-		ctx->anisotropy_k2_mask[atom] |= ctx->anisotropy_k2_mask[0];
-		ctx->anisotropy_k4_mask[atom] |= ctx->anisotropy_k4_mask[0];
 	}
 	anisotropy_rotate_all(ctx);
 	return true;
@@ -241,7 +218,6 @@ bool anisotropy_apply_config_records(magnoom_ctx *ctx)
 		}
 	}
 	anisotropy_rotate_all(ctx);
-	anisotropy_initialize_component_masks(ctx);
 	return true;
 }
 
