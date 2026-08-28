@@ -249,11 +249,6 @@ typedef struct magnoom_ctx {
 	float           Dij[6];
 
 	/* Magnetocrystalline anisotropy */
-	float           VKu1[3];
-	float           VKu2[3];
-	float           Ku1;
-	float           Ku2;
-	float           Kc;
 	AnisotropyTensor anisotropy_local[MAX_ATOMS_PER_BLOCK];
 	AnisotropyTensor anisotropy_global[MAX_ATOMS_PER_BLOCK];
 	double          anisotropy_rotation[MAX_ATOMS_PER_BLOCK][3][3];
@@ -1338,8 +1333,6 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->Dij[3]=0.0f; ctx->Dij[4]=0.0f; ctx->Dij[5]=0.0f;
 
 	/* Magnetocrystalline anisotropy */
-	ctx->VKu1[0]=0.0f; ctx->VKu1[1]=0.0f; ctx->VKu1[2]=1.0f;
-	ctx->VKu2[0]=0.0f; ctx->VKu2[1]=0.0f; ctx->VKu2[2]=1.0f;
 	ctx->anisotropy_mode = ANISOTROPY_GLOBAL;
 	for (int atom = 0; atom < MAX_ATOMS_PER_BLOCK; ++atom) {
 		for (int i = 0; i < 3; ++i) ctx->anisotropy_rotation[atom][i][i] = 1.0;
@@ -2588,8 +2581,7 @@ main (int argc, char **argv){
 		free(mag_ctx.NeighborsPerAtom);
 		return 1;
 	}
-	if (!anisotropy_build_from_legacy(&mag_ctx) ||
-		!anisotropy_apply_config_records(&mag_ctx)) {
+	if (!anisotropy_apply_config_records(&mag_ctx)) {
 		fprintf(stderr, "Unable to initialize anisotropy tensors.\n");
 		return 1;
 	}

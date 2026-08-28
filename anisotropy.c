@@ -226,27 +226,3 @@ int anisotropy_site_index(const magnoom_ctx *ctx, int atom)
 	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock) return 0;
 	return ctx->anisotropy_mode == ANISOTROPY_GLOBAL ? 0 : atom;
 }
-
-bool anisotropy_build_from_legacy(magnoom_ctx *ctx)
-{
-	if (ctx == NULL || ctx->AtomsPerBlock <= 0 ||
-		!isfinite(ctx->Ku1) || !isfinite(ctx->Ku2) || !isfinite(ctx->Kc)) return false;
-	for (int i = 0; i < 3; ++i) {
-		if (!isfinite(ctx->VKu1[i]) || !isfinite(ctx->VKu2[i])) return false;
-	}
-
-	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
-		AnisotropyTensor *tensor = &ctx->anisotropy_local[atom];
-		memset(tensor, 0, sizeof(*tensor));
-		for (int i = 0; i < 3; ++i) {
-			for (int j = i; j < 3; ++j) {
-				double value = (double)ctx->Ku1*ctx->VKu1[i]*ctx->VKu1[j] +
-					(double)ctx->Ku2*ctx->VKu2[i]*ctx->VKu2[j];
-				if (!k2_set(tensor->K2, i, j, value)) return false;
-			}
-			if (!k4_set(tensor->K4, i, i, i, i, ctx->Kc)) return false;
-		}
-	}
-	anisotropy_rotate_all(ctx);
-	return true;
-}

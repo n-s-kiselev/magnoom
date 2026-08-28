@@ -225,6 +225,10 @@ None.
   preserves rotations and refreshes all rotated caches.
 - Exercised mode routing, symmetric edits, cache refresh, and atom-0 copy with
   a temporary callback harness.
+- Removed the temporary `VKu1`, `VKu2`, `Ku1`, `Ku2`, and `Kc` compatibility
+  fields and their legacy-to-tensor startup conversion. Tensor state now starts
+  directly from the context's zero initialization before ordered config records
+  are applied.
 
 ## 15. Final Result
 
