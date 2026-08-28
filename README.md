@@ -6,13 +6,16 @@ Magnoom is cross-platform software for atomistic spin-dynamics simulations with 
 
 ## Main features
 
-- Real-time parameter control through [AntTweakBar](https://github.com/n-s-kiselev/AntTweakBar-Legacy)
 - Cross-platform C99 application code for Linux, macOS, and Windows (MinGW), built with the same single cross-platform build script on every platform
-- Multithreaded solvers
-- OpenGL visualization and post-processing tools, including slicing and filtering
+- A few multithreaded solvers for Landau-Lifshitz-Gilbert equation, including finite-temperature simulation via stochastic LLG
+- A wide range of pairwise interactions (exchange, Dzyaloshinskii-Moriya, biquadratic) and single-ion anisotropy up to 4th order in general tensor form
+- Support for crystal lattices of arbitrary complexity
 - Import and export support for formats used by
   [OOMMF](https://math.nist.gov/oommf/) and
   [MuMax3](https://mumax.github.io/), including [OVF](https://math.nist.gov/oommf/doc/userguide20b0/userguide/Vector_Field_File_Format_OV.html)
+- OpenGL visualization and post-processing tools, including slicing and filtering
+- Real-time parameter control
+
 
 ## Building
 
@@ -23,31 +26,26 @@ git clone --recurse-submodules https://github.com/n-s-kiselev/magnoom.git
 cd magnoom
 ```
 
-If you already cloned without `--recurse-submodules`, initialize AntTweakBar from
+If you by have already cloned without `--recurse-submodules`, initialize AntTweakBar from
 the repository root:
 
 ```sh
 git submodule update --init
 ```
 
-`vendor/AntTweakBar-Legacy` is a git submodule. The `nob` build tool also
-initializes it automatically on the first build if it is missing.
-
-Magnoom uses a single cross-platform [nob.h](https://github.com/tsoding/nob.h)
-build system. Bootstrap it once from the repository root:
+Magnoom uses a cross-platform [nob.h](https://github.com/tsoding/nob.h) build system. 
+Bootstrap it once from the repository root:
 
 ```sh
 cc nob.c -o nob
 ```
-
-Then run:
+and then 
 
 ```sh
-./nob          # build Magnoom and its vendored dependencies
-./nob -clean   # remove all generated build output
-./nob -test    # build and run the automated tests
-./nob -help    # list the supported options
+./nob
 ```
+
+You can use `./nob -help` to see the list of supported optionscan
 
 On Windows with [MinGW](https://www.mingw-w64.org/), use:
 
@@ -128,7 +126,7 @@ Supported platforms are Linux, macOS, and Windows with MinGW, using the same `no
 
 ## Authors
 
-Developer: [Nikolai S. Kiselev](https://github.com/n-s-kiselev)
+Developer: [Nikolai S. Kiselev](https://www.researchgate.net/profile/Nikolai-Kiselev-3)
 
 Contributors:
 
