@@ -129,6 +129,22 @@ alternative's lattice vectors and atom positions together when selecting it.
 them against the half-open unit cell, and must run before neighbor maps and
 spin or drawing arrays are created.
 
+General anisotropy components can be added between the begin/end markers in
+`magnoom.cfg`:
+
+```text
+# K2: atom i j value
+# K4: atom i j k l value
+# R: atom i j value
+```
+
+Atom indices are zero-based; atom `-1` applies the assignment to every atom in
+the active basis. Tensor and rotation-matrix indices are one-based and range
+from 1 through 3. Records are applied in order, so later records override
+earlier symmetric tensor assignments. `R[i][j]` maps local component `j` to
+global component `i`; each resulting rotation matrix must be orthonormal with
+determinant `+1`. Values must be finite.
+
 The `nob` executable automatically rebuilds itself when `nob.c` or its vendored `nob.h` changes. All normal build products are contained in `build/`, except for the bootstrapped `nob` executable itself.
 
 `nob.c` is the only build system for this repository. No CMake, Makefile, Visual Studio project, or package-manager build is required. The only network access a build may trigger is the one-time git submodule fetch described above; there is no package-manager dependency resolution.

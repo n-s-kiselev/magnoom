@@ -2,7 +2,7 @@
 
 Status: Active
 Owner: Shared
-Last updated: 2026-08-27
+Last updated: 2026-08-28
 
 ## 1. Goal
 
@@ -33,7 +33,7 @@ Effective field and energy routines use the rotated tensor cache.
 - [x] Enforce rank-2 and rank-4 symmetry in component setters.
 - [x] Support atom index `-1` for assignments to every active atom.
 - [x] Preserve existing anisotropy behavior through the physics migration.
-- [ ] Parse raw tensor and rotation records from `magnoom.cfg`.
+- [x] Parse raw tensor and rotation records from `magnoom.cfg`.
 - [ ] Generate GUI controls only for components nonzero after startup parsing.
 
 ## 5. Non-Goals
@@ -140,7 +140,7 @@ Validation:
 - Existing build and platform checks.
 
 Status:
-- Pending
+- Completed
 
 ### Step 4: Sparse GUI
 
@@ -209,6 +209,15 @@ None.
 - Verified old/new energy and effective-field equality with a temporary
   uncommitted harness using nonzero `Ku1`, `Ku2`, `Kc`, and non-axis-aligned
   easy axes; the harness passed and was removed.
+
+### 2026-08-28
+
+- Added strict ordered parsing for raw `K2`, `K4`, and local-to-global `R`
+  records, including atom `-1` assignments and one-based component indices.
+- Applied staged records after basis selection, validated active atom ranges
+  and proper rotation matrices, and refreshed the rotated tensor cache.
+- Exercised global assignment, later override, valid rotation, malformed
+  component index, and invalid rotation cases with a temporary harness.
 
 ## 15. Final Result
 

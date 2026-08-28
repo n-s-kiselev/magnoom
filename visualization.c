@@ -1968,6 +1968,64 @@ static bool ParseConfigInt(const char *text, int *result)
 	return true;
 }
 
+static bool ParseConfigDouble(const char *text, double *result)
+{
+	char *end = NULL;
+	errno = 0;
+	double value = strtod(text, &end);
+	if (end == text || *end != '\0' || errno == ERANGE || !isfinite(value)) return false;
+	*result = value;
+	return true;
+}
+
+static bool ParseAnisotropyConfigRecord(magnoom_ctx *ctx, const char *line,
+	const char *key, int line_number)
+{
+	char token[8][64];
+	int fields = sscanf(line, "# %63s %63s %63s %63s %63s %63s %63s %63s",
+		token[0], token[1], token[2], token[3], token[4], token[5], token[6], token[7]);
+	int expected_fields = strcmp(key, "K4:") == 0 ? 7 : 5;
+	if (fields != expected_fields ||
+		ctx->anisotropy_config_record_count >= MAX_ANISOTROPY_CONFIG_RECORDS) return false;
+
+	AnisotropyConfigRecord record;
+	memset(&record, 0, sizeof(record));
+	record.line = line_number;
+	if (!ParseConfigInt(token[1], &record.atom) || record.atom < -1 ||
+		record.atom >= MAX_ATOMS_PER_BLOCK) return false;
+
+	if (strcmp(key, "K2:") == 0) {
+		record.kind = ANISOTROPY_RECORD_K2;
+		if (!ParseConfigInt(token[2], &record.index[0]) ||
+			!ParseConfigInt(token[3], &record.index[1]) ||
+			!ParseConfigDouble(token[4], &record.value)) return false;
+		for (int i = 0; i < 2; ++i) {
+			if (record.index[i] < 1 || record.index[i] > 3) return false;
+			--record.index[i];
+		}
+	} else if (strcmp(key, "K4:") == 0) {
+		record.kind = ANISOTROPY_RECORD_K4;
+		for (int i = 0; i < 4; ++i) {
+			if (!ParseConfigInt(token[i + 2], &record.index[i]) ||
+				record.index[i] < 1 || record.index[i] > 3) return false;
+			--record.index[i];
+		}
+		if (!ParseConfigDouble(token[6], &record.value)) return false;
+	} else {
+		record.kind = ANISOTROPY_RECORD_ROTATION;
+		if (!ParseConfigInt(token[2], &record.index[0]) ||
+			!ParseConfigInt(token[3], &record.index[1]) ||
+			!ParseConfigDouble(token[4], &record.value)) return false;
+		for (int i = 0; i < 2; ++i) {
+			if (record.index[i] < 1 || record.index[i] > 3) return false;
+			--record.index[i];
+		}
+	}
+
+	ctx->anisotropy_config_records[ctx->anisotropy_config_record_count++] = record;
+	return true;
+}
+
 bool readConfigFile(magnoom_ctx *ctx)
 {
 	const char configfilename[] = "magnoom.cfg";
@@ -1975,6 +2033,8 @@ bool readConfigFile(magnoom_ctx *ctx)
 	char keyW1[256], keyW2[256], keyW3[256];
 	bool began = false;
 	bool ended = false;
+	int line_number = 0;
+	ctx->anisotropy_config_record_count = 0;
 
 	FILE *FilePointer = fopen(configfilename, "rb");
 	if (FilePointer == NULL) {
@@ -1984,6 +2044,7 @@ bool readConfigFile(magnoom_ctx *ctx)
 	}
 
 	while (fgets(line, sizeof(line), FilePointer) != NULL) {
+		++line_number;
 		if (strchr(line, '\n') == NULL && !feof(FilePointer)) {
 			fprintf(stderr, "%s contains a line longer than %zu characters.\n",
 				configfilename, sizeof(line)-1);
@@ -2008,6 +2069,16 @@ bool readConfigFile(magnoom_ctx *ctx)
 			strcmp(keyW2, "magnoom") == 0 && strcmp(keyW3, "config") == 0) {
 			ended = true;
 			break;
+		}
+		if (strcmp(keyW1, "K2:") == 0 || strcmp(keyW1, "K4:") == 0 ||
+			strcmp(keyW1, "R:") == 0) {
+			if (!ParseAnisotropyConfigRecord(ctx, line, keyW1, line_number)) {
+				fprintf(stderr, "%s:%d contains an invalid %s record.\n",
+					configfilename, line_number, keyW1);
+				fclose(FilePointer);
+				return false;
+			}
+			continue;
 		}
 
 		float *float_target = NULL;

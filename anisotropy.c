@@ -142,6 +142,65 @@ void anisotropy_rotate_all(magnoom_ctx *ctx)
 	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) anisotropy_rotate_site(ctx, atom);
 }
 
+static bool anisotropy_rotation_is_proper(const double rotation[3][3])
+{
+	const double tolerance = 1e-6;
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 3; ++j) {
+			double dot = 0.0;
+			for (int k = 0; k < 3; ++k) dot += rotation[i][k]*rotation[j][k];
+			if (fabs(dot - (i == j ? 1.0 : 0.0)) > tolerance) return false;
+		}
+	}
+	double determinant =
+		rotation[0][0]*(rotation[1][1]*rotation[2][2] - rotation[1][2]*rotation[2][1]) -
+		rotation[0][1]*(rotation[1][0]*rotation[2][2] - rotation[1][2]*rotation[2][0]) +
+		rotation[0][2]*(rotation[1][0]*rotation[2][1] - rotation[1][1]*rotation[2][0]);
+	return fabs(determinant - 1.0) <= tolerance;
+}
+
+bool anisotropy_apply_config_records(magnoom_ctx *ctx)
+{
+	if (ctx == NULL || ctx->AtomsPerBlock <= 0) return false;
+	for (int record_index = 0; record_index < ctx->anisotropy_config_record_count; ++record_index) {
+		const AnisotropyConfigRecord *record = &ctx->anisotropy_config_records[record_index];
+		if (record->atom < -1 || record->atom >= ctx->AtomsPerBlock) {
+			fprintf(stderr, "magnoom.cfg:%d targets atom %d, but the active basis has %d atoms.\n",
+				record->line, record->atom, ctx->AtomsPerBlock);
+			return false;
+		}
+		int first = record->atom < 0 ? 0 : record->atom;
+		int last = record->atom < 0 ? ctx->AtomsPerBlock : record->atom + 1;
+		for (int atom = first; atom < last; ++atom) {
+			switch (record->kind) {
+				case ANISOTROPY_RECORD_K2:
+					if (!k2_set(ctx->anisotropy_local[atom].K2,
+						record->index[0], record->index[1], record->value)) return false;
+					break;
+				case ANISOTROPY_RECORD_K4:
+					if (!k4_set(ctx->anisotropy_local[atom].K4,
+						record->index[0], record->index[1], record->index[2], record->index[3],
+						record->value)) return false;
+					break;
+				case ANISOTROPY_RECORD_ROTATION:
+					ctx->anisotropy_rotation[atom][record->index[0]][record->index[1]] = record->value;
+					break;
+				default:
+					return false;
+			}
+		}
+	}
+
+	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
+		if (!anisotropy_rotation_is_proper(ctx->anisotropy_rotation[atom])) {
+			fprintf(stderr, "magnoom.cfg defines an invalid rotation matrix for atom %d.\n", atom);
+			return false;
+		}
+	}
+	anisotropy_rotate_all(ctx);
+	return true;
+}
+
 int anisotropy_site_index(const magnoom_ctx *ctx, int atom)
 {
 	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock) return 0;

@@ -108,11 +108,21 @@ typedef enum    {DEFAULT_G, CILINDER_G, SPHERE_G} enGeom;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
 typedef enum    {ANISOTROPY_GLOBAL, ANISOTROPY_INDIVIDUAL} AnisotropyMode;
+typedef enum    {ANISOTROPY_RECORD_K2, ANISOTROPY_RECORD_K4, ANISOTROPY_RECORD_ROTATION} AnisotropyRecordKind;
 
 typedef struct AnisotropyTensor {
 	double K2[3][3];
 	double K4[3][3][3][3];
 } AnisotropyTensor;
+
+#define MAX_ANISOTROPY_CONFIG_RECORDS 4096
+typedef struct AnisotropyConfigRecord {
+	AnisotropyRecordKind kind;
+	int atom;
+	int index[4];
+	double value;
+	int line;
+} AnisotropyConfigRecord;
 typedef enum    {LIGHT_OFF, LIGHT_FIXED, LIGHT_ADAPTIVE} enLightingMode;
 
 /*****************************************************************************/
@@ -240,6 +250,8 @@ typedef struct magnoom_ctx {
 	AnisotropyTensor anisotropy_global[MAX_ATOMS_PER_BLOCK];
 	double          anisotropy_rotation[MAX_ATOMS_PER_BLOCK][3][3];
 	AnisotropyMode  anisotropy_mode;
+	AnisotropyConfigRecord anisotropy_config_records[MAX_ANISOTROPY_CONFIG_RECORDS];
+	int             anisotropy_config_record_count;
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	float           BextDCDirection[3];
@@ -2564,7 +2576,8 @@ main (int argc, char **argv){
 		free(mag_ctx.NeighborsPerAtom);
 		return 1;
 	}
-	if (!anisotropy_build_from_legacy(&mag_ctx)) {
+	if (!anisotropy_build_from_legacy(&mag_ctx) ||
+		!anisotropy_apply_config_records(&mag_ctx)) {
 		fprintf(stderr, "Unable to initialize anisotropy tensors.\n");
 		return 1;
 	}
