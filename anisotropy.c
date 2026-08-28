@@ -27,6 +27,16 @@ bool k4_set(double K4[3][3][3][3], int i, int j, int k, int l, double value)
 	return true;
 }
 
+static const int anisotropy_k2_components[ANISOTROPY_K2_COMPONENT_COUNT][2] = {
+	{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}
+};
+
+static const int anisotropy_k4_components[ANISOTROPY_K4_COMPONENT_COUNT][4] = {
+	{0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 0, 2}, {0, 0, 1, 1}, {0, 0, 1, 2},
+	{0, 0, 2, 2}, {0, 1, 1, 1}, {0, 1, 1, 2}, {0, 1, 2, 2}, {0, 2, 2, 2},
+	{1, 1, 1, 1}, {1, 1, 1, 2}, {1, 1, 2, 2}, {1, 2, 2, 2}, {2, 2, 2, 2}
+};
+
 bool anisotropy_set_k2(magnoom_ctx *ctx, int atom, int i, int j, double value)
 {
 	if (ctx == NULL || ctx->AtomsPerBlock <= 0 || atom < -1 || atom >= ctx->AtomsPerBlock) return false;
@@ -142,6 +152,39 @@ void anisotropy_rotate_all(magnoom_ctx *ctx)
 	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) anisotropy_rotate_site(ctx, atom);
 }
 
+static void anisotropy_initialize_component_masks(magnoom_ctx *ctx)
+{
+	if (ctx == NULL) return;
+	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
+		unsigned int k2_mask = 0;
+		unsigned int k4_mask = 0;
+		for (int component = 0; component < ANISOTROPY_K2_COMPONENT_COUNT; ++component) {
+			const int *index = anisotropy_k2_components[component];
+			if (ctx->anisotropy_local[atom].K2[index[0]][index[1]] != 0.0)
+				k2_mask |= 1u << component;
+		}
+		for (int component = 0; component < ANISOTROPY_K4_COMPONENT_COUNT; ++component) {
+			const int *index = anisotropy_k4_components[component];
+			if (ctx->anisotropy_local[atom].K4[index[0]][index[1]][index[2]][index[3]] != 0.0)
+				k4_mask |= 1u << component;
+		}
+		ctx->anisotropy_k2_mask[atom] = k2_mask;
+		ctx->anisotropy_k4_mask[atom] = k4_mask;
+	}
+}
+
+bool anisotropy_copy_atom0_tensors(magnoom_ctx *ctx)
+{
+	if (ctx == NULL || ctx->AtomsPerBlock <= 0) return false;
+	for (int atom = 1; atom < ctx->AtomsPerBlock; ++atom) {
+		ctx->anisotropy_local[atom] = ctx->anisotropy_local[0];
+		ctx->anisotropy_k2_mask[atom] |= ctx->anisotropy_k2_mask[0];
+		ctx->anisotropy_k4_mask[atom] |= ctx->anisotropy_k4_mask[0];
+	}
+	anisotropy_rotate_all(ctx);
+	return true;
+}
+
 static bool anisotropy_rotation_is_proper(const double rotation[3][3])
 {
 	const double tolerance = 1e-6;
@@ -198,6 +241,7 @@ bool anisotropy_apply_config_records(magnoom_ctx *ctx)
 		}
 	}
 	anisotropy_rotate_all(ctx);
+	anisotropy_initialize_component_masks(ctx);
 	return true;
 }
 

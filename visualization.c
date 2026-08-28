@@ -2,7 +2,7 @@ enum WindowMouseButton { WINDOW_MOUSE_LEFT, WINDOW_MOUSE_MIDDLE, WINDOW_MOUSE_RI
 enum WindowButtonState { WINDOW_BUTTON_DOWN, WINDOW_BUTTON_UP };
 enum WindowSpecialKey {
 	WINDOW_KEY_UP = 1, WINDOW_KEY_DOWN, WINDOW_KEY_F1, WINDOW_KEY_F2,
-	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F12
+	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6, WINDOW_KEY_F12
 };
 
 // which button:
@@ -683,66 +683,100 @@ void TW_CALL CB_GetBextDCPhi(void *value, void *clientData)
     *(float*)value = ctx->BextDCPhi;
 }
 
-void TW_CALL CB_SetVKu1(const void *value, void *clientData)
+static const char *anisotropy_k2_control_names[ANISOTROPY_K2_COMPONENT_COUNT] = {
+	"K11", "K12", "K13", "K22", "K23", "K33"
+};
+
+static const char *anisotropy_k4_control_names[ANISOTROPY_K4_COMPONENT_COUNT] = {
+	"K1111", "K1112", "K1113", "K1122", "K1123", "K1133", "K1222", "K1223",
+	"K1233", "K1333", "K2222", "K2223", "K2233", "K2333", "K3333"
+};
+
+static void anisotropy_refresh_control_visibility(magnoom_ctx *ctx)
+{
+	if (ctx == NULL || ctx->anisotropy_bar == NULL) return;
+	int atom = anisotropy_site_index(ctx, ctx->anisotropy_selected_atom);
+	int visible = ctx->anisotropy_mode == ANISOTROPY_INDIVIDUAL;
+	TwSetParam(ctx->anisotropy_bar, "Atom", "visible", TW_PARAM_INT32, 1, &visible);
+	for (int component = 0; component < ANISOTROPY_K2_COMPONENT_COUNT; ++component) {
+		visible = (ctx->anisotropy_k2_mask[atom] & (1u << component)) != 0;
+		TwSetParam(ctx->anisotropy_bar, anisotropy_k2_control_names[component],
+			"visible", TW_PARAM_INT32, 1, &visible);
+	}
+	for (int component = 0; component < ANISOTROPY_K4_COMPONENT_COUNT; ++component) {
+		visible = (ctx->anisotropy_k4_mask[atom] & (1u << component)) != 0;
+		TwSetParam(ctx->anisotropy_bar, anisotropy_k4_control_names[component],
+			"visible", TW_PARAM_INT32, 1, &visible);
+	}
+	TwRefreshBar(ctx->anisotropy_bar);
+}
+
+void TW_CALL CB_SetAnisotropyMode(const void *value, void *clientData)
 {
 	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	memcpy(ctx->VKu1, value, sizeof(ctx->VKu1));
-	(void)anisotropy_build_from_legacy(ctx);
+	int mode = *(const int *)value;
+	if (mode != ANISOTROPY_GLOBAL && mode != ANISOTROPY_INDIVIDUAL) return;
+	ctx->anisotropy_mode = (AnisotropyMode)mode;
+	anisotropy_refresh_control_visibility(ctx);
 }
 
-void TW_CALL CB_GetVKu1(void *value, void *clientData)
+void TW_CALL CB_GetAnisotropyMode(void *value, void *clientData)
+{
+	*(int *)value = ((magnoom_ctx *)clientData)->anisotropy_mode;
+}
+
+void TW_CALL CB_SetAnisotropyAtom(const void *value, void *clientData)
 {
 	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	memcpy(value, ctx->VKu1, sizeof(ctx->VKu1));
+	int atom = *(const int *)value;
+	if (atom < 0 || atom >= ctx->AtomsPerBlock) return;
+	ctx->anisotropy_selected_atom = atom;
+	anisotropy_refresh_control_visibility(ctx);
 }
 
-void TW_CALL CB_SetKu1(const void *value, void *clientData)
+void TW_CALL CB_GetAnisotropyAtom(void *value, void *clientData)
+{
+	*(int *)value = ((magnoom_ctx *)clientData)->anisotropy_selected_atom;
+}
+
+void TW_CALL CB_SetAnisotropyComponent(const void *value, void *clientData)
+{
+	AnisotropyComponentControl *control = (AnisotropyComponentControl *)clientData;
+	magnoom_ctx *ctx = control->ctx;
+	double component_value = *(const float *)value;
+	int atom = anisotropy_site_index(ctx, ctx->anisotropy_selected_atom);
+	bool changed;
+	if (control->kind == ANISOTROPY_COMPONENT_K2) {
+		const int *index = anisotropy_k2_components[control->component];
+		changed = anisotropy_set_k2(ctx, atom, index[0], index[1], component_value);
+	} else {
+		const int *index = anisotropy_k4_components[control->component];
+		changed = anisotropy_set_k4(ctx, atom, index[0], index[1], index[2], index[3],
+			component_value);
+	}
+	if (changed) anisotropy_rotate_site(ctx, atom);
+}
+
+void TW_CALL CB_GetAnisotropyComponent(void *value, void *clientData)
+{
+	AnisotropyComponentControl *control = (AnisotropyComponentControl *)clientData;
+	magnoom_ctx *ctx = control->ctx;
+	int atom = anisotropy_site_index(ctx, ctx->anisotropy_selected_atom);
+	const AnisotropyTensor *tensor = &ctx->anisotropy_local[atom];
+	if (control->kind == ANISOTROPY_COMPONENT_K2) {
+		const int *index = anisotropy_k2_components[control->component];
+		*(float *)value = (float)tensor->K2[index[0]][index[1]];
+	} else {
+		const int *index = anisotropy_k4_components[control->component];
+		*(float *)value = (float)tensor->K4[index[0]][index[1]][index[2]][index[3]];
+	}
+}
+
+void TW_CALL CB_CopyAnisotropyAtom0(void *clientData)
 {
 	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	ctx->Ku1 = *(const float *)value;
-	(void)anisotropy_build_from_legacy(ctx);
-}
-
-void TW_CALL CB_GetKu1(void *value, void *clientData)
-{
-	*(float *)value = ((magnoom_ctx *)clientData)->Ku1;
-}
-
-void TW_CALL CB_SetVKu2(const void *value, void *clientData)
-{
-	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	memcpy(ctx->VKu2, value, sizeof(ctx->VKu2));
-	(void)anisotropy_build_from_legacy(ctx);
-}
-
-void TW_CALL CB_GetVKu2(void *value, void *clientData)
-{
-	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	memcpy(value, ctx->VKu2, sizeof(ctx->VKu2));
-}
-
-void TW_CALL CB_SetKu2(const void *value, void *clientData)
-{
-	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	ctx->Ku2 = *(const float *)value;
-	(void)anisotropy_build_from_legacy(ctx);
-}
-
-void TW_CALL CB_GetKu2(void *value, void *clientData)
-{
-	*(float *)value = ((magnoom_ctx *)clientData)->Ku2;
-}
-
-void TW_CALL CB_SetKc(const void *value, void *clientData)
-{
-	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	ctx->Kc = *(const float *)value;
-	(void)anisotropy_build_from_legacy(ctx);
-}
-
-void TW_CALL CB_GetKc(void *value, void *clientData)
-{
-	*(float *)value = ((magnoom_ctx *)clientData)->Kc;
+	if (!anisotropy_copy_atom0_tensors(ctx)) return;
+	anisotropy_refresh_control_visibility(ctx);
 }
 
 
@@ -2373,33 +2407,6 @@ void setupTweakBar(magnoom_ctx *ctx)
 	// "label='Bext DC direction' opened=false help='Change the static external-field direction.' ");
 
 	TwAddSeparator(ctx->control_bar, "control_sep2", NULL);
-
-
-	TwAddVarCB(ctx->control_bar, "Kud1Dir", TW_TYPE_DIR3F, CB_SetVKu1, CB_GetVKu1, ctx,
-	"label='Ku1 axis' opened=true help='The axis of the 1-st uniaxial anisotropy' ");
-	ctx->temp_color[0] = 55;
-	ctx->temp_color[1] = 155;
-	ctx->temp_color[2] = 55;
-	TwSetParam(ctx->control_bar, "Kud1Dir", "arrowcolor", TW_PARAM_INT32, 3, ctx->temp_color);
-	TwAddVarCB(ctx->control_bar, "Ku", TW_TYPE_FLOAT, CB_SetKu1, CB_GetKu1, ctx,
-	"label='Ku1' help='The value of uniaxial anisotropy' ");
-    //////////////////////////////////////////
-    TwAddSeparator(ctx->control_bar, "sepbetweenKu1Ku2", NULL);
-    //////////////////////////////////////////
-    TwAddVarCB(ctx->control_bar, "Kud2Dir", TW_TYPE_DIR3F, CB_SetVKu2, CB_GetVKu2, ctx,
-    "label='Ku2 axis' opened=true help='The axis of the 2-nd uniaxial anisotropy' ");
-    TwSetParam(ctx->control_bar, "Kud2Dir", "arrowcolor", TW_PARAM_INT32, 3, ctx->temp_color);
-    TwAddVarCB(ctx->control_bar, "Ku1", TW_TYPE_FLOAT, CB_SetKu2, CB_GetKu2, ctx,
-    "label='Ku2' help='The value of the 2-nd uniaxial anisotropy' ");
-
-	//////////////////////////////////////////
-	TwAddSeparator(ctx->control_bar, "sep0", NULL);
-    //////////////////////////////////////////
-	TwAddVarCB(ctx->control_bar, "Kcub", TW_TYPE_FLOAT, CB_SetKc, CB_GetKc, ctx,
-	"label='Kc' help='The value of cubic anisotropy' ");
-    //////////////////////////////////////////
-    TwAddSeparator(ctx->control_bar, "sep1", NULL);
-    //////////////////////////////////////////
 	for(int s=0; s<ctx->ShellNumber; s++)
 	{
 	snprintf(ctx->shortBufer,200,"J%1i",s);
@@ -2554,6 +2561,68 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarCB(ctx->BextAC_bar, "BextACOmega", TW_TYPE_DOUBLE, CB_SetBextACOmega, CB_GetBextACOmega, ctx, "label='Bext AC omega' min=0 help='Set omega; omega=2*pi/period' ");
 
 
+/*  General tensor anisotropy F6 */
+	ctx->anisotropy_bar = TwNewBar("Anisotropy");
+	TwDefine(" Anisotropy iconified=true ");
+	TwDefine(" Anisotropy color='70 100 100' alpha=200 ");
+	tw_glfw2_set_bar_size(ctx->anisotropy_bar, 260, 530);
+	TwDefine(" Anisotropy help='F6: show/hide tensor anisotropy bar' ");
+	{
+		TwEnumVal modes[] = {
+			{ANISOTROPY_GLOBAL, "Global"},
+			{ANISOTROPY_INDIVIDUAL, "Individual"}
+		};
+		TwType mode_type = TwDefineEnum("AnisotropyMode", modes, 2);
+		TwAddVarCB(ctx->anisotropy_bar, "Mode", mode_type,
+			CB_SetAnisotropyMode, CB_GetAnisotropyMode, ctx,
+			"label='Mode' help='Global uses atom 0 for every spin; Individual uses per-atom tensors'");
+	}
+	{
+		TwEnumVal atoms[MAX_ATOMS_PER_BLOCK];
+		char labels[MAX_ATOMS_PER_BLOCK][16];
+		for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
+			snprintf(labels[atom], sizeof(labels[atom]), "Atom %d", atom);
+			atoms[atom].Value = atom;
+			atoms[atom].Label = labels[atom];
+		}
+		TwType atom_type = TwDefineEnum("AnisotropyAtom", atoms, (unsigned int)ctx->AtomsPerBlock);
+		TwAddVarCB(ctx->anisotropy_bar, "Atom", atom_type,
+			CB_SetAnisotropyAtom, CB_GetAnisotropyAtom, ctx,
+			"label='Atom' help='Unit-cell atom edited in Individual mode'");
+	}
+	TwAddButton(ctx->anisotropy_bar, "CopyAtom0", CB_CopyAnisotropyAtom0, ctx,
+		"label='Copy atom 0 to all' help='Copy atom 0 local K2/K4 tensors to all atoms while preserving rotations'");
+
+	for (int component = 0; component < ANISOTROPY_K2_COMPONENT_COUNT; ++component) {
+		AnisotropyComponentControl *control = &ctx->anisotropy_component_controls[component];
+		const int *index = anisotropy_k2_components[component];
+		char definition[160];
+		control->ctx = ctx;
+		control->kind = ANISOTROPY_COMPONENT_K2;
+		control->component = component;
+		snprintf(definition, sizeof(definition),
+			"label='K_%d%d' step=0.000001 precision=9 group='Rank 2'",
+			index[0] + 1, index[1] + 1);
+		TwAddVarCB(ctx->anisotropy_bar, anisotropy_k2_control_names[component], TW_TYPE_FLOAT,
+			CB_SetAnisotropyComponent, CB_GetAnisotropyComponent, control, definition);
+	}
+	for (int component = 0; component < ANISOTROPY_K4_COMPONENT_COUNT; ++component) {
+		AnisotropyComponentControl *control =
+			&ctx->anisotropy_component_controls[ANISOTROPY_K2_COMPONENT_COUNT + component];
+		const int *index = anisotropy_k4_components[component];
+		char definition[160];
+		control->ctx = ctx;
+		control->kind = ANISOTROPY_COMPONENT_K4;
+		control->component = component;
+		snprintf(definition, sizeof(definition),
+			"label='K_%d%d%d%d' step=0.000001 precision=9 group='Rank 4'",
+			index[0] + 1, index[1] + 1, index[2] + 1, index[3] + 1);
+		TwAddVarCB(ctx->anisotropy_bar, anisotropy_k4_control_names[component], TW_TYPE_FLOAT,
+			CB_SetAnisotropyComponent, CB_GetAnisotropyComponent, control, definition);
+	}
+	anisotropy_refresh_control_visibility(ctx);
+
+
 /*  Info bar F12 */
 	ctx->info_bar = TwNewBar("Info");
 	TwDefine(" Info refresh=0.5 ");
@@ -2626,6 +2695,7 @@ static int GLFWSpecialToWindowKey(int key)
 		case GLFW_KEY_F3: return WINDOW_KEY_F3;
 		case GLFW_KEY_F4: return WINDOW_KEY_F4;
 		case GLFW_KEY_F5: return WINDOW_KEY_F5;
+		case GLFW_KEY_F6: return WINDOW_KEY_F6;
 		case GLFW_KEY_F12: return WINDOW_KEY_F12;
 		default: return 0;
 	}
@@ -3033,6 +3103,14 @@ int isiconified;
 					TwDefine(" BextAC iconified=false ");
 				}else{
 					TwDefine(" BextAC iconified=true ");
+				}
+				break;
+			case  WINDOW_KEY_F6:
+				TwGetParam(ctx->anisotropy_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
+				if (isiconified){
+					TwDefine(" Anisotropy iconified=false ");
+				}else{
+					TwDefine(" Anisotropy iconified=true ");
 				}
 				break;
 			case  WINDOW_KEY_F12:

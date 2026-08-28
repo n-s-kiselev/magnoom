@@ -1,6 +1,6 @@
 # General tensor anisotropy
 
-Status: Active
+Status: Completed
 Owner: Shared
 Last updated: 2026-08-28
 
@@ -21,10 +21,10 @@ representation for uniaxial, cubic, tetragonal, and lower-symmetry cases.
 
 ## 3. Current State
 
-The active physics now uses per-atom tensors. The legacy easy-axis vectors and
-constants remain as inputs: `anisotropy_build_from_legacy()` converts them
-into per-atom tensors at startup and whenever a legacy GUI control changes.
-Effective field and energy routines use the rotated tensor cache.
+The active physics uses per-atom local tensors and a pre-rotated global cache.
+Startup configuration accepts ordered raw K2, K4, and local-to-global rotation
+records. The F6 Anisotropy bar exposes the configured independent components
+and switches at runtime between Global atom-0 and Individual per-atom lookup.
 
 ## 4. Requirements
 
@@ -34,7 +34,7 @@ Effective field and energy routines use the rotated tensor cache.
 - [x] Support atom index `-1` for assignments to every active atom.
 - [x] Preserve existing anisotropy behavior through the physics migration.
 - [x] Parse raw tensor and rotation records from `magnoom.cfg`.
-- [ ] Generate GUI controls only for components nonzero after startup parsing.
+- [x] Generate GUI controls only for components nonzero after startup parsing.
 
 ## 5. Non-Goals
 
@@ -166,7 +166,7 @@ Validation:
 - Existing build and platform checks.
 
 Status:
-- Pending
+- Completed
 
 ## 11. Validation Strategy
 
@@ -218,11 +218,27 @@ None.
   and proper rotation matrices, and refreshed the rotated tensor cache.
 - Exercised global assignment, later override, valid rotation, malformed
   component index, and invalid rotation cases with a temporary harness.
+- Removed the legacy easy-axis GUI controls and added the iconified F6
+  Anisotropy bar with runtime Global/Individual selection and an Individual
+  atom popup.
+- Added reusable callbacks for all six independent K2 and fifteen independent
+  K4 components. Startup masks keep configured controls visible after edits,
+  and atom-0 copy preserves rotations while expanding destination masks.
+- Exercised mode routing, symmetric edits, cache refresh, mask persistence,
+  and atom-0 copy with a temporary callback harness.
 
 ## 15. Final Result
 
-Pending.
+General symmetric rank-2 and rank-4 anisotropy is stored per basis atom,
+configured through raw startup records, rotated outside solver hot loops, and
+used by all effective-field and energy paths. Runtime controls expose only the
+startup-configured independent components and support both shared atom-0 and
+per-atom behavior.
 
 ## 16. Remaining Limitations
 
-Pending.
+- Component visibility is fixed from nonzero startup values; a component that
+  starts at zero cannot be introduced from the GUI.
+- Rotation matrices are configured at startup and are not editable in the GUI.
+- Live GUI edits are intentionally unsynchronized with solver threads, matching
+  the application's existing parameter-control behavior.

@@ -109,6 +109,8 @@ typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
 typedef enum    {ANISOTROPY_GLOBAL, ANISOTROPY_INDIVIDUAL} AnisotropyMode;
 typedef enum    {ANISOTROPY_RECORD_K2, ANISOTROPY_RECORD_K4, ANISOTROPY_RECORD_ROTATION} AnisotropyRecordKind;
+typedef enum    {ANISOTROPY_COMPONENT_K2, ANISOTROPY_COMPONENT_K4} AnisotropyComponentKind;
+enum { ANISOTROPY_K2_COMPONENT_COUNT = 6, ANISOTROPY_K4_COMPONENT_COUNT = 15 };
 
 typedef struct AnisotropyTensor {
 	double K2[3][3];
@@ -123,6 +125,12 @@ typedef struct AnisotropyConfigRecord {
 	double value;
 	int line;
 } AnisotropyConfigRecord;
+
+typedef struct AnisotropyComponentControl {
+	struct magnoom_ctx *ctx;
+	AnisotropyComponentKind kind;
+	int component;
+} AnisotropyComponentControl;
 typedef enum    {LIGHT_OFF, LIGHT_FIXED, LIGHT_ADAPTIVE} enLightingMode;
 
 /*****************************************************************************/
@@ -252,6 +260,11 @@ typedef struct magnoom_ctx {
 	AnisotropyMode  anisotropy_mode;
 	AnisotropyConfigRecord anisotropy_config_records[MAX_ANISOTROPY_CONFIG_RECORDS];
 	int             anisotropy_config_record_count;
+	unsigned int    anisotropy_k2_mask[MAX_ATOMS_PER_BLOCK];
+	unsigned int    anisotropy_k4_mask[MAX_ATOMS_PER_BLOCK];
+	int             anisotropy_selected_atom;
+	AnisotropyComponentControl anisotropy_component_controls[
+		ANISOTROPY_K2_COMPONENT_COUNT + ANISOTROPY_K4_COMPONENT_COUNT];
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	float           BextDCDirection[3];
@@ -446,6 +459,7 @@ typedef struct magnoom_ctx {
 	TwBar*          control_bar;
 	TwBar*          initial_bar;
 	TwBar*          BextAC_bar;
+	TwBar*          anisotropy_bar;
 	TwBar*          info_bar;
 	TwBar*          my_window;
 	TwBar*          modal_bar;
