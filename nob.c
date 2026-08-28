@@ -5,29 +5,42 @@
 #define ATB_SRC ATB_ROOT "src/"
 #define ATB_INCLUDE ATB_ROOT "include/"
 #define BUILD_DIR "build/"
-#define ATB_BUILD_DIR BUILD_DIR "anttweakbar/"
-#define ATB_LIB BUILD_DIR "libAntTweakBar.a"
-#define GLAD_INCLUDE "vendor/glad/include/"
-#define GLAD_SOURCE "vendor/glad/src/glad.c"
-#define GLAD_OBJECT BUILD_DIR "glad.o"
-#define GLFW_INCLUDE "vendor/glfw2/include/"
-#define GLFW_SOURCE "vendor/glfw2/glfw2_unity.c"
-#define GLFW_OBJECT BUILD_DIR "glfw2.o"
-#define MAGNOOM_OBJECT BUILD_DIR "magnoom.o"
-#define BLOCK_SETTER_TEST_SOURCE "tests/block_setter_test.c"
-#define BLOCK_SETTER_TEST_OBJECT BUILD_DIR "block_setter_test.o"
-#define BLOCK_SETTER_TEST_OUTPUT BUILD_DIR "block_setter_test"
-#define OUTPUT BUILD_DIR "magnoom"
-#define ICON_DIR "assets/icon/"
-#define WINDOWS_RESOURCE_OBJECT BUILD_DIR "magnoom-resource.o"
-#define MACOS_APP BUILD_DIR "Magnoom.app/"
-#define NOB_HEADER "vendor/nob/nob.h"
 
 #if defined(_WIN32)
 #define EXE_EXT ".exe"
+#define PLATFORM_SUFFIX "-windows"
+#elif defined(__APPLE__)
+#define EXE_EXT ""
+#define PLATFORM_SUFFIX "-macos"
 #else
 #define EXE_EXT ""
+#define PLATFORM_SUFFIX "-linux"
 #endif
+
+// Every output below is named per-platform (PLATFORM_SUFFIX) so that this
+// repository can live in a shared, Dropbox-synced folder and be built on
+// Linux, macOS, and Windows in turn without one platform's build overwriting
+// or being cleaned out by another's.
+#define ATB_BUILD_DIR BUILD_DIR "anttweakbar" PLATFORM_SUFFIX "/"
+#define ATB_LIB BUILD_DIR "libAntTweakBar" PLATFORM_SUFFIX ".a"
+#define GLAD_INCLUDE "vendor/glad/include/"
+#define GLAD_SOURCE "vendor/glad/src/glad.c"
+#define GLAD_OBJECT BUILD_DIR "glad" PLATFORM_SUFFIX ".o"
+#define GLFW_INCLUDE "vendor/glfw2/include/"
+#define GLFW_SOURCE "vendor/glfw2/glfw2_unity.c"
+#define GLFW_OBJECT BUILD_DIR "glfw2" PLATFORM_SUFFIX ".o"
+#define MAGNOOM_OBJECT BUILD_DIR "magnoom" PLATFORM_SUFFIX ".o"
+#define BLOCK_SETTER_TEST_SOURCE "tests/block_setter_test.c"
+#define BLOCK_SETTER_TEST_OBJECT BUILD_DIR "block_setter_test" PLATFORM_SUFFIX ".o"
+#define BLOCK_SETTER_TEST_OUTPUT BUILD_DIR "block_setter_test" PLATFORM_SUFFIX
+#define OUTPUT BUILD_DIR "magnoom" PLATFORM_SUFFIX
+#define ICON_DIR "assets/icon/"
+// Windows- and macOS-only outputs are not suffixed: each is only ever
+// produced under its own platform's #ifdef branch, so there is no
+// cross-platform collision to guard against.
+#define WINDOWS_RESOURCE_OBJECT BUILD_DIR "magnoom-resource.o"
+#define MACOS_APP BUILD_DIR "Magnoom.app/"
+#define NOB_HEADER "vendor/nob/nob.h"
 
 static const char *atb_common_sources[] = {
     ATB_SRC "TwColors.cpp", ATB_SRC "TwFonts.cpp", ATB_SRC "TwOpenGL.cpp",
@@ -319,16 +332,42 @@ static bool clear_directory(const char *folder)
     return nob_delete_file(folder);
 }
 
+static bool delete_if_exists(const char *path)
+{
+    return !nob_file_exists(path) || nob_delete_file(path);
+}
+
 static bool clean(void)
 {
     bool ok = true;
     ok = clear_directory(ATB_BUILD_DIR) && ok;
-    if (nob_file_exists(ATB_LIB)) ok = nob_delete_file(ATB_LIB) && ok;
-    if (nob_file_exists(GLAD_OBJECT)) ok = nob_delete_file(GLAD_OBJECT) && ok;
-    if (nob_file_exists(GLFW_OBJECT)) ok = nob_delete_file(GLFW_OBJECT) && ok;
-    if (nob_file_exists(MAGNOOM_OBJECT)) ok = nob_delete_file(MAGNOOM_OBJECT) && ok;
-    if (nob_file_exists(OUTPUT EXE_EXT)) ok = nob_delete_file(OUTPUT EXE_EXT) && ok;
-    ok = clear_directory(BUILD_DIR) && ok;
+    ok = delete_if_exists(ATB_LIB) && ok;
+    ok = delete_if_exists(GLAD_OBJECT) && ok;
+    ok = delete_if_exists(GLFW_OBJECT) && ok;
+    ok = delete_if_exists(MAGNOOM_OBJECT) && ok;
+    ok = delete_if_exists(BLOCK_SETTER_TEST_OBJECT) && ok;
+    ok = delete_if_exists(BLOCK_SETTER_TEST_OUTPUT EXE_EXT) && ok;
+    ok = delete_if_exists(OUTPUT EXE_EXT) && ok;
+#if defined(_WIN32)
+    ok = delete_if_exists(WINDOWS_RESOURCE_OBJECT) && ok;
+#elif defined(__APPLE__)
+    ok = clear_directory(MACOS_APP) && ok;
+#else
+    ok = clear_directory(BUILD_DIR "share/") && ok;
+#endif
+
+    // One-time sweep of un-suffixed outputs from before per-platform build
+    // isolation was introduced, so stale orphans left by an old ./nob build
+    // don't linger forever in the shared build/ directory.
+    ok = clear_directory(BUILD_DIR "anttweakbar/") && ok;
+    ok = delete_if_exists(BUILD_DIR "libAntTweakBar.a") && ok;
+    ok = delete_if_exists(BUILD_DIR "glad.o") && ok;
+    ok = delete_if_exists(BUILD_DIR "glfw2.o") && ok;
+    ok = delete_if_exists(BUILD_DIR "magnoom.o") && ok;
+    ok = delete_if_exists(BUILD_DIR "block_setter_test.o") && ok;
+    ok = delete_if_exists(BUILD_DIR "block_setter_test") && ok;
+    ok = delete_if_exists(BUILD_DIR "magnoom") && ok;
+
     return ok;
 }
 
