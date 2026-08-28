@@ -65,8 +65,8 @@ enum engine_mutex_flags{DO_IT,WAIT,STOP_REQUESTED};
 enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 
 #define THREADS_NUMBER 3
-#define MAX_ATOMS_PER_BLOCK 100
-#define MAX_SHELLS 6
+#define MAX_ATOMS_PER_BLOCK 5
+#define MAX_SHELL_NUM 6
 #define MAGNOOM_PATH_CAPACITY 4096
 #define MAGNOOM_MODAL_BAR_CAPACITY 32
 #define MAGNOOM_MODAL_MESSAGE_CAPACITY 512
@@ -108,7 +108,7 @@ typedef enum    {DEFAULT_G, CILINDER_G, SPHERE_G} enGeom;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
 typedef enum    {ANISOTROPY_GLOBAL, ANISOTROPY_INDIVIDUAL} AnisotropyMode;
-typedef enum    {ANISOTROPY_RECORD_K2, ANISOTROPY_RECORD_K4, ANISOTROPY_RECORD_ROTATION} AnisotropyRecordKind;
+typedef enum    {ANISOTROPY_RECORD_K2, ANISOTROPY_RECORD_K4, ANISOTROPY_RECORD_QUATERNION} AnisotropyRecordKind;
 typedef enum    {ANISOTROPY_COMPONENT_K2, ANISOTROPY_COMPONENT_K4} AnisotropyComponentKind;
 enum { ANISOTROPY_K2_COMPONENT_COUNT = 6, ANISOTROPY_K4_COMPONENT_COUNT = 15 };
 
@@ -244,14 +244,16 @@ typedef struct magnoom_ctx {
 	float*          VDMz;
 
 	/* Heisenberg / biquadratic / DMI exchange (indexed by shell) */
-	float           Jij[7];
-	float           Bij[6];
-	float           Dij[6];
+	float           Jij[MAX_SHELL_NUM];
+	float           Bij[MAX_SHELL_NUM];
+	float           Dij[MAX_SHELL_NUM];
 
 	/* Magnetocrystalline anisotropy */
 	AnisotropyTensor anisotropy_local[MAX_ATOMS_PER_BLOCK];
 	AnisotropyTensor anisotropy_global[MAX_ATOMS_PER_BLOCK];
-	double          anisotropy_rotation[MAX_ATOMS_PER_BLOCK][3][3];
+	double          anisotropy_quaternion[MAX_ATOMS_PER_BLOCK][4];
+	float           anisotropy_rotation_axis[3];
+	float           anisotropy_rotation_angle;
 	AnisotropyMode  anisotropy_mode;
 	AnisotropyConfigRecord anisotropy_config_records[MAX_ANISOTROPY_CONFIG_RECORDS];
 	int             anisotropy_config_record_count;
@@ -1326,7 +1328,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 
 	/* Heisenberg / biquadratic / DMI exchange */
 	ctx->Jij[0]=1.0f; ctx->Jij[1]=0.0f; ctx->Jij[2]=0.0f; ctx->Jij[3]=0.0f;
-	ctx->Jij[4]=0.0f; ctx->Jij[5]=0.0f; ctx->Jij[6]=0.0f;
+	ctx->Jij[4]=0.0f; ctx->Jij[5]=0.0f;
 	ctx->Bij[0]=0.0f; ctx->Bij[1]=0.0f; ctx->Bij[2]=0.0f;
 	ctx->Bij[3]=0.0f; ctx->Bij[4]=0.0f; ctx->Bij[5]=0.0f;
 	ctx->Dij[0]=0.251327412f; ctx->Dij[1]=0.0f; ctx->Dij[2]=0.0f;
@@ -1335,8 +1337,12 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	/* Magnetocrystalline anisotropy */
 	ctx->anisotropy_mode = ANISOTROPY_GLOBAL;
 	for (int atom = 0; atom < MAX_ATOMS_PER_BLOCK; ++atom) {
-		for (int i = 0; i < 3; ++i) ctx->anisotropy_rotation[atom][i][i] = 1.0;
+		ctx->anisotropy_quaternion[atom][3] = 1.0;
 	}
+	ctx->anisotropy_rotation_axis[0] = 0.0f;
+	ctx->anisotropy_rotation_axis[1] = 0.0f;
+	ctx->anisotropy_rotation_axis[2] = 1.0f;
+	ctx->anisotropy_rotation_angle = 0.0f;
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	ctx->BextDCDirection[0]=0.0f; ctx->BextDCDirection[1]=0.0f; ctx->BextDCDirection[2]=1.0f;
@@ -2517,10 +2523,10 @@ main (int argc, char **argv){
 
 	/* Keep exactly one complete crystal basis below active. */
 	/* Simple cubic, one atom: */
-	const float basis[][3] = {{0.5f, 0.5f, 0.5f}};
-	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+	// const float basis[][3] = {{0.5f, 0.5f, 0.5f}};
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
-	// B20 basis (u = 0.138), cubic unit cell:
+	/* B20 basis (u = 0.138), cubic unit cell:*/
 	// const float uB20 = 0.138f;
 	// const float basis[][3] = {
 	// 	{0.0f,             0.0f,             0.0f},
@@ -2532,6 +2538,16 @@ main (int argc, char **argv){
 	// mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=1.0f; mag_ctx.abc[1][2]=0.0f;
 	// mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f; mag_ctx.abc[2][2]=1.0f;
 	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	/* 2D Hexagonal lattice, square domain:*/
+	const float basis[][3] = {
+		{0.0f,   0.0f,           0.0f},
+		{0.5f,   0.5f*sqrt(3.0), 0.0f},
+	};
+	mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f; mag_ctx.abc[0][2]=0.0f;
+	mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=sqrt(3.0); mag_ctx.abc[1][2]=0.0f;
+	mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f; mag_ctx.abc[2][2]=1.0f;
+	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
 	/* EuSi fractional coordinates converted to normalized Cartesian positions. */
 	// const float c_EuSi = 3.9845f;

@@ -728,6 +728,42 @@ void TW_CALL CB_GetAnisotropyAtom(void *value, void *clientData)
 	*(int *)value = ((magnoom_ctx *)clientData)->anisotropy_selected_atom;
 }
 
+void TW_CALL CB_SetAnisotropyQuaternion(const void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	int atom = anisotropy_site_index(ctx, ctx->anisotropy_selected_atom);
+	(void)anisotropy_set_quaternion(ctx, atom, (const double *)value);
+	anisotropy_refresh_controls(ctx);
+}
+
+void TW_CALL CB_GetAnisotropyQuaternion(void *value, void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	int atom = anisotropy_site_index(ctx, ctx->anisotropy_selected_atom);
+	memcpy(value, ctx->anisotropy_quaternion[atom], sizeof(ctx->anisotropy_quaternion[atom]));
+}
+
+void TW_CALL CB_AnisotropyResetQuaternion(void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	int atom = anisotropy_site_index(ctx, ctx->anisotropy_selected_atom);
+	(void)anisotropy_reset_quaternion(ctx, atom);
+	anisotropy_refresh_controls(ctx);
+}
+
+void TW_CALL CB_AnisotropyApplyAxisAngle(void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	int atom = anisotropy_site_index(ctx, ctx->anisotropy_selected_atom);
+	double axis[3] = {
+		(double)ctx->anisotropy_rotation_axis[0],
+		(double)ctx->anisotropy_rotation_axis[1],
+		(double)ctx->anisotropy_rotation_axis[2]
+	};
+	(void)anisotropy_compose_axis_angle(ctx, atom, axis, (double)ctx->anisotropy_rotation_angle);
+	anisotropy_refresh_controls(ctx);
+}
+
 void TW_CALL CB_SetAnisotropyComponent(const void *value, void *clientData)
 {
 	AnisotropyComponentControl *control = (AnisotropyComponentControl *)clientData;
@@ -2007,9 +2043,11 @@ static bool ParseAnisotropyConfigRecord(magnoom_ctx *ctx, const char *line,
 	char token[8][64];
 	int fields = sscanf(line, "# %63s %63s %63s %63s %63s %63s %63s %63s",
 		token[0], token[1], token[2], token[3], token[4], token[5], token[6], token[7]);
-	int expected_fields = strcmp(key, "K4:") == 0 ? 7 : 5;
+	int expected_fields = strcmp(key, "K4:") == 0 ? 7 : strcmp(key, "Q:") == 0 ? 6 : 5;
+	int records_needed = strcmp(key, "Q:") == 0 ? 4 : 1;
 	if (fields != expected_fields ||
-		ctx->anisotropy_config_record_count >= MAX_ANISOTROPY_CONFIG_RECORDS) return false;
+		ctx->anisotropy_config_record_count > MAX_ANISOTROPY_CONFIG_RECORDS - records_needed)
+		return false;
 
 	AnisotropyConfigRecord record;
 	memset(&record, 0, sizeof(record));
@@ -2035,14 +2073,18 @@ static bool ParseAnisotropyConfigRecord(magnoom_ctx *ctx, const char *line,
 		}
 		if (!ParseConfigDouble(token[6], &record.value)) return false;
 	} else {
-		record.kind = ANISOTROPY_RECORD_ROTATION;
-		if (!ParseConfigInt(token[2], &record.index[0]) ||
-			!ParseConfigInt(token[3], &record.index[1]) ||
-			!ParseConfigDouble(token[4], &record.value)) return false;
-		for (int i = 0; i < 2; ++i) {
-			if (record.index[i] < 1 || record.index[i] > 3) return false;
-			--record.index[i];
+		double quaternion[4], normalized[4];
+		for (int i = 0; i < 4; ++i) {
+			if (!ParseConfigDouble(token[i + 2], &quaternion[i])) return false;
 		}
+		if (!anisotropy_normalize_quaternion(quaternion, normalized)) return false;
+		for (int component = 0; component < 4; ++component) {
+			record.kind = ANISOTROPY_RECORD_QUATERNION;
+			record.index[0] = component;
+			record.value = normalized[component];
+			ctx->anisotropy_config_records[ctx->anisotropy_config_record_count++] = record;
+		}
+		return true;
 	}
 
 	ctx->anisotropy_config_records[ctx->anisotropy_config_record_count++] = record;
@@ -2093,8 +2135,14 @@ bool readConfigFile(magnoom_ctx *ctx)
 			ended = true;
 			break;
 		}
+		if (strcmp(keyW1, "R:") == 0) {
+			fprintf(stderr, "%s:%d uses unsupported R: rotation syntax; use Q: atom qx qy qz qs.\n",
+				configfilename, line_number);
+			fclose(FilePointer);
+			return false;
+		}
 		if (strcmp(keyW1, "K2:") == 0 || strcmp(keyW1, "K4:") == 0 ||
-			strcmp(keyW1, "R:") == 0) {
+			strcmp(keyW1, "Q:") == 0) {
 			if (!ParseAnisotropyConfigRecord(ctx, line, keyW1, line_number)) {
 				fprintf(stderr, "%s:%d contains an invalid %s record.\n",
 					configfilename, line_number, keyW1);
@@ -2142,9 +2190,9 @@ bool readConfigFile(magnoom_ctx *ctx)
 		return false;
 	}
 	if (ctx->uABC[0] <= 0 || ctx->uABC[1] <= 0 || ctx->uABC[2] <= 0 ||
-		ctx->ShellNumber <= 0 || ctx->ShellNumber > MAX_SHELLS) {
+		ctx->ShellNumber <= 0 || ctx->ShellNumber > MAX_SHELL_NUM) {
 		fprintf(stderr, "%s must define positive dimensions and between 1 and %d shells.\n",
-			configfilename, MAX_SHELLS);
+			configfilename, MAX_SHELL_NUM);
 		fclose(FilePointer);
 		return false;
 	}
@@ -2579,8 +2627,19 @@ void setupTweakBar(magnoom_ctx *ctx)
 			CB_SetAnisotropyAtom, CB_GetAnisotropyAtom, ctx,
 			"label='Atom' help='Unit-cell atom edited in Individual mode'");
 	}
+	TwAddVarCB(ctx->anisotropy_bar, "Rotation", TW_TYPE_QUAT4D,
+		CB_SetAnisotropyQuaternion, CB_GetAnisotropyQuaternion, ctx,
+		"label='Rotation' opened=true showval=true help='Rotate the selected atom local anisotropy tensor (all four components are editable)'");
+	TwAddVarRW(ctx->anisotropy_bar, "Axis", TW_TYPE_DIR3F, &ctx->anisotropy_rotation_axis,
+		" help='Unit axis of the additional rotation composed with the current quaternion' ");
+	TwAddVarRW(ctx->anisotropy_bar, "Angle", TW_TYPE_FLOAT, &ctx->anisotropy_rotation_angle,
+		" min=-360 max=360 step=1 help='Angle (degrees) of the additional rotation' ");
+	TwAddButton(ctx->anisotropy_bar, "Compose rotation", CB_AnisotropyApplyAxisAngle, ctx,
+		" label='compose axis-angle' help='Compose the current quaternion with the axis-angle rotation' ");
+	TwAddButton(ctx->anisotropy_bar, "Reset rotation", CB_AnisotropyResetQuaternion, ctx,
+		" label='reset to identity' help='Reset the rotation quaternion to identity (0,0,0,1)' ");
 	TwAddButton(ctx->anisotropy_bar, "CopyAtom0", CB_CopyAnisotropyAtom0, ctx,
-		"label='Copy atom 0 to all' help='Copy atom 0 local K2/K4 tensors to all atoms while preserving rotations'");
+		"label='Copy atom 0 to all' help='Copy atom 0 local K2/K4 tensors to all atoms while preserving quaternions'");
 
 	for (int component = 0; component < ANISOTROPY_K2_COMPONENT_COUNT; ++component) {
 		AnisotropyComponentControl *control = &ctx->anisotropy_component_controls[component];
