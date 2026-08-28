@@ -22,8 +22,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h> 
+#include <stdio.h>
 #include <time.h>
+#include <ctype.h>
+#include <stdarg.h>
+#include <stddef.h>
 
 #if defined(_WIN32)
 	#include <windows.h>
@@ -2521,82 +2524,6 @@ main (int argc, char **argv){
 	}
 	////////////////////////////////////////////////
 
-	/* Keep exactly one complete crystal basis below active. */
-	/* Simple cubic, one atom: */
-	// const float basis[][3] = {{0.5f, 0.5f, 0.5f}};
-	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
-
-	/* B20 basis (u = 0.138), cubic unit cell:*/
-	// const float uB20 = 0.138f;
-	// const float basis[][3] = {
-	// 	{0.0f,             0.0f,             0.0f},
-	// 	{0.5f,             0.5f-2.0f*uB20, 1.0f-2.0f*uB20},
-	// 	{1.0f-2.0f*uB20, 0.5f,             0.5f-2.0f*uB20},
-	// 	{0.5f-2.0f*uB20, 1.0f-2.0f*uB20, 0.5f}
-	// };
-	// mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f; mag_ctx.abc[0][2]=0.0f;
-	// mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=1.0f; mag_ctx.abc[1][2]=0.0f;
-	// mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f; mag_ctx.abc[2][2]=1.0f;
-	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
-
-	/* 2D Hexagonal lattice, square domain:*/
-	const float basis[][3] = {
-		{0.0f,   0.0f,           0.0f},
-		{0.5f,   0.5f*sqrt(3.0), 0.0f},
-	};
-	mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f; mag_ctx.abc[0][2]=0.0f;
-	mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=sqrt(3.0); mag_ctx.abc[1][2]=0.0f;
-	mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f; mag_ctx.abc[2][2]=1.0f;
-	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
-
-	/* EuSi fractional coordinates converted to normalized Cartesian positions. */
-	// const float c_EuSi = 3.9845f;
-	// const float a_EuSi = 4.6955f/c_EuSi;
-	// const float b_EuSi = 11.1528f/c_EuSi;
-	// const float u_Eu = 0.3595f;
-	// const float basis[][3] = {
-	// 	{0.25f, 0.0f,          u_Eu*b_EuSi},
-	// 	{0.75f, 0.0f,          (1.0f-u_Eu)*b_EuSi},
-	// 	{0.75f, 0.5f*a_EuSi, (0.5f-u_Eu)*b_EuSi},
-	// 	{0.25f, 0.5f*a_EuSi, (0.5f+u_Eu)*b_EuSi}
-	// };
-	// mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f;   mag_ctx.abc[0][2]=0.0f;
-	// mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=a_EuSi; mag_ctx.abc[1][2]=0.0f;
-	// mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f;   mag_ctx.abc[2][2]=b_EuSi;
-	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
-
-	// FCC2 basis, orthogonal unit cell:
-	// const float sqrt2 = sqrtf(2.0f);
-	// const float basis[][3] = {
-	// 	{0.0f, 0.0f,             0.0f},
-	// 	{0.0f, sqrt2/2.0f,      0.0f},
-	// 	{0.5f, sqrt2/4.0f,      sqrt2/4.0f},
-	// 	{0.5f, 3.0f*sqrt2/4.0f, sqrt2/4.0f},
-	// 	{0.0f, sqrt2/2.0f,      sqrt2/2.0f}
-	// };
-	// mag_ctx.abc[0][0]=1.0f; mag_ctx.abc[0][1]=0.0f;  mag_ctx.abc[0][2]=0.0f;
-	// mag_ctx.abc[1][0]=0.0f; mag_ctx.abc[1][1]=sqrt2; mag_ctx.abc[1][2]=0.0f;
-	// mag_ctx.abc[2][0]=0.0f; mag_ctx.abc[2][1]=0.0f;  mag_ctx.abc[2][2]=sqrt2;
-	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
-
-	// FCC3 basis, nonorthogonal unit cell:
-	// const float sqrt2 = sqrtf(2.0f);
-	// const float sqrt3 = sqrtf(3.0f);
-	// const float sqrt6 = sqrtf(6.0f);
-	// const float basis[][3] = {{0.0f, 0.0f, 0.0f}};
-	// mag_ctx.abc[0][0]=sqrt2;      mag_ctx.abc[0][1]=0.0f;       mag_ctx.abc[0][2]=0.0f;
-	// mag_ctx.abc[1][0]=sqrt2/2.0f; mag_ctx.abc[1][1]=sqrt6/2.0f; mag_ctx.abc[1][2]=0.0f;
-	// mag_ctx.abc[2][0]=sqrt2/2.0f; mag_ctx.abc[2][1]=sqrt6/6.0f; mag_ctx.abc[2][2]=sqrt3/sqrt2;
-	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
-
-	if (mag_ctx.RadiusOfShell == NULL ||
-		!magnoom_ctx_set_block(&mag_ctx, atom_count, basis)) {
-		fprintf(stderr, "Unable to configure the selected crystal basis.\n");
-		free(mag_ctx.Block);
-		free(mag_ctx.RadiusOfShell);
-		free(mag_ctx.NeighborsPerAtom);
-		return 1;
-	}
 	if (!anisotropy_apply_config_records(&mag_ctx)) {
 		fprintf(stderr, "Unable to initialize anisotropy tensors.\n");
 		return 1;

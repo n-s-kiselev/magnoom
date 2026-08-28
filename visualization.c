@@ -2037,164 +2037,328 @@ static bool ParseConfigDouble(const char *text, double *result)
 	return true;
 }
 
-static bool ParseAnisotropyConfigRecord(magnoom_ctx *ctx, const char *line,
-	const char *key, int line_number)
+/* Trim leading/trailing whitespace from a NUL-terminated string in place. */
+static char *ConfigTrim(char *text)
 {
-	char token[8][64];
-	int fields = sscanf(line, "# %63s %63s %63s %63s %63s %63s %63s %63s",
-		token[0], token[1], token[2], token[3], token[4], token[5], token[6], token[7]);
-	int expected_fields = strcmp(key, "K4:") == 0 ? 7 : strcmp(key, "Q:") == 0 ? 6 : 5;
-	int records_needed = strcmp(key, "Q:") == 0 ? 4 : 1;
-	if (fields != expected_fields ||
-		ctx->anisotropy_config_record_count > MAX_ANISOTROPY_CONFIG_RECORDS - records_needed)
-		return false;
+	while (isspace((unsigned char)*text)) ++text;
+	if (*text == '\0') return text;
+	char *end = text + strlen(text) - 1;
+	while (end > text && isspace((unsigned char)*end)) --end;
+	end[1] = '\0';
+	return text;
+}
+
+/* Split a trimmed, non-empty, non-comment line into a trimmed key/value pair
+ * around the first '='. Returns false if there is no '=' or either side is
+ * empty after trimming. */
+static bool SplitConfigKeyValue(char *line, char **key, char **value)
+{
+	char *equals = strchr(line, '=');
+	if (equals == NULL) return false;
+	*equals = '\0';
+	*key = ConfigTrim(line);
+	*value = ConfigTrim(equals + 1);
+	return (*key)[0] != '\0' && (*value)[0] != '\0';
+}
+
+static bool ConfigError(const char *filename, int line_number, const char *format, ...)
+{
+	fprintf(stderr, "%s:%d: ", filename, line_number);
+	va_list args;
+	va_start(args, format);
+	vfprintf(stderr, format, args);
+	va_end(args);
+	fprintf(stderr, "\n");
+	return false;
+}
+
+typedef enum { CONFIG_FIELD_FLOAT, CONFIG_FIELD_INT } ConfigFieldType;
+
+typedef struct ConfigScalarField {
+	const char *key;
+	ConfigFieldType type;
+	size_t offset;
+} ConfigScalarField;
+
+static const ConfigScalarField CONFIG_SCALAR_FIELDS[] = {
+	{"ax", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[0][0])},
+	{"ay", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[0][1])},
+	{"az", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[0][2])},
+	{"bx", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[1][0])},
+	{"by", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[1][1])},
+	{"bz", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[1][2])},
+	{"cx", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[2][0])},
+	{"cy", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[2][1])},
+	{"cz", CONFIG_FIELD_FLOAT, offsetof(magnoom_ctx, abc[2][2])},
+	{"Na", CONFIG_FIELD_INT, offsetof(magnoom_ctx, uABC[0])},
+	{"Nb", CONFIG_FIELD_INT, offsetof(magnoom_ctx, uABC[1])},
+	{"Nc", CONFIG_FIELD_INT, offsetof(magnoom_ctx, uABC[2])},
+	{"Shells", CONFIG_FIELD_INT, offsetof(magnoom_ctx, ShellNumber)},
+	{"BCa", CONFIG_FIELD_INT, offsetof(magnoom_ctx, Boundary[0])},
+	{"BCb", CONFIG_FIELD_INT, offsetof(magnoom_ctx, Boundary[1])},
+	{"BCc", CONFIG_FIELD_INT, offsetof(magnoom_ctx, Boundary[2])},
+};
+
+static bool ApplyConfigScalarField(magnoom_ctx *ctx, const ConfigScalarField *field,
+	const char *value_text)
+{
+	void *target = (char *)ctx + field->offset;
+	if (field->type == CONFIG_FIELD_FLOAT) return ParseConfigFloat(value_text, (float *)target);
+	return ParseConfigInt(value_text, (int *)target);
+}
+
+/* Match a leading "Atom<N>" or "AtomAll" prefix. On success, *atom is the
+ * 0-based atom index (-1 for "All") and *rest points just past the prefix
+ * (e.g. "x" for "Atom0x", "_K11" for "Atom0_K11"). */
+static bool ParseAtomKeyPrefix(const char *key, int *atom, const char **rest)
+{
+	if (strncmp(key, "Atom", 4) != 0) return false;
+	const char *after = key + 4;
+	if (strncmp(after, "All", 3) == 0) {
+		*atom = -1;
+		*rest = after + 3;
+		return true;
+	}
+	if (!isdigit((unsigned char)*after)) return false;
+	char *end = NULL;
+	long value = strtol(after, &end, 10);
+	if (end == after || value < 0 || value >= MAX_ATOMS_PER_BLOCK) return false;
+	*atom = (int)value;
+	*rest = end;
+	return true;
+}
+
+/* Handles one already-split "key = value" pair: scalar fields, Atom<N>x/y/z
+ * positions (staged into `positions`, applied to ctx after the whole file is
+ * read), and Atom<N|All>_K.. / Atom<N|All>_Q. anisotropy records (staged
+ * directly into ctx->anisotropy_config_records[], same as before). */
+static bool HandleConfigKeyValue(magnoom_ctx *ctx, const char *filename, int line_number,
+	const char *key, const char *value,
+	float positions[MAX_ATOMS_PER_BLOCK][3], bool position_seen[MAX_ATOMS_PER_BLOCK][3],
+	int *max_atom_seen, bool *any_position_seen,
+	bool quaternion_seen[MAX_ATOMS_PER_BLOCK + 1][4])
+{
+	for (size_t i = 0; i < sizeof(CONFIG_SCALAR_FIELDS)/sizeof(CONFIG_SCALAR_FIELDS[0]); ++i) {
+		if (strcmp(key, CONFIG_SCALAR_FIELDS[i].key) == 0) {
+			if (!ApplyConfigScalarField(ctx, &CONFIG_SCALAR_FIELDS[i], value))
+				return ConfigError(filename, line_number, "invalid value for %s", key);
+			return true;
+		}
+	}
+
+	int atom;
+	const char *rest;
+	if (!ParseAtomKeyPrefix(key, &atom, &rest))
+		return ConfigError(filename, line_number, "unknown configuration key '%s'", key);
+
+	if (strcmp(rest, "x") == 0 || strcmp(rest, "y") == 0 || strcmp(rest, "z") == 0) {
+		if (atom < 0)
+			return ConfigError(filename, line_number,
+				"AtomAll cannot be used for atom positions; use Atom<N>%s", rest);
+		float parsed;
+		if (!ParseConfigFloat(value, &parsed))
+			return ConfigError(filename, line_number, "invalid value for %s", key);
+		int component = rest[0] - 'x';
+		positions[atom][component] = parsed;
+		position_seen[atom][component] = true;
+		*any_position_seen = true;
+		if (atom > *max_atom_seen) *max_atom_seen = atom;
+		return true;
+	}
+
+	if (rest[0] != '_')
+		return ConfigError(filename, line_number, "unknown configuration key '%s'", key);
+	const char *component = rest + 1;
+	size_t component_len = strlen(component);
 
 	AnisotropyConfigRecord record;
 	memset(&record, 0, sizeof(record));
 	record.line = line_number;
-	if (!ParseConfigInt(token[1], &record.atom) || record.atom < -1 ||
-		record.atom >= MAX_ATOMS_PER_BLOCK) return false;
+	record.atom = atom;
 
-	if (strcmp(key, "K2:") == 0) {
-		record.kind = ANISOTROPY_RECORD_K2;
-		if (!ParseConfigInt(token[2], &record.index[0]) ||
-			!ParseConfigInt(token[3], &record.index[1]) ||
-			!ParseConfigDouble(token[4], &record.value)) return false;
-		for (int i = 0; i < 2; ++i) {
-			if (record.index[i] < 1 || record.index[i] > 3) return false;
-			--record.index[i];
+	if (component[0] == 'K' && (component_len == 3 || component_len == 5)) {
+		int digit_count = (int)component_len - 1;
+		for (int i = 0; i < digit_count; ++i) {
+			char digit = component[1 + i];
+			if (digit < '1' || digit > '3')
+				return ConfigError(filename, line_number, "invalid tensor component '%s'", key);
+			record.index[i] = digit - '1';
 		}
-	} else if (strcmp(key, "K4:") == 0) {
-		record.kind = ANISOTROPY_RECORD_K4;
-		for (int i = 0; i < 4; ++i) {
-			if (!ParseConfigInt(token[i + 2], &record.index[i]) ||
-				record.index[i] < 1 || record.index[i] > 3) return false;
-			--record.index[i];
-		}
-		if (!ParseConfigDouble(token[6], &record.value)) return false;
+		record.kind = digit_count == 2 ? ANISOTROPY_RECORD_K2 : ANISOTROPY_RECORD_K4;
+		if (!ParseConfigDouble(value, &record.value))
+			return ConfigError(filename, line_number, "invalid value for %s", key);
+	} else if (strcmp(component, "Qx") == 0 || strcmp(component, "Qy") == 0 ||
+		strcmp(component, "Qz") == 0 || strcmp(component, "Qs") == 0) {
+		record.kind = ANISOTROPY_RECORD_QUATERNION;
+		record.index[0] = component[1] == 'x' ? 0 : component[1] == 'y' ? 1 :
+			component[1] == 'z' ? 2 : 3;
+		if (!ParseConfigDouble(value, &record.value))
+			return ConfigError(filename, line_number, "invalid value for %s", key);
+		size_t slot = atom < 0 ? (size_t)MAX_ATOMS_PER_BLOCK : (size_t)atom;
+		quaternion_seen[slot][record.index[0]] = true;
 	} else {
-		double quaternion[4], normalized[4];
-		for (int i = 0; i < 4; ++i) {
-			if (!ParseConfigDouble(token[i + 2], &quaternion[i])) return false;
-		}
-		if (!anisotropy_normalize_quaternion(quaternion, normalized)) return false;
-		for (int component = 0; component < 4; ++component) {
-			record.kind = ANISOTROPY_RECORD_QUATERNION;
-			record.index[0] = component;
-			record.value = normalized[component];
-			ctx->anisotropy_config_records[ctx->anisotropy_config_record_count++] = record;
-		}
-		return true;
+		return ConfigError(filename, line_number, "unknown configuration key '%s'", key);
 	}
 
+	if (ctx->anisotropy_config_record_count >= MAX_ANISOTROPY_CONFIG_RECORDS)
+		return ConfigError(filename, line_number, "too many anisotropy records (max %d)",
+			MAX_ANISOTROPY_CONFIG_RECORDS);
 	ctx->anisotropy_config_records[ctx->anisotropy_config_record_count++] = record;
 	return true;
+}
+
+/* Write a fresh magnoom.cfg reflecting ctx's current (default) values, in the
+ * key = value syntax readConfigFile() understands. */
+bool writeDefaultConfigFile(const magnoom_ctx *ctx, const char *filename)
+{
+	FILE *FilePointer = fopen(filename, "wb");
+	if (FilePointer == NULL) return false;
+
+	fprintf(FilePointer, "# Lattice vectors\n");
+	fprintf(FilePointer, "ax = %g\nay = %g\naz = %g\n",
+		(double)ctx->abc[0][0], (double)ctx->abc[0][1], (double)ctx->abc[0][2]);
+	fprintf(FilePointer, "bx = %g\nby = %g\nbz = %g\n",
+		(double)ctx->abc[1][0], (double)ctx->abc[1][1], (double)ctx->abc[1][2]);
+	fprintf(FilePointer, "cx = %g\ncy = %g\ncz = %g\n",
+		(double)ctx->abc[2][0], (double)ctx->abc[2][1], (double)ctx->abc[2][2]);
+
+	fprintf(FilePointer, "\n# Number of cells\n");
+	fprintf(FilePointer, "Na = %d\nNb = %d\nNc = %d\n",
+		ctx->uABC[0], ctx->uABC[1], ctx->uABC[2]);
+	fprintf(FilePointer, "Shells = %d\n", ctx->ShellNumber);
+
+	fprintf(FilePointer, "\n# Boundary conditions\n");
+	fprintf(FilePointer, "BCa = %d\nBCb = %d\nBCc = %d\n",
+		ctx->Boundary[0], ctx->Boundary[1], ctx->Boundary[2]);
+
+	fprintf(FilePointer, "\n# Atom positions (fractional coordinates in the unit cell)\n");
+	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
+		fprintf(FilePointer, "Atom%dx = %g\nAtom%dy = %g\nAtom%dz = %g\n",
+			atom, (double)ctx->Block[atom][0],
+			atom, (double)ctx->Block[atom][1],
+			atom, (double)ctx->Block[atom][2]);
+	}
+
+	bool ok = ferror(FilePointer) == 0;
+	if (fclose(FilePointer) != 0) ok = false;
+	return ok;
 }
 
 bool readConfigFile(magnoom_ctx *ctx)
 {
 	const char configfilename[] = "magnoom.cfg";
-	char line[256];
-	char keyW1[256], keyW2[256], keyW3[256];
-	bool began = false;
-	bool ended = false;
+	char raw_line[256];
 	int line_number = 0;
 	ctx->anisotropy_config_record_count = 0;
 
 	FILE *FilePointer = fopen(configfilename, "rb");
 	if (FilePointer == NULL) {
-		printf("Cannot open file: %s \n", configfilename);
-		printf("new magnoom.cfg will be created.\n");
+		if (writeDefaultConfigFile(ctx, configfilename)) {
+			printf("%s not found; a default configuration file has been created.\n",
+				configfilename);
+		} else {
+			printf("%s not found and could not be created; proceeding with built-in defaults.\n",
+				configfilename);
+		}
 		return true;
 	}
 
-	while (fgets(line, sizeof(line), FilePointer) != NULL) {
+	float positions[MAX_ATOMS_PER_BLOCK][3];
+	bool position_seen[MAX_ATOMS_PER_BLOCK][3];
+	memset(position_seen, 0, sizeof(position_seen));
+	bool any_position_seen = false;
+	int max_atom_seen = -1;
+	bool quaternion_seen[MAX_ATOMS_PER_BLOCK + 1][4];
+	memset(quaternion_seen, 0, sizeof(quaternion_seen));
+
+	bool first_line = true;
+	while (fgets(raw_line, sizeof(raw_line), FilePointer) != NULL) {
 		++line_number;
-		if (strchr(line, '\n') == NULL && !feof(FilePointer)) {
-			fprintf(stderr, "%s contains a line longer than %zu characters.\n",
-				configfilename, sizeof(line)-1);
+		if (strchr(raw_line, '\n') == NULL && !feof(FilePointer)) {
+			ConfigError(configfilename, line_number, "line longer than %zu characters",
+				sizeof(raw_line) - 1);
 			fclose(FilePointer);
 			return false;
 		}
-		if (line[0] != '#') continue;
 
-		keyW1[0] = keyW2[0] = keyW3[0] = '\0';
-		int fields = sscanf(line, "# %255s %255s %255s", keyW1, keyW2, keyW3);
-		if (!began) {
-			if (fields != 3 || strcmp(keyW1, "begin") != 0 ||
-				strcmp(keyW2, "magnoom") != 0 || strcmp(keyW3, "config") != 0) {
-				fprintf(stderr, "%s has a wrong header or file format.\n", configfilename);
+		char *line = ConfigTrim(raw_line);
+		if (first_line) {
+			first_line = false;
+			if (strcmp(line, "# begin magnoom config") == 0) {
+				ConfigError(configfilename, line_number,
+					"uses the old comment-based syntax, which is no longer supported; "
+					"convert it to 'key = value' form (see README.md)");
 				fclose(FilePointer);
 				return false;
 			}
-			began = true;
-			continue;
 		}
-		if (fields == 3 && strcmp(keyW1, "end") == 0 &&
-			strcmp(keyW2, "magnoom") == 0 && strcmp(keyW3, "config") == 0) {
-			ended = true;
-			break;
-		}
-		if (strcmp(keyW1, "R:") == 0) {
-			fprintf(stderr, "%s:%d uses unsupported R: rotation syntax; use Q: atom qx qy qz qs.\n",
-				configfilename, line_number);
+		if (line[0] == '\0' || line[0] == '#') continue;
+
+		char *key, *value;
+		if (!SplitConfigKeyValue(line, &key, &value)) {
+			ConfigError(configfilename, line_number, "malformed line (expected 'key = value')");
 			fclose(FilePointer);
 			return false;
-		}
-		if (strcmp(keyW1, "K2:") == 0 || strcmp(keyW1, "K4:") == 0 ||
-			strcmp(keyW1, "Q:") == 0) {
-			if (!ParseAnisotropyConfigRecord(ctx, line, keyW1, line_number)) {
-				fprintf(stderr, "%s:%d contains an invalid %s record.\n",
-					configfilename, line_number, keyW1);
-				fclose(FilePointer);
-				return false;
-			}
-			continue;
 		}
 
-		float *float_target = NULL;
-		int *int_target = NULL;
-		if      (strcmp(keyW1, "ax:") == 0) float_target = &ctx->abc[0][0];
-		else if (strcmp(keyW1, "ay:") == 0) float_target = &ctx->abc[0][1];
-		else if (strcmp(keyW1, "az:") == 0) float_target = &ctx->abc[0][2];
-		else if (strcmp(keyW1, "bx:") == 0) float_target = &ctx->abc[1][0];
-		else if (strcmp(keyW1, "by:") == 0) float_target = &ctx->abc[1][1];
-		else if (strcmp(keyW1, "bz:") == 0) float_target = &ctx->abc[1][2];
-		else if (strcmp(keyW1, "cx:") == 0) float_target = &ctx->abc[2][0];
-		else if (strcmp(keyW1, "cy:") == 0) float_target = &ctx->abc[2][1];
-		else if (strcmp(keyW1, "cz:") == 0) float_target = &ctx->abc[2][2];
-		else if (strcmp(keyW1, "Na:") == 0) int_target = &ctx->uABC[0];
-		else if (strcmp(keyW1, "Nb:") == 0) int_target = &ctx->uABC[1];
-		else if (strcmp(keyW1, "Nc:") == 0) int_target = &ctx->uABC[2];
-		else if (strcmp(keyW1, "Shells:") == 0) int_target = &ctx->ShellNumber;
-		else if (strcmp(keyW1, "BCa:") == 0) int_target = &ctx->Boundary[0];
-		else if (strcmp(keyW1, "BCb:") == 0) int_target = &ctx->Boundary[1];
-		else if (strcmp(keyW1, "BCc:") == 0) int_target = &ctx->Boundary[2];
-
-		if (float_target != NULL && (fields < 2 || !ParseConfigFloat(keyW2, float_target))) {
-			fprintf(stderr, "%s contains an invalid value for %s.\n", configfilename, keyW1);
+		if (!HandleConfigKeyValue(ctx, configfilename, line_number, key, value,
+			positions, position_seen, &max_atom_seen, &any_position_seen, quaternion_seen)) {
 			fclose(FilePointer);
 			return false;
 		}
-		if (int_target != NULL && (fields < 2 || !ParseConfigInt(keyW2, int_target))) {
-			fprintf(stderr, "%s contains an invalid value for %s.\n", configfilename, keyW1);
-			fclose(FilePointer);
-			return false;
-		}
-		if (int_target != NULL) printf("%s %d\n", keyW1, *int_target);
 	}
 
-	if (!began || !ended) {
-		fprintf(stderr, "%s is missing its begin or end marker.\n", configfilename);
-		fclose(FilePointer);
-		return false;
-	}
 	if (ctx->uABC[0] <= 0 || ctx->uABC[1] <= 0 || ctx->uABC[2] <= 0 ||
 		ctx->ShellNumber <= 0 || ctx->ShellNumber > MAX_SHELL_NUM) {
 		fprintf(stderr, "%s must define positive dimensions and between 1 and %d shells.\n",
 			configfilename, MAX_SHELL_NUM);
 		fclose(FilePointer);
 		return false;
+	}
+
+	/* magnoom_ctx_set_block() is also what recomputes NOB/NOS and the other
+	 * uABC/abc-derived geometry fields, so it must run again whenever this
+	 * file could have changed Na/Nb/Nc or the lattice vectors -- even if it
+	 * didn't specify any Atom<N>x/y/z keys, in which case the atom positions
+	 * already in ctx (magnoom_ctx_init()'s default block) are reapplied
+	 * against the now-current uABC/abc. Skipping this call after a uABC
+	 * change would leave NOB/NOS stale relative to the actual grid size. */
+	int atom_count = ctx->AtomsPerBlock;
+	const float (*basis_positions)[3] = ctx->Block;
+	if (any_position_seen) {
+		atom_count = max_atom_seen + 1;
+		basis_positions = positions;
+		for (int atom = 0; atom < atom_count; ++atom) {
+			if (!position_seen[atom][0] || !position_seen[atom][1] || !position_seen[atom][2]) {
+				fprintf(stderr,
+					"%s: Atom%d is missing one of its x/y/z components; atom indices must be "
+					"contiguous starting at Atom0.\n", configfilename, atom);
+				fclose(FilePointer);
+				return false;
+			}
+		}
+	}
+	if (!magnoom_ctx_set_block(ctx, atom_count, basis_positions)) {
+		fprintf(stderr, "%s defines an invalid set of atom positions.\n", configfilename);
+		fclose(FilePointer);
+		return false;
+	}
+
+	for (int slot = 0; slot <= MAX_ATOMS_PER_BLOCK; ++slot) {
+		bool any = quaternion_seen[slot][0] || quaternion_seen[slot][1] ||
+			quaternion_seen[slot][2] || quaternion_seen[slot][3];
+		bool all = quaternion_seen[slot][0] && quaternion_seen[slot][1] &&
+			quaternion_seen[slot][2] && quaternion_seen[slot][3];
+		if (any && !all) {
+			if (slot == MAX_ATOMS_PER_BLOCK)
+				fprintf(stderr, "%s: AtomAll is missing one or more of its Qx/Qy/Qz/Qs "
+					"components; all four must be given together.\n", configfilename);
+			else
+				fprintf(stderr, "%s: Atom%d is missing one or more of its Qx/Qy/Qz/Qs "
+					"components; all four must be given together.\n", configfilename, slot);
+			fclose(FilePointer);
+			return false;
+		}
 	}
 
 	float *new_radius_of_shell = (float *)calloc((size_t)ctx->ShellNumber, sizeof(float));

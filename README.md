@@ -121,36 +121,128 @@ rooted paths such as `\file.csv` are rejected as ambiguous.
 
 Magnoom's application sources are compiled as C99. The vendored AntTweakBar implementation remains C++, so the final executable is linked with the C++ compiler driver.
 
-The active crystal basis is selected in `magnoom.c` immediately after
-`readConfigFile()`. The one-atom simple-cubic basis is enabled by default;
-commented B20, EuSi, FCC2, and FCC3 alternatives are provided beside it. Keep each
-alternative's lattice vectors and atom positions together when selecting it.
-`magnoom_ctx_set_block()` copies up to 100 Cartesian atom positions, validates
-them against the half-open unit cell, and must run before neighbor maps and
-spin or drawing arrays are created.
+`magnoom.cfg` (repo root, next to the built executable) configures Magnoom at
+startup. It uses plain `key = value` lines; `#` starts a comment that runs to
+the end of the line, blank lines are ignored, and whitespace around keys,
+`=`, and values is ignored. Unknown keys and malformed or out-of-range values
+are rejected with a `magnoom.cfg:<line>: ...` error and the program exits — a
+typo in the file is never silently ignored. If `magnoom.cfg` is missing, a
+default file is written in its place and the program starts from built-in
+defaults; if it can't be written (e.g. a read-only directory), the program
+just starts from the built-in defaults. Values not mentioned in the file keep
+their default. The old `# begin magnoom config` / `# key: value` syntax is no
+longer supported; a file starting with the old header produces a clear error
+telling you to convert it.
 
-General anisotropy components can be added between the begin/end markers in
-`magnoom.cfg`:
+`magnoom.cfg.example` (repo root) is a reference listing of every key
+`readConfigFile()` understands — lattice vectors, cell counts, shell count,
+boundary conditions, the default atom position, and the full set of per-atom
+anisotropy keys — each set to the same value `magnoom_ctx_init()` already
+uses, so loading it changes nothing. Copy it to `magnoom.cfg` and edit the
+values you actually want to change; any key you omit keeps its default.
 
 ```text
-# K2: atom i j value
-# K4: atom i j k l value
-# R: atom i j value
+# Lattice vectors
+ax = 1.0
+ay = 0.0
+az = 0.0
+bx = 0.0
+by = 1.0
+bz = 0.0
+cx = 0.0
+cy = 0.0
+cz = 1.0
+
+# Number of cells
+Na = 50
+Nb = 50
+Nc = 50
+
+Shells = 4
+
+# Boundary conditions (optional; defaults shown)
+BCa = 1
+BCb = 1
+BCc = 0
 ```
 
-Atom indices are zero-based; atom `-1` applies the assignment to every atom in
-the active basis. Tensor and rotation-matrix indices are one-based and range
-from 1 through 3. Records are applied in order, so later records override
-earlier symmetric tensor assignments. `R[i][j]` maps local component `j` to
-global component `i`; each resulting rotation matrix must be orthonormal with
-determinant `+1`. Values must be finite.
+**Atom positions.** The crystal basis (the atoms inside one unit cell,
+`magnoom_ctx_set_block()`'s target) is configured with `Atom<N>x`/`Atom<N>y`/
+`Atom<N>z` keys, `N` starting at `0` and counting up with no gaps — the number
+of atoms is inferred from how many are given, up to `MAX_ATOMS_PER_BLOCK = 5`.
+If no `AtomNx/y/z` keys are present, the built-in one-atom simple-cubic basis
+(`{0.5, 0.5, 0.5}`) is kept. Positions are given in the same Cartesian units
+as the lattice vectors above, and must map to a fractional position inside
+the half-open unit cell `[0, 1)` once expressed in that lattice basis. For
+example, a two-atom basis:
+
+```text
+Atom0x = 0.0
+Atom0y = 0.0
+Atom0z = 0.0
+
+Atom1x = 0.5
+Atom1y = 0.5
+Atom1z = 0.5
+```
+
+A few other crystal structures, for reference (set the matching lattice
+vectors above alongside the atom positions):
+
+```text
+# B20 (u = 0.138), cubic unit cell (identity lattice vectors, as shown above):
+Atom0x = 0.0     Atom0y = 0.0     Atom0z = 0.0
+Atom1x = 0.5     Atom1y = 0.224   Atom1z = 0.724
+Atom2x = 0.724   Atom2y = 0.5     Atom2z = 0.224
+Atom3x = 0.224   Atom3y = 0.724   Atom3z = 0.5
+
+# FCC2, orthogonal unit cell (Cartesian positions; by=1.4142136, cz=1.4142136):
+Atom0x = 0.0     Atom0y = 0.0        Atom0z = 0.0
+Atom1x = 0.0     Atom1y = 0.7071068  Atom1z = 0.0
+Atom2x = 0.5     Atom2y = 0.3535534  Atom2z = 0.3535534
+Atom3x = 0.5     Atom3y = 1.0606602  Atom3z = 0.3535534
+Atom4x = 0.0     Atom4y = 0.7071068  Atom4z = 0.7071068
+```
+
+**Anisotropy.** Per-atom magnetocrystalline anisotropy tensor and rotation
+components are set with `Atom<N>_...` keys (or `AtomAll_...` to assign every
+atom at once, matching the atom `-1` wildcard used internally):
+
+```text
+# Rank-2 and rank-4 components use one-based tensor indices 1..3
+Atom0_K11 = 0.5
+Atom0_K1111 = 0.1
+
+# Local-to-global rotation quaternion
+Atom0_Qx = 0
+Atom0_Qy = 0
+Atom0_Qz = 0
+Atom0_Qs = 1
+
+# AtomAll applies to every atom in the active basis
+AtomAll_K22 = 0.2
+```
+
+The `K11`..`K33` (6) and `K1111`..`K3333` (15) component names match the F6
+Anisotropy bar's control labels exactly. Any subset may be given — omitted
+components stay at their default (normally zero); this is why the syntax is
+sparse. The four quaternion components (`Qx`, `Qy`, `Qz`, `Qs`, AntTweakBar's
+`{x, y, z, scalar}` order) must be given together if any one of them is; they
+are normalized automatically and must have a nonzero finite norm. Keys are
+applied in file order, so a later key overrides an earlier one for the same
+atom and component.
 
 Press `F6` to open the Anisotropy bar. It always exposes all six independent K2
 and fifteen independent K4 components, including components initialized to
 zero. Global mode applies atom 0's tensor to every spin; Individual mode
 provides an atom selector and uses each basis atom's tensor. The copy button
 copies atom 0's local K2/K4 tensors to every atom without changing their
-rotation matrices.
+quaternions. The Rotation widget exposes all four `{qx, qy, qz, qs}` components
+and a 3D rotation ball; editing any component or dragging the ball immediately
+refreshes the active atom's rotated tensor. The Axis and Angle fields define an
+additional rotation; pressing **compose axis-angle** multiplies the corresponding
+quaternion by the current one so rotations can be built up one after another.
+**reset to identity** restores the identity quaternion `{0, 0, 0, 1}`.
 
 The `nob` executable automatically rebuilds itself when `nob.c` or its vendored `nob.h` changes. All normal build products are contained in `build/`, except for the bootstrapped `nob` executable itself.
 

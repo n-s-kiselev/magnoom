@@ -1,0 +1,77 @@
+# magnoom.cfg.example
+#
+# Reference listing of every key readConfigFile() understands, each set to
+# the same default value magnoom_ctx_init() already uses. Loading this file
+# is equivalent to omitting magnoom.cfg entirely -- it changes nothing.
+#
+# Rename or copy this to magnoom.cfg and edit the values you actually want
+# to change; any key you leave out keeps its compiled-in default. See the
+# "magnoom.cfg" section of README.md for the full syntax description.
+
+# Lattice vectors (a, b, c)
+ax = 1.0
+ay = 0.0
+az = 0.0
+
+bx = 0.0
+by = 1.0
+bz = 0.0
+
+cx = 0.0
+cy = 0.0
+cz = 1.0
+
+# Number of unit cells along each lattice vector
+Na = 10
+Nb = 10
+Nc = 10
+
+# Number of coordination shells (1..MAX_SHELL_NUM)
+Shells = 1
+
+# Boundary conditions along a/b/c (nonzero = periodic)
+BCa = 1
+BCb = 1
+BCc = 0
+
+# Atom positions in the unit cell, Atom<N>x/y/z, 0-based and contiguous
+# from Atom0. Omitting all of these keeps the compiled-in one-atom
+# simple-cubic default shown here.
+Atom0x = 0.5
+Atom0y = 0.5
+Atom0z = 0.5
+
+# Per-atom magnetocrystalline anisotropy. Atom<N>_... targets one atom;
+# AtomAll_... targets every atom in the active basis instead (with the
+# single default atom above, the two are equivalent).
+
+# Rank-2 tensor components (default: all zero)
+Atom0_K11 = 0
+Atom0_K12 = 0
+Atom0_K13 = 0
+Atom0_K22 = 0
+Atom0_K23 = 0
+Atom0_K33 = 0
+
+# Rank-4 tensor components (default: all zero)
+Atom0_K1111 = 0
+Atom0_K1112 = 0
+Atom0_K1113 = 0
+Atom0_K1122 = 0
+Atom0_K1123 = 0
+Atom0_K1133 = 0
+Atom0_K1222 = 0
+Atom0_K1223 = 0
+Atom0_K1233 = 0
+Atom0_K1333 = 0
+Atom0_K2222 = 0
+Atom0_K2223 = 0
+Atom0_K2233 = 0
+Atom0_K2333 = 0
+Atom0_K3333 = 0
+
+# Local-to-global rotation quaternion (default: identity)
+Atom0_Qx = 0
+Atom0_Qy = 0
+Atom0_Qz = 0
+Atom0_Qs = 1
