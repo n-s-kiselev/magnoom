@@ -12,7 +12,10 @@
 
 #include <glad/glad.h>
 #include <AntTweakBar.h>
-#include "vendor/glfw2/TwGLFW2.h"
+// This app never calls a GLU function, so skip glfw.h's unconditional
+// GL/glu.h include (not guaranteed to be installed).
+#define GLFW_NO_GLU
+#include <GL/glfw.h>
 
 #include <math.h>
 #include <errno.h>
@@ -186,19 +189,19 @@ typedef struct magnoom_ctx {
 	float*          IsoLineX;
 	float*          IsoLineY;
 	float*          IsoLineZ;
-	float*          RNx;
-	float*          RNy;
-	float*          RNz;
-	float*          Px;
-	float*          Py;
-	float*          Pz;
-	float*          BPx;
-	float*          BPy;
-	float*          BPz;
+	float*          NoiseX;
+	float*          NoiseY;
+	float*          NoiseZ;
+	float*          PosX;
+	float*          PosY;
+	float*          PosZ;
+	float*          BlockPosX;
+	float*          BlockPosY;
+	float*          BlockPosZ;
 	int*            Kind;
-	double*         Heffx;
-	double*         Heffy;
-	double*         Heffz;
+	double*         HeffX;
+	double*         HeffY;
+	double*         HeffZ;
 	bool*           Proj;
 	double          ALPHA;
 	int             Boundary[3];
@@ -214,13 +217,9 @@ typedef struct magnoom_ctx {
 	double          mtot[3];
 	double          Max_torque[THREADS_NUMBER];
 	double          MAX_TORQUE;
-	double          coef[THREADS_NUMBER][6];
-	double          BigDataBank[10][1500];
+	double          RecordingBuffer[10][1500];
 	int             recordsCounter;
-	int             WhereAmI;
 	int             NumOfPoints;
-	int             TempPoints;
-	int             TempInt;
 
 	/* Color scheme */
 	int             HueMapRGB[6];
@@ -242,9 +241,9 @@ typedef struct magnoom_ctx {
 	float*          Jexc;
 	float*          Bexc;
 	float*          Dexc;
-	float*          VDMx;
-	float*          VDMy;
-	float*          VDMz;
+	float*          VDMX;
+	float*          VDMY;
+	float*          VDMZ;
 
 	/* Heisenberg / biquadratic / DMI exchange (indexed by shell) */
 	float           Jij[MAX_SHELL_NUM];
@@ -301,7 +300,6 @@ typedef struct magnoom_ctx {
 	/* GUI control */
 	int             Play;
 	int             SpecialEvent;
-	int             DataTransfer;
 	unsigned int    ITERATION;
 	unsigned int    Max_Numb_Iteration;
 	int             Record;
@@ -322,11 +320,11 @@ typedef struct magnoom_ctx {
 	int             rec_num_mode;
 	int             current_rec_num_mode;
 	int             num_images;
-	char            BuferString[800];
+	char            BufferString[800];
 	double          outputEtotal;
 	double          outputMtotal[3];
 	int             SleepTime;
-	char            shortBufer[200];
+	char            ShortBuffer[200];
 	char            input_directory[MAGNOOM_PATH_CAPACITY];
 	char            output_directory[MAGNOOM_PATH_CAPACITY];
 	char            inputfilename[MAGNOOM_PATH_CAPACITY];
@@ -361,8 +359,8 @@ typedef struct magnoom_ctx {
 	pthread_mutex_t culc_mutex;
 	pthread_mutex_t show_mutex;
 	pthread_mutex_t record_mutex;
-	int             ENGINE_MUTEX;
-	int             DATA_TRANSFER_MUTEX;
+	int             EngineRunState;
+	int             DataTransferState;
 	bool            EngineIdle;
 	volatile bool   EngineShutdown;
 	volatile bool   EngineShutdownRequested;
@@ -370,14 +368,14 @@ typedef struct magnoom_ctx {
 	semaphore_ref   sem_out[THREADS_NUMBER];
 
 	/* visualization.c: window / GLFW / display state */
-	GLFWwindow*     MainWindow;
+	bool            WindowShouldClose;
 	const char*     WINDOWTITLE;
 	int             window_width;
 	int             window_height;
 	float           asp_rat;
 	float           asp_rat_inv;
-	double          MouseScaleX;
-	double          MouseScaleY;
+	double          ContentScaleX;
+	double          ContentScaleY;
 	int             MouseWheelPosition;
 
 	/* mouse/button state */
@@ -412,8 +410,8 @@ typedef struct magnoom_ctx {
 	GLfloat         diffuse[4];
 	GLfloat         specular[4];
 	GLfloat         shininess;
-	float           g_LightMultiplier;
-	float           g_LightDirection[3];
+	float           LightMultiplier;
+	float           LightDirection[3];
 	enLightingMode  WhichLightingMode;
 
 	/* initial-state generation parameters */
@@ -425,7 +423,6 @@ typedef struct magnoom_ctx {
 	float           RotateAllSpins;
 
 	/* color scheme (visualization) */
-	int             my_background_color[3];
 	enColors        WhichBackgroundColor;
 	int             temp_color[3];
 	GLfloat         BackgroundColors[6][3];
@@ -459,7 +456,6 @@ typedef struct magnoom_ctx {
 	TwBar*          BextAC_bar;
 	TwBar*          anisotropy_bar;
 	TwBar*          info_bar;
-	TwBar*          my_window;
 	TwBar*          modal_bar;
 	TwBar*          modal_saved_bars[MAGNOOM_MODAL_BAR_CAPACITY];
 	int             modal_saved_visibility[MAGNOOM_MODAL_BAR_CAPACITY];
@@ -993,12 +989,12 @@ static bool magnoom_flush_records_locked(magnoom_ctx *ctx)
 	if (ctx->recordsCounter <= 0) return true;
 	if (ctx->outFile != NULL) {
 		for (int i = 0; i < ctx->recordsCounter; ++i) {
-			snprintf(ctx->BuferString, sizeof(ctx->BuferString),
+			snprintf(ctx->BufferString, sizeof(ctx->BufferString),
 				"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",
-				ctx->BigDataBank[0][i], ctx->BigDataBank[0][i]*ctx->t_step,
-				ctx->BigDataBank[1][i], ctx->BigDataBank[2][i],
-				ctx->BigDataBank[3][i], ctx->BigDataBank[4][i]);
-			if (fputs(ctx->BuferString, ctx->outFile) == EOF) {
+				ctx->RecordingBuffer[0][i], ctx->RecordingBuffer[0][i]*ctx->t_step,
+				ctx->RecordingBuffer[1][i], ctx->RecordingBuffer[2][i],
+				ctx->RecordingBuffer[3][i], ctx->RecordingBuffer[4][i]);
+			if (fputs(ctx->BufferString, ctx->outFile) == EOF) {
 				success = false;
 				break;
 			}
@@ -1128,7 +1124,7 @@ static void magnoom_stop_engine(magnoom_ctx *ctx)
 
 	ctx->Play = 0;
 	pthread_mutex_lock(&ctx->culc_mutex);
-	if (ctx->ENGINE_MUTEX != WAIT) ctx->ENGINE_MUTEX = STOP_REQUESTED;
+	if (ctx->EngineRunState != WAIT) ctx->EngineRunState = STOP_REQUESTED;
 	ctx->SleepTime = 3000;
 	idle = ctx->EngineIdle;
 	pthread_mutex_unlock(&ctx->culc_mutex);
@@ -1149,9 +1145,9 @@ static void magnoom_reset_solver_state(magnoom_ctx *ctx)
 		VEC_Z(ctx->bS, i) = VEC_Z(ctx->tS, i) = VEC_Z(ctx->S, i);
 	}
 
-	if (ctx->RNx != NULL) memset(ctx->RNx, 0, (size_t)ctx->NOS*sizeof(*ctx->RNx));
-	if (ctx->RNy != NULL) memset(ctx->RNy, 0, (size_t)ctx->NOS*sizeof(*ctx->RNy));
-	if (ctx->RNz != NULL) memset(ctx->RNz, 0, (size_t)ctx->NOS*sizeof(*ctx->RNz));
+	if (ctx->NoiseX != NULL) memset(ctx->NoiseX, 0, (size_t)ctx->NOS*sizeof(*ctx->NoiseX));
+	if (ctx->NoiseY != NULL) memset(ctx->NoiseY, 0, (size_t)ctx->NOS*sizeof(*ctx->NoiseY));
+	if (ctx->NoiseZ != NULL) memset(ctx->NoiseZ, 0, (size_t)ctx->NOS*sizeof(*ctx->NoiseZ));
 }
 
 /*****************************************************************************/
@@ -1170,7 +1166,7 @@ bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positio
 		return false;
 	}
 	if (ctx->NeighborPairs != 0 || ctx->AIdxBlock != NULL || ctx->S != NULL ||
-		ctx->bS != NULL || ctx->Px != NULL || ctx->vertices != NULL) {
+		ctx->bS != NULL || ctx->PosX != NULL || ctx->vertices != NULL) {
 		fprintf(stderr, "magnoom_ctx_set_block: the block can only be changed before derived geometry is allocated.\n");
 		return false;
 	}
@@ -1367,7 +1363,6 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 
 	/* GUI control */
 	ctx->SpecialEvent = 1;
-	ctx->DataTransfer = 1;
 	ctx->Max_Numb_Iteration = 100000;
 
 	/* FPS & IPS / recording */
@@ -1389,8 +1384,8 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	const float default_block[][3] = {{0.5f, 0.5f, 0.5f}};
 
 	/* magnoom.c concurrency primitives */
-	ctx->ENGINE_MUTEX = WAIT;
-	ctx->DATA_TRANSFER_MUTEX = WAIT_DATA;
+	ctx->EngineRunState = WAIT;
+	ctx->DataTransferState = WAIT_DATA;
 	ctx->EngineIdle = true;
 	ctx->EngineShutdown = false;
 	ctx->EngineShutdownRequested = false;
@@ -1401,8 +1396,8 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->WINDOWTITLE = window_title;
 	ctx->window_width = 1400;
 	ctx->window_height = 800;
-	ctx->MouseScaleX = 1.0;
-	ctx->MouseScaleY = 1.0;
+	ctx->ContentScaleX = 1.0;
+	ctx->ContentScaleY = 1.0;
 
 	/* camera / rotation / translation / projection */
 	ctx->CameraEye[0]=0.0f; ctx->CameraEye[1]=0.0f; ctx->CameraEye[2]=150.0f;
@@ -1428,8 +1423,8 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->diffuse[0]=0.78f; ctx->diffuse[1]=0.57f; ctx->diffuse[2]=0.11f; ctx->diffuse[3]=1.0f;
 	ctx->specular[0]=0.1f; ctx->specular[1]=0.1f; ctx->specular[2]=0.08f; ctx->specular[3]=1.0f;
 	ctx->shininess = 128.0f;
-	ctx->g_LightMultiplier = 1.0f;
-	ctx->g_LightDirection[0]=0.0f; ctx->g_LightDirection[1]=0.0f; ctx->g_LightDirection[2]=1.0f;
+	ctx->LightMultiplier = 1.0f;
+	ctx->LightDirection[0]=0.0f; ctx->LightDirection[1]=0.0f; ctx->LightDirection[2]=1.0f;
 	ctx->WhichLightingMode = LIGHT_ADAPTIVE;
 
 	/* initial-state generation parameters */
@@ -1440,7 +1435,6 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->chDir[0]=0.0f; ctx->chDir[1]=1.0f; ctx->chDir[2]=0.0f;
 
 	/* color scheme (visualization) */
-	ctx->my_background_color[0]=55; ctx->my_background_color[1]=55; ctx->my_background_color[2]=155;
 	ctx->WhichBackgroundColor = MANUAL;
 	ctx->temp_color[0]=55; ctx->temp_color[1]=55; ctx->temp_color[2]=155;
 	ctx->BackgroundColors[0][0]=1;    ctx->BackgroundColors[0][1]=1;    ctx->BackgroundColors[0][2]=1;
@@ -1598,51 +1592,51 @@ void Save_OVF_b8(magnoom_ctx *ctx, double* S, const char *ovf_filename){
          temp0 += ctx->abc[0][1]*ctx->abc[0][1];
          temp0 += ctx->abc[0][2]*ctx->abc[0][2];
          temp1 = sqrt(temp0);
-         snprintf(ctx->shortBufer,80,"# xmax: %.6g\n",ctx->uABC[0]*temp1*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# xmax: %.6g\n",ctx->uABC[0]*temp1*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
 
          temp0  = ctx->abc[1][0]*ctx->abc[1][0];
          temp0 += ctx->abc[1][1]*ctx->abc[1][1];
          temp0 += ctx->abc[1][2]*ctx->abc[1][2];
          temp2 = sqrt(temp0);
-         snprintf(ctx->shortBufer,80,"# ymax: %.6g\n",ctx->uABC[1]*temp2*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# ymax: %.6g\n",ctx->uABC[1]*temp2*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
 
          temp0  = ctx->abc[2][0]*ctx->abc[2][0];
          temp0 += ctx->abc[2][1]*ctx->abc[2][1];
          temp0 += ctx->abc[2][2]*ctx->abc[2][2];
          temp3 = sqrt(temp0);
-         snprintf(ctx->shortBufer,80,"# zmax: %.6g\n",ctx->uABC[2]*temp3*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# zmax: %.6g\n",ctx->uABC[2]*temp3*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
          fputs ("# valuedim: 3\n",pFile);
          fputs ("# valuelabels: m_x m_y m_z\n",pFile);
          fputs ("# valueunits: 1 1 1\n",pFile);
          fputs ("# Desc: Total simulation time:  0  s\n",pFile);
 
-         snprintf(ctx->shortBufer,80,"# xbase: %.6g\n",temp1*0.5*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# xbase: %.6g\n",temp1*0.5*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
 
-         snprintf(ctx->shortBufer,80,"# ybase: %.6g\n",temp2*0.5*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# ybase: %.6g\n",temp2*0.5*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
 
-         snprintf(ctx->shortBufer,80,"# zbase: %.6g\n",temp3*0.5*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# zbase: %.6g\n",temp3*0.5*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
 
-         snprintf(ctx->shortBufer,80,"# xnodes: %d\n",ctx->uABC[0]);
-         fputs (ctx->shortBufer,pFile);
-         snprintf(ctx->shortBufer,80,"# ynodes: %d\n",ctx->uABC[1]);
-         fputs (ctx->shortBufer,pFile);
-         snprintf(ctx->shortBufer,80,"# znodes: %d\n",ctx->uABC[2]);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# xnodes: %d\n",ctx->uABC[0]);
+         fputs (ctx->ShortBuffer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# ynodes: %d\n",ctx->uABC[1]);
+         fputs (ctx->ShortBuffer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# znodes: %d\n",ctx->uABC[2]);
+         fputs (ctx->ShortBuffer,pFile);
 
-         snprintf(ctx->shortBufer,80,"# xstepsize:  %.6g\n",temp1*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# xstepsize:  %.6g\n",temp1*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
 
-         snprintf(ctx->shortBufer,80,"# ystepsize: %.6g\n",temp2*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# ystepsize: %.6g\n",temp2*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
 
-         snprintf(ctx->shortBufer,80,"# zstepsize: %.6g\n",temp3*a_lattice);
-         fputs (ctx->shortBufer,pFile);
+         snprintf(ctx->ShortBuffer,80,"# zstepsize: %.6g\n",temp3*a_lattice);
+         fputs (ctx->ShortBuffer,pFile);
 
          fputs ("# End: Header\n",pFile);
          fputs ("# Begin: Data Binary 8\n",pFile);
@@ -1789,10 +1783,10 @@ void Save_VTS_b4(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float * P
     if(pFile!=NULL) {
         fputs ("<?xml version=\"1.0\"?>\n",pFile);
         fputs ("<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n",pFile);
-        snprintf(ctx->shortBufer,80,"\t<StructuredGrid WholeExtent=\"0 %d 0 %d 0 %d\">\n",ctx->uABC[0]-1, ctx->uABC[1]-1, ctx->uABC[2]-1);
-        fputs (ctx->shortBufer,pFile);
-        snprintf(ctx->shortBufer,80,"\t\t<Piece Extent=\"0 %d 0 %d 0 %d \">\n",ctx->uABC[0]-1, ctx->uABC[1]-1, ctx->uABC[2]-1);
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"\t<StructuredGrid WholeExtent=\"0 %d 0 %d 0 %d\">\n",ctx->uABC[0]-1, ctx->uABC[1]-1, ctx->uABC[2]-1);
+        fputs (ctx->ShortBuffer,pFile);
+        snprintf(ctx->ShortBuffer,80,"\t\t<Piece Extent=\"0 %d 0 %d 0 %d \">\n",ctx->uABC[0]-1, ctx->uABC[1]-1, ctx->uABC[2]-1);
+        fputs (ctx->ShortBuffer,pFile);
         fputs ("\t\t\t<PointData Vectors=\"m\">\n",pFile);
         fputs ("\t\t\t\t<DataArray type=\"Float32\" Name=\"m\" NumberOfComponents=\"3\" format=\"binary\">\n",pFile);
         fputs ("\t\t\t\t\t",pFile);
@@ -1850,10 +1844,10 @@ void Save_VTS_ascii(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float 
     if(pFile!=NULL) {
         fputs ("<?xml version=\"1.0\"?>\n",pFile);
         fputs ("<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n",pFile);
-        snprintf(ctx->shortBufer,80,"\t<StructuredGrid WholeExtent=\"0 %d 0 %d 0 %d\">\n",ctx->uABC[0]-1, ctx->uABC[1]-1, ctx->uABC[2]-1);
-        fputs (ctx->shortBufer,pFile);
-        snprintf(ctx->shortBufer,80,"\t\t<Piece Extent=\"0 %d 0 %d 0 %d \">\n",ctx->uABC[0]-1, ctx->uABC[1]-1, ctx->uABC[2]-1);
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"\t<StructuredGrid WholeExtent=\"0 %d 0 %d 0 %d\">\n",ctx->uABC[0]-1, ctx->uABC[1]-1, ctx->uABC[2]-1);
+        fputs (ctx->ShortBuffer,pFile);
+        snprintf(ctx->ShortBuffer,80,"\t\t<Piece Extent=\"0 %d 0 %d 0 %d \">\n",ctx->uABC[0]-1, ctx->uABC[1]-1, ctx->uABC[2]-1);
+        fputs (ctx->ShortBuffer,pFile);
         fputs ("\t\t\t<PointData Vectors=\"m\">\n",pFile);
         fputs ("\t\t\t\t<DataArray type=\"Float32\" Name=\"m\" NumberOfComponents=\"3\" format=\"ascii\">\n",pFile);
         fputs ("\t\t\t\t\t",pFile);
@@ -1869,8 +1863,8 @@ void Save_VTS_ascii(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float 
                     n = n*ctx->AtomsPerBlock;//index of the first spin in the block
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        snprintf(ctx->shortBufer,80,"%.6g %.6g %.6g ",(Px[N]+Tr[0])*a_lattice, (Py[N]+Tr[1])*a_lattice, (Pz[N]+Tr[2])*a_lattice);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g %.6g %.6g ",(Px[N]+Tr[0])*a_lattice, (Py[N]+Tr[1])*a_lattice, (Pz[N]+Tr[2])*a_lattice);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -1888,8 +1882,8 @@ void Save_VTS_ascii(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float 
                     n = n*ctx->AtomsPerBlock;//index of the first spin in the block
                     for (int atom=0; atom<ctx->AtomsPerBlock; atom++){
                         int N = n + atom;
-                        snprintf(ctx->shortBufer,80,"%.6g %.6g %.6g ",Sx[N], Sy[N], Sz[N]);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g %.6g %.6g ",Sx[N], Sy[N], Sz[N]);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -1933,12 +1927,12 @@ void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, const char *vtk_filen
     if(pFile!=NULL) {
         fputs ("# vtk DataFile Version 2.0\n",pFile);
         fputs ("Field data file\n",pFile);
-        snprintf(ctx->shortBufer,80,"%s\n",(mode==0 ? "BINARY" : "ASCII" ));
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"%s\n",(mode==0 ? "BINARY" : "ASCII" ));
+        fputs (ctx->ShortBuffer,pFile);
         fputs ("\n",pFile);
         fputs ("DATASET STRUCTURED_POINTS\n",pFile);
-        snprintf(ctx->shortBufer,80,"DIMENSIONS %d %d %d \n",ctx->uABC[0], ctx->uABC[1], ctx->uABC[2]);
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"DIMENSIONS %d %d %d \n",ctx->uABC[0], ctx->uABC[1], ctx->uABC[2]);
+        fputs (ctx->ShortBuffer,pFile);
         fputs ("ORIGIN 0 0 0\n",pFile);
 
         temp0  = ctx->abc[0][0]*ctx->abc[0][0];
@@ -1956,11 +1950,11 @@ void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, const char *vtk_filen
         temp0 += ctx->abc[2][2]*ctx->abc[2][2];
         temp3 = sqrt(temp0);
 
-        snprintf(ctx->shortBufer,80,"SPACING %.6g %.6g %.6g \n",temp1*a_lattice, temp2*a_lattice, temp3*a_lattice);
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"SPACING %.6g %.6g %.6g \n",temp1*a_lattice, temp2*a_lattice, temp3*a_lattice);
+        fputs (ctx->ShortBuffer,pFile);
 
-        snprintf(ctx->shortBufer,80,"POINT_DATA %d \n",ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2]);
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"POINT_DATA %d \n",ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2]);
+        fputs (ctx->ShortBuffer,pFile);
         fputs ("\n",pFile);
         fputs ("SCALARS m float 3\n",pFile);
         fputs ("LOOKUP_TABLE default\n",pFile);
@@ -1989,8 +1983,8 @@ void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, const char *vtk_filen
                         fwrite ((const char*)&temp1, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp2, sizeof(float), 1, pFile);
                     }else{
-                        snprintf(ctx->shortBufer,80,"%.6g %.6g %.6g ",temp0, temp1, temp2);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g %.6g %.6g ",temp0, temp1, temp2);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -2024,8 +2018,8 @@ void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, const char *vtk_filen
                         temp0 = end_swap_float(temp0, sizeof(temp0));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                     }else{
-                        snprintf(ctx->shortBufer,80,"%.6g ",temp0);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g ",temp0);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -2059,8 +2053,8 @@ void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, const char *vtk_filen
                         temp0 = end_swap_float(temp0, sizeof(temp0));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                     }else{
-                        snprintf(ctx->shortBufer,80,"%.6g ",temp0);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g ",temp0);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -2084,12 +2078,12 @@ void Save_VTK_6(magnoom_ctx *ctx, double* S,
     if(pFile!=NULL) {
         fputs ("# vtk DataFile Version 2.0\n",pFile);
         fputs ("Field data file\n",pFile);
-        snprintf(ctx->shortBufer,80,"%s\n",(mode==0 ? "BINARY" : "ASCII" ));
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"%s\n",(mode==0 ? "BINARY" : "ASCII" ));
+        fputs (ctx->ShortBuffer,pFile);
         fputs ("\n",pFile);
         fputs ("DATASET STRUCTURED_POINTS\n",pFile);
-        snprintf(ctx->shortBufer,80,"DIMENSIONS %d %d %d \n",ctx->uABC[0], ctx->uABC[1], ctx->uABC[2]);
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"DIMENSIONS %d %d %d \n",ctx->uABC[0], ctx->uABC[1], ctx->uABC[2]);
+        fputs (ctx->ShortBuffer,pFile);
         fputs ("ORIGIN 0 0 0\n",pFile);
 
         temp0  = ctx->abc[0][0]*ctx->abc[0][0];
@@ -2107,11 +2101,11 @@ void Save_VTK_6(magnoom_ctx *ctx, double* S,
         temp0 += ctx->abc[2][2]*ctx->abc[2][2];
         temp3 = sqrt(temp0);
 
-        snprintf(ctx->shortBufer,80,"SPACING %.6g %.6g %.6g \n",temp1*a_lattice, temp2*a_lattice, temp3*a_lattice);
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"SPACING %.6g %.6g %.6g \n",temp1*a_lattice, temp2*a_lattice, temp3*a_lattice);
+        fputs (ctx->ShortBuffer,pFile);
 
-        snprintf(ctx->shortBufer,80,"POINT_DATA %d \n",ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2]);
-        fputs (ctx->shortBufer,pFile);
+        snprintf(ctx->ShortBuffer,80,"POINT_DATA %d \n",ctx->uABC[0]*ctx->uABC[1]*ctx->uABC[2]);
+        fputs (ctx->ShortBuffer,pFile);
         fputs ("\n",pFile);
         fputs ("SCALARS m float 3\n",pFile);
         fputs ("LOOKUP_TABLE default\n",pFile);
@@ -2140,8 +2134,8 @@ void Save_VTK_6(magnoom_ctx *ctx, double* S,
                         fwrite ((const char*)&temp1, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp2, sizeof(float), 1, pFile);
                     }else{
-                        snprintf(ctx->shortBufer,80,"%.6g %.6g %.6g ",temp0, temp1, temp2);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g %.6g %.6g ",temp0, temp1, temp2);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -2175,8 +2169,8 @@ void Save_VTK_6(magnoom_ctx *ctx, double* S,
                         fwrite ((const char*)&temp1, sizeof(float), 1, pFile);
                         fwrite ((const char*)&temp2, sizeof(float), 1, pFile);
                     }else{
-                        snprintf(ctx->shortBufer,80,"%.6g %.6g %.6g ",temp0, temp1, temp2);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g %.6g %.6g ",temp0, temp1, temp2);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -2211,8 +2205,8 @@ void Save_VTK_6(magnoom_ctx *ctx, double* S,
                         temp0 = end_swap_float(temp0, sizeof(temp0));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                     }else{
-                        snprintf(ctx->shortBufer,80,"%.6g ",temp0);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g ",temp0);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -2246,8 +2240,8 @@ void Save_VTK_6(magnoom_ctx *ctx, double* S,
                         temp0 = end_swap_float(temp0, sizeof(temp0));
                         fwrite ((const char*)&temp0, sizeof(float), 1, pFile);
                     }else{
-                        snprintf(ctx->shortBufer,80,"%.6g ",temp0);
-                        fputs (ctx->shortBufer,pFile);
+                        snprintf(ctx->ShortBuffer,80,"%.6g ",temp0);
+                        fputs (ctx->ShortBuffer,pFile);
                     }
                 }
             }
@@ -2437,21 +2431,21 @@ void ReallocateMemoryForAllOther(magnoom_ctx *ctx, int NOS){
 	ctx->t2S = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
 	ctx->t3S = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
 
-	ctx->RNx = (float *)calloc(NOS, sizeof(float));
-	ctx->RNy = (float *)calloc(NOS, sizeof(float));
-	ctx->RNz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
+	ctx->NoiseX = (float *)calloc(NOS, sizeof(float));
+	ctx->NoiseY = (float *)calloc(NOS, sizeof(float));
+	ctx->NoiseZ = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
 
-	ctx->Px = (float *)calloc(NOS, sizeof(float));
-	ctx->Py = (float *)calloc(NOS, sizeof(float));
-	ctx->Pz = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
+	ctx->PosX = (float *)calloc(NOS, sizeof(float));
+	ctx->PosY = (float *)calloc(NOS, sizeof(float));
+	ctx->PosZ = (float *)calloc(NOS, sizeof(float));	// <-- + 12 Mega Byte
 
-	ctx->BPx = (float *)calloc(ctx->NOB, sizeof(float));
-	ctx->BPy = (float *)calloc(ctx->NOB, sizeof(float));
-	ctx->BPz = (float *)calloc(ctx->NOB, sizeof(float));	// <-- + 12 Mega Byte
+	ctx->BlockPosX = (float *)calloc(ctx->NOB, sizeof(float));
+	ctx->BlockPosY = (float *)calloc(ctx->NOB, sizeof(float));
+	ctx->BlockPosZ = (float *)calloc(ctx->NOB, sizeof(float));	// <-- + 12 Mega Byte
 
-	ctx->Heffx = (double *)calloc(NOS, sizeof(double));
-	ctx->Heffy = (double *)calloc(NOS, sizeof(double));
-	ctx->Heffz = (double *)calloc(NOS, sizeof(double));// <-- + 12 Mega Byte
+	ctx->HeffX = (double *)calloc(NOS, sizeof(double));
+	ctx->HeffY = (double *)calloc(NOS, sizeof(double));
+	ctx->HeffZ = (double *)calloc(NOS, sizeof(double));// <-- + 12 Mega Byte
 
 	ctx->Etot = (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
 	ctx->Etot0= (double *)calloc(NOS, sizeof(double));// <-- + 4 Mega Byte
@@ -2545,14 +2539,14 @@ main (int argc, char **argv){
 	mag_ctx.Jexc = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
 	mag_ctx.Bexc = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
 	mag_ctx.Dexc = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	mag_ctx.VDMx = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	mag_ctx.VDMy = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	mag_ctx.VDMz = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
+	mag_ctx.VDMX = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
+	mag_ctx.VDMY = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
+	mag_ctx.VDMZ = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
 	SetExch1( mag_ctx.abc, mag_ctx.Block, mag_ctx.NeighborPairs, mag_ctx.Jij, mag_ctx.Bij, mag_ctx.Dij, mag_ctx.AIdxBlock, mag_ctx.NIdxBlock, mag_ctx.NIdxGridA, mag_ctx.NIdxGridB, mag_ctx.NIdxGridC, mag_ctx.SIdx, 
-	mag_ctx.Jexc, mag_ctx.Bexc, mag_ctx.Dexc, mag_ctx.VDMx, mag_ctx.VDMy, mag_ctx.VDMz);
-	// SetExchMarkus( mag_ctx.abc, Block, NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMx, mag_ctx.VDMy, mag_ctx.VDMz);
-	// SetExchChAch( mag_ctx.abc, Block, NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMx, mag_ctx.VDMy, mag_ctx.VDMz);
-	// SetExchMariya( mag_ctx.abc, Block, NeighborPairs, mag_ctx.Jij, mag_ctx.Bij, mag_ctx.Dij, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMx, mag_ctx.VDMy, mag_ctx.VDMz);
+	mag_ctx.Jexc, mag_ctx.Bexc, mag_ctx.Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
+	// SetExchMarkus( mag_ctx.abc, Block, NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
+	// SetExchChAch( mag_ctx.abc, Block, NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
+	// SetExchMariya( mag_ctx.abc, Block, NeighborPairs, mag_ctx.Jij, mag_ctx.Bij, mag_ctx.Dij, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
 	for(int i=0;i<mag_ctx.AtomsPerBlock;i++) printf("Neighbors Per Atom[%d]=%d\n",i,mag_ctx.NeighborsPerAtom[i] );
 	printf("AtomsPerBlock =%2d\n", mag_ctx.AtomsPerBlock);
 	printf("  ShellNumber =%2d\n", mag_ctx.ShellNumber);
@@ -2580,9 +2574,9 @@ main (int argc, char **argv){
 		printf("%2.3f\t|",  sqrt(AXYZ[0]*AXYZ[0]+AXYZ[1]*AXYZ[1]+AXYZ[2]*AXYZ[2])); //Distance
 		printf("%2.3f\t|",  mag_ctx.Jexc[i]); //mag_ctx.Jij 
 		printf("%2.3f\t|",  mag_ctx.Dexc[i]); //mag_ctx.Jij 
-		printf("%2.3f\t|",  mag_ctx.VDMx[i]); //DMI x
-		printf("%2.3f\t|",  mag_ctx.VDMy[i]); //DMI y
-		printf("%2.3f\t|\n",mag_ctx.VDMz[i]); //DMI z
+		printf("%2.3f\t|",  mag_ctx.VDMX[i]); //DMI x
+		printf("%2.3f\t|",  mag_ctx.VDMY[i]); //DMI y
+		printf("%2.3f\t|\n",mag_ctx.VDMZ[i]); //DMI z
 	}
 
 	// Open output file:
@@ -2608,7 +2602,7 @@ main (int argc, char **argv){
 	GetBox(&mag_ctx);
 	UpdateSpinPositions(&mag_ctx);
 	UpdateKind(&mag_ctx);
-	InitSpinComponents( &mag_ctx, mag_ctx.Px, mag_ctx.Py, mag_ctx.Pz, mag_ctx.S, 0);
+	InitSpinComponents( &mag_ctx, mag_ctx.PosX, mag_ctx.PosY, mag_ctx.PosZ, mag_ctx.S, 0);
 	for (int i=0;i<mag_ctx.NOS;i++) { VEC_X(mag_ctx.bS,i)=VEC_X(mag_ctx.S,i); VEC_Y(mag_ctx.bS,i)=VEC_Y(mag_ctx.S,i); VEC_Z(mag_ctx.bS,i)=VEC_Z(mag_ctx.S,i);}
 
     // Set OpenGL context initial state.
@@ -2700,16 +2694,16 @@ main (int argc, char **argv){
 	UploadVBOMesh(&mag_ctx.pbc_mesh[2], mag_ctx.vertices_PBC_C, mag_ctx.normals_PBC_C, mag_ctx.colors_PBC_C, mag_ctx.indices_PBC_C, VBO_UPLOAD_ALL);
 
 	// Explicit GLFW loop, matching the AntTweakBar Legacy examples.
-	while (!glfwWindowShouldClose(mag_ctx.MainWindow)) {
+	while (glfwGetWindowParam(GLFW_OPENED) && !mag_ctx.WindowShouldClose) {
 		idle(&mag_ctx);
 		Display(&mag_ctx);
-		glfwSwapBuffers(MainWindow);
+		glfwSwapBuffers();
 		glfwPollEvents();
 		magnoom_service_modal(&mag_ctx);
 	}
 
 	mag_ctx.EngineShutdownRequested = true;
-	mag_ctx.ENGINE_MUTEX = DO_IT;
+	mag_ctx.EngineRunState = DO_IT;
 	for (int i = 0; i < THREADS_NUMBER; ++i) pthread_join(thread_id[i], NULL);
 	// Destroy GPU buffers (needs active GL context):
 	DestroyVBOMesh(&mag_ctx.spin_mesh);
@@ -2731,16 +2725,16 @@ main (int argc, char **argv){
 	free(mag_ctx.SIdx);
 
 	free(mag_ctx.Jexc);  			free(mag_ctx.Bexc);  			free(mag_ctx.Dexc);
-	free(mag_ctx.VDMx);  			free(mag_ctx.VDMy);  			free(mag_ctx.VDMz);
+	free(mag_ctx.VDMX);  			free(mag_ctx.VDMY);  			free(mag_ctx.VDMZ);
 
 	free(mag_ctx.S);     			free(mag_ctx.bS);
 	free(mag_ctx.tS);    			free(mag_ctx.t2S);   			free(mag_ctx.t3S);
 	/* mag_ctx.Image/dImage intentionally not freed here -- pre-existing     */
 	/* (unfixed) leak, preserved as-is.                                      */
-	free(mag_ctx.Heffx); 			free(mag_ctx.Heffy); 			free(mag_ctx.Heffz);
-	free(mag_ctx.RNx);   			free(mag_ctx.RNy);   			free(mag_ctx.RNz);
-	free(mag_ctx.Px);    			free(mag_ctx.Py);    			free(mag_ctx.Pz);
-	free(mag_ctx.BPx);   			free(mag_ctx.BPy);   			free(mag_ctx.BPz);
+	free(mag_ctx.HeffX); 			free(mag_ctx.HeffY); 			free(mag_ctx.HeffZ);
+	free(mag_ctx.NoiseX);   			free(mag_ctx.NoiseY);   			free(mag_ctx.NoiseZ);
+	free(mag_ctx.PosX);    			free(mag_ctx.PosY);    			free(mag_ctx.PosZ);
+	free(mag_ctx.BlockPosX);   			free(mag_ctx.BlockPosY);   			free(mag_ctx.BlockPosZ);
 	free(mag_ctx.RHue);  			free(mag_ctx.GHue);  			free(mag_ctx.BHue);
 	free(mag_ctx.vertices);			free(mag_ctx.vertices_BextDC); 		free(mag_ctx.vertices_BOX); 	free(mag_ctx.vertices_PBC_A);
 	free(mag_ctx.normals);			free(mag_ctx.normals_BextDC); 		free(mag_ctx.normals_BOX); 		free(mag_ctx.normals_PBC_A);

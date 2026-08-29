@@ -13,15 +13,15 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 	const float *Jij = ctx->Jij;
 	const float *Bij = ctx->Bij;
 	const float *Dij = ctx->Dij;
-	const float *VDMx = ctx->VDMx;
-	const float *VDMy = ctx->VDMy;
-	const float *VDMz = ctx->VDMz;
+	const float *VDMx = ctx->VDMX;
+	const float *VDMy = ctx->VDMY;
+	const float *VDMz = ctx->VDMZ;
 	const AnisotropyMode anisotropy_mode = ctx->anisotropy_mode;
 	const float *BextDCDirection = ctx->BextDCDirection;
 	const float BextDCMagnitude = ctx->BextDCMagnitude;
-	double *heffx = ctx->Heffx;
-	double *heffy = ctx->Heffy;
-	double *heffz = ctx->Heffz;
+	double *heffx = ctx->HeffX;
+	double *heffy = ctx->HeffY;
+	double *heffz = ctx->HeffZ;
 	double tmp0;
 	int Ip, I, J, K, L;
 	int S;
@@ -133,9 +133,9 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 double GetTotalEnergyMoment(magnoom_ctx *ctx)
 {
 	const double *s = ctx->bS;
-	const double *Hx = ctx->Heffx;
-	const double *Hy = ctx->Heffy;
-	const double *Hz = ctx->Heffz;
+	const double *Hx = ctx->HeffX;
+	const double *Hy = ctx->HeffY;
+	const double *Hz = ctx->HeffZ;
 	double *Etot = ctx->Etot0;
 	double *Mtot = ctx->outputMtotal;
 	const int N = ctx->NOS;
@@ -177,9 +177,9 @@ double GetTotalEnergyFerro(magnoom_ctx *ctx)
 	const float *Jij = ctx->Jij;
 	const float *Bij = ctx->Bij;
 	const float *Dij = ctx->Dij;
-	const float *VDMx = ctx->VDMx;
-	const float *VDMy = ctx->VDMy;
-	const float *VDMz = ctx->VDMz;
+	const float *VDMx = ctx->VDMX;
+	const float *VDMy = ctx->VDMY;
+	const float *VDMz = ctx->VDMZ;
 	const AnisotropyMode anisotropy_mode = ctx->anisotropy_mode;
 	const float *BextDCDirection = ctx->BextDCDirection;
 	const float BextDCMagnitude = ctx->BextDCMagnitude;
@@ -272,9 +272,9 @@ GetTotalEnergy(magnoom_ctx *ctx)
 	const float *Jij = ctx->Jij;
 	const float *Bij = ctx->Bij;
 	const float *Dij = ctx->Dij;
-	const float *VDMx = ctx->VDMx;
-	const float *VDMy = ctx->VDMy;
-	const float *VDMz = ctx->VDMz;
+	const float *VDMx = ctx->VDMX;
+	const float *VDMy = ctx->VDMY;
+	const float *VDMz = ctx->VDMZ;
 	const AnisotropyMode anisotropy_mode = ctx->anisotropy_mode;
 	const float *BextDCDirection = ctx->BextDCDirection;
 	const float BextDCMagnitude = ctx->BextDCMagnitude;
@@ -383,9 +383,9 @@ GetTotalEnergy(magnoom_ctx *ctx)
 
 void
 GetFluctuations(magnoom_ctx *ctx){
-	float *rx = ctx->RNx;
-	float *ry = ctx->RNy;
-	float *rz = ctx->RNz;
+	float *rx = ctx->NoiseX;
+	float *ry = ctx->NoiseY;
+	float *rz = ctx->NoiseZ;
 	const int N = ctx->NOS;
 	for (int i=0; i<N; i++){
 		float r[3];
@@ -435,9 +435,9 @@ StochasticLLG(	magnoom_ctx *ctx, int thread,
 {
 	double *in = ctx->S;
 	double *tn = ctx->tS;
-	const float *rx = ctx->RNx;
-	const float *ry = ctx->RNy;
-	const float *rz = ctx->RNz;
+	const float *rx = ctx->NoiseX;
+	const float *ry = ctx->NoiseY;
+	const float *rz = ctx->NoiseZ;
 	const float alpha = ctx->damping;
 	const float h = ctx->t_step;
 	const float temperature = ctx->Temperature;
@@ -476,7 +476,7 @@ StochasticLLG(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					// deterministic terms of Landau–Lifshitz equation:
@@ -547,7 +547,7 @@ StochasticLLG(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);	// <-- compare this line to corresponding one in prediction step
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 					// deterministic terms of Landau–Lifshitz equation:
 					Ax = 0.5f * h * ( - Alpha_p * ctx->Precession * Hx - Alpha_d * (ny * Hz - nz * Hy) );
@@ -582,10 +582,10 @@ StochasticLLG(	magnoom_ctx *ctx, int thread,
 					VEC_Z(in,i) = ( ax * (Ry + Ay) + ay * (Rx - Ax) + az * (1. + Hz) ) * detMi;
 
 					// find max torque:
-					detMi = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
-					Hx = ctx->Heffx[i]-detMi*VEC_X(in,i);
-					Hy = ctx->Heffy[i]-detMi*VEC_Y(in,i);	
-					Hz = ctx->Heffz[i]-detMi*VEC_Z(in,i);
+					detMi = ctx->HeffX[i]*VEC_X(in,i)+ctx->HeffY[i]*VEC_Y(in,i)+ctx->HeffZ[i]*VEC_Z(in,i);
+					Hx = ctx->HeffX[i]-detMi*VEC_X(in,i);
+					Hy = ctx->HeffY[i]-detMi*VEC_Y(in,i);	
+					Hz = ctx->HeffZ[i]-detMi*VEC_Z(in,i);
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
 					VEC_X(ctx->bS,i)=VEC_X(in,i);
@@ -607,9 +607,9 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 {
 	double *in = ctx->S;
 	double *tn = ctx->tS;
-	const float *rx = ctx->RNx;
-	const float *ry = ctx->RNy;
-	const float *rz = ctx->RNz;
+	const float *rx = ctx->NoiseX;
+	const float *ry = ctx->NoiseY;
+	const float *rz = ctx->NoiseZ;
 	const float alpha = ctx->damping;
 	const float h = ctx->t_step;
 	const float temperature = ctx->Temperature;
@@ -646,7 +646,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					// deterministic terms of Landau–Lifshitz equation:
@@ -691,7 +691,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );	// index of spin "i"
 					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);	// <-- compare this line to corresponding one in prediction step
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];	// <-- they are new values for heff
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];		// <-- they are the same values as in prediction step
 
 					// deterministic terms of Landau–Lifshitz equation:
@@ -724,10 +724,10 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 					VEC_Z(in,i) = nz * detMi;
 
 					//find max torque
-					detMi = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
-					Hx = ctx->Heffx[i]-detMi*VEC_X(in,i);
-					Hy = ctx->Heffy[i]-detMi*VEC_Y(in,i);	
-					Hz = ctx->Heffz[i]-detMi*VEC_Z(in,i);
+					detMi = ctx->HeffX[i]*VEC_X(in,i)+ctx->HeffY[i]*VEC_Y(in,i)+ctx->HeffZ[i]*VEC_Z(in,i);
+					Hx = ctx->HeffX[i]-detMi*VEC_X(in,i);
+					Hy = ctx->HeffY[i]-detMi*VEC_Y(in,i);	
+					Hz = ctx->HeffZ[i]-detMi*VEC_Z(in,i);
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
 					VEC_X(ctx->bS,i)=VEC_X(in,i);
@@ -750,9 +750,9 @@ StochasticLLG_RK2(	magnoom_ctx *ctx, int thread,
 {
 	double *in = ctx->S;
 	double *tn = ctx->tS;
-	const float *rx = ctx->RNx;
-	const float *ry = ctx->RNy;
-	const float *rz = ctx->RNz;
+	const float *rx = ctx->NoiseX;
+	const float *ry = ctx->NoiseY;
+	const float *rz = ctx->NoiseZ;
 	const float alpha = ctx->damping;
 	const float h = ctx->t_step;
 	const float temperature = ctx->Temperature;
@@ -798,7 +798,7 @@ StochasticLLG_RK2(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 
 					//Li-Zhang first order
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
@@ -877,7 +877,7 @@ StochasticLLG_RK2(	magnoom_ctx *ctx, int thread,
 					// int ipp = Ip + ctx->AtomsPerBlock * ( (na +2)%Na + nb1 + nc1 );
 					// int imm = Ip + ctx->AtomsPerBlock * ( (na-2+Na)%Na + nb1 + nc1 );
 					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);	// <-- compare this line to corresponding one in prediction step
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];	// <-- they are new values for heff
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];	// <-- they are new values for heff
 					Hx1 = Hx + c1*(VEC_X(tn,ip)-VEC_X(tn,im))/2;
 					Hy1 = Hy + c1*(VEC_Y(tn,ip)-VEC_Y(tn,im))/2;
 					Hz1 = Hz + c1*(VEC_Z(tn,ip)-VEC_Z(tn,im))/2;
@@ -920,10 +920,10 @@ StochasticLLG_RK2(	magnoom_ctx *ctx, int thread,
 					VEC_Z(in,i) = Cz * detMi;
 
 					//find max torque
-					detMi = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
-					Hx = ctx->Heffx[i]-detMi*VEC_X(in,i);
-					Hy = ctx->Heffy[i]-detMi*VEC_Y(in,i);	
-					Hz = ctx->Heffz[i]-detMi*VEC_Z(in,i);
+					detMi = ctx->HeffX[i]*VEC_X(in,i)+ctx->HeffY[i]*VEC_Y(in,i)+ctx->HeffZ[i]*VEC_Z(in,i);
+					Hx = ctx->HeffX[i]-detMi*VEC_X(in,i);
+					Hy = ctx->HeffY[i]-detMi*VEC_Y(in,i);	
+					Hz = ctx->HeffZ[i]-detMi*VEC_Z(in,i);
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;
 					VEC_X(ctx->bS,i)=VEC_X(in,i);
@@ -944,9 +944,9 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 {
 	double *in = ctx->S;
 	double *tn = ctx->tS;
-	const float *rx = ctx->RNx;
-	const float *ry = ctx->RNy;
-	const float *rz = ctx->RNz;
+	const float *rx = ctx->NoiseX;
+	const float *ry = ctx->NoiseY;
+	const float *rz = ctx->NoiseZ;
 	const float alpha = ctx->damping;
 	const float h = ctx->t_step;
 	const float temperature = ctx->Temperature;
@@ -993,7 +993,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = VEC_X(in,i);	ny = VEC_Y(in,i);	nz = VEC_Z(in,i);
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
@@ -1068,7 +1068,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
@@ -1144,7 +1144,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
@@ -1218,7 +1218,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					nx = VEC_X(tn,i);	ny = VEC_Y(tn,i);	nz = VEC_Z(tn,i);
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 					Rx = rx[i];		Ry = ry[i];		Rz = rz[i];
 
 					int ip = Ip + ctx->AtomsPerBlock * ( (na +1)%Na + nb1 + nc1 );
@@ -1280,10 +1280,10 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 					VEC_Z(in,i) = nz * detMi;
 
 					//find max torque
-					detMi = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
-					Hx = ctx->Heffx[i]-detMi*VEC_X(in,i);
-					Hy = ctx->Heffy[i]-detMi*VEC_Y(in,i);	
-					Hz = ctx->Heffz[i]-detMi*VEC_Z(in,i);
+					detMi = ctx->HeffX[i]*VEC_X(in,i)+ctx->HeffY[i]*VEC_Y(in,i)+ctx->HeffZ[i]*VEC_Z(in,i);
+					Hx = ctx->HeffX[i]-detMi*VEC_X(in,i);
+					Hy = ctx->HeffY[i]-detMi*VEC_Y(in,i);	
+					Hz = ctx->HeffZ[i]-detMi*VEC_Z(in,i);
 					detMi = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (detMi > ctx->Max_torque[thread]) ctx->Max_torque[thread] = detMi;	
 					VEC_X(ctx->bS,i)=VEC_X(in,i);
@@ -1325,12 +1325,12 @@ void Relax(	magnoom_ctx *ctx, int thread,
 				for (int na=naini; na<nafin; na++)
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 					//find max torque
-					temp = ctx->Heffx[i]*VEC_X(in,i)+ctx->Heffy[i]*VEC_Y(in,i)+ctx->Heffz[i]*VEC_Z(in,i);
-					Hx = ctx->Heffx[i]-temp*VEC_X(in,i);
-					Hy = ctx->Heffy[i]-temp*VEC_Y(in,i);
-					Hz = ctx->Heffz[i]-temp*VEC_Z(in,i);
+					temp = ctx->HeffX[i]*VEC_X(in,i)+ctx->HeffY[i]*VEC_Y(in,i)+ctx->HeffZ[i]*VEC_Z(in,i);
+					Hx = ctx->HeffX[i]-temp*VEC_X(in,i);
+					Hy = ctx->HeffY[i]-temp*VEC_Y(in,i);
+					Hz = ctx->HeffZ[i]-temp*VEC_Z(in,i);
 					temp = sqrt(Hx*Hx + Hy*Hy + Hz*Hz);
 					if (temp > ctx->Max_torque[thread]) ctx->Max_torque[thread] = temp;
 					// constant step descent
@@ -1339,7 +1339,7 @@ void Relax(	magnoom_ctx *ctx, int thread,
 					g1 = VEC_X(in,i)/(1+s*VEC_Z(in,i));
 					g2 = VEC_Y(in,i)/(1+s*VEC_Z(in,i));
 
-					Hx = ctx->Heffx[i];	Hy = ctx->Heffy[i];	Hz = ctx->Heffz[i];
+					Hx = ctx->HeffX[i];	Hy = ctx->HeffY[i];	Hz = ctx->HeffZ[i];
 					d1 = (Hx*(VEC_Y(in,i)*VEC_Y(in,i)+s*VEC_Z(in,i)*(1+s*VEC_Z(in,i))) - Hy*VEC_X(in,i)*VEC_Y(in,i) - Hz*VEC_X(in,i)*(s+VEC_Z(in,i)));
 					d2 = (-Hx*VEC_X(in,i)*VEC_Y(in,i) + Hy*(VEC_X(in,i)*VEC_X(in,i)+s*VEC_Z(in,i)*(1+s*VEC_Z(in,i))) - Hz*VEC_Y(in,i)*(s+VEC_Z(in,i)));
 
@@ -1571,7 +1571,7 @@ void *CALC_THREAD(void *void_ptr)
 		int engine_state;
 		do {
 			pthread_mutex_lock(&ctx->culc_mutex);
-			engine_state = ctx->ENGINE_MUTEX;
+			engine_state = ctx->EngineRunState;
 			pthread_mutex_unlock(&ctx->culc_mutex);
 			if (engine_state == WAIT && !ctx->EngineShutdown)
 				glfwSleep((double)ctx->SleepTime / 1000000.0);
@@ -1626,7 +1626,7 @@ void *CALC_THREAD(void *void_ptr)
 					VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i);
 				}
 				pthread_mutex_lock(&ctx->culc_mutex);
-		            ctx->ENGINE_MUTEX=WAIT;
+		            ctx->EngineRunState=WAIT;
 		            ctx->SleepTime=3000;
 				pthread_mutex_unlock(&ctx->culc_mutex);
 			}
@@ -1651,11 +1651,11 @@ void *CALC_THREAD(void *void_ptr)
 
 				ctx->outputEtotal = GetTotalEnergyMoment(ctx);
 				pthread_mutex_lock(&ctx->record_mutex);
-				ctx->BigDataBank[0][ctx->recordsCounter] = (float)ctx->ITERATION;
-				ctx->BigDataBank[1][ctx->recordsCounter] = ctx->outputMtotal[0]*ctx->iNOS;
-				ctx->BigDataBank[2][ctx->recordsCounter] = ctx->outputMtotal[1]*ctx->iNOS;
-				ctx->BigDataBank[3][ctx->recordsCounter] = ctx->outputMtotal[2]*ctx->iNOS;
-				ctx->BigDataBank[4][ctx->recordsCounter] = ctx->outputEtotal;
+				ctx->RecordingBuffer[0][ctx->recordsCounter] = (float)ctx->ITERATION;
+				ctx->RecordingBuffer[1][ctx->recordsCounter] = ctx->outputMtotal[0]*ctx->iNOS;
+				ctx->RecordingBuffer[2][ctx->recordsCounter] = ctx->outputMtotal[1]*ctx->iNOS;
+				ctx->RecordingBuffer[3][ctx->recordsCounter] = ctx->outputMtotal[2]*ctx->iNOS;
+				ctx->RecordingBuffer[4][ctx->recordsCounter] = ctx->outputEtotal;
 				//metka test LLG
 				// BigDataBank[0][recordsCounter] = ITERATION*t_step;
 				// BigDataBank[1][recordsCounter] = bSx[0];
@@ -1673,22 +1673,22 @@ void *CALC_THREAD(void *void_ptr)
 
 			RecordBextACMode(ctx);
 
-			if (ctx->DATA_TRANSFER_MUTEX==WAIT_DATA){
+			if (ctx->DataTransferState==WAIT_DATA){
 				for (int i=0;i<ctx->NOS;i++){
 					VEC_X(ctx->bS,i)=VEC_X(ctx->S,i);
 					VEC_Y(ctx->bS,i)=VEC_Y(ctx->S,i);
 					VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i);
 				}
 				pthread_mutex_lock(&ctx->show_mutex);
-					ctx->DATA_TRANSFER_MUTEX=TAKE_DATA;
+					ctx->DataTransferState=TAKE_DATA;
 					ctx->currentIteration=ctx->ITERATION;
 				pthread_mutex_unlock(&ctx->show_mutex);	
 			}
 			// All workers leave together after completing the current iteration.
 			if (ctx->EngineShutdownRequested) ctx->EngineShutdown = true;
 			pthread_mutex_lock(&ctx->culc_mutex);
-			if (ctx->ENGINE_MUTEX == STOP_REQUESTED)
-				ctx->ENGINE_MUTEX = WAIT;
+			if (ctx->EngineRunState == STOP_REQUESTED)
+				ctx->EngineRunState = WAIT;
 			pthread_mutex_unlock(&ctx->culc_mutex);
 
 			// now it opens the second (out) door in the next (second) thread
@@ -1696,7 +1696,7 @@ void *CALC_THREAD(void *void_ptr)
 			// second (out)door will be open from the last thread (second sem_post)
 			sem_wait(ctx->sem_out[threadindex]);
 			pthread_mutex_lock(&ctx->culc_mutex);
-			if (ctx->ENGINE_MUTEX == WAIT) ctx->EngineIdle = true;
+			if (ctx->EngineRunState == WAIT) ctx->EngineIdle = true;
 			pthread_mutex_unlock(&ctx->culc_mutex);
 		}else{
 			//all other calculation threads

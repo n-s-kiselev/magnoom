@@ -187,12 +187,12 @@ static void test_solver_state_reset(void)
     ctx.bS = display;
     ctx.tS = stage;
     ctx.t2S = increments;
-    ctx.Heffx = field_x;
-    ctx.Heffy = field_y;
-    ctx.Heffz = field_z;
-    ctx.RNx = random_x;
-    ctx.RNy = random_y;
-    ctx.RNz = random_z;
+    ctx.HeffX = field_x;
+    ctx.HeffY = field_y;
+    ctx.HeffZ = field_z;
+    ctx.NoiseX = random_x;
+    ctx.NoiseY = random_y;
+    ctx.NoiseZ = random_z;
 
     magnoom_reset_solver_state(&ctx);
     for (int i = 0; i < 9; ++i) {

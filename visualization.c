@@ -46,18 +46,50 @@ void drawVBO(magnoom_ctx *);
 
 void idle(magnoom_ctx *);
 void setupTweakBar(magnoom_ctx *);
-void GLFWKeyCallback(GLFWwindow *, int, int, int, int);
-void GLFWCharCallback(GLFWwindow *, unsigned int);
-void GLFWMouseButtonCallback(GLFWwindow *, int, int, int);
-void GLFWCursorPosCallback(GLFWwindow *, double, double);
-void GLFWScrollCallback(GLFWwindow *, double, double);
-void GLFWFramebufferSizeCallback(GLFWwindow *, int, int);
+void GLFWKeyCallback(int, int);
+void GLFWCharCallback(int, int);
+void GLFWMouseButtonCallback(int, int);
+void GLFWCursorPosCallback(int, int);
+void GLFWScrollCallback(int);
+void GLFWWindowSizeCallback(int, int);
+
+// GLFW2's callbacks take no user-data parameter (there is no window handle
+// to attach one to, unlike GLFW3) - this is the one deliberate global
+// needed so the callbacks below can reach the program's context.
+static magnoom_ctx *g_ctx;
 
 
 
 // return the number of seconds since the start of the program:
 float ElapsedSeconds( )	{
 	return (float)glfwGetTime();
+}
+
+// GLFW2 has no notion of a separate framebuffer size (no HiDPI awareness):
+// the window's real backing-store size is read straight from the OpenGL
+// viewport and compared to the window's logical size, matching
+// TwSimpleGLFW.c's ComputeHiDPIScale(). On a standard (non-HiDPI) display
+// this is 1.0.
+//
+// Unlike that example, this is re-measured on every call rather than once
+// at startup: right after glfwOpenWindow() returns, Cocoa has not
+// necessarily finished establishing the window's real Retina backing
+// store yet, so glGetIntegerv(GL_VIEWPORT) can still report the pre-Retina
+// (1x) size at that exact moment - a one-shot measurement can permanently
+// latch onto that wrong value. Re-measuring on every GLFWWindowSizeCallback
+// call (including the manual first call performed once window setup has
+// settled) matches this project's former shim, which re-measured on every
+// resize callback for exactly this reason.
+static void MeasureContentScale(magnoom_ctx *ctx)
+{
+	int width = 1, height = 1;
+	GLint viewport[4];
+	glfwGetWindowSize(&width, &height);
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	if (width > 0 && height > 0 && viewport[2] > 0 && viewport[3] > 0) {
+		ctx->ContentScaleX = (double)viewport[2] / width;
+		ctx->ContentScaleY = (double)viewport[3] / height;
+	}
 }
 
 void ApplyFramebufferSize( magnoom_ctx *ctx, int window_width, int window_height)
@@ -171,9 +203,9 @@ void Display (magnoom_ctx *ctx)
 	glEnable(GL_NORMALIZE);
 	GLfloat light_ambient[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 	GLfloat light_color[4] = {
-		ctx->g_LightMultiplier,
-		ctx->g_LightMultiplier,
-		ctx->g_LightMultiplier,
+		ctx->LightMultiplier,
+		ctx->LightMultiplier,
+		ctx->LightMultiplier,
 		1.0f
 	};
 	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
@@ -187,9 +219,9 @@ void Display (magnoom_ctx *ctx)
 		light_position[2] = ctx->CameraEye[2];
 		light_position[3] = 1.0f;
 	} else {
-		light_position[0] = ctx->g_LightDirection[0];
-		light_position[1] = ctx->g_LightDirection[1];
-		light_position[2] = ctx->g_LightDirection[2];
+		light_position[0] = ctx->LightDirection[0];
+		light_position[1] = ctx->LightDirection[1];
+		light_position[2] = ctx->LightDirection[2];
 		light_position[3] = 0.0f;
 	}
 	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
@@ -258,14 +290,15 @@ void setupOpenGL (magnoom_ctx *ctx)
 		exit(1);
 	}
 	glfwOpenWindowHint(GLFW_FSAA_SAMPLES, ctx->N_Multisample);
-	ctx->MainWindow = glfwCreateWindow(ctx->window_width, ctx->window_height, ctx->WINDOWTITLE, NULL, NULL);
-	if (!ctx->MainWindow) {
+	if (!glfwOpenWindow(ctx->window_width, ctx->window_height, 8, 8, 8, 8, 24, 0, GLFW_WINDOW)) {
 		fprintf(stderr, "Cannot open GLFW window\n");
 		glfwTerminate();
 		exit(1);
 	}
-	glfwSetWindowUserPointer(ctx->MainWindow, ctx);
-	glfwMakeContextCurrent(ctx->MainWindow);
+	glfwSetWindowTitle(ctx->WINDOWTITLE);
+	glfwEnable(GLFW_KEY_REPEAT);
+	glfwDisable(GLFW_AUTO_POLL_EVENTS);
+	g_ctx = ctx;
 	// Not gladLoadGLLoader(glfwGetProcAddress): GLFW2's own glfwGetProcAddress
 	// (unlike GLFW3's) is a thin wglGetProcAddress() wrapper with no fallback
 	// to GetProcAddress() on opengl32.dll, so it fails to resolve OpenGL 1.1
@@ -290,27 +323,32 @@ void setupOpenGL (magnoom_ctx *ctx)
 		ctx->CameraPosition[i][6]=ctx->PerspSet[0];
 	}
 
-	glfwSetKeyCallback(ctx->MainWindow, GLFWKeyCallback);
-	glfwSetCharCallback(ctx->MainWindow, GLFWCharCallback);
-	glfwSetMouseButtonCallback(ctx->MainWindow, GLFWMouseButtonCallback);
-	glfwSetCursorPosCallback(ctx->MainWindow, GLFWCursorPosCallback);
-	glfwSetScrollCallback(ctx->MainWindow, GLFWScrollCallback);
-	glfwSetFramebufferSizeCallback(ctx->MainWindow, GLFWFramebufferSizeCallback);
+	glfwSetKeyCallback(GLFWKeyCallback);
+	glfwSetCharCallback(GLFWCharCallback);
+	glfwSetMouseButtonCallback(GLFWMouseButtonCallback);
+	glfwSetMousePosCallback(GLFWCursorPosCallback);
+	glfwSetMouseWheelCallback(GLFWScrollCallback);
+	glfwSetWindowSizeCallback(GLFWWindowSizeCallback);
+
+	// Best-effort early measurement, needed because AntTweakBar's
+	// "fontscaling" below must be set before TwInit() and so cannot wait
+	// for GLFWWindowSizeCallback's own re-measurement below.
+	MeasureContentScale(ctx);
 
 	// Initialize AntTweakBar
-	float xscale = 1.0f, yscale = 1.0f;
-	glfwGetWindowContentScale(ctx->MainWindow, &xscale, &yscale);
 	char fontScalingDef[64];
-	snprintf(fontScalingDef, sizeof(fontScalingDef), "GLOBAL fontscaling=%g", (double)xscale);
+	snprintf(fontScalingDef, sizeof(fontScalingDef), "GLOBAL fontscaling=%g", ctx->ContentScaleX);
 	TwDefine(fontScalingDef);
 	if (!TwInit(TW_OPENGL, NULL)) {
 		fprintf(stderr, "TwInit failed: %s\n", TwGetLastError());
 		glfwTerminate();
 		exit(1);
 	}
-	int framebufferWidth = 0, framebufferHeight = 0;
-	glfwGetFramebufferSize(ctx->MainWindow, &framebufferWidth, &framebufferHeight);
-	GLFWFramebufferSizeCallback(ctx->MainWindow, framebufferWidth, framebufferHeight);
+	{
+		int windowWidth = 0, windowHeight = 0;
+		glfwGetWindowSize(&windowWidth, &windowHeight);
+		GLFWWindowSizeCallback(windowWidth, windowHeight);
+	}
 	setupTweakBar(ctx);
 
 	glEnable(GL_DEPTH_TEST);
@@ -341,7 +379,7 @@ void idle (magnoom_ctx *ctx)
 
 	if((ctx->timeInterval > 40 && ctx->Play!=0)||ctx->SpecialEvent!=0)//40ms gives approximately 25 FPS +/-1 if the engine works faster then 25 IPS
 	{
-		if( ctx->DATA_TRANSFER_MUTEX==TAKE_DATA || ctx->SpecialEvent!=0)
+		if( ctx->DataTransferState==TAKE_DATA || ctx->SpecialEvent!=0)
 		{
 			switch (ctx->SpecialEvent)
 			{
@@ -372,7 +410,7 @@ void idle (magnoom_ctx *ctx)
 				}
 			}
 			pthread_mutex_lock( &ctx->show_mutex);
-				ctx->DATA_TRANSFER_MUTEX = WAIT_DATA; // meaning that OpenGL is waiting for new data from engine
+				ctx->DataTransferState = WAIT_DATA; // meaning that OpenGL is waiting for new data from engine
 			pthread_mutex_unlock( &ctx->show_mutex);
 		} 
 
@@ -405,7 +443,7 @@ void TW_CALL CB_Set_Run( const void *value, void *clientData )
     if (ctx->Play!=0){
         pthread_mutex_lock(&ctx->culc_mutex);
 			ctx->EngineIdle=false;
-            ctx->ENGINE_MUTEX=DO_IT;
+            ctx->EngineRunState=DO_IT;
             ctx->SleepTime=100;
         pthread_mutex_unlock(&ctx->culc_mutex);
     }else{
@@ -1299,7 +1337,7 @@ void TW_CALL CB_SaveCSV( void *clientData )
         // fputs ("px,py,pz,nx,ny,nz,\n",pFile);
         // for (int i=0;i<ctx->NOS;i++)
         // {
-        //     snprintf(shortBufer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",ctx->Px[i],ctx->Py[i],ctx->Pz[i],bSx[i],bSy[i],bSz[i]);
+        //     snprintf(shortBufer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",ctx->PosX[i],ctx->PosY[i],ctx->PosZ[i],bSx[i],bSy[i],bSz[i]);
         //     fputs (shortBufer,pFile);
         // }
         // fclose (pFile);
@@ -1359,10 +1397,10 @@ void TW_CALL CB_SaveCSV( void *clientData )
     					for (atom=0; atom<ctx->AtomsPerBlock; atom++){
     					    N = n + atom;
                             //metka
-    						snprintf(ctx->shortBufer,200,"%2.5f,%2.5f,%2.5f,%0.15f,%0.15f,%0.15f,\n",ctx->Px[N],ctx->Py[N],ctx->Pz[N],VEC_X(ctx->bS,N),VEC_Y(ctx->bS,N),VEC_Z(ctx->bS,N));
+    						snprintf(ctx->ShortBuffer,200,"%2.5f,%2.5f,%2.5f,%0.15f,%0.15f,%0.15f,\n",ctx->PosX[N],ctx->PosY[N],ctx->PosZ[N],VEC_X(ctx->bS,N),VEC_Y(ctx->bS,N),VEC_Z(ctx->bS,N));
                             // snprintf(shortBufer,200,"%.14g,%.14g,%.14g,%.14g,%.14g,%.14g,%.14g,%.14g,\n",
-                                // ctx->Px[N],ctx->Py[N],ctx->Pz[N],bSx[N],bSy[N],bSz[N],acos(bSz[N])*R2D,atan2 (bSy[N],bSx[N])*R2D);
-    						fputs (ctx->shortBufer,pFile); 
+                                // ctx->PosX[N],ctx->PosY[N],ctx->PosZ[N],bSx[N],bSy[N],bSz[N],acos(bSz[N])*R2D,atan2 (bSy[N],bSx[N])*R2D);
+    						fputs (ctx->ShortBuffer,pFile); 
     					}
     				}
     			}
@@ -1395,8 +1433,8 @@ void TW_CALL CB_SaveCSV( void *clientData )
     					tPositin[2]+=ctx->abc[0][2]*an+ctx->abc[1][2]*bn;
     					double modulus=sqrt(tSpin[0]*tSpin[0] + tSpin[1]*tSpin[1] + tSpin[2]*tSpin[2]);
     					int cN = cnfin - cnini;
-    					snprintf(ctx->shortBufer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/cN,tSpin[1]/cN,tSpin[2]/cN,modulus/cN);
-    					fputs (ctx->shortBufer,pFile);
+    					snprintf(ctx->ShortBuffer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/cN,tSpin[1]/cN,tSpin[2]/cN,modulus/cN);
+    					fputs (ctx->ShortBuffer,pFile);
     				}
     			}
     		}else if(ctx->WhichAverageMode==ALONG_B){
@@ -1423,8 +1461,8 @@ void TW_CALL CB_SaveCSV( void *clientData )
     					tPositin[2]+=ctx->abc[0][2]*an+ctx->abc[2][2]*cn;
     					double modulus=sqrt(tSpin[0]*tSpin[0] + tSpin[1]*tSpin[1] + tSpin[2]*tSpin[2]);
     					int bN = bnfin - bnini;
-    					snprintf(ctx->shortBufer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/bN,tSpin[1]/bN,tSpin[2]/bN,modulus/bN);
-    					fputs (ctx->shortBufer,pFile);
+    					snprintf(ctx->ShortBuffer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/bN,tSpin[1]/bN,tSpin[2]/bN,modulus/bN);
+    					fputs (ctx->ShortBuffer,pFile);
     				}
     			}
     		}else if(ctx->WhichAverageMode==ALONG_A){
@@ -1451,8 +1489,8 @@ void TW_CALL CB_SaveCSV( void *clientData )
     					tPositin[2]+=ctx->abc[2][2]*cn+ctx->abc[1][2]*bn;
     					double modulus=sqrt(tSpin[0]*tSpin[0] + tSpin[1]*tSpin[1] + tSpin[2]*tSpin[2]);
     					int aN = anfin - anini;
-    					snprintf(ctx->shortBufer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/aN,tSpin[1]/aN,tSpin[2]/aN,modulus/aN);
-    					fputs (ctx->shortBufer,pFile);
+    					snprintf(ctx->ShortBuffer,200,"%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,%2.5f,\n",tPositin[0],tPositin[1],tPositin[2],tSpin[0]/aN,tSpin[1]/aN,tSpin[2]/aN,modulus/aN);
+    					fputs (ctx->ShortBuffer,pFile);
     				}
 			}
 		printf("averaged output --> %s done!\n", output_path);
@@ -1500,9 +1538,9 @@ void TW_CALL CB_ReadCSV( void *clientData )
 			//printf("%f,%f,%f,%f,%f,%f\n", px,py,pz,sx,sy,sz);
 			if (i<ctx->NOS) 
 			{
-				// ctx->Px[i]=px;
-				// ctx->Py[i]=py;
-				// ctx->Pz[i]=pz;
+				// ctx->PosX[i]=px;
+				// ctx->PosY[i]=py;
+				// ctx->PosZ[i]=pz;
 				VEC_X(ctx->bS,i)=VEC_X(ctx->S,i)=sx;
 				VEC_Y(ctx->bS,i)=VEC_Y(ctx->S,i)=sy;
 				VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i)=sz;
@@ -1740,8 +1778,8 @@ void TW_CALL CB_Save_VTK_b4( void *clientData )
 		output_path, sizeof(output_path))) return;
 	Save_VTK(ctx, ctx->bS, 0, output_path);//metka 0->1
 
-        // Save_VTS_b4(bSx, bSy, bSz, ctx->Px, ctx->Py, ctx->Pz, Box, vts_filename);
-        // Save_VTS_ascii(bSx, bSy, bSz, ctx->Px, ctx->Py, ctx->Pz, Box, vts_filename);
+        // Save_VTS_b4(bSx, bSy, bSz, ctx->PosX, ctx->PosY, ctx->PosZ, Box, vts_filename);
+        // Save_VTS_ascii(bSx, bSy, bSz, ctx->PosX, ctx->PosY, ctx->PosZ, Box, vts_filename);
 
         // float * Spins_xyz;
         // Spins_xyz = (float *)calloc(ctx->NOS*3, sizeof(float));   
@@ -1808,7 +1846,12 @@ static void magnoom_open_error_dialog(magnoom_ctx *ctx)
 	TwBar *bar;
 
 	if (ctx->modal_bar != NULL) return;
-	glfwGetFramebufferSize(ctx->MainWindow, &framebuffer_width, &framebuffer_height);
+	{
+		int window_width = 0, window_height = 0;
+		glfwGetWindowSize(&window_width, &window_height);
+		framebuffer_width = (int)(window_width * ctx->ContentScaleX + 0.5);
+		framebuffer_height = (int)(window_height * ctx->ContentScaleY + 0.5);
+	}
 	bar_width = framebuffer_width < 560 ? framebuffer_width : 560;
 	bar_height = 200;
 	if (bar_width < 220) bar_width = 220;
@@ -1944,9 +1987,9 @@ void TW_CALL CB_Export(void *clientData)
 void UpdateKind(magnoom_ctx *ctx)
 {
 	int *Kind = ctx->Kind;
-	const float *Px = ctx->Px;
-	const float *Py = ctx->Py;
-	const float *Pz = ctx->Pz;
+	const float *Px = ctx->PosX;
+	const float *Py = ctx->PosY;
+	const float *Pz = ctx->PosZ;
 	const int NOS = ctx->NOS;
 	float dist, dist_max = ctx->chSizeG * ctx->chSizeG;
 	ctx->NOSK = 0;
@@ -2375,6 +2418,34 @@ bool readConfigFile(magnoom_ctx *ctx)
 }
 
 
+// AntTweakBar lays out bars in raw pixel units with no DPI awareness;
+// these convert logical sizes/positions to pixel units via the
+// once-computed ContentScaleX/Y, replacing this project's former shim's
+// tw_glfw2_set_bar_size/position/values_width helpers.
+static void SetBarSize(magnoom_ctx *ctx, TwBar *bar, int width, int height)
+{
+	int size[2] = {
+		(int)(width * ctx->ContentScaleX + 0.5),
+		(int)(height * ctx->ContentScaleY + 0.5)
+	};
+	TwSetParam(bar, NULL, "size", TW_PARAM_INT32, 2, size);
+}
+
+static void SetBarPosition(magnoom_ctx *ctx, TwBar *bar, int x, int y)
+{
+	int position[2] = {
+		(int)(x * ctx->ContentScaleX + 0.5),
+		(int)(y * ctx->ContentScaleY + 0.5)
+	};
+	TwSetParam(bar, NULL, "position", TW_PARAM_INT32, 2, position);
+}
+
+static void SetBarValuesWidth(magnoom_ctx *ctx, TwBar *bar, int width)
+{
+	int scaled_width = (int)(width * ctx->ContentScaleX + 0.5);
+	TwSetParam(bar, NULL, "valueswidth", TW_PARAM_INT32, 1, &scaled_width);
+}
+
 void setupTweakBar(magnoom_ctx *ctx)
 {
 /*  Global settings for the bar-menu  */
@@ -2383,19 +2454,19 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwDefine(" GLOBAL contained=true "); // bars cannot move outside of the window
 	char iconMarginDef[64];
 	snprintf(iconMarginDef, sizeof(iconMarginDef), "GLOBAL iconmargin='%d %d'",
-	         (int)(ctx->MouseScaleX + 0.5), (int)(8.0 * ctx->MouseScaleY + 0.5));
+	         (int)(ctx->ContentScaleX + 0.5), (int)(8.0 * ctx->ContentScaleY + 0.5));
 	TwDefine(iconMarginDef);
 /*  Help Bar F1 */
 	ctx->help_bar = TwGetBarByIndex(0);
 	TwDefine(" TW_HELP color='70 100 100'");
-	tw_glfw2_set_bar_size(ctx->help_bar, 440, 530);
+	SetBarSize(ctx, ctx->help_bar, 440, 530);
 	TwDefine(" TW_HELP help='F1: show/hide (this) Help bar' "); // change default tweak bar size and color
 
 /*  View Bar F2 */
     ctx->view_bar = TwNewBar("View");
     TwDefine(" View iconified=true "); 
     TwDefine(" View color='100 100 70' alpha=200 "); // change default tweak bar color
-    tw_glfw2_set_bar_size(ctx->view_bar, 220, 530);
+    SetBarSize(ctx, ctx->view_bar, 220, 530);
     TwDefine(" View help='F2: show/hide View bar' "); // change default tweak bar size and color
 
 	// TwAddVarCB(ctx->view_bar, "Multisampling", TW_TYPE_INT32, CB_SetN_Multisample, CB_GetN_Multisample, ctx, " label='Multisamples' min=1 max=32 step=1 help='Multisampling' group='Camera'");
@@ -2437,8 +2508,8 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarRW(ctx->view_bar, "Lighting", TW_TYPE_LIGHTING_MODE, &ctx->WhichLightingMode,
 		" label='Lighting' keyIncr='l' help='Cycle lighting: Off, Fixed, Adaptive.' group='Light'");
 	}
-	TwAddVarRW(ctx->view_bar, "Intensity", TW_TYPE_FLOAT, &ctx->g_LightMultiplier, " label='Light intensity' min=0.1 max=2 step=0.02 help='Increase/decrease the light power.' group='Light' ");
-	TwAddVarRW(ctx->view_bar, "LightDir", TW_TYPE_DIR3F, &ctx->g_LightDirection, " label='Fixed light direction' opened=false help='Change the direction used by Fixed lighting.' group='Light'");
+	TwAddVarRW(ctx->view_bar, "Intensity", TW_TYPE_FLOAT, &ctx->LightMultiplier, " label='Light intensity' min=0.1 max=2 step=0.02 help='Increase/decrease the light power.' group='Light' ");
+	TwAddVarRW(ctx->view_bar, "LightDir", TW_TYPE_DIR3F, &ctx->LightDirection, " label='Fixed light direction' opened=false help='Change the direction used by Fixed lighting.' group='Light'");
 	ctx->temp_color[0] = 230;
 	ctx->temp_color[1] = 230;
 	ctx->temp_color[2] = 255;
@@ -2556,7 +2627,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 	ctx->control_bar = TwNewBar("Parameters&Controls");
     TwDefine(" Parameters&Controls iconified=true "); 
     TwDefine(" Parameters&Controls color='100 70 100' alpha=200 "); // change default tweak bar color
-    tw_glfw2_set_bar_size(ctx->control_bar, 220, 530);
+    SetBarSize(ctx, ctx->control_bar, 220, 530);
     TwDefine(" Parameters&Controls help='F3: show/hide Control bar' "); // change default tweak bar size and color
 
 	//TwAddButton(control_bar, "Run", CB_Run, ctx, "key='SPACE' label='RUN simulation' ");
@@ -2610,27 +2681,27 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddSeparator(ctx->control_bar, "control_sep2", NULL);
 	for(int s=0; s<ctx->ShellNumber; s++)
 	{
-	snprintf(ctx->shortBufer,200,"J%1i",s);
-	TwAddVarRW(ctx->control_bar, ctx->shortBufer, TW_TYPE_FLOAT, &ctx->Jij[s], "help='Heisenberg exchange' ");
-	TwSetParam(ctx->control_bar, ctx->shortBufer, "label",  TW_PARAM_CSTRING , 1, ctx->shortBufer);
+	snprintf(ctx->ShortBuffer,200,"J%1i",s);
+	TwAddVarRW(ctx->control_bar, ctx->ShortBuffer, TW_TYPE_FLOAT, &ctx->Jij[s], "help='Heisenberg exchange' ");
+	TwSetParam(ctx->control_bar, ctx->ShortBuffer, "label",  TW_PARAM_CSTRING , 1, ctx->ShortBuffer);
 	}
 	//////////////////////////////////////////
 	TwAddSeparator(ctx->control_bar, "sep2", NULL);
 	//////////////////////////////////////////	
 	for(int s=0; s<ctx->ShellNumber; s++)
 	{
-	snprintf(ctx->shortBufer,200,"B%1i",s);
-	TwAddVarRW(ctx->control_bar, ctx->shortBufer, TW_TYPE_FLOAT, &ctx->Bij[s], "help='Bi-quadratic exchange' ");
-	TwSetParam(ctx->control_bar, ctx->shortBufer, "label",  TW_PARAM_CSTRING , 1, ctx->shortBufer);
+	snprintf(ctx->ShortBuffer,200,"B%1i",s);
+	TwAddVarRW(ctx->control_bar, ctx->ShortBuffer, TW_TYPE_FLOAT, &ctx->Bij[s], "help='Bi-quadratic exchange' ");
+	TwSetParam(ctx->control_bar, ctx->ShortBuffer, "label",  TW_PARAM_CSTRING , 1, ctx->ShortBuffer);
 	}
 	//////////////////////////////////////////
 	TwAddSeparator(ctx->control_bar, "sep3", NULL);
 	//////////////////////////////////////////
 	for(int s=0; s<ctx->ShellNumber; s++)
 	{
-	snprintf(ctx->shortBufer,200,"D%1i",s);
-	TwAddVarRW(ctx->control_bar, ctx->shortBufer, TW_TYPE_FLOAT, &ctx->Dij[s], "help='Dzyaloshinskii-Moriya' ");
-	TwSetParam(ctx->control_bar, ctx->shortBufer, "label",  TW_PARAM_CSTRING , 1, ctx->shortBufer);
+	snprintf(ctx->ShortBuffer,200,"D%1i",s);
+	TwAddVarRW(ctx->control_bar, ctx->ShortBuffer, TW_TYPE_FLOAT, &ctx->Dij[s], "help='Dzyaloshinskii-Moriya' ");
+	TwSetParam(ctx->control_bar, ctx->ShortBuffer, "label",  TW_PARAM_CSTRING , 1, ctx->ShortBuffer);
 	}
 	//////////////////////////////////////////
 	TwAddSeparator(ctx->control_bar, "sep4", NULL);
@@ -2642,7 +2713,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 	ctx->initial_bar = TwNewBar("Initial_State");
 	TwDefine(" Initial_State iconified=true "); 
 	TwDefine(" Initial_State color='70 70 100' alpha=200"); // change default tweak bar color
-	tw_glfw2_set_bar_size(ctx->initial_bar, 220, 530);
+	SetBarSize(ctx, ctx->initial_bar, 220, 530);
 	TwDefine(" Initial_State help='F4: show/hide Initial state bar' "); // change default tweak bar size and color
 /*	{
 	TwEnumVal		enGeomTw[] = { 	{DEFAULT_G, 	"Default"		    }, 
@@ -2729,7 +2800,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 	ctx->BextAC_bar = TwNewBar("BextAC");
 	TwDefine(" BextAC iconified=true ");
 	TwDefine(" BextAC color='100 70 70' alpha=200"); // change default tweak bar color
-	tw_glfw2_set_bar_size(ctx->BextAC_bar, 220, 530);
+	SetBarSize(ctx, ctx->BextAC_bar, 220, 530);
 	TwDefine(" BextAC help='F5: show/hide Bext AC bar' "); // change default tweak bar size and color
 	TwAddVarRW(ctx->BextAC_bar, "BextACEnabled", TW_TYPE_BOOL32, &ctx->BextACEnabled, "keyIncr='f' label='Bext AC enabled' true='on' false='off' help='Enable the time-dependent external-field component'");
     TwAddVarRW(ctx->BextAC_bar, "BextACModeRecording", TW_TYPE_BOOL32, &ctx->BextACModeRecording, "label='Mode recording' true='on' false='off' help='Record the phase-resolved dynamical mode'");
@@ -2766,7 +2837,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 	ctx->anisotropy_bar = TwNewBar("Anisotropy");
 	TwDefine(" Anisotropy iconified=true ");
 	TwDefine(" Anisotropy color='70 100 100' alpha=200 ");
-	tw_glfw2_set_bar_size(ctx->anisotropy_bar, 260, 530);
+	SetBarSize(ctx, ctx->anisotropy_bar, 260, 530);
 	TwDefine(" Anisotropy help='F6: show/hide tensor anisotropy bar' ");
 	{
 		TwEnumVal modes[] = {
@@ -2841,9 +2912,9 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwDefine(" Info iconified = false movable = false alwaysbottom=true resizable=false fontstyle=default fontsize=2"); 
 	TwDefine(" Info help='F12: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
-	tw_glfw2_set_bar_size(ctx->info_bar, 170, 620);
-	tw_glfw2_set_bar_position(ctx->info_bar, 1, 30);
-	tw_glfw2_set_bar_values_width(ctx->info_bar, 130);
+	SetBarSize(ctx, ctx->info_bar, 170, 620);
+	SetBarPosition(ctx, ctx->info_bar, 1, 30);
+	SetBarValuesWidth(ctx, ctx->info_bar, 130);
 	TwAddVarRO(ctx->info_bar, "Run/Stop", TW_TYPE_BOOL32,  &ctx->Play, "true='RUNING' false='STOPED' ");
 	TwAddVarRO(ctx->info_bar, "RECORD", TW_TYPE_BOOL32,  &ctx->Record, "true='On' false='Off' ");
 	TwAddSeparator(ctx->info_bar, "sep+21", NULL);
@@ -2913,10 +2984,17 @@ static int GLFWSpecialToWindowKey(int key)
 	}
 }
 
-void GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+// GLFW2's native key callback reports no modifier bitmask (unlike GLFW3),
+// so Shift state is read directly via glfwGetKey, same as this project's
+// former shim's own internal tw_glfw2_mods() helper did.
+static int WindowShiftIsDown(void)
 {
-	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
-	(void)scancode;
+	return glfwGetKey(GLFW_KEY_LSHIFT) == GLFW_PRESS || glfwGetKey(GLFW_KEY_RSHIFT) == GLFW_PRESS;
+}
+
+void GLFWKeyCallback(int key, int action)
+{
+	magnoom_ctx *ctx = g_ctx;
 	if (ctx->modal_open_requested) {
 		if (action == GLFW_RELEASE) (void)TwEventKeyGLFW(key, action);
 		return;
@@ -2929,76 +3007,88 @@ void GLFWKeyCallback(GLFWwindow *window, int key, int scancode, int action, int 
 		HandleSpecialKey(ctx, special);
 		return;
 	}
-	if (key == GLFW_KEY_ESCAPE && action != GLFW_RELEASE) {
+	if (key == GLFW_KEY_ESC && action != GLFW_RELEASE) {
 		HandleKeyDown(ctx, TW_KEY_ESCAPE);
 		return;
 	}
 	if (action == GLFW_RELEASE && key >= 'A' && key <= 'Z') {
-		unsigned char character = (unsigned char)((mods & GLFW_MOD_SHIFT) ? key : key - 'A' + 'a');
+		unsigned char character = (unsigned char)(WindowShiftIsDown() ? key : key - 'A' + 'a');
 		HandleKeyUp(ctx, character);
 	}
 }
 
-void GLFWCharCallback(GLFWwindow *window, unsigned int character)
+// GLFW2's native char callback fires on both press and release (like the
+// key callback), so this filters to press only, matching GLFW3-style
+// char-input semantics (and this project's former shim, which did the
+// same filtering internally).
+void GLFWCharCallback(int character, int action)
 {
-	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
+	magnoom_ctx *ctx = g_ctx;
+	if (action != GLFW_PRESS) return;
 	if (ctx->modal_open_requested) return;
-	if (character > 255 || TwEventCharGLFW((int)character, GLFW_PRESS)) return;
+	if (character > 255 || TwEventCharGLFW(character, GLFW_PRESS)) return;
 	if (ctx->modal_bar != NULL) return;
 	HandleKeyDown(ctx, (unsigned char)character);
 }
 
-void GLFWMouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
+void GLFWMouseButtonCallback(int button, int action)
 {
-	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
-	(void)mods;
+	magnoom_ctx *ctx = g_ctx;
 	if (ctx->modal_open_requested) {
 		if (action == GLFW_RELEASE) (void)TwEventMouseButtonGLFW(button, action);
 		return;
 	}
 	if (TwEventMouseButtonGLFW(button, action)) return;
 	if (ctx->modal_bar != NULL) return;
-	double x = 0.0, y = 0.0;
-	glfwGetCursorPos(window, &x, &y);
+	int x = 0, y = 0;
+	glfwGetMousePos(&x, &y);
 	int windowButton = button == GLFW_MOUSE_BUTTON_LEFT ? WINDOW_MOUSE_LEFT
 	                 : button == GLFW_MOUSE_BUTTON_RIGHT ? WINDOW_MOUSE_RIGHT
 	                 : WINDOW_MOUSE_MIDDLE;
 	HandleMouseButton(ctx, windowButton, action == GLFW_PRESS ? WINDOW_BUTTON_DOWN : WINDOW_BUTTON_UP,
-	            (int)(x * ctx->MouseScaleX), (int)(y * ctx->MouseScaleY));
+	            (int)(x * ctx->ContentScaleX), (int)(y * ctx->ContentScaleY));
 }
 
-void GLFWCursorPosCallback(GLFWwindow *window, double x, double y)
+void GLFWCursorPosCallback(int x, int y)
 {
-	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
-	int pixelX = (int)(x * ctx->MouseScaleX);
-	int pixelY = (int)(y * ctx->MouseScaleY);
+	magnoom_ctx *ctx = g_ctx;
+	int pixelX = (int)(x * ctx->ContentScaleX);
+	int pixelY = (int)(y * ctx->ContentScaleY);
 	if (ctx->modal_open_requested) return;
 	if (TwEventMousePosGLFW(pixelX, pixelY)) return;
 	if (ctx->modal_bar != NULL) return;
 	HandleMouseDrag(ctx, pixelX, pixelY);
 }
 
-void GLFWScrollCallback(GLFWwindow *window, double xoffset, double yoffset)
+// GLFW2's native wheel callback reports an absolute position (unlike
+// GLFW3's per-event delta), so the delta used below is the change since
+// the last call; ctx->MouseWheelPosition itself is now just that raw
+// absolute position (previously a value reconstructed from shim-faked
+// deltas).
+void GLFWScrollCallback(int position)
 {
-	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
-	(void)xoffset;
-	ctx->MouseWheelPosition += (int)yoffset;
+	magnoom_ctx *ctx = g_ctx;
+	int delta = position - ctx->MouseWheelPosition;
+	ctx->MouseWheelPosition = position;
 	if (ctx->modal_open_requested) return;
 	if (TwEventMouseWheelGLFW(ctx->MouseWheelPosition)) return;
 	if (ctx->modal_bar != NULL) return;
-	ctx->TransXYZ[2] += (float)yoffset * 0.5f;
+	ctx->TransXYZ[2] += (float)delta * 0.5f;
 }
 
-void GLFWFramebufferSizeCallback(GLFWwindow *window, int width, int height)
+// Registered as GLFW2's window-size callback (there is no separate
+// framebuffer-size concept to register for); width/height arrive in
+// window/logical units and are converted to pixel units via
+// ContentScaleX/Y, re-measured here on every call (see MeasureContentScale).
+void GLFWWindowSizeCallback(int width, int height)
 {
-	magnoom_ctx *ctx = glfwGetWindowUserPointer(window);
-	if (width < 1) width = 1;
-	if (height < 1) height = 1;
-	int windowWidth = width, windowHeight = height;
-	glfwGetWindowSize(window, &windowWidth, &windowHeight);
-	ctx->MouseScaleX = windowWidth > 0 ? (double)width / windowWidth : 1.0;
-	ctx->MouseScaleY = windowHeight > 0 ? (double)height / windowHeight : 1.0;
-	ApplyFramebufferSize(ctx, width, height);
+	magnoom_ctx *ctx = g_ctx;
+	MeasureContentScale(ctx);
+	int pixelWidth = (int)(width * ctx->ContentScaleX + 0.5);
+	int pixelHeight = (int)(height * ctx->ContentScaleY + 0.5);
+	if (pixelWidth < 1) pixelWidth = 1;
+	if (pixelHeight < 1) pixelHeight = 1;
+	ApplyFramebufferSize(ctx, pixelWidth, pixelHeight);
 }
 
 
@@ -3356,7 +3446,7 @@ void ExecuteCommand( magnoom_ctx *ctx, int id )
 			break;
 
 		case QUIT:
-			glfwSetWindowShouldClose(ctx->MainWindow, GLFW_TRUE);
+			ctx->WindowShouldClose = true;
 			break;
 
 		// default:
@@ -3366,7 +3456,7 @@ void ExecuteCommand( magnoom_ctx *ctx, int id )
 
 void ChangeInitialState(magnoom_ctx *ctx)
 {
-	InitSpinComponents(ctx, ctx->Px, ctx->Py, ctx->Pz, ctx->S, ctx->WhichInitialState);
+	InitSpinComponents(ctx, ctx->PosX, ctx->PosY, ctx->PosZ, ctx->S, ctx->WhichInitialState);
 	magnoom_reset_solver_state(ctx);
 	ChangeVectorMode (ctx,  1 );
 	ctx->SpecialEvent=1;
@@ -4072,9 +4162,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 	float *Vout = ctx->vertices;
 	float *Nout = ctx->normals;
 	float *Cout = ctx->colors;
-	const float *Px = ctx->Px;
-	const float *Py = ctx->Py;
-	const float *Pz = ctx->Pz;
+	const float *Px = ctx->PosX;
+	const float *Py = ctx->PosY;
+	const float *Pz = ctx->PosZ;
 	const double *spinArr = ctx->bS;
 	//float tmpV1[3], tmpV2[3], tmpV3[3], RGB[3], U, A;
 	float S[3], RGB[3], U, A;
@@ -4338,9 +4428,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 						{
 							i = j*Kinp + 3*k;	// vertex index
                             N = n*ctx->AtomsPerBlock;//first index of the atom in the blok defines visible/invisible
-							Vout[i+0] = (Vinp[3*k+0] + ctx->BPx[n])*ctx->Kind[N];
-							Vout[i+1] = (Vinp[3*k+1] + ctx->BPy[n])*ctx->Kind[N];
-							Vout[i+2] = (Vinp[3*k+2] + ctx->BPz[n])*ctx->Kind[N];	
+							Vout[i+0] = (Vinp[3*k+0] + ctx->BlockPosX[n])*ctx->Kind[N];
+							Vout[i+1] = (Vinp[3*k+1] + ctx->BlockPosY[n])*ctx->Kind[N];
+							Vout[i+2] = (Vinp[3*k+2] + ctx->BlockPosZ[n])*ctx->Kind[N];	
 
 							Nout[i+0] = Ninp[3*k+0];
 							Nout[i+1] = Ninp[3*k+1];
@@ -4388,9 +4478,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 					{
 						i = j*Kinp + 3*k;	// vertex index
                         N=n*ctx->AtomsPerBlock;//first index of the atom in the blok defines visible/invisible
-						Vout[i+0] = (Vinp[3*k+0] + ctx->BPx[n])*ctx->Kind[N];
-						Vout[i+1] = (Vinp[3*k+1] + ctx->BPy[n])*ctx->Kind[N];
-						Vout[i+2] = (Vinp[3*k+2] + ctx->BPz[n])*ctx->Kind[N];	
+						Vout[i+0] = (Vinp[3*k+0] + ctx->BlockPosX[n])*ctx->Kind[N];
+						Vout[i+1] = (Vinp[3*k+1] + ctx->BlockPosY[n])*ctx->Kind[N];
+						Vout[i+2] = (Vinp[3*k+2] + ctx->BlockPosZ[n])*ctx->Kind[N];	
 
 						Nout[i+0] = Ninp[3*k+0];
 						Nout[i+1] = Ninp[3*k+1];
@@ -5113,9 +5203,9 @@ void UpdateSpinPositions(magnoom_ctx *ctx)
 	const float (*BD)[3] = ctx->Block;
 	const int NBD = ctx->AtomsPerBlock;
 	const float (*box)[3] = ctx->Box;
-	float *Px = ctx->Px;
-	float *Py = ctx->Py;
-	float *Pz = ctx->Pz;
+	float *Px = ctx->PosX;
+	float *Py = ctx->PosY;
+	float *Pz = ctx->PosZ;
 	float Tr[3] = {
 					(box[0][0]+box[1][0]+box[2][0])/2.f,
 					(box[0][1]+box[1][1]+box[2][1])/2.f,
@@ -5142,9 +5232,9 @@ void UpdateSpinPositions(magnoom_ctx *ctx)
 					Pz[si] = BD[I][2] + abc[0][2]*J + abc[1][2]*K + abc[2][2]*L-Tr[2];
 				}
 				bi++;
-				ctx->BPx[bi] = abc[0][0]*J + abc[1][0]*K + abc[2][0]*L-Tr[0]; 
-				ctx->BPy[bi] = abc[0][1]*J + abc[1][1]*K + abc[2][1]*L-Tr[1];
-				ctx->BPz[bi] = abc[0][2]*J + abc[1][2]*K + abc[2][2]*L-Tr[2];				
+				ctx->BlockPosX[bi] = abc[0][0]*J + abc[1][0]*K + abc[2][0]*L-Tr[0]; 
+				ctx->BlockPosY[bi] = abc[0][1]*J + abc[1][1]*K + abc[2][1]*L-Tr[1];
+				ctx->BlockPosZ[bi] = abc[0][2]*J + abc[1][2]*K + abc[2][2]*L-Tr[2];				
 			}
 		}
 	}	
