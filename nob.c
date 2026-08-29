@@ -72,7 +72,8 @@ static bool build_atb_object(const char *source)
 
     Nob_Cmd cmd = {0};
 #if defined(__APPLE__)
-    nob_cmd_append(&cmd, "c++", "-x", "objective-c++", "-D_MACOSX");
+    nob_cmd_append(&cmd, "c++", "-x", "objective-c++", "-D_MACOSX", "-DGL_SILENCE_DEPRECATION",
+                   "-Wno-deprecated-declarations");
 #elif defined(_WIN32)
     nob_cmd_append(&cmd, nob_sv_ends_with_cstr(nob_sv_from_cstr(source), ".cpp") ? "c++" : "cc", "-D_WINDOWS");
     // TwMgr.cpp's CreateCursors() calls MAKEINTRESOURCE() on values like
@@ -139,7 +140,8 @@ static bool build_glfw(void)
 #if defined(_WIN32)
     nob_cmd_append(&cmd, "-D_GLFW2_WIN32", "-Ivendor/glfw2/lib/win32");
 #elif defined(__APPLE__)
-    nob_cmd_append(&cmd, "-D_GLFW2_COCOA", "-Ivendor/glfw2/lib/cocoa", "-x", "objective-c");
+    nob_cmd_append(&cmd, "-D_GLFW2_COCOA", "-Ivendor/glfw2/lib/cocoa", "-x", "objective-c",
+                   "-Wno-deprecated-declarations");
 #else
     nob_cmd_append(&cmd, "-D_GLFW2_X11", "-Ivendor/glfw2/lib/x11",
                    "-D_GLFW_HAS_XRANDR", "-D_GLFW_HAS_PTHREAD", "-D_GLFW_HAS_SCHED_YIELD",
