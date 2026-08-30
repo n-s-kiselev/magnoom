@@ -2404,14 +2404,6 @@ bool readConfigFile(magnoom_ctx *ctx)
 		}
 	}
 
-	float *new_radius_of_shell = (float *)calloc((size_t)ctx->ShellNumber, sizeof(float));
-	if (new_radius_of_shell == NULL) {
-		fprintf(stderr, "Unable to allocate shell radii from %s.\n", configfilename);
-		fclose(FilePointer);
-		return false;
-	}
-	free(ctx->RadiusOfShell);
-	ctx->RadiusOfShell = new_radius_of_shell;
 	printf("Done!\n");
 	fclose(FilePointer);
 	return true;

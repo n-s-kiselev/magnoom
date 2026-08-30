@@ -22,14 +22,15 @@ representation for uniaxial, cubic, tetragonal, and lower-symmetry cases.
 ## 3. Current State
 
 The active physics uses per-atom local tensors and a pre-rotated global cache.
-Startup configuration accepts ordered raw K2, K4, and local-to-global rotation
-records. The F6 Anisotropy bar exposes every independent tensor component and
-switches at runtime between Global atom-0 and Individual per-atom lookup.
+Startup configuration accepts ordered raw K2, K4, and local-to-global unit
+quaternion records. The F6 Anisotropy bar exposes every independent tensor
+component and switches at runtime between Global atom-0 and Individual
+per-atom lookup.
 
 ## 4. Requirements
 
 - [x] Store one local and one rotated tensor per active unit-cell atom.
-- [x] Store one configurable local-to-global 3x3 rotation per unit-cell atom.
+- [x] Store one configurable local-to-global unit quaternion per unit-cell atom.
 - [x] Enforce rank-2 and rank-4 symmetry in component setters.
 - [x] Support atom index `-1` for assignments to every active atom.
 - [x] Preserve existing anisotropy behavior through the physics migration.
@@ -77,17 +78,19 @@ switches at runtime between Global atom-0 and Individual per-atom lookup.
 
 `AnisotropyTensor` contains `double K2[3][3]` and
 `double K4[3][3][3][3]`. The context owns fixed-capacity arrays of local
-tensors, global rotated tensors, and local-to-global matrices. The matrix
-convention is `m_global[i] = R[i][a] m_local[a]`.
+tensors, global rotated tensors, and local-to-global unit quaternions. A
+temporary matrix derived from each quaternion uses the convention
+`m_global[i] = R[i][a] m_local[a]`.
 
 Anisotropy mode is runtime-selectable. Global mode makes every solver lookup
 use atom 0's rotated tensor; Individual mode uses the basis-atom index. Mode
 changes preserve all stored tensors. A GUI action can copy atom 0's local K2
-and K4 tensors to every atom while preserving each atom's rotation matrix.
+and K4 tensors to every atom while preserving each atom's quaternion.
 
-Configuration records use zero-based atom indices and one-based tensor/matrix
-indices. Atom `-1` applies an assignment globally. Records are processed in
-order, so later records override earlier assignments.
+Configuration records use zero-based atom indices and one-based tensor indices.
+`Q` records use `{qx, qy, qz, qs}` order. Atom `-1` applies an assignment
+globally. Records are processed in order, so later records override earlier
+assignments.
 
 ## 10. Implementation Steps
 
@@ -131,8 +134,9 @@ Purpose:
 - Permit arbitrary local tensor and rotation components at startup.
 
 Changes:
-- Parse `K2`, `K4`, and `R` records with atom `-1` support.
-- Validate ranges, finite values, and proper rotation matrices.
+- Parse `K2`, `K4`, and `Q` records with atom `-1` support.
+- Validate ranges and finite values, reject zero-norm quaternions, and normalize
+  accepted quaternions.
 - Rotate tensors once after configuration and basis selection.
 
 Validation:
@@ -152,12 +156,14 @@ Changes:
 - Add a dedicated iconified F6 Anisotropy bar.
 - Add a runtime Global/Individual selector and an atom selector shown only in
   Individual mode.
+- Add a runtime quaternion widget routed to atom 0 in Global mode or the
+  selected atom in Individual mode.
 - Create six reusable K2 and fifteen reusable K4 callback controls with a
   fixed `0.000001` increment and explicit one-based index labels.
 - Redirect controls to atom 0 in Global mode or the selected atom in Individual
   mode.
 - Add a button that copies atom 0's local K2/K4 tensors to all atoms, preserves
-  destination rotations, and refreshes all rotated caches.
+  destination quaternions, and refreshes all rotated caches.
 - Update all permutations and the rotated cache from control callbacks.
 
 Validation:
@@ -211,12 +217,13 @@ None.
 
 ### 2026-08-28
 
-- Added strict ordered parsing for raw `K2`, `K4`, and local-to-global `R`
-  records, including atom `-1` assignments and one-based component indices.
+- Added strict ordered parsing for raw `K2`, `K4`, and local-to-global `Q`
+  records, including atom `-1` assignments and one-based tensor indices.
 - Applied staged records after basis selection, validated active atom ranges
-  and proper rotation matrices, and refreshed the rotated tensor cache.
-- Exercised global assignment, later override, valid rotation, malformed
-  component index, and invalid rotation cases with a temporary harness.
+  and quaternion norms, and refreshed the rotated tensor cache.
+- Exercised global assignment, later override, valid quaternion rotation,
+  malformed component index, and invalid quaternion cases with a temporary
+  harness.
 - Removed the legacy easy-axis GUI controls and added the iconified F6
   Anisotropy bar with runtime Global/Individual selection and an Individual
   atom popup.
@@ -229,16 +236,19 @@ None.
   fields and their legacy-to-tensor startup conversion. Tensor state now starts
   directly from the context's zero initialization before ordered config records
   are applied.
+- Replaced stored rotation matrices and `R:` records with normalized double
+  quaternions and `Q:` records. Added a runtime `TW_TYPE_QUAT4D` control that
+  refreshes the selected atom's rotated tensor cache.
 
 ## 15. Final Result
 
 General symmetric rank-2 and rank-4 anisotropy is stored per basis atom,
 configured through raw startup records, rotated outside solver hot loops, and
 used by all effective-field and energy paths. Runtime controls expose every
-independent component and support both shared atom-0 and per-atom behavior.
+independent component and a unit-quaternion rotation, supporting both shared
+atom-0 and per-atom behavior.
 
 ## 16. Remaining Limitations
 
-- Rotation matrices are configured at startup and are not editable in the GUI.
 - Live GUI edits are intentionally unsynchronized with solver threads, matching
   the application's existing parameter-control behavior.

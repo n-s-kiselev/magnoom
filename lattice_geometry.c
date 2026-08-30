@@ -179,184 +179,383 @@
 // int			NOB_BL=uABC[0]*uABC[2]; // number of spins per B layer
 // int			NOB_CL=uABC[0]*uABC[1]; // number of spins per C layer
 
-void	
-GetShells(magnoom_ctx *ctx)
+/*****************************************************************************/
+/* Coordination-shell construction: shells are distinguished by both         */
+/* distance and local point symmetry, so the number of final shells is not   */
+/* known before construction. These are generous compile-time caps for the   */
+/* fixed/preallocated scratch buffers used while building the map (never     */
+/* dynamically grown/reallocated).                                           */
+/*****************************************************************************/
+#define MAX_NEIGHBORS_PER_SHELL_PER_ATOM 256
+#define MAX_RAW_SHELL_LEVELS 64
+#define MAX_NEIGHBOR_PAIRS_TEMP (MAX_SHELL_NUM * MAX_ATOMS_PER_BLOCK * MAX_NEIGHBORS_PER_SHELL_PER_ATOM)
+#define SHELL_SIGNATURE_TOL 1e-4f
+/* Periodic images searched in either direction along each lattice vector. */
+#define MAX_IMAGE_TRANSLATION 15
+
+/* One candidate bond from a central atom to a periodic image of another
+ * (or the same) basis atom; dx/dy/dz is the Cartesian displacement
+ * block[I0] - (block[I1] + J*a + K*b + L*c). */
+typedef struct NeighborCandidate
 {
-	float (*abc)[3] = ctx->abc;
-	float (*block)[3] = ctx->Block;
-	int atomsPerBlock = ctx->AtomsPerBlock;
-	int ShellNum = ctx->ShellNumber;
-	float *R = ctx->RadiusOfShell;
+	int   I1, J, K, L;
+	float dx, dy, dz;
+} NeighborCandidate;
 
-	//atomsPerBlock is a number of atoms in the basic domain
-	float min_distance, test_distance, curr_Radius, Radius, test_Radius;
-	float x0,x1,y0,y1,z0,z1,dx,dy,dz;
-	int Jin, Kin, Lin;
-	//int I0min, I1min, Jmin, Kmin, Lmin;// for each of shell we are looking for the lits of Imin, Jmin, Kmin, Lmin
-	if (abc[0][0]==0 && (abc[0][1]==0 && abc[0][2]==0)) {Jin = 0;} else {Jin = 15;} //|a|=0
-	if (abc[1][0]==0 && (abc[1][1]==0 && abc[1][2]==0)) {Kin = 0;} else {Kin = 15;} //|b|=0
-	if (abc[2][0]==0 && (abc[2][1]==0 && abc[2][2]==0)) {Lin = 0;} else {Lin = 15;} //|c|=0
-		Radius = 0.0f;// first we are looking for the minimal interatomic distance closest to 0
-		for (int shell = 0; shell < ShellNum; ++shell) // runs ove shells
-		{	// at each 'shell'-step we use previouse shell radius starting from R=0.0f
-			curr_Radius = Radius;	 
-			min_distance = 100.f; // initial value for the distance between current and the tested shell
-			for(int I0=0; I0 < atomsPerBlock; I0++) // runs over atoms in the block 
-			{	//position of the atom with index Idx0 in the block:
-				x0 = block[I0][0];
-				y0 = block[I0][1];
-				z0 = block[I0][2];
-				for(int J=-Jin;J<=Jin;J++) // translation of block along vector 'a' J times
-				{
-					for(int K=-Kin;K<=Kin;K++)// translation of block along vector 'b' K times
-					{
-						for( int L=-Lin;L<=Lin;L++)// translation of block along vector 'c' L times
-						{	
-							for(int I1=0; I1<atomsPerBlock; I1++) // runs over atoms in one of neghbouring block
-							{//tested atom position:
-								x1 = block[I1][0] + abc[0][0]*J + abc[1][0]*K + abc[2][0]*L; 
-								dx = x0-x1; //printf("dx = %f\n", dx );
-								y1 = block[I1][1] + abc[0][1]*J + abc[1][1]*K + abc[2][1]*L; 
-								dy = y0-y1; //printf("dy = %f\n", dy);
-								z1 = block[I1][2] + abc[0][2]*J + abc[1][2]*K + abc[2][2]*L; 
-								dz = z0-z1; //printf("dz = %f\n", dz );
-								if ( !( (I0==I1 && 0==J) && (0==K && 0==L) ) ) // if it's not the same atom
-								{	
-									test_Radius = sqrt(dx*dx + dy*dy + dz*dz);
-									test_distance = test_Radius - curr_Radius;// distance between shells
-									//printf("test_Radius = %f\n", test_Radius );
-									//printf("test_distance = %f\n", test_distance );
-									if (test_distance > 1e-6 && test_distance < min_distance)
-									{
-										// if(0==J*K && 0==J*L && 0==L*K)//metka only for for micromagnetics
-										{
-											min_distance = test_distance;
-											//I0min = I0; I1min = I1; Jmin = J; Kmin = K; Lmin = L;
-											R[ shell ] = Radius = test_Radius;
-										}
+/* One finished entry of the in-progress neighbor map: the bond from atom I0
+ * in the home block to the image (I1, J, K, L), and the shell it belongs to. */
+typedef struct NeighborPair
+{
+	int I0, I1, J, K, L, shell;
+} NeighborPair;
 
-									}
-								} 
-							}//Idx1	
-						}//L
-					}//K
-				}//J
-			}//Idx0
-			//printf("R[%d] =%f, IdxMin =%d, Imin =%d, Jmin =%d, Kmin = %d, Lmin =%d \n", shell, R[ shell ], IdxMin,Imin,Jmin,Kmin,Lmin);
-		}//sIdx
+/* One (angular signature, unordered atom-pair) class already assigned a
+ * global shell index. Buckets live on ClassifyCanonicalBonds' stack, so they
+ * start empty at every raw distance level -- angular comparisons are only
+ * meaningful between bonds at the same distance. */
+typedef struct ShellBucket
+{
+	float signature[MAX_NEIGHBORS_PER_SHELL_PER_ATOM];
+	int   signatureLength;
+	int   atomLo, atomHi;
+	int   finalShell;
+} ShellBucket;
+
+/* Number of periodic images searched in either direction along lattice
+ * vector `axis`: none at all along a degenerate (zero) vector. */
+static int
+ImageRange(float abc[][3], int axis)
+{
+	if (abc[axis][0]==0 && abc[axis][1]==0 && abc[axis][2]==0) return 0;
+	return MAX_IMAGE_TRANSLATION;
 }
 
-int
-GetNeighborsNumber(
-	float abc[][3], float block[][3], int atomsPerBlock, 
-	int ShellNum, float * R, int * NeighborsNum)
+/* Fills `bond` with the displacement from atom I0 in the home block to the
+ * image (I1, J, K, L) of atom I1, and returns the length of that bond. */
+static float
+MeasureBond(float abc[][3], float block[][3], int I0, int I1, int J, int K, int L, NeighborCandidate *bond)
 {
-	//atomsPerBlock is a number of atoms in the basic domain
-	float delta, test_Radius, Radius;
-	float x0,x1,y0,y1,z0,z1,dx,dy,dz;
-	int TotNum=0;
-	int Jin, Kin, Lin;
-	if (abc[0][0]==0 && (abc[0][1]==0 && abc[0][2]==0)) {Jin = 0;} else {Jin = 15;}
-	if (abc[1][0]==0 && (abc[1][1]==0 && abc[1][2]==0)) {Kin = 0;} else {Kin = 15;}
-	if (abc[2][0]==0 && (abc[2][1]==0 && abc[2][2]==0)) {Lin = 0;} else {Lin = 15;}
-	for(int I0=0; I0 < atomsPerBlock; I0++) // runs over atoms in the block 
-		{	//position of the atom with index Idx0 in the block:
-			x0 = block[I0][0];
-			y0 = block[I0][1];
-			z0 = block[I0][2];
-			NeighborsNum[I0] = 0; 
-			for (int shell = 0; shell < ShellNum; ++shell) // runs ove shells 
-			{
-				Radius = R [shell];
-				for(int J=-Jin;J<=Jin;J++) // translation of basic domain along vector 'a' J times
-				{
-					for(int K=-Kin;K<=Kin;K++)// translation of basic domain along vector 'b' K times
-					{ 
-						for( int L=-Lin;L<=Lin;L++)// translation of basic domain along vector 'c' L times
-						{	
-							for(int I1=0; I1<atomsPerBlock; I1++) // runs over atoms in the shifted basic domain
-							{//tested atom position:
-								x1 = block[I1][0] + abc[0][0]*J + abc[1][0]*K + abc[2][0]*L; 
-								dx = x0-x1; //printf("dx = %f\n", dx );
-								y1 = block[I1][1] + abc[0][1]*J + abc[1][1]*K + abc[2][1]*L; 
-								dy = y0-y1; //printf("dy = %f\n", dy);
-								z1 = block[I1][2] + abc[0][2]*J + abc[1][2]*K + abc[2][2]*L; 
-								dz = z0-z1; //printf("dz = %f\n", dz );
-								test_Radius = sqrt(dx*dx + dy*dy + dz*dz); 
-								delta = fabs (Radius - test_Radius);
-								if (delta<1e-6) //atom Idx1 is in shell 
-								{
-									NeighborsNum[I0] +=1; 
-								}
-							}//Idx0
-						}//L
-					}//K
-				}//J
-			//printf("NumInShell[%d] =%d, NeighborsNum[%d]=%d \n", shell, NumInShell, Idx0,NeighborsNum[Idx0]);	
-			}//sell
-		TotNum+=NeighborsNum[I0];
-		}//sIdx
-		return TotNum;
+	float x1 = block[I1][0] + abc[0][0]*J + abc[1][0]*K + abc[2][0]*L;
+	float y1 = block[I1][1] + abc[0][1]*J + abc[1][1]*K + abc[2][1]*L;
+	float z1 = block[I1][2] + abc[0][2]*J + abc[1][2]*K + abc[2][2]*L;
+	bond->I1 = I1;
+	bond->J  = J;
+	bond->K  = K;
+	bond->L  = L;
+	bond->dx = block[I0][0] - x1;
+	bond->dy = block[I0][1] - y1;
+	bond->dz = block[I0][2] - z1;
+	return sqrtf(bond->dx*bond->dx + bond->dy*bond->dy + bond->dz*bond->dz);
 }
 
-
-void
-CreateMapOfNeighbors( 
-	float abc[][3], float block[][3], int atomsPerBlock, int shellNum, float * R,
-	int* aiBlock, int* niBlock, int* niGridA, int* niGridB, int* niGridC, int* sIdx)
+static float
+CosAngleBetweenBonds(const NeighborCandidate *a, const NeighborCandidate *b)
 {
-	float delta, test_Radius, Radius;
-	float x0,x1,y0,y1,z0,z1,dx,dy,dz;
-	int Jin, Kin, Lin, N=-1;
-	if (abc[0][0]==0 && (abc[0][1]==0 && abc[0][2]==0)) {Jin = 0;} else {Jin = 5;}
-	if (abc[1][0]==0 && (abc[1][1]==0 && abc[1][2]==0)) {Kin = 0;} else {Kin = 5;}
-	if (abc[2][0]==0 && (abc[2][1]==0 && abc[2][2]==0)) {Lin = 0;} else {Lin = 5;}
-	for(int I0=0; I0 < atomsPerBlock; I0++) // runs over atoms in basic domain 
-	{	//position of the atom with index Idx0 in the basic domain:
-		x0 = block[I0][0];
-		y0 = block[I0][1];
-		z0 = block[I0][2];
-		for (int shell = 0; shell < shellNum; ++shell) // runs ove shells 
-		{
-			Radius = R [shell];
-			for(int J=-Jin;J<=Jin;J++) // translation of basic domain along vector 'a' J times
-			{
-				for(int K=-Kin;K<=Kin;K++)// translation of basic domain along vector 'b' K times
-				{
-					for( int L=-Lin;L<=Lin;L++)// translation of basic domain along vector 'c' L times
-					{	
-						for(int I1=0; I1<atomsPerBlock; I1++) // runs over atoms in the shifted basic domain
-						{//tested atom position:
-							x1 = block[I1][0] + abc[0][0]*J + abc[1][0]*K + abc[2][0]*L; 
-							dx = x0-x1; 
-							y1 = block[I1][1] + abc[0][1]*J + abc[1][1]*K + abc[2][1]*L; 
-							dy = y0-y1; 
-							z1 = block[I1][2] + abc[0][2]*J + abc[1][2]*K + abc[2][2]*L; 
-							dz = z0-z1; 
-							test_Radius = sqrt(dx*dx + dy*dy + dz*dz); 
-							delta = fabs (Radius - test_Radius);
-							if (delta<1e-6) //atom I1 is in shell 
-							{
-								N++; 
-								aiBlock[N] = I0;
-								niBlock[N] = I1;
-								niGridA[N] = J;
-								niGridB[N] = K;
-								niGridC[N] = L;
-								sIdx[N] = shell;
-								//printf("I'[%2d] = %2d", N, *aiBlock[N]);
-								// printf("I [%2d] = %2d", N, NIdxBlock[N]);
-								// printf("J [%2d] = %2d", N, NIdxGridA[N]);
-								// printf("K [%2d] = %2d", N, NIdxGridB[N]);
-								// printf("L [%2d] = %2d\n", N, NIdxGridC[N]);
-							}
-						}//Idx0
-					}//L
-				}//K
-			}//J
-		//printf("NumInShell[%d] =%d, NeighborsNum[%d]=%d \n", shell, NumInShell, Idx0,NeighborsNum[Idx0]);	
-		}//sell
-	}//sIdx
+	float dot = a->dx*b->dx + a->dy*b->dy + a->dz*b->dz;
+	float lenA = sqrtf(a->dx*a->dx + a->dy*a->dy + a->dz*a->dz);
+	float lenB = sqrtf(b->dx*b->dx + b->dy*b->dy + b->dz*b->dz);
+	return dot/(lenA*lenB);
+}
+
+static void
+SortAscending(float *values, int count)
+{
+	for (int i = 1; i < count; i++) {
+		float v = values[i];
+		int j = i - 1;
+		while (j >= 0 && values[j] > v) {
+			values[j+1] = values[j];
+			j--;
+		}
+		values[j+1] = v;
+	}
+}
+
+/* Elementwise relative-tolerance comparison (tol scaled by float precision,
+ * not shell.h's double_1arrs_equal's tol=1e-12 -- see migration notes). */
+static bool
+SignaturesEqual(const float *a, int aLen, const float *b, int bLen, float tol)
+{
+	if (aLen != bLen) return false;
+	for (int i = 0; i < aLen; i++) {
+		float diff = fabsf(a[i] - b[i]);
+		float scale = fabsf(a[i]);
+		if (fabsf(b[i]) > scale) scale = fabsf(b[i]);
+		if (scale < 1.0f) scale = 1.0f;
+		if (diff > tol*scale) return false;
+	}
+	return true;
+}
+
+/* Finds the smallest interatomic distance strictly greater than priorRadius,
+ * searching every basic-domain atom against every periodic image within
+ * ImageRange() unit-cell translations. Returns false if no larger distinct
+ * distance exists. */
+static bool
+FindNextShellRadius(float abc[][3], float block[][3], int atomsPerBlock, float priorRadius, float *outRadius)
+{
+	int Jin = ImageRange(abc, 0), Kin = ImageRange(abc, 1), Lin = ImageRange(abc, 2);
+	float smallestGap = 1e30f;
+	bool found = false;
+	for (int I0 = 0; I0 < atomsPerBlock; I0++)
+	for (int J = -Jin; J <= Jin; J++)
+	for (int K = -Kin; K <= Kin; K++)
+	for (int L = -Lin; L <= Lin; L++)
+	for (int I1 = 0; I1 < atomsPerBlock; I1++) {
+		if (I0==I1 && J==0 && K==0 && L==0) continue; // not the same atom
+		NeighborCandidate bond;
+		float testRadius = MeasureBond(abc, block, I0, I1, J, K, L, &bond);
+		float gap = testRadius - priorRadius;
+		if (gap > 1e-6f && gap < smallestGap) {
+			smallestGap = gap;
+			*outRadius = testRadius;
+			found = true;
+		}
+	}
+	return found;
+}
+
+/* Gathers every candidate bond from atom I0 whose distance matches radius
+ * (tolerance 1e-6, as elsewhere in this file). Returns false if there are
+ * more than MAX_NEIGHBORS_PER_SHELL_PER_ATOM of them. */
+static bool
+GatherShellCandidates(float abc[][3], float block[][3], int atomsPerBlock, int I0, float radius,
+	NeighborCandidate *candidates, int *outCandidateCount)
+{
+	int Jin = ImageRange(abc, 0), Kin = ImageRange(abc, 1), Lin = ImageRange(abc, 2);
+	int candidateCount = 0;
+	for (int J = -Jin; J <= Jin; J++)
+	for (int K = -Kin; K <= Kin; K++)
+	for (int L = -Lin; L <= Lin; L++)
+	for (int I1 = 0; I1 < atomsPerBlock; I1++) {
+		if (I0==I1 && J==0 && K==0 && L==0) continue; // not the same atom
+		NeighborCandidate bond;
+		float testRadius = MeasureBond(abc, block, I0, I1, J, K, L, &bond);
+		if (fabsf(testRadius - radius) >= 1e-6f) continue; // atom I1 is not in this shell
+		if (candidateCount == MAX_NEIGHBORS_PER_SHELL_PER_ATOM) return false;
+		candidates[candidateCount] = bond;
+		candidateCount++;
+	}
+	*outCandidateCount = candidateCount;
+	return true;
+}
+
+/* Fixed total order over the two directions of a bond, picking exactly one
+ * of (I0,I1,J,K,L) and its reciprocal (I1,I0,-J,-K,-L) as the "canonical"
+ * one -- the direction that gets classified by its angular signature, the
+ * other being derived from it (see pass 2 below). */
+static bool
+IsCanonicalDirection(int I0, int I1, int J, int K, int L)
+{
+	if (I1 != I0) return I1 > I0;
+	if (J != 0) return J > 0;
+	if (K != 0) return K > 0;
+	return L > 0; // L != 0 guaranteed: the exact self-pair (0,0,0) is excluded
+}
+
+/* Appends one classified bond to the in-progress map. Returns false, loudly,
+ * when the fixed-capacity scratch map is full. */
+static bool
+AppendPair(NeighborPair *pairs, int *pairCount, NeighborPair pair)
+{
+	if (*pairCount == MAX_NEIGHBOR_PAIRS_TEMP) {
+		fprintf(stderr, "magnoom_ctx_build_neighbor_map: exceeded %d total neighbor pairs.\n", MAX_NEIGHBOR_PAIRS_TEMP);
+		return false;
+	}
+	pairs[*pairCount] = pair;
+	(*pairCount)++;
+	return true;
+}
+
+/* Classifies the canonical direction of every bond at `radius` by its
+ * angular signature and atom pair, appending each to `pairs`. Bonds whose
+ * (signature, atom-pair) class was already seen AT THIS RADIUS reuse its
+ * shell; every new class opens a new shell, so *shellCount grows by one per
+ * class. This is where a raw distance level splits into several shells. */
+static bool
+ClassifyCanonicalBonds(magnoom_ctx *ctx, float radius, int *shellCount, NeighborPair *pairs, int *pairCount)
+{
+	ShellBucket buckets[MAX_SHELL_NUM];
+	int bucketCount = 0;
+
+	for (int I0 = 0; I0 < ctx->AtomsPerBlock; I0++) {
+		NeighborCandidate candidates[MAX_NEIGHBORS_PER_SHELL_PER_ATOM];
+		int candidateCount;
+		if (!GatherShellCandidates(ctx->abc, ctx->Block, ctx->AtomsPerBlock, I0, radius,
+				candidates, &candidateCount)) {
+			fprintf(stderr, "magnoom_ctx_build_neighbor_map: shell at radius %f around atom %d has more than %d neighbors.\n",
+				(double)radius, I0, MAX_NEIGHBORS_PER_SHELL_PER_ATOM);
+			return false;
+		}
+
+		for (int n = 0; n < candidateCount; n++) {
+			const NeighborCandidate *bond = &candidates[n];
+			if (!IsCanonicalDirection(I0, bond->I1, bond->J, bond->K, bond->L)) continue;
+
+			// Rotation/reflection-invariant fingerprint of this bond: the
+			// sorted cosines of its angle to every other bond in the same
+			// shell around the same central atom (temp/src/shell.h's
+			// symmetry_shell_signature, minus the constant self-cosine).
+			float signature[MAX_NEIGHBORS_PER_SHELL_PER_ATOM];
+			int sigLen = 0;
+			for (int m = 0; m < candidateCount; m++) {
+				if (m == n) continue;
+				signature[sigLen++] = CosAngleBetweenBonds(bond, &candidates[m]);
+			}
+			SortAscending(signature, sigLen);
+
+			// A canonical bond always runs from the lower to the higher
+			// basis-atom index (see IsCanonicalDirection), so (I0, I1) is
+			// already the ordered atom pair the bucket is keyed on.
+			int matched = -1;
+			for (int k = 0; k < bucketCount; k++) {
+				if (buckets[k].atomLo == I0 && buckets[k].atomHi == bond->I1 &&
+					SignaturesEqual(buckets[k].signature, buckets[k].signatureLength,
+						signature, sigLen, SHELL_SIGNATURE_TOL)) {
+					matched = k;
+					break;
+				}
+			}
+			if (matched < 0) {
+				if (*shellCount == MAX_SHELL_NUM) {
+					fprintf(stderr, "magnoom_ctx_build_neighbor_map: splitting the shell at radius %f exceeds the maximum of %d shells.\n",
+						(double)radius, MAX_SHELL_NUM);
+					return false;
+				}
+				memcpy(buckets[bucketCount].signature, signature, (size_t)sigLen*sizeof(float));
+				buckets[bucketCount].signatureLength = sigLen;
+				buckets[bucketCount].atomLo = I0;
+				buckets[bucketCount].atomHi = bond->I1;
+				buckets[bucketCount].finalShell = *shellCount;
+				ctx->Neighbors.ShellRadius[*shellCount] = radius;
+				matched = bucketCount;
+				bucketCount++;
+				(*shellCount)++;
+			}
+
+			NeighborPair canonical = { I0, bond->I1, bond->J, bond->K, bond->L, buckets[matched].finalShell };
+			if (!AppendPair(pairs, pairCount, canonical)) return false;
+		}
+	}
+	return true;
+}
+
+/* Walks the distinct interatomic distances outwards, filling `pairs` with
+ * both directions of every bond until targetShellCount shells exist. */
+static bool
+BuildShellLevels(magnoom_ctx *ctx, int targetShellCount, NeighborPair *pairs, int *outPairCount, int *outShellCount)
+{
+	int pairCount = 0;
+	int shellCount = 0;
+	float currRadius = 0.0f;
+
+	for (int rawLevel = 0; shellCount < targetShellCount; rawLevel++) {
+		if (rawLevel >= MAX_RAW_SHELL_LEVELS) {
+			fprintf(stderr, "magnoom_ctx_build_neighbor_map: exceeded %d raw distance levels without reaching %d shells.\n",
+				MAX_RAW_SHELL_LEVELS, targetShellCount);
+			return false;
+		}
+
+		float nextRadius;
+		if (!FindNextShellRadius(ctx->abc, ctx->Block, ctx->AtomsPerBlock, currRadius, &nextRadius)) {
+			fprintf(stderr, "magnoom_ctx_build_neighbor_map: ran out of distinct interatomic distances before reaching %d shells.\n",
+				targetShellCount);
+			return false;
+		}
+		currRadius = nextRadius;
+
+		int levelPairStart = pairCount;
+		if (!ClassifyCanonicalBonds(ctx, currRadius, &shellCount, pairs, &pairCount)) return false;
+
+		// The reciprocal of each bond just classified is the same physical
+		// bond seen from the other end, so it belongs to the same shell.
+		// Deriving the non-canonical directions from those records -- instead
+		// of gathering and classifying them again -- is what makes that
+		// guarantee exact: the two directions' per-atom angular signatures
+		// need not agree when I0 and I1 sit in different local environments,
+		// yet a symmetric pairwise exchange Hamiltonian needs one exchange
+		// constant per bond, not one per direction.
+		int levelCanonicalEnd = pairCount;
+		for (int k = levelPairStart; k < levelCanonicalEnd; k++) {
+			NeighborPair canonical = pairs[k];
+			NeighborPair reciprocal = { canonical.I1, canonical.I0,
+				-canonical.J, -canonical.K, -canonical.L, canonical.shell };
+			if (!AppendPair(pairs, &pairCount, reciprocal)) return false;
+		}
+	}
+
+	*outPairCount = pairCount;
+	*outShellCount = shellCount;
+	return true;
+}
+
+/* Builds ctx->Neighbors: the flattened template of neighbor-pair bonds in
+ * the basic block, grouped into coordination shells distinguished by both
+ * distance and local point symmetry. Bonds at the same distance are split
+ * into separate shells whenever their rotation/reflection-invariant angular
+ * signature (the sorted list of cosines between that bond and every other
+ * bond in the same shell around the same central atom) or their unordered
+ * (central, neighbor) atom-pair differs -- this ports the classification
+ * logic of temp/src/shell.h's neighbor_map_new(), adapted to Magnoom's
+ * global (not per-atom) shell index and to fixed/preallocated construction
+ * instead of dynamic arrays.
+ *
+ * ctx->ShellNumber on entry is the desired number of final (post-split)
+ * shells; on success it is overwritten with the realized count, which can
+ * exceed the requested one whenever splitting occurs. */
+bool
+magnoom_ctx_build_neighbor_map(magnoom_ctx *ctx)
+{
+	if (ctx->ShellNumber <= 0 || ctx->ShellNumber > MAX_SHELL_NUM) {
+		fprintf(stderr, "magnoom_ctx_build_neighbor_map: ShellNumber must be between 1 and %d.\n", MAX_SHELL_NUM);
+		return false;
+	}
+
+	/* Generously sized scratch copy of the whole in-progress map, trimmed
+	 * into the exact-size final arrays once the shell count is known. */
+	NeighborPair *pairs = (NeighborPair *)malloc(MAX_NEIGHBOR_PAIRS_TEMP*sizeof(NeighborPair));
+	if (pairs == NULL) {
+		fprintf(stderr, "magnoom_ctx_build_neighbor_map: unable to allocate temporary neighbor-pair storage.\n");
+		return false;
+	}
+
+	int pairCount = 0;
+	int shellCount = 0;
+	bool ok = BuildShellLevels(ctx, ctx->ShellNumber, pairs, &pairCount, &shellCount);
+
+	if (ok) {
+		ctx->Neighbors.AIdxBlock = (int *)malloc((size_t)pairCount*sizeof(int));
+		ctx->Neighbors.NIdxBlock = (int *)malloc((size_t)pairCount*sizeof(int));
+		ctx->Neighbors.NIdxGridA = (int *)malloc((size_t)pairCount*sizeof(int));
+		ctx->Neighbors.NIdxGridB = (int *)malloc((size_t)pairCount*sizeof(int));
+		ctx->Neighbors.NIdxGridC = (int *)malloc((size_t)pairCount*sizeof(int));
+		ctx->Neighbors.ShellIdx  = (int *)malloc((size_t)pairCount*sizeof(int));
+		if (ctx->Neighbors.AIdxBlock == NULL || ctx->Neighbors.NIdxBlock == NULL ||
+			ctx->Neighbors.NIdxGridA == NULL || ctx->Neighbors.NIdxGridB == NULL ||
+			ctx->Neighbors.NIdxGridC == NULL || ctx->Neighbors.ShellIdx == NULL) {
+			fprintf(stderr, "magnoom_ctx_build_neighbor_map: unable to allocate the final neighbor-pair arrays.\n");
+			free(ctx->Neighbors.AIdxBlock); free(ctx->Neighbors.NIdxBlock); free(ctx->Neighbors.NIdxGridA);
+			free(ctx->Neighbors.NIdxGridB); free(ctx->Neighbors.NIdxGridC); free(ctx->Neighbors.ShellIdx);
+			memset(&ctx->Neighbors, 0, sizeof(ctx->Neighbors));
+			ok = false;
+		} else {
+			for (int i = 0; i < pairCount; i++) {
+				ctx->Neighbors.AIdxBlock[i] = pairs[i].I0;
+				ctx->Neighbors.NIdxBlock[i] = pairs[i].I1;
+				ctx->Neighbors.NIdxGridA[i] = pairs[i].J;
+				ctx->Neighbors.NIdxGridB[i] = pairs[i].K;
+				ctx->Neighbors.NIdxGridC[i] = pairs[i].L;
+				ctx->Neighbors.ShellIdx[i]  = pairs[i].shell;
+			}
+			ctx->Neighbors.PairCount = pairCount;
+			ctx->Neighbors.ShellCount = shellCount;
+			ctx->ShellNumber = shellCount;
+		}
+	}
+
+	free(pairs);
+
+	return ok;
 }
 
 void

@@ -3,13 +3,13 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 					int nbini, 	int nbfin,
 					int ncini, 	int ncfin)
 {
-	const int numNeighbors = ctx->NeighborPairs;
-	const int *aidxBlock = ctx->AIdxBlock;
-	const int *nidxBlock = ctx->NIdxBlock;
-	const int *nidxGridA = ctx->NIdxGridA;
-	const int *nidxGridB = ctx->NIdxGridB;
-	const int *nidxGridC = ctx->NIdxGridC;
-	const int *shellIdx = ctx->SIdx;
+	const int numNeighbors = ctx->Neighbors.PairCount;
+	const int *aidxBlock = ctx->Neighbors.AIdxBlock;
+	const int *nidxBlock = ctx->Neighbors.NIdxBlock;
+	const int *nidxGridA = ctx->Neighbors.NIdxGridA;
+	const int *nidxGridB = ctx->Neighbors.NIdxGridB;
+	const int *nidxGridC = ctx->Neighbors.NIdxGridC;
+	const int *shellIdx = ctx->Neighbors.ShellIdx;
 	const float *Jij = ctx->Jij;
 	const float *Bij = ctx->Bij;
 	const float *Dij = ctx->Dij;
@@ -168,12 +168,12 @@ double GetTotalEnergyFerro(magnoom_ctx *ctx)
 	double sx = ctx->BextDCDirection[0];
 	double sy = ctx->BextDCDirection[1];
 	double sz = ctx->BextDCDirection[2];
-	const int numNeighbors = ctx->NeighborPairs;
-	const int *aidxBlock = ctx->AIdxBlock;
-	const int *nidxGridA = ctx->NIdxGridA;
-	const int *nidxGridB = ctx->NIdxGridB;
-	const int *nidxGridC = ctx->NIdxGridC;
-	const int *shellIdx = ctx->SIdx;
+	const int numNeighbors = ctx->Neighbors.PairCount;
+	const int *aidxBlock = ctx->Neighbors.AIdxBlock;
+	const int *nidxGridA = ctx->Neighbors.NIdxGridA;
+	const int *nidxGridB = ctx->Neighbors.NIdxGridB;
+	const int *nidxGridC = ctx->Neighbors.NIdxGridC;
+	const int *shellIdx = ctx->Neighbors.ShellIdx;
 	const float *Jij = ctx->Jij;
 	const float *Bij = ctx->Bij;
 	const float *Dij = ctx->Dij;
@@ -262,13 +262,13 @@ double
 GetTotalEnergy(magnoom_ctx *ctx)
 {
 	const double *s = ctx->bS;
-	const int numNeighbors = ctx->NeighborPairs;
-	const int *aidxBlock = ctx->AIdxBlock;
-	const int *nidxBlock = ctx->NIdxBlock;
-	const int *nidxGridA = ctx->NIdxGridA;
-	const int *nidxGridB = ctx->NIdxGridB;
-	const int *nidxGridC = ctx->NIdxGridC;
-	const int *shellIdx = ctx->SIdx;
+	const int numNeighbors = ctx->Neighbors.PairCount;
+	const int *aidxBlock = ctx->Neighbors.AIdxBlock;
+	const int *nidxBlock = ctx->Neighbors.NIdxBlock;
+	const int *nidxGridA = ctx->Neighbors.NIdxGridA;
+	const int *nidxGridB = ctx->Neighbors.NIdxGridB;
+	const int *nidxGridC = ctx->Neighbors.NIdxGridC;
+	const int *shellIdx = ctx->Neighbors.ShellIdx;
 	const float *Jij = ctx->Jij;
 	const float *Bij = ctx->Bij;
 	const float *Dij = ctx->Dij;

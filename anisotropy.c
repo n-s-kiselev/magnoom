@@ -139,11 +139,113 @@ void anisotropy_rotate_tensor(const AnisotropyTensor *local, const double rotati
 	}
 }
 
+bool anisotropy_normalize_quaternion(const double input[4], double output[4])
+{
+	if (input == NULL || output == NULL) return false;
+	double scale = 0.0;
+	for (int i = 0; i < 4; ++i) {
+		if (!isfinite(input[i])) return false;
+		double magnitude = fabs(input[i]);
+		if (magnitude > scale) scale = magnitude;
+	}
+	if (scale == 0.0) return false;
+	double norm_squared = 0.0;
+	for (int i = 0; i < 4; ++i) {
+		double scaled = input[i]/scale;
+		norm_squared += scaled*scaled;
+	}
+	double inverse_norm = 1.0/sqrt(norm_squared);
+	for (int i = 0; i < 4; ++i) output[i] = (input[i]/scale)*inverse_norm;
+	return true;
+}
+
+void anisotropy_quaternion_to_matrix(const double quaternion[4], double rotation[3][3])
+{
+	double q[4];
+	if (rotation == NULL) return;
+	if (!anisotropy_normalize_quaternion(quaternion, q)) {
+		memset(rotation, 0, 9*sizeof(double));
+		rotation[0][0] = rotation[1][1] = rotation[2][2] = 1.0;
+		return;
+	}
+	double xx = q[0]*q[0], yy = q[1]*q[1], zz = q[2]*q[2];
+	double xy = q[0]*q[1], xz = q[0]*q[2], yz = q[1]*q[2];
+	double wx = q[3]*q[0], wy = q[3]*q[1], wz = q[3]*q[2];
+	rotation[0][0] = 1.0 - 2.0*(yy + zz);
+	rotation[0][1] = 2.0*(xy - wz);
+	rotation[0][2] = 2.0*(xz + wy);
+	rotation[1][0] = 2.0*(xy + wz);
+	rotation[1][1] = 1.0 - 2.0*(xx + zz);
+	rotation[1][2] = 2.0*(yz - wx);
+	rotation[2][0] = 2.0*(xz - wy);
+	rotation[2][1] = 2.0*(yz + wx);
+	rotation[2][2] = 1.0 - 2.0*(xx + yy);
+}
+
 void anisotropy_rotate_site(magnoom_ctx *ctx, int atom)
 {
 	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock) return;
-	anisotropy_rotate_tensor(&ctx->anisotropy_local[atom], ctx->anisotropy_rotation[atom],
+	double rotation[3][3];
+	anisotropy_quaternion_to_matrix(ctx->anisotropy_quaternion[atom], rotation);
+	anisotropy_rotate_tensor(&ctx->anisotropy_local[atom], rotation,
 		&ctx->anisotropy_global[atom]);
+}
+
+bool anisotropy_set_quaternion(magnoom_ctx *ctx, int atom, const double quaternion[4])
+{
+	double normalized[4];
+	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock ||
+		!anisotropy_normalize_quaternion(quaternion, normalized)) return false;
+	memcpy(ctx->anisotropy_quaternion[atom], normalized, sizeof(normalized));
+	anisotropy_rotate_site(ctx, atom);
+	return true;
+}
+
+void anisotropy_quaternion_from_axis_angle(const double axis[3], double angle, double quaternion[4])
+{
+	if (axis == NULL || quaternion == NULL) return;
+	double norm = sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
+	double sina2 = sin(0.5 * angle);
+	if (norm <= 0.0) {
+		quaternion[0] = quaternion[1] = quaternion[2] = 0.0;
+		quaternion[3] = 1.0;
+		return;
+	}
+	quaternion[0] = sina2 * axis[0] / norm;
+	quaternion[1] = sina2 * axis[1] / norm;
+	quaternion[2] = sina2 * axis[2] / norm;
+	quaternion[3] = cos(0.5 * angle);
+}
+
+void anisotropy_quaternion_multiply(const double q1[4], const double q2[4], double out[4])
+{
+	if (q1 == NULL || q2 == NULL || out == NULL) return;
+	double r[4];
+	r[0] = q1[3]*q2[0] + q1[0]*q2[3] + q1[1]*q2[2] - q1[2]*q2[1];
+	r[1] = q1[3]*q2[1] + q1[1]*q2[3] + q1[2]*q2[0] - q1[0]*q2[2];
+	r[2] = q1[3]*q2[2] + q1[2]*q2[3] + q1[0]*q2[1] - q1[1]*q2[0];
+	r[3] = q1[3]*q2[3] - (q1[0]*q2[0] + q1[1]*q2[1] + q1[2]*q2[2]);
+	out[0] = r[0]; out[1] = r[1]; out[2] = r[2]; out[3] = r[3];
+}
+
+bool anisotropy_compose_axis_angle(magnoom_ctx *ctx, int atom, const double axis[3], double angle_degrees)
+{
+	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock) return false;
+	double angle = angle_degrees * (3.141592653589793 / 180.0);
+	double q_new[4];
+	anisotropy_quaternion_from_axis_angle(axis, angle, q_new);
+	double q_existing[4];
+	memcpy(q_existing, ctx->anisotropy_quaternion[atom], sizeof(q_existing));
+	double q_combined[4];
+	anisotropy_quaternion_multiply(q_new, q_existing, q_combined);
+	return anisotropy_set_quaternion(ctx, atom, q_combined);
+}
+
+bool anisotropy_reset_quaternion(magnoom_ctx *ctx, int atom)
+{
+	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock) return false;
+	double identity[4] = {0.0, 0.0, 0.0, 1.0};
+	return anisotropy_set_quaternion(ctx, atom, identity);
 }
 
 void anisotropy_rotate_all(magnoom_ctx *ctx)
@@ -160,23 +262,6 @@ bool anisotropy_copy_atom0_tensors(magnoom_ctx *ctx)
 	}
 	anisotropy_rotate_all(ctx);
 	return true;
-}
-
-static bool anisotropy_rotation_is_proper(const double rotation[3][3])
-{
-	const double tolerance = 1e-6;
-	for (int i = 0; i < 3; ++i) {
-		for (int j = 0; j < 3; ++j) {
-			double dot = 0.0;
-			for (int k = 0; k < 3; ++k) dot += rotation[i][k]*rotation[j][k];
-			if (fabs(dot - (i == j ? 1.0 : 0.0)) > tolerance) return false;
-		}
-	}
-	double determinant =
-		rotation[0][0]*(rotation[1][1]*rotation[2][2] - rotation[1][2]*rotation[2][1]) -
-		rotation[0][1]*(rotation[1][0]*rotation[2][2] - rotation[1][2]*rotation[2][0]) +
-		rotation[0][2]*(rotation[1][0]*rotation[2][1] - rotation[1][1]*rotation[2][0]);
-	return fabs(determinant - 1.0) <= tolerance;
 }
 
 bool anisotropy_apply_config_records(magnoom_ctx *ctx)
@@ -202,8 +287,8 @@ bool anisotropy_apply_config_records(magnoom_ctx *ctx)
 						record->index[0], record->index[1], record->index[2], record->index[3],
 						record->value)) return false;
 					break;
-				case ANISOTROPY_RECORD_ROTATION:
-					ctx->anisotropy_rotation[atom][record->index[0]][record->index[1]] = record->value;
+				case ANISOTROPY_RECORD_QUATERNION:
+					ctx->anisotropy_quaternion[atom][record->index[0]] = record->value;
 					break;
 				default:
 					return false;
@@ -212,10 +297,12 @@ bool anisotropy_apply_config_records(magnoom_ctx *ctx)
 	}
 
 	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
-		if (!anisotropy_rotation_is_proper(ctx->anisotropy_rotation[atom])) {
-			fprintf(stderr, "magnoom.cfg defines an invalid rotation matrix for atom %d.\n", atom);
+		double normalized[4];
+		if (!anisotropy_normalize_quaternion(ctx->anisotropy_quaternion[atom], normalized)) {
+			fprintf(stderr, "magnoom.cfg defines an invalid quaternion for atom %d.\n", atom);
 			return false;
 		}
+		memcpy(ctx->anisotropy_quaternion[atom], normalized, sizeof(normalized));
 	}
 	anisotropy_rotate_all(ctx);
 	return true;

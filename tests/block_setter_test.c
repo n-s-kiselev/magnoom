@@ -13,8 +13,12 @@ static int failures;
 static void free_geometry(magnoom_ctx *ctx)
 {
     free(ctx->Block);
-    free(ctx->RadiusOfShell);
-    free(ctx->NeighborsPerAtom);
+    free(ctx->Neighbors.AIdxBlock);
+    free(ctx->Neighbors.NIdxBlock);
+    free(ctx->Neighbors.NIdxGridA);
+    free(ctx->Neighbors.NIdxGridB);
+    free(ctx->Neighbors.NIdxGridC);
+    free(ctx->Neighbors.ShellIdx);
 }
 
 static void set_identity_cell(magnoom_ctx *ctx)
@@ -307,7 +311,6 @@ static void test_default_block(void)
     CHECK(magnoom_ctx_init(&ctx));
     CHECK(ctx.AtomsPerBlock == 1);
     CHECK(ctx.Block != NULL);
-    CHECK(ctx.NeighborsPerAtom != NULL);
     CHECK(ctx.Block[0][0] == 0.5f);
     CHECK(ctx.Block[0][1] == 0.5f);
     CHECK(ctx.Block[0][2] == 0.5f);
@@ -331,15 +334,13 @@ static void test_crystal_examples(void)
         {0.5f-2.0f*uB20, 1.0f-2.0f*uB20, 0.5f}
     };
     set_identity_cell(&ctx);
-    ctx.RadiusOfShell[0] = 7.0f;
+    ctx.Neighbors.ShellRadius[0] = 7.0f;
     CHECK(magnoom_ctx_set_block(&ctx, 4, b20));
     CHECK(ctx.AtomsPerBlock == 4);
     CHECK(ctx.NOS == 4000);
-    CHECK(ctx.RadiusOfShell[0] == 7.0f);
+    CHECK(ctx.Neighbors.ShellRadius[0] == 7.0f);
     CHECK(ctx.Block[3][0] == b20[3][0]);
-    for (int atom = 0; atom < ctx.AtomsPerBlock; ++atom) {
-        CHECK(ctx.NeighborsPerAtom[atom] == 0);
-    }
+    CHECK(ctx.Neighbors.PairCount == 0 && ctx.Neighbors.AIdxBlock == NULL);
     b20[0][0] = 0.25f;
     CHECK(ctx.Block[0][0] == 0.0f);
 
@@ -365,51 +366,50 @@ static void test_crystal_examples(void)
     CHECK(ctx.NOS == 4000);
     CHECK(ctx.Block[3][2] == eusi[3][2]);
 
-    GetShells(&ctx);
-    int neighbor_pairs = GetNeighborsNumber(
-        ctx.abc, ctx.Block, ctx.AtomsPerBlock, ctx.ShellNumber,
-        ctx.RadiusOfShell, ctx.NeighborsPerAtom);
-    CHECK(neighbor_pairs == 8);
-    for (int atom = 0; atom < ctx.AtomsPerBlock; ++atom) {
-        CHECK(ctx.NeighborsPerAtom[atom] == 2);
-    }
-
-    int *atom_indices = (int *)calloc((size_t)neighbor_pairs, sizeof(int));
-    int *neighbor_indices = (int *)calloc((size_t)neighbor_pairs, sizeof(int));
-    int *grid_a = (int *)calloc((size_t)neighbor_pairs, sizeof(int));
-    int *grid_b = (int *)calloc((size_t)neighbor_pairs, sizeof(int));
-    int *grid_c = (int *)calloc((size_t)neighbor_pairs, sizeof(int));
-    int *shell_indices = (int *)calloc((size_t)neighbor_pairs, sizeof(int));
-    CHECK(atom_indices != NULL && neighbor_indices != NULL && grid_a != NULL &&
-          grid_b != NULL && grid_c != NULL && shell_indices != NULL);
-    if (atom_indices != NULL && neighbor_indices != NULL && grid_a != NULL &&
-        grid_b != NULL && grid_c != NULL && shell_indices != NULL) {
-        CreateMapOfNeighbors(
-            ctx.abc, ctx.Block, ctx.AtomsPerBlock, ctx.ShellNumber,
-            ctx.RadiusOfShell, atom_indices, neighbor_indices,
-            grid_a, grid_b, grid_c, shell_indices);
+    // magnoom_ctx_build_neighbor_map() writes into ctx.Neighbors, which trips
+    // magnoom_ctx_set_block()'s "geometry already allocated" guard -- so this
+    // check runs on a separate scratch context, leaving ctx free for the
+    // further magnoom_ctx_set_block() calls below.
+    {
+        magnoom_ctx neighbor_ctx = {0};
+        CHECK(magnoom_ctx_init(&neighbor_ctx));
+        memcpy(neighbor_ctx.abc, eusi_abc, sizeof(eusi_abc));
+        CHECK(magnoom_ctx_set_block(&neighbor_ctx, 4, eusi));
+        CHECK(magnoom_ctx_build_neighbor_map(&neighbor_ctx));
+        int neighbor_pairs = neighbor_ctx.Neighbors.PairCount;
+        CHECK(neighbor_pairs == 8);
+        int neighbors_per_atom[MAX_ATOMS_PER_BLOCK] = {0};
         for (int pair = 0; pair < neighbor_pairs; ++pair) {
-            bool reciprocal_found = false;
+            neighbors_per_atom[neighbor_ctx.Neighbors.AIdxBlock[pair]]++;
+        }
+        for (int atom = 0; atom < neighbor_ctx.AtomsPerBlock; ++atom) {
+            CHECK(neighbors_per_atom[atom] == 2);
+        }
+
+        // Every bond must have a reciprocal (opposite atom order, negated
+        // grid offset) that shares its shell -- a symmetric pairwise
+        // exchange Hamiltonian requires this regardless of how many shells
+        // splitting produces (see magnoom_ctx_build_neighbor_map's
+        // canonical/reciprocal classification in lattice_geometry.c).
+        for (int pair = 0; pair < neighbor_pairs; ++pair) {
+            int reciprocal = -1;
             for (int candidate = 0; candidate < neighbor_pairs; ++candidate) {
-                if (atom_indices[candidate] == neighbor_indices[pair] &&
-                    neighbor_indices[candidate] == atom_indices[pair] &&
-                    grid_a[candidate] == -grid_a[pair] &&
-                    grid_b[candidate] == -grid_b[pair] &&
-                    grid_c[candidate] == -grid_c[pair]) {
-                    reciprocal_found = true;
+                if (neighbor_ctx.Neighbors.AIdxBlock[candidate] == neighbor_ctx.Neighbors.NIdxBlock[pair] &&
+                    neighbor_ctx.Neighbors.NIdxBlock[candidate] == neighbor_ctx.Neighbors.AIdxBlock[pair] &&
+                    neighbor_ctx.Neighbors.NIdxGridA[candidate] == -neighbor_ctx.Neighbors.NIdxGridA[pair] &&
+                    neighbor_ctx.Neighbors.NIdxGridB[candidate] == -neighbor_ctx.Neighbors.NIdxGridB[pair] &&
+                    neighbor_ctx.Neighbors.NIdxGridC[candidate] == -neighbor_ctx.Neighbors.NIdxGridC[pair]) {
+                    reciprocal = candidate;
                     break;
                 }
             }
-            CHECK(reciprocal_found);
-            CHECK(shell_indices[pair] == 0);
+            CHECK(reciprocal >= 0);
+            if (reciprocal >= 0) {
+                CHECK(neighbor_ctx.Neighbors.ShellIdx[reciprocal] == neighbor_ctx.Neighbors.ShellIdx[pair]);
+            }
         }
+        free_geometry(&neighbor_ctx);
     }
-    free(atom_indices);
-    free(neighbor_indices);
-    free(grid_a);
-    free(grid_b);
-    free(grid_c);
-    free(shell_indices);
 
     const float sqrt2 = sqrtf(2.0f);
     const float fcc2_abc[3][3] = {
@@ -460,7 +460,6 @@ static void test_invalid_inputs_are_transactional(void)
     magnoom_ctx ctx = {0};
     CHECK(magnoom_ctx_init(&ctx));
     float (*old_block)[3] = ctx.Block;
-    int *old_neighbors = ctx.NeighborsPerAtom;
     int old_atom_count = ctx.AtomsPerBlock;
     int old_nos = ctx.NOS;
     const float inside[][3] = {{0.25f, 0.25f, 0.25f}};
@@ -476,14 +475,12 @@ static void test_invalid_inputs_are_transactional(void)
     CHECK(!magnoom_ctx_set_block(&ctx, 1, upper_face));
     CHECK(magnoom_ctx_set_block(&ctx, 1, near_upper_face));
     old_block = ctx.Block;
-    old_neighbors = ctx.NeighborsPerAtom;
     old_atom_count = ctx.AtomsPerBlock;
     old_nos = ctx.NOS;
     CHECK(!magnoom_ctx_set_block(&ctx, 1, near_lower_outside));
     CHECK(!magnoom_ctx_set_block(&ctx, 1, outside));
     CHECK(!magnoom_ctx_set_block(&ctx, MAX_ATOMS_PER_BLOCK + 1, too_many_atoms));
     CHECK(ctx.Block == old_block);
-    CHECK(ctx.NeighborsPerAtom == old_neighbors);
     CHECK(ctx.AtomsPerBlock == old_atom_count);
     CHECK(ctx.NOS == old_nos);
 
@@ -504,10 +501,10 @@ static void test_invalid_inputs_are_transactional(void)
     CHECK(ctx.Block == old_block);
     memcpy(ctx.uABC, saved_dimensions, sizeof(saved_dimensions));
 
-    ctx.NeighborPairs = 1;
+    ctx.Neighbors.PairCount = 1;
     CHECK(!magnoom_ctx_set_block(&ctx, 1, inside));
     CHECK(ctx.Block == old_block);
-    ctx.NeighborPairs = 0;
+    ctx.Neighbors.PairCount = 0;
 
     free_geometry(&ctx);
 }

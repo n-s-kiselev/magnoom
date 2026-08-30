@@ -72,7 +72,7 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 
 #define THREADS_NUMBER 3
 #define MAX_ATOMS_PER_BLOCK 5
-#define MAX_SHELL_NUM 6
+#define MAX_SHELL_NUM 16
 #define MAGNOOM_PATH_CAPACITY 4096
 #define MAGNOOM_MODAL_BAR_CAPACITY 32
 #define MAGNOOM_MODAL_MESSAGE_CAPACITY 512
@@ -165,6 +165,26 @@ enum {
 };
 
 /*****************************************************************************/
+/* NeighborMap: flattened template of neighbor-pair bonds in the basic       */
+/* block, grouped into coordination shells distinguished by distance and    */
+/* local symmetry (see magnoom_ctx_build_neighbor_map in lattice_geometry.c).*/
+/* Purely topological -- exchange constants (Jij/Bij/Dij) and per-pair DMI  */
+/* directions (VDMX/Y/Z) live directly on magnoom_ctx, indexed by ShellIdx. */
+/*****************************************************************************/
+typedef struct NeighborMap {
+	int             ShellCount;                /* realized shell count, <= MAX_SHELL_NUM */
+	float           ShellRadius[MAX_SHELL_NUM]; /* radius of shell s */
+
+	int             PairCount;                  /* total flattened neighbor-pair entries */
+	int*            AIdxBlock;                  /* [PairCount] central atom index within the block */
+	int*            NIdxBlock;                  /* [PairCount] neighbor atom index within the block */
+	int*            NIdxGridA;                  /* [PairCount] neighbor block offset along vector a */
+	int*            NIdxGridB;                  /* [PairCount] neighbor block offset along vector b */
+	int*            NIdxGridC;                  /* [PairCount] neighbor block offset along vector c */
+	int*            ShellIdx;                   /* [PairCount] shell index (0..ShellCount-1) of this pair */
+} NeighborMap;
+
+/*****************************************************************************/
 /* magnoom_ctx: single struct holding all program state (formerly globals    */
 /* scattered across magnoom.h, magnoom.c, and visualization.c).              */
 /*****************************************************************************/
@@ -230,13 +250,7 @@ typedef struct magnoom_ctx {
 	float*          BHue;
 
 	/* Neighbor map */
-	int             NeighborPairs;
-	int*            AIdxBlock;
-	int*            NIdxBlock;
-	int*            NIdxGridA;
-	int*            NIdxGridB;
-	int*            NIdxGridC;
-	int*            SIdx;
+	NeighborMap     Neighbors;
 	float           Box[3][3];
 	float*          Jexc;
 	float*          Bexc;
@@ -337,8 +351,6 @@ typedef struct magnoom_ctx {
 	int             uABC[3];
 	int             ShellNumber;
 	int             AtomsPerBlock;
-	float*          RadiusOfShell;
-	int*            NeighborsPerAtom;
 	int             NOS;
 	int             NOS_AL;
 	int             NOS_BL;
@@ -1165,7 +1177,7 @@ bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positio
 		fprintf(stderr, "magnoom_ctx_set_block: at most %d atoms per block are supported.\n", MAX_ATOMS_PER_BLOCK);
 		return false;
 	}
-	if (ctx->NeighborPairs != 0 || ctx->AIdxBlock != NULL || ctx->S != NULL ||
+	if (ctx->Neighbors.PairCount != 0 || ctx->Neighbors.AIdxBlock != NULL || ctx->S != NULL ||
 		ctx->bS != NULL || ctx->PosX != NULL || ctx->vertices != NULL) {
 		fprintf(stderr, "magnoom_ctx_set_block: the block can only be changed before derived geometry is allocated.\n");
 		return false;
@@ -1244,26 +1256,20 @@ bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positio
 	/* ARROW1 at the UI limit of 20 faces uses 540 scalar vertex components per spin. */
 	if ((size_t)atom_count > SIZE_MAX/block_count ||
 		(size_t)atom_count*block_count > INT_MAX/540 ||
-		(size_t)atom_count > SIZE_MAX/sizeof(*ctx->Block) ||
-		(size_t)atom_count > SIZE_MAX/sizeof(*ctx->NeighborsPerAtom)) {
+		(size_t)atom_count > SIZE_MAX/sizeof(*ctx->Block)) {
 		fprintf(stderr, "magnoom_ctx_set_block: the requested geometry exceeds the supported index range.\n");
 		return false;
 	}
 
 	float (*new_block)[3] = (float (*)[3])malloc((size_t)atom_count*sizeof(*new_block));
-	int *new_neighbors_per_atom = (int *)calloc((size_t)atom_count, sizeof(*new_neighbors_per_atom));
-	if (new_block == NULL || new_neighbors_per_atom == NULL) {
-		free(new_block);
-		free(new_neighbors_per_atom);
+	if (new_block == NULL) {
 		fprintf(stderr, "magnoom_ctx_set_block: unable to allocate the new block.\n");
 		return false;
 	}
 	memcpy(new_block, positions, (size_t)atom_count*sizeof(*new_block));
 
 	float (*old_block)[3] = ctx->Block;
-	int *old_neighbors_per_atom = ctx->NeighborsPerAtom;
 	ctx->Block = new_block;
-	ctx->NeighborsPerAtom = new_neighbors_per_atom;
 	ctx->AtomsPerBlock = atom_count;
 	ctx->NOB = (int)block_count;
 	ctx->NOB_AL = ctx->uABC[1]*ctx->uABC[2];
@@ -1279,19 +1285,7 @@ bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positio
 	ctx->GreedFilterMaxB = ctx->uABC[1]-1;
 	ctx->GreedFilterMaxC = ctx->uABC[2]-1;
 	free(old_block);
-	free(old_neighbors_per_atom);
 	return true;
-}
-
-void PrintTranslationVectors(const magnoom_ctx *ctx)
-{
-	printf("Translation vectors used in simulation:\n");
-	printf("a = (%.9g, %.9g, %.9g)\n",
-		(double)ctx->abc[0][0], (double)ctx->abc[0][1], (double)ctx->abc[0][2]);
-	printf("b = (%.9g, %.9g, %.9g)\n",
-		(double)ctx->abc[1][0], (double)ctx->abc[1][1], (double)ctx->abc[1][2]);
-	printf("c = (%.9g, %.9g, %.9g)\n",
-		(double)ctx->abc[2][0], (double)ctx->abc[2][1], (double)ctx->abc[2][2]);
 }
 
 /*****************************************************************************/
@@ -1376,12 +1370,69 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	strcpy(ctx->outputfilename, "output.csv");
 
 	/* Geometry */
+	ctx->uABC[0]=10; ctx->uABC[1]=10; ctx->uABC[2]=10;
+	ctx->ShellNumber = 1;
+
+	/* Keep exactly one complete crystal basis below active. */
+	/* Simple cubic, one atom: */
+	const float basis[][3] = {{0.5f, 0.5f, 0.5f}};
 	ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f; ctx->abc[0][2]=0.0f;
 	ctx->abc[1][0]=0.0f; ctx->abc[1][1]=1.0f; ctx->abc[1][2]=0.0f;
 	ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f; ctx->abc[2][2]=1.0f;
-	ctx->uABC[0]=10; ctx->uABC[1]=10; ctx->uABC[2]=10;
-	ctx->ShellNumber = 1;
-	const float default_block[][3] = {{0.5f, 0.5f, 0.5f}};
+	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	// B20 basis (u = 0.138), cubic unit cell:
+	// const float uB20 = 0.138f;
+	// const float basis[][3] = {
+	//     {0.0f,             0.0f,             0.0f},
+	//     {0.5f,             0.5f-2.0f*uB20, 1.0f-2.0f*uB20},
+	//     {1.0f-2.0f*uB20, 0.5f,             0.5f-2.0f*uB20},
+	//     {0.5f-2.0f*uB20, 1.0f-2.0f*uB20, 0.5f}
+	// };
+	// ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f; ctx->abc[0][2]=0.0f;
+	// ctx->abc[1][0]=0.0f; ctx->abc[1][1]=1.0f; ctx->abc[1][2]=0.0f;
+	// ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f; ctx->abc[2][2]=1.0f;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	// EuSi fractional coordinates converted to normalized Cartesian positions:
+	// const float c_EuSi = 3.9845f;
+	// const float a_EuSi = 4.6955f/c_EuSi;
+	// const float b_EuSi = 11.1528f/c_EuSi;
+	// const float u_Eu = 0.3595f;
+	// const float basis[][3] = {
+	//     {0.25f, 0.0f,          u_Eu*b_EuSi},
+	//     {0.75f, 0.0f,          (1.0f-u_Eu)*b_EuSi},
+	//     {0.75f, 0.5f*a_EuSi, (0.5f-u_Eu)*b_EuSi},
+	//     {0.25f, 0.5f*a_EuSi, (0.5f+u_Eu)*b_EuSi}
+	// };
+	// ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f;   ctx->abc[0][2]=0.0f;
+	// ctx->abc[1][0]=0.0f; ctx->abc[1][1]=a_EuSi; ctx->abc[1][2]=0.0f;
+	// ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f;   ctx->abc[2][2]=b_EuSi;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	// FCC2 basis, orthogonal unit cell:
+	// const float sqrt2 = sqrtf(2.0f);
+	// const float basis[][3] = {
+	//     {0.0f, 0.0f,             0.0f},
+	//     {0.0f, sqrt2/2.0f,      0.0f},
+	//     {0.5f, sqrt2/4.0f,      sqrt2/4.0f},
+	//     {0.5f, 3.0f*sqrt2/4.0f, sqrt2/4.0f},
+	//     {0.0f, sqrt2/2.0f,      sqrt2/2.0f}
+	// };
+	// ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f;  ctx->abc[0][2]=0.0f;
+	// ctx->abc[1][0]=0.0f; ctx->abc[1][1]=sqrt2; ctx->abc[1][2]=0.0f;
+	// ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f;  ctx->abc[2][2]=sqrt2;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+
+	// FCC3 basis, nonorthogonal unit cell:
+	// const float sqrt2 = sqrtf(2.0f);
+	// const float sqrt3 = sqrtf(3.0f);
+	// const float sqrt6 = sqrtf(6.0f);
+	// const float basis[][3] = {{0.0f, 0.0f, 0.0f}};
+	// ctx->abc[0][0]=sqrt2;      ctx->abc[0][1]=0.0f;       ctx->abc[0][2]=0.0f;
+	// ctx->abc[1][0]=sqrt2/2.0f; ctx->abc[1][1]=sqrt6/2.0f; ctx->abc[1][2]=0.0f;
+	// ctx->abc[2][0]=sqrt2/2.0f; ctx->abc[2][1]=sqrt6/6.0f; ctx->abc[2][2]=sqrt3/sqrt2;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
 	/* magnoom.c concurrency primitives */
 	ctx->EngineRunState = WAIT;
@@ -1472,11 +1523,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->BextACAmplitude = ctx->BextDCMagnitude*(float)sin(PI/180.0);
 	ctx->BextACPeriod = TPI/ctx->BextACOmega;
 
-	ctx->RadiusOfShell = (float *)calloc((size_t)ctx->ShellNumber, sizeof(float));
-	if (ctx->RadiusOfShell == NULL ||
-		!magnoom_ctx_set_block(ctx, 1, default_block)) {
-		free(ctx->RadiusOfShell);
-		ctx->RadiusOfShell = NULL;
+	if (!magnoom_ctx_set_block(ctx, atom_count, basis)) {
 		return false;
 	}
 
@@ -2466,6 +2513,192 @@ void RestartCalcThreads(magnoom_ctx *ctx, pthread_t * thread_id, calc_thread_arg
 	}
 }
 
+// Width of the table column that prints `count` integers under `header`:
+// the longest printed value (including a leading '-' when needed), so every
+// value lines up no matter how large or negative it gets, but never
+// narrower than the header text itself.
+static int IntColumnWidth(const char *header, const int *values, int count)
+{
+	int width = (int)strlen(header);
+	for (int i = 0; i < count; i++) {
+		char buffer[16];
+		int length = snprintf(buffer, sizeof(buffer), "%d", values[i]);
+		if (length > width) width = length;
+	}
+	return width;
+}
+
+// Longest printed width (including a leading '-' when needed) across
+// `count` floats, each formatted with `format` exactly as it will be
+// displayed - used to size a Markdown table's numeric column so every
+// value in it lines up, whether or not a '-' sign appears. Never returns
+// less than 1, so every column has room for at least one character.
+static int MaxPrintedFloatWidth(const float *values, int count, const char *format)
+{
+	int width = 1;
+	for (int i = 0; i < count; i++) {
+		char buffer[32];
+		int length = snprintf(buffer, sizeof(buffer), format, (double)values[i]);
+		if (length > width) width = length;
+	}
+	return width;
+}
+
+// Positions of the two atoms of neighbor pair `pair` -- the central atom in
+// the home block, the neighbor in its own image block -- and the distance
+// between them. None of the three is stored in the map, so both the
+// column-measuring pass and the printing pass below derive them here.
+static float NeighborPairGeometry(magnoom_ctx *ctx, int pair, float AXYZ[3], float NXYZ[3])
+{
+	const NeighborMap *map = &ctx->Neighbors;
+	GetPosition(ctx->abc, ctx->Block, map->AIdxBlock[pair], 0, 0, 0, AXYZ);
+	GetPosition(ctx->abc, ctx->Block, map->NIdxBlock[pair],
+		map->NIdxGridA[pair], map->NIdxGridB[pair], map->NIdxGridC[pair], NXYZ);
+	float dx = AXYZ[0] - NXYZ[0], dy = AXYZ[1] - NXYZ[1], dz = AXYZ[2] - NXYZ[2];
+	return sqrtf(dx*dx + dy*dy + dz*dz);
+}
+
+// Prints the lattice/neighbor-map diagnostics gathered during startup as
+// a sequence of Markdown tables (unit cell, coordination shells,
+// neighbors-per-atom, a parameter summary, and the full neighbor-pair
+// map), so the output can be pasted directly into a Markdown document.
+// Every numeric column is sized to the widest value actually present
+// (including a '-' sign where one occurs) and to its own header text, so
+// the raw text also stays aligned in a monospace terminal.
+//
+// Every cell is printed as "| " + a field of `width` characters + " |",
+// so between two pipes a separator cell must span width + 2 characters:
+// a right-aligned column prints width + 1 dashes and spends the last
+// character on Markdown's ':' marker, a left-aligned one prints all
+// width + 2 as dashes.
+void PrintLatticeInitReport(magnoom_ctx *ctx)
+{
+	// Sliced with "%.*s" to emit a separator cell's dashes in one go. Far
+	// longer than any column width these tables can reach, since those come
+	// from "%d"/"%.6g"/"%.3f" renderings of lattice data.
+	static const char dashes[] = "----------------------------------------------------------------";
+
+	const NeighborMap *map = &ctx->Neighbors;
+	int cellWidth = MaxPrintedFloatWidth((const float *)ctx->abc, 9, "%.6g");
+	int blockWidth = MaxPrintedFloatWidth((const float *)ctx->Block, 3 * ctx->AtomsPerBlock, "%.6g");
+	if (blockWidth > cellWidth) cellWidth = blockWidth;
+
+	printf("\n### Translation vectors\n\n");
+	const char *vectorNames[3] = { "a", "b", "c" };
+	int vectorWidth = (int)strlen("Vector"); // wider than any of the "a"/"b"/"c" rows
+	printf("| %-*s | %*s | %*s | %*s |\n", vectorWidth, "Vector", cellWidth, "X", cellWidth, "Y", cellWidth, "Z");
+	printf("|%.*s|%.*s:|%.*s:|%.*s:|\n", vectorWidth + 2, dashes,
+		cellWidth + 1, dashes, cellWidth + 1, dashes, cellWidth + 1, dashes);
+	for (int v = 0; v < 3; v++) {
+		printf("| %-*s | %*.6g | %*.6g | %*.6g |\n", vectorWidth, vectorNames[v],
+			cellWidth, (double)ctx->abc[v][0], cellWidth, (double)ctx->abc[v][1], cellWidth, (double)ctx->abc[v][2]);
+	}
+
+	printf("\n### Atom positions in the unit cell\n\n");
+	int atomIndexMax = ctx->AtomsPerBlock > 0 ? ctx->AtomsPerBlock - 1 : 0;
+	int atomWidth = IntColumnWidth("Atom", &atomIndexMax, 1);
+	printf("| %*s | %*s | %*s | %*s |\n", atomWidth, "Atom", cellWidth, "X", cellWidth, "Y", cellWidth, "Z");
+	printf("|%.*s:|%.*s:|%.*s:|%.*s:|\n", atomWidth + 1, dashes,
+		cellWidth + 1, dashes, cellWidth + 1, dashes, cellWidth + 1, dashes);
+	for (int i = 0; i < ctx->AtomsPerBlock; i++) {
+		printf("| %*d | %*.6g | %*.6g | %*.6g |\n", atomWidth, i,
+			cellWidth, (double)ctx->Block[i][0], cellWidth, (double)ctx->Block[i][1], cellWidth, (double)ctx->Block[i][2]);
+	}
+
+	printf("\n### Coordination shells\n\n");
+	int shellIndexMax = map->ShellCount > 0 ? map->ShellCount - 1 : 0;
+	int shellWidth = IntColumnWidth("Shell", &shellIndexMax, 1);
+	int radiusWidth = MaxPrintedFloatWidth(map->ShellRadius, map->ShellCount, "%f"); // always at least as wide as the "R" header
+	printf("| %*s | %*s |\n", shellWidth, "Shell", radiusWidth, "R");
+	printf("|%.*s:|%.*s:|\n", shellWidth + 1, dashes, radiusWidth + 1, dashes);
+	for (int i = 0; i < map->ShellCount; i++) {
+		printf("| %*d | %*f |\n", shellWidth, i, radiusWidth, map->ShellRadius[i]);
+	}
+
+	printf("\n### Neighbors per atom\n\n");
+	int neighborsPerAtom[MAX_ATOMS_PER_BLOCK] = {0};
+	for (int i = 0; i < map->PairCount; i++) {
+		neighborsPerAtom[map->AIdxBlock[i]]++;
+	}
+	int neighborsWidth = IntColumnWidth("Neighbors", neighborsPerAtom, ctx->AtomsPerBlock);
+	printf("| %*s | %*s |\n", atomWidth, "Atom", neighborsWidth, "Neighbors");
+	printf("|%.*s:|%.*s:|\n", atomWidth + 1, dashes, neighborsWidth + 1, dashes);
+	for (int i = 0; i < ctx->AtomsPerBlock; i++) {
+		printf("| %*d | %*d |\n", atomWidth, i, neighborsWidth, neighborsPerAtom[i]);
+	}
+
+	printf("\n### Summary\n\n");
+	const char *summaryNames[3] = { "AtomsPerBlock", "ShellNumber", "NeighborPairs" };
+	int summaryValues[3] = { ctx->AtomsPerBlock, map->ShellCount, map->PairCount };
+	int paramWidth = (int)strlen("Parameter");
+	for (int i = 0; i < 3; i++) {
+		int nameWidth = (int)strlen(summaryNames[i]);
+		if (nameWidth > paramWidth) paramWidth = nameWidth;
+	}
+	int summaryWidth = IntColumnWidth("Value", summaryValues, 3);
+	printf("| %-*s | %*s |\n", paramWidth, "Parameter", summaryWidth, "Value");
+	printf("|%.*s|%.*s:|\n", paramWidth + 2, dashes, summaryWidth + 1, dashes);
+	for (int i = 0; i < 3; i++) {
+		printf("| %-*s | %*d |\n", paramWidth, summaryNames[i], summaryWidth, summaryValues[i]);
+	}
+
+	printf("\n### Neighbor pairs\n\n");
+	// The seven integer columns, in printed order. "N" is the row number
+	// rather than a stored array, so it is measured from the last index the
+	// table will print; the other six are read straight from the pair map.
+	const char *intHeaders[7] = { "N", "Ia", "In", "Jn", "Kn", "Ln", "Sn" };
+	int lastIndex = map->PairCount > 0 ? map->PairCount - 1 : 0;
+	const int *intColumns[7] = { &lastIndex, map->AIdxBlock, map->NIdxBlock,
+		map->NIdxGridA, map->NIdxGridB, map->NIdxGridC, map->ShellIdx };
+	int intWidths[7];
+	for (int c = 0; c < 7; c++) {
+		int count = (c == 0) ? 1 : map->PairCount;
+		intWidths[c] = IntColumnWidth(intHeaders[c], intColumns[c], count);
+	}
+
+	// All twelve float columns share one width so the block reads as a grid.
+	// Jij/Dij/D_x/D_y/D_z are stored and can be measured directly, but
+	// Ax/Ay/Az/Nx/Ny/Nz/Dist are derived per row, so a first pass repeats
+	// the same NeighborPairGeometry() the printing pass below performs.
+	// "%.3f" is never narrower than any of these columns' headers.
+	const char *floatHeaders[12] = { "Ax", "Ay", "Az", "Nx", "Ny", "Nz", "Dist", "Jij", "Dij", "D_x", "D_y", "D_z" };
+	const float *floatColumns[5] = { ctx->Jexc, ctx->Dexc, ctx->VDMX, ctx->VDMY, ctx->VDMZ };
+	int floatWidth = 1;
+	for (int c = 0; c < 5; c++) {
+		int width = MaxPrintedFloatWidth(floatColumns[c], map->PairCount, "%.3f");
+		if (width > floatWidth) floatWidth = width;
+	}
+	for (int i = 0; i < map->PairCount; i++) {
+		float AXYZ[3], NXYZ[3]; // atom / neighbor position
+		float distance = NeighborPairGeometry(ctx, i, AXYZ, NXYZ);
+		float rowValues[7] = { AXYZ[0], AXYZ[1], AXYZ[2], NXYZ[0], NXYZ[1], NXYZ[2], distance };
+		int rowWidth = MaxPrintedFloatWidth(rowValues, 7, "%.3f");
+		if (rowWidth > floatWidth) floatWidth = rowWidth;
+	}
+
+	printf("|");
+	for (int c = 0; c < 7; c++) printf(" %*s |", intWidths[c], intHeaders[c]);
+	for (int c = 0; c < 12; c++) printf(" %*s |", floatWidth, floatHeaders[c]);
+	putchar('\n');
+	printf("|");
+	for (int c = 0; c < 7; c++) printf("%.*s:|", intWidths[c] + 1, dashes);
+	for (int c = 0; c < 12; c++) printf("%.*s:|", floatWidth + 1, dashes);
+	putchar('\n');
+
+	for (int i = 0; i < map->PairCount; i++) {
+		printf("| %*d |", intWidths[0], i); // the "N" column is the row number
+		for (int c = 1; c < 7; c++) printf(" %*d |", intWidths[c], intColumns[c][i]);
+		float AXYZ[3], NXYZ[3]; // atom / neighbor position
+		float distance = NeighborPairGeometry(ctx, i, AXYZ, NXYZ);
+		printf(" %*.3f | %*.3f | %*.3f |", floatWidth, AXYZ[0], floatWidth, AXYZ[1], floatWidth, AXYZ[2]);
+		printf(" %*.3f | %*.3f | %*.3f |", floatWidth, NXYZ[0], floatWidth, NXYZ[1], floatWidth, NXYZ[2]);
+		printf(" %*.3f | %*.3f | %*.3f | %*.3f | %*.3f | %*.3f |\n",
+			floatWidth, distance,
+			floatWidth, ctx->Jexc[i], floatWidth, ctx->Dexc[i],
+			floatWidth, ctx->VDMX[i], floatWidth, ctx->VDMY[i], floatWidth, ctx->VDMZ[i]);
+	}
+}
+
 /*************************************************************************/
 /*                        Program Main Thread                            */
 /*************************************************************************/
@@ -2512,8 +2745,6 @@ main (int argc, char **argv){
 	if (!readConfigFile(&mag_ctx)) {
 		fprintf(stderr, "Unable to apply magnoom.cfg.\n");
 		free(mag_ctx.Block);
-		free(mag_ctx.RadiusOfShell);
-		free(mag_ctx.NeighborsPerAtom);
 		return 1;
 	}
 	////////////////////////////////////////////////
@@ -2522,62 +2753,20 @@ main (int argc, char **argv){
 		fprintf(stderr, "Unable to initialize anisotropy tensors.\n");
 		return 1;
 	}
-	PrintTranslationVectors(&mag_ctx);
-
-	GetShells(&mag_ctx);
-	for(int i=0;i<mag_ctx.ShellNumber;i++) printf("R[%d]=%f\n",i,mag_ctx.RadiusOfShell[i] );
-	mag_ctx.NeighborPairs = GetNeighborsNumber(mag_ctx.abc, mag_ctx.Block, mag_ctx.AtomsPerBlock, mag_ctx.ShellNumber, mag_ctx.RadiusOfShell, mag_ctx.NeighborsPerAtom);
-	// Allocate arrays for neighbours map:
-	mag_ctx.AIdxBlock = (int *)calloc(mag_ctx.NeighborPairs, sizeof(int));// index of the atom within the block
-	mag_ctx.NIdxBlock = (int *)calloc(mag_ctx.NeighborPairs, sizeof(int));// index of the neighbour within the block
-	mag_ctx.NIdxGridA = (int *)calloc(mag_ctx.NeighborPairs, sizeof(int));// index of the neighbour within the block
-	mag_ctx.NIdxGridB = (int *)calloc(mag_ctx.NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. a
-	mag_ctx.NIdxGridC = (int *)calloc(mag_ctx.NeighborPairs, sizeof(int));// index of the relative position of the block of the neighbour in the greed along tr. vect. b
-	mag_ctx.SIdx      = (int *)calloc(mag_ctx.NeighborPairs, sizeof(int));// index of the shell corresponding to this pair
-
-	CreateMapOfNeighbors( mag_ctx.abc, mag_ctx.Block, mag_ctx.AtomsPerBlock, mag_ctx.ShellNumber, mag_ctx.RadiusOfShell, mag_ctx.AIdxBlock, mag_ctx.NIdxBlock, mag_ctx.NIdxGridA, mag_ctx.NIdxGridB, mag_ctx.NIdxGridC, mag_ctx.SIdx);
-	mag_ctx.Jexc = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	mag_ctx.Bexc = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	mag_ctx.Dexc = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	mag_ctx.VDMX = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	mag_ctx.VDMY = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	mag_ctx.VDMZ = (float *)calloc(mag_ctx.NeighborPairs, sizeof(float));
-	SetExch1( mag_ctx.abc, mag_ctx.Block, mag_ctx.NeighborPairs, mag_ctx.Jij, mag_ctx.Bij, mag_ctx.Dij, mag_ctx.AIdxBlock, mag_ctx.NIdxBlock, mag_ctx.NIdxGridA, mag_ctx.NIdxGridB, mag_ctx.NIdxGridC, mag_ctx.SIdx, 
-	mag_ctx.Jexc, mag_ctx.Bexc, mag_ctx.Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
-	// SetExchMarkus( mag_ctx.abc, Block, NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
-	// SetExchChAch( mag_ctx.abc, Block, NeighborPairs, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
-	// SetExchMariya( mag_ctx.abc, Block, NeighborPairs, mag_ctx.Jij, mag_ctx.Bij, mag_ctx.Dij, AIdxBlock, NIdxBlock, NIdxGridA, NIdxGridB, NIdxGridC, SIdx, Jexc, Bexc, Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
-	for(int i=0;i<mag_ctx.AtomsPerBlock;i++) printf("Neighbors Per Atom[%d]=%d\n",i,mag_ctx.NeighborsPerAtom[i] );
-	printf("AtomsPerBlock =%2d\n", mag_ctx.AtomsPerBlock);
-	printf("  ShellNumber =%2d\n", mag_ctx.ShellNumber);
-	printf("NeighborPairs =%2d\n", mag_ctx.NeighborPairs);
-	float AXYZ[3] = {0.0, 0.0, 0.0};//atom position
-	float NXYZ[3] = {0.0, 0.0, 0.0};//neighbor position
-
-	// Neighbours map to console:	
-	printf("  N\t| Ia\t| In\t| Jn\t| Kn\t| Ln\t| Sn\t| Ax\t| Ay\t| Az\t| Nx\t| Ny\t| Nz\t|Dist\t| Jij\t| Dij\t| D_x\t| D_y\t| D_z\t|\n");
-	for(int i=0;i<mag_ctx.NeighborPairs;i++) {
-		printf("%3d  \t|",            i);
-		printf("%3d  \t|", mag_ctx.AIdxBlock[i]); //I'
-		printf("%3d  \t|", mag_ctx.NIdxBlock[i]); //I
-		printf("%3d  \t|", mag_ctx.NIdxGridA[i]); //J
-		printf("%3d  \t|", mag_ctx.NIdxGridB[i]); //K
-		printf("%3d  \t|", mag_ctx.NIdxGridC[i]); //L
-		printf("%3d  \t|",      mag_ctx.SIdx[i]); //S
-		GetPosition( mag_ctx.abc, mag_ctx.Block, mag_ctx.AIdxBlock[i], 0, 0, 0, AXYZ);
-		printf("%2.3f\t|%2.3f\t|%2.3f\t|",AXYZ[0],AXYZ[1],AXYZ[2]);
-		GetPosition( mag_ctx.abc, mag_ctx.Block, mag_ctx.NIdxBlock[i], mag_ctx.NIdxGridA[i], mag_ctx.NIdxGridB[i], mag_ctx.NIdxGridC[i], NXYZ);
-		printf("%2.3f\t|%2.3f\t|%2.3f\t|",NXYZ[0],NXYZ[1],NXYZ[2]);
-		AXYZ[0]-=NXYZ[0];
-		AXYZ[1]-=NXYZ[1];
-		AXYZ[2]-=NXYZ[2];
-		printf("%2.3f\t|",  sqrt(AXYZ[0]*AXYZ[0]+AXYZ[1]*AXYZ[1]+AXYZ[2]*AXYZ[2])); //Distance
-		printf("%2.3f\t|",  mag_ctx.Jexc[i]); //mag_ctx.Jij 
-		printf("%2.3f\t|",  mag_ctx.Dexc[i]); //mag_ctx.Jij 
-		printf("%2.3f\t|",  mag_ctx.VDMX[i]); //DMI x
-		printf("%2.3f\t|",  mag_ctx.VDMY[i]); //DMI y
-		printf("%2.3f\t|\n",mag_ctx.VDMZ[i]); //DMI z
+	if (!magnoom_ctx_build_neighbor_map(&mag_ctx)) {
+		fprintf(stderr, "Unable to build the neighbor map.\n");
+		return 1;
 	}
+	mag_ctx.Jexc = (float *)calloc(mag_ctx.Neighbors.PairCount, sizeof(float));
+	mag_ctx.Bexc = (float *)calloc(mag_ctx.Neighbors.PairCount, sizeof(float));
+	mag_ctx.Dexc = (float *)calloc(mag_ctx.Neighbors.PairCount, sizeof(float));
+	mag_ctx.VDMX = (float *)calloc(mag_ctx.Neighbors.PairCount, sizeof(float));
+	mag_ctx.VDMY = (float *)calloc(mag_ctx.Neighbors.PairCount, sizeof(float));
+	mag_ctx.VDMZ = (float *)calloc(mag_ctx.Neighbors.PairCount, sizeof(float));
+	SetExch1( mag_ctx.abc, mag_ctx.Block, mag_ctx.Neighbors.PairCount, mag_ctx.Jij, mag_ctx.Bij, mag_ctx.Dij,
+		mag_ctx.Neighbors.AIdxBlock, mag_ctx.Neighbors.NIdxBlock, mag_ctx.Neighbors.NIdxGridA, mag_ctx.Neighbors.NIdxGridB, mag_ctx.Neighbors.NIdxGridC, mag_ctx.Neighbors.ShellIdx,
+		mag_ctx.Jexc, mag_ctx.Bexc, mag_ctx.Dexc, mag_ctx.VDMX, mag_ctx.VDMY, mag_ctx.VDMZ);
+	PrintLatticeInitReport(&mag_ctx);
 
 	// Open output file:
 	pthread_mutex_init(&mag_ctx.record_mutex,0);
@@ -2717,12 +2906,12 @@ main (int argc, char **argv){
 	glfwTerminate();
 
 	// Deallocate memory before closing the program:
-	free(mag_ctx.AIdxBlock);
-	free(mag_ctx.NIdxBlock);
-	free(mag_ctx.NIdxGridA);
-	free(mag_ctx.NIdxGridB);
-	free(mag_ctx.NIdxGridC);
-	free(mag_ctx.SIdx);
+	free(mag_ctx.Neighbors.AIdxBlock);
+	free(mag_ctx.Neighbors.NIdxBlock);
+	free(mag_ctx.Neighbors.NIdxGridA);
+	free(mag_ctx.Neighbors.NIdxGridB);
+	free(mag_ctx.Neighbors.NIdxGridC);
+	free(mag_ctx.Neighbors.ShellIdx);
 
 	free(mag_ctx.Jexc);  			free(mag_ctx.Bexc);  			free(mag_ctx.Dexc);
 	free(mag_ctx.VDMX);  			free(mag_ctx.VDMY);  			free(mag_ctx.VDMZ);
@@ -2744,8 +2933,6 @@ main (int argc, char **argv){
 	free(mag_ctx.normalProto);		free(mag_ctx.normalProto_BextDC);
 	free(mag_ctx.indicesProto);		free(mag_ctx.indicesProto_BextDC);
 
-	free(mag_ctx.RadiusOfShell);
-	free(mag_ctx.NeighborsPerAtom);
 	free(mag_ctx.Block);
 
 	free(mag_ctx.Proj);
