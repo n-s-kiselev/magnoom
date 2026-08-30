@@ -174,7 +174,7 @@ static bool build_magnoom_object(void)
         "math_utils.c", "visualization.c", "linmath.h",
         ATB_LIB, GLAD_OBJECT, GLFW_OBJECT,
         "vendor/stb/stb_image_write.h",
-        "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,
+        "vendor/glfw2/include/GL/glfw.h", "nob.c", NOB_HEADER,
     };
     if (!build_needed(MAGNOOM_OBJECT, inputs, NOB_ARRAY_LEN(inputs))) return true;
 
@@ -191,7 +191,7 @@ static bool build_block_setter_test_object(void)
         BLOCK_SETTER_TEST_SOURCE, "magnoom.c", "anisotropy.c", "solvers.c", "lattice_geometry.c",
         "initial_states.c", "math_utils.c", "visualization.c", "linmath.h",
         ATB_LIB, GLAD_OBJECT, GLFW_OBJECT, "vendor/stb/stb_image_write.h",
-        "vendor/glfw2/TwGLFW2.h", "nob.c", NOB_HEADER,
+        "vendor/glfw2/include/GL/glfw.h", "nob.c", NOB_HEADER,
     };
     if (!build_needed(BLOCK_SETTER_TEST_OBJECT, inputs, NOB_ARRAY_LEN(inputs))) return true;
 
