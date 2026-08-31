@@ -148,7 +148,7 @@ static bool build_glfw(void)
     nob_cmd_append(&cmd, "-D_GLFW2_WIN32", "-Ivendor/glfw2/lib/win32");
 #elif defined(__APPLE__)
     nob_cmd_append(&cmd, "-D_GLFW2_COCOA", "-Ivendor/glfw2/lib/cocoa", "-x", "objective-c",
-                   "-Wno-deprecated-declarations");
+                   "-Wno-deprecated-declarations", "-Wno-objc-multiple-method-names");
 #else
     nob_cmd_append(&cmd, "-D_GLFW2_X11", "-Ivendor/glfw2/lib/x11",
                    "-D_GLFW_HAS_XRANDR", "-D_GLFW_HAS_PTHREAD", "-D_GLFW_HAS_SCHED_YIELD",
