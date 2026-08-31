@@ -54,5 +54,4 @@ AGENTS.md
 CLAUDE.md
 PLANS.md
 /docs
-/temp/*
-!/temp/unused.c
+/temp
