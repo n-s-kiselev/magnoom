@@ -230,7 +230,7 @@ void anisotropy_quaternion_multiply(const double q1[4], const double q2[4], doub
 
 bool anisotropy_compose_axis_angle(magnoom_ctx *ctx, int atom, const double axis[3], double angle_degrees)
 {
-	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock) return false;
+	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock || axis == NULL) return false;
 	double angle = angle_degrees * (3.141592653589793 / 180.0);
 	double q_new[4];
 	anisotropy_quaternion_from_axis_angle(axis, angle, q_new);

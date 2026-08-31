@@ -2893,7 +2893,7 @@ main (int argc, char **argv){
 
 	mag_ctx.EngineShutdownRequested = true;
 	mag_ctx.EngineRunState = DO_IT;
-	for (int i = 0; i < THREADS_NUMBER; ++i) pthread_join(thread_id[i], NULL);
+	for (int i = 0; i < THREADS_NUMBER; ++i) (void)pthread_join(thread_id[i], NULL);
 	// Destroy GPU buffers (needs active GL context):
 	DestroyVBOMesh(&mag_ctx.spin_mesh);
 	DestroyVBOMesh(&mag_ctx.BextDC_mesh);

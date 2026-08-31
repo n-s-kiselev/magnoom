@@ -95,6 +95,13 @@ static bool build_atb_object(const char *source)
     // classes' vtables at link time even though magnoom never requests
     // TW_DIRECT3D9/10/11.
     nob_cmd_append(&cmd, "-DTW_NO_DIRECT3D");
+    // TwBar.cpp brackets PopupCallback() in "#pragma optimize(\"\", off/on)"
+    // under ANT_WINDOWS to work around an MSVC/DirectX-only Enum rounding
+    // issue. That pragma is MSVC-specific; MinGW/GCC doesn't recognize it
+    // and, per the standard, just ignores it with a warning. Harmless here
+    // since this project never builds with MSVC - silence it without
+    // touching this stock upstream AntTweakBar source.
+    nob_cmd_append(&cmd, "-Wno-unknown-pragmas");
 #else
     nob_cmd_append(&cmd, nob_sv_ends_with_cstr(nob_sv_from_cstr(source), ".cpp") ? "c++" : "cc", "-D_UNIX");
 #endif
