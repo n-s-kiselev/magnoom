@@ -122,7 +122,9 @@ The build uses the system OpenGL, Cocoa, AppKit, Foundation, IOKit, and CoreVide
 
 Use a MinGW-w64 toolchain that provides `gcc`, `g++`, and `ar`. The build links against the Windows OpenGL, GDI, and multimedia system libraries. Run the bootstrap and build commands from a MinGW-compatible terminal.
 
-Supported platforms are Linux, macOS, and Windows with MinGW, using the same `nob.c` build script on all three — no platform-specific build files or tooling are required. The current build has been verified directly on macOS Intel and ARM64, and on Debian Linux. On Windows/MinGW, known MinGW-w64 toolchain issues have been fixed (a `MAKEINTRESOURCE` pointer-narrowing error, an unused Direct3D vtable reference pulled in by the OpenGL-only AntTweakBar build, and a GLAD loader failure caused by GLFW2's `glfwGetProcAddress()` lacking a `GetProcAddress()` fallback), using solutions already verified in the standalone [AntTweakBar-Legacy](https://github.com/n-s-kiselev/AntTweakBar-Legacy) project; running the build directly on a Windows machine has not yet been re-verified in this repository.
+### Verified platforms
+
+Supported platforms are Linux, macOS, and Windows with MinGW, using the same `nob.c` build script on all three — no platform-specific build files or tooling are required. The build has been verified directly on macOS (Intel and ARM64), Debian Linux, and Windows with MinGW-w64.
 
 ## Authors
 
