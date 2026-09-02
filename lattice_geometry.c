@@ -193,6 +193,19 @@
 /* Periodic images searched in either direction along each lattice vector. */
 #define MAX_IMAGE_TRANSLATION 15
 
+/* Set to 0 to restore the pre-migration behavior: shells grouped purely by
+ * distance, with no splitting by local point symmetry (every bond at a
+ * given raw distance shares one shell, regardless of angular signature or
+ * which atom pair it connects). Exists to compare the two side by side --
+ * e.g. for a low-symmetry structure like EuSi, where the realized shell
+ * count/assignment can differ from the old distance-only grouping. Flip
+ * and rebuild (`./nob`) to switch; only ClassifyCanonicalBonds() below
+ * changes behavior, everything else in the neighbor-map pipeline is
+ * identical either way. */
+#ifndef MAGNOOM_SHELL_SYMMETRY_AWARE
+#define MAGNOOM_SHELL_SYMMETRY_AWARE 0
+#endif
+
 /* One candidate bond from a central atom to a periodic image of another
  * (or the same) basis atom; dx/dy/dz is the Cartesian displacement
  * block[I0] - (block[I1] + J*a + K*b + L*c). */
@@ -375,8 +388,21 @@ AppendPair(NeighborPair *pairs, int *pairCount, NeighborPair pair)
 static bool
 ClassifyCanonicalBonds(magnoom_ctx *ctx, float radius, int *shellCount, NeighborPair *pairs, int *pairCount)
 {
+#if MAGNOOM_SHELL_SYMMETRY_AWARE
 	ShellBucket buckets[MAX_SHELL_NUM];
 	int bucketCount = 0;
+#else
+	// Distance-only mode: every bond at this radius shares one shell,
+	// regardless of angular signature or which atom pair it connects --
+	// matches the pre-migration GetShells()/CreateMapOfNeighbors() grouping.
+	if (*shellCount == MAX_SHELL_NUM) {
+		fprintf(stderr, "magnoom_ctx_build_neighbor_map: exceeded the maximum of %d shells.\n", MAX_SHELL_NUM);
+		return false;
+	}
+	int levelShell = *shellCount;
+	ctx->Neighbors.ShellRadius[levelShell] = radius;
+	(*shellCount)++;
+#endif
 
 	for (int I0 = 0; I0 < ctx->AtomsPerBlock; I0++) {
 		NeighborCandidate candidates[MAX_NEIGHBORS_PER_SHELL_PER_ATOM];
@@ -392,6 +418,7 @@ ClassifyCanonicalBonds(magnoom_ctx *ctx, float radius, int *shellCount, Neighbor
 			const NeighborCandidate *bond = &candidates[n];
 			if (!IsCanonicalDirection(I0, bond->I1, bond->J, bond->K, bond->L)) continue;
 
+#if MAGNOOM_SHELL_SYMMETRY_AWARE
 			// Rotation/reflection-invariant fingerprint of this bond: the
 			// sorted cosines of its angle to every other bond in the same
 			// shell around the same central atom (temp/src/shell.h's
@@ -434,6 +461,9 @@ ClassifyCanonicalBonds(magnoom_ctx *ctx, float radius, int *shellCount, Neighbor
 			}
 
 			NeighborPair canonical = { I0, bond->I1, bond->J, bond->K, bond->L, buckets[matched].finalShell };
+#else
+			NeighborPair canonical = { I0, bond->I1, bond->J, bond->K, bond->L, levelShell };
+#endif
 			if (!AppendPair(pairs, pairCount, canonical)) return false;
 		}
 	}
@@ -456,7 +486,7 @@ BuildShellLevels(magnoom_ctx *ctx, int targetShellCount, NeighborPair *pairs, in
 			return false;
 		}
 
-		float nextRadius;
+		float nextRadius = 0.0f;
 		if (!FindNextShellRadius(ctx->abc, ctx->Block, ctx->AtomsPerBlock, currRadius, &nextRadius)) {
 			fprintf(stderr, "magnoom_ctx_build_neighbor_map: ran out of distinct interatomic distances before reaching %d shells.\n",
 				targetShellCount);

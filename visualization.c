@@ -71,17 +71,80 @@ float ElapsedSeconds( )	{
 // TwSimpleGLFW.c's ComputeHiDPIScale(). On a standard (non-HiDPI) display
 // this is 1.0.
 //
-// Unlike that example, this is re-measured on every call rather than once
-// at startup: right after glfwOpenWindow() returns, Cocoa has not
-// necessarily finished establishing the window's real Retina backing
-// store yet, so glGetIntegerv(GL_VIEWPORT) can still report the pre-Retina
-// (1x) size at that exact moment - a one-shot measurement can permanently
-// latch onto that wrong value. Re-measuring on every GLFWWindowSizeCallback
-// call (including the manual first call performed once window setup has
-// settled) matches this project's former shim, which re-measured on every
-// resize callback for exactly this reason.
+// Measured more than once during startup rather than a single time right
+// after glfwOpenWindow() returns: Cocoa has not necessarily finished
+// establishing the window's real Retina backing store at that exact
+// moment, so glGetIntegerv(GL_VIEWPORT) can still report the pre-Retina
+// (1x) size then - a single measurement taken too early can permanently
+// latch onto that wrong value. Matching this project's former shim
+// (vendor/glfw2/TwGLFW2.h's tw_glfw2_measure_scale()), measuring is
+// retried a couple of times while window setup is still settling, then
+// permanently locked in (see contentScaleLocked below and setupOpenGL()'s
+// use of it) so that GLFWWindowSizeCallback's later, real resize calls
+// reuse that fixed ratio instead of re-deriving it from glGetIntegerv
+// (GL_VIEWPORT): that query only ever reflects whatever this file itself
+// last passed to glViewport() (ApplyFramebufferSize()), one resize
+// callback in arrears, so re-measuring on every resize is self-referential
+// and freezes the real viewport at its first size forever.
+static int contentScaleLocked = 0;
+#ifdef _WIN32
+// GLFW2's Win32 backend (vendor/glfw2/lib/win32/) has no HiDPI awareness of
+// its own, and this process never declared itself DPI-aware, so Windows
+// handed it a virtualized, always-96-DPI coordinate space and stretched the
+// final image to fit the real screen -- blurry, but glfwGetWindowSize() and
+// glGetIntegerv(GL_VIEWPORT) below always agreed in that virtualized space
+// regardless, so ContentScaleX/Y still came out at the correct 1.0 (there
+// was never a second, framebuffer-vs-window discrepancy for this file's
+// scale-ratio comparison to detect or correct here, unlike Cocoa's real
+// points-vs-pixels split below -- see MeasureContentScale()).
+// EnableWindowsDpiAwareness() (called once, before any window is created --
+// see setupOpenGL()) opts out of that virtualization so the window is
+// created, and rendered, at its real physical pixel size instead.
+//
+// Resolves its Win32 API dynamically via GetProcAddress rather than linking
+// directly or depending on the toolchain's headers declaring it
+// (SetProcessDpiAwarenessContext only exists on Windows 10 1703+) -- this
+// avoids any new compile-time dependency and degrades gracefully (falls
+// back to the older, Vista+ SetProcessDPIAware, or does nothing) rather than
+// failing to build or link. The DPI_AWARENESS_CONTEXT type and the
+// PER_MONITOR_AWARE_V2 constant are defined locally at their documented,
+// stable values instead of assuming a specific header declares them.
+#ifndef DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+typedef void *MAGNOOM_DPI_AWARENESS_CONTEXT;
+#define DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((MAGNOOM_DPI_AWARENESS_CONTEXT)(-4))
+#else
+typedef DPI_AWARENESS_CONTEXT MAGNOOM_DPI_AWARENESS_CONTEXT;
+#endif
+
+static void EnableWindowsDpiAwareness(void)
+{
+	HMODULE user32 = GetModuleHandleA("user32.dll");
+	if (user32 == NULL) return;
+
+	typedef BOOL (WINAPI *SetProcessDpiAwarenessContextProc)(MAGNOOM_DPI_AWARENESS_CONTEXT);
+	SetProcessDpiAwarenessContextProc setContext =
+		(SetProcessDpiAwarenessContextProc)GetProcAddress(user32, "SetProcessDpiAwarenessContext");
+	if (setContext != NULL && setContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)) return;
+
+	typedef BOOL (WINAPI *SetProcessDPIAwareProc)(void);
+	SetProcessDPIAwareProc setAware =
+		(SetProcessDPIAwareProc)GetProcAddress(user32, "SetProcessDPIAware");
+	if (setAware != NULL) setAware();
+}
+#endif
+
+// GLFW2 has no notion of a separate framebuffer size on any platform (no
+// HiDPI awareness of its own): the window's real backing-store size is read
+// straight from the OpenGL viewport and compared to the window's logical
+// size, matching TwSimpleGLFW.c's ComputeHiDPIScale(). This only ever finds
+// a real discrepancy on macOS, where Cocoa keeps a genuine points-vs-pixels
+// split even for a window created through this old, Retina-unaware GLFW2
+// (see setupOpenGL()'s DPI comment for Windows; GLFW2's X11 backend has no
+// separate framebuffer concept either, so this is 1.0 there too). On a
+// standard (non-HiDPI) display, or on Windows/Linux, this is 1.0.
 static void MeasureContentScale(magnoom_ctx *ctx)
 {
+	if (contentScaleLocked) return;
 	int width = 1, height = 1;
 	GLint viewport[4];
 	glfwGetWindowSize(&width, &height);
@@ -285,6 +348,12 @@ void Display (magnoom_ctx *ctx)
 
 void setupOpenGL (magnoom_ctx *ctx)
 {
+#ifdef _WIN32
+	// Must run before any top-level window is created (glfwOpenWindow()
+	// below), or Windows has already committed to treating this process as
+	// DPI-unaware for the window's lifetime.
+	EnableWindowsDpiAwareness();
+#endif
 	if (!glfwInit()) {
 		fprintf(stderr, "GLFW initialization failed\n");
 		exit(1);
@@ -349,6 +418,12 @@ void setupOpenGL (magnoom_ctx *ctx)
 		glfwGetWindowSize(&windowWidth, &windowHeight);
 		GLFWWindowSizeCallback(windowWidth, windowHeight);
 	}
+	// Startup settling is over: lock ContentScaleX/Y so every later, real
+	// GLFWWindowSizeCallback (the user resizing the window) reuses this
+	// fixed ratio instead of re-measuring it against glGetIntegerv
+	// (GL_VIEWPORT) -- see MeasureContentScale()'s comment for why
+	// re-measuring on a real resize is self-defeating.
+	contentScaleLocked = 1;
 	setupTweakBar(ctx);
 
 	glEnable(GL_DEPTH_TEST);
@@ -840,6 +915,14 @@ void TW_CALL CB_CopyAnisotropyAtom0(void *clientData)
 	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
 	if (!anisotropy_copy_atom0_tensors(ctx)) return;
 	anisotropy_refresh_controls(ctx);
+}
+
+void TW_CALL CB_ExportAnisotropyMap(void *clientData)
+{
+	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	if (!anisotropy_export_energy_maps(ctx)) {
+		fprintf(stderr, "Anisotropy map export failed.\n");
+	}
 }
 
 
@@ -2896,6 +2979,8 @@ void setupTweakBar(magnoom_ctx *ctx)
 			CB_SetAnisotropyComponent, CB_GetAnisotropyComponent, control, definition);
 	}
 	anisotropy_refresh_controls(ctx);
+	TwAddButton(ctx->anisotropy_bar, "ExportAnisotropyMap", CB_ExportAnisotropyMap, ctx,
+		"label='Anisotropy map to file' help='Sample the anisotropy energy over (theta, phi) and write CSV + legacy VTK surfaces for every atom and the total'");
 
 
 /*  Info bar F12 */
@@ -3071,7 +3156,11 @@ void GLFWScrollCallback(int position)
 // Registered as GLFW2's window-size callback (there is no separate
 // framebuffer-size concept to register for); width/height arrive in
 // window/logical units and are converted to pixel units via
-// ContentScaleX/Y, re-measured here on every call (see MeasureContentScale).
+// ContentScaleX/Y. The MeasureContentScale() call is a no-op here once
+// contentScaleLocked is set (see setupOpenGL()): by the time the user can
+// actually trigger a real resize, ContentScaleX/Y is already the fixed
+// ratio established during startup, and must stay fixed rather than be
+// re-derived from the window size this same call is about to change.
 void GLFWWindowSizeCallback(int width, int height)
 {
 	magnoom_ctx *ctx = g_ctx;

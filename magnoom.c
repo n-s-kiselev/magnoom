@@ -114,6 +114,7 @@ typedef enum    {DEFAULT_G, CILINDER_G, SPHERE_G} enGeom;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
 typedef enum    {ANISOTROPY_GLOBAL, ANISOTROPY_INDIVIDUAL} AnisotropyMode;
+typedef enum    {LEGACY_ASCII_VTK, LEGACY_BINARY_VTK} VtkFormatMode;
 typedef enum    {ANISOTROPY_RECORD_K2, ANISOTROPY_RECORD_K4, ANISOTROPY_RECORD_QUATERNION} AnisotropyRecordKind;
 typedef enum    {ANISOTROPY_COMPONENT_K2, ANISOTROPY_COMPONENT_K4} AnisotropyComponentKind;
 enum { ANISOTROPY_K2_COMPONENT_COUNT = 6, ANISOTROPY_K4_COMPONENT_COUNT = 15 };
@@ -122,6 +123,11 @@ typedef struct AnisotropyTensor {
 	double K2[3][3];
 	double K4[3][3][3][3];
 } AnisotropyTensor;
+
+/* Defined in anisotropy.c (included near the end of this file); forward
+ * declared here so magnoom_ctx_init() can set compiled-in tensor defaults. */
+bool k2_set(double K2[3][3], int i, int j, double value);
+bool k4_set(double K4[3][3][3][3], int i, int j, int k, int l, double value);
 
 #define MAX_ANISOTROPY_CONFIG_RECORDS 4096
 typedef struct AnisotropyConfigRecord {
@@ -276,6 +282,9 @@ typedef struct magnoom_ctx {
 	int             anisotropy_selected_atom;
 	AnisotropyComponentControl anisotropy_component_controls[
 		ANISOTROPY_K2_COMPONENT_COUNT + ANISOTROPY_K4_COMPONENT_COUNT];
+	double          anisotropy_map_theta_step; /* polar-angle sampling step, radians */
+	double          anisotropy_map_phi_step;   /* azimuthal-angle sampling step, radians */
+	VtkFormatMode   anisotropy_map_vtk_format;
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	float           BextDCDirection[3];
@@ -1320,15 +1329,40 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->HueMap[3]=180; ctx->HueMap[4]=240; ctx->HueMap[5]=300;
 
 	/* Heisenberg / biquadratic / DMI exchange */
-	ctx->Jij[0]=1.0f; ctx->Jij[1]=0.0f; ctx->Jij[2]=0.0f; ctx->Jij[3]=0.0f;
-	ctx->Jij[4]=0.0f; ctx->Jij[5]=0.0f;
+	// ctx->Jij[0]=1.0f; ctx->Jij[1]=0.0f; ctx->Jij[2]=0.0f; ctx->Jij[3]=0.0f;
+	// ctx->Jij[4]=0.0f; ctx->Jij[5]=0.0f;
+	/*EuSi v0*/
+	ctx->Jij[0]= 1.0f; ctx->Jij[1]= 0.8f; ctx->Jij[2]= 0.5f; 
+	ctx->Jij[3]= 0.5f; ctx->Jij[4]=-0.3f; ctx->Jij[5]=-0.174574312f;
+
 	ctx->Bij[0]=0.0f; ctx->Bij[1]=0.0f; ctx->Bij[2]=0.0f;
 	ctx->Bij[3]=0.0f; ctx->Bij[4]=0.0f; ctx->Bij[5]=0.0f;
-	ctx->Dij[0]=0.251327412f; ctx->Dij[1]=0.0f; ctx->Dij[2]=0.0f;
+	ctx->Dij[0]=0.0f; ctx->Dij[1]=0.0f; ctx->Dij[2]=0.0f;
 	ctx->Dij[3]=0.0f; ctx->Dij[4]=0.0f; ctx->Dij[5]=0.0f;
 
 	/* Magnetocrystalline anisotropy */
 	ctx->anisotropy_mode = ANISOTROPY_GLOBAL;
+	/* Tetragonal anisotropy*/
+	/*EuSi v0*/
+	/* E = K1 sin^2T + K2 sin^4T + K3 sin^4T cos4F*/
+	double K1 = 0.0;//-0.1;
+	double K2 = 0.0;//0.1;
+	double K3 = 0.0;
+
+	/* K11=K22=-K1, K33=0; K1111=K2222=-(K2+4K3), K1122=-K2/3, K3333=-3K3,
+	 * K1133=K2233=-K3 -- see the wiki's Anisotropy (F6) page. */
+	if (!k2_set(ctx->anisotropy_local[0].K2, 0, 0, -K1) ||
+		!k2_set(ctx->anisotropy_local[0].K2, 1, 1, -K1) ||
+		!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 0, 0, -(K2+4*K3)) ||
+		!k4_set(ctx->anisotropy_local[0].K4, 1, 1, 1, 1, -(K2+4*K3)) ||
+		!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 1, 1, -K2/3) ||
+		!k4_set(ctx->anisotropy_local[0].K4, 2, 2, 2, 2, -3*K3) ||
+		!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 2, 2, -K3) ||
+		!k4_set(ctx->anisotropy_local[0].K4, 1, 1, 2, 2, -K3)) {
+		fprintf(stderr, "magnoom_ctx_init: invalid compiled-in default anisotropy tensor component.\n");
+		return false;
+	}
+
 	for (int atom = 0; atom < MAX_ATOMS_PER_BLOCK; ++atom) {
 		ctx->anisotropy_quaternion[atom][3] = 1.0;
 	}
@@ -1336,6 +1370,9 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->anisotropy_rotation_axis[1] = 0.0f;
 	ctx->anisotropy_rotation_axis[2] = 1.0f;
 	ctx->anisotropy_rotation_angle = 0.0f;
+	ctx->anisotropy_map_theta_step = PI / 40.0;
+	ctx->anisotropy_map_phi_step = PI / 80.0;
+	ctx->anisotropy_map_vtk_format = LEGACY_ASCII_VTK;
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	ctx->BextDCDirection[0]=0.0f; ctx->BextDCDirection[1]=0.0f; ctx->BextDCDirection[2]=1.0f;
@@ -1394,7 +1431,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	// ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f; ctx->abc[2][2]=1.0f;
 	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
-	// EuSi fractional coordinates converted to normalized Cartesian positions:
+	/* EuSi fractional coordinates converted to normalized Cartesian positions:*/
 	// const float c_EuSi = 3.9845f;
 	// const float a_EuSi = 4.6955f/c_EuSi;
 	// const float b_EuSi = 11.1528f/c_EuSi;
