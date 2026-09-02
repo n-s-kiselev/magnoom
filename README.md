@@ -1,4 +1,4 @@
-![Magnoom](https://github.com/n-s-kiselev/magnoom/blob/master/MagnoomWiki/TitleImage.png)
+![Magnoom](https://raw.githubusercontent.com/wiki/n-s-kiselev/magnoom/figures/TitleImage.png)
 
 # Magnoom
 
