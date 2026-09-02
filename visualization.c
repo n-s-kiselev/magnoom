@@ -2,7 +2,7 @@ enum WindowMouseButton { WINDOW_MOUSE_LEFT, WINDOW_MOUSE_MIDDLE, WINDOW_MOUSE_RI
 enum WindowButtonState { WINDOW_BUTTON_DOWN, WINDOW_BUTTON_UP };
 enum WindowSpecialKey {
 	WINDOW_KEY_UP = 1, WINDOW_KEY_DOWN, WINDOW_KEY_F1, WINDOW_KEY_F2,
-	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6, WINDOW_KEY_F12
+	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6, WINDOW_KEY_F10, WINDOW_KEY_F12
 };
 
 // which button:
@@ -47,7 +47,12 @@ void drawVBO(magnoom_ctx *);
 void idle(magnoom_ctx *);
 void setupTweakBar(magnoom_ctx *);
 static void magnoom_request_warning_dialog(magnoom_ctx *, const char *);
+#ifndef MAGNOOM_NO_MAIN
+/* Defined and called only in the real application build (see the modal
+ * dialog block below); declaring it unconditionally would leave a static
+ * function declared but never defined in the test build. */
 static void magnoom_resize_modal_dialog(magnoom_ctx *, int, int);
+#endif
 void GLFWKeyCallback(int, int);
 void GLFWCharCallback(int, int);
 void GLFWMouseButtonCallback(int, int);
@@ -67,50 +72,24 @@ float ElapsedSeconds( )	{
 	return (float)glfwGetTime();
 }
 
-// GLFW2 has no notion of a separate framebuffer size (no HiDPI awareness):
-// the window's real backing-store size is read straight from the OpenGL
-// viewport and compared to the window's logical size, matching
-// TwSimpleGLFW.c's ComputeHiDPIScale(). On a standard (non-HiDPI) display
-// this is 1.0.
-//
-// Measured more than once during startup rather than a single time right
-// after glfwOpenWindow() returns: Cocoa has not necessarily finished
-// establishing the window's real Retina backing store at that exact
-// moment, so glGetIntegerv(GL_VIEWPORT) can still report the pre-Retina
-// (1x) size then - a single measurement taken too early can permanently
-// latch onto that wrong value. Matching this project's former shim
-// (vendor/glfw2/TwGLFW2.h's tw_glfw2_measure_scale()), measuring is
-// retried a couple of times while window setup is still settling, then
-// permanently locked in (see contentScaleLocked below and setupOpenGL()'s
-// use of it) so that GLFWWindowSizeCallback's later, real resize calls
-// reuse that fixed ratio instead of re-deriving it from glGetIntegerv
-// (GL_VIEWPORT): that query only ever reflects whatever this file itself
-// last passed to glViewport() (ApplyFramebufferSize()), one resize
-// callback in arrears, so re-measuring on every resize is self-referential
-// and freezes the real viewport at its first size forever.
-static int contentScaleLocked = 0;
 #ifdef _WIN32
 // GLFW2's Win32 backend (vendor/glfw2/lib/win32/) has no HiDPI awareness of
 // its own, and this process never declared itself DPI-aware, so Windows
 // handed it a virtualized, always-96-DPI coordinate space and stretched the
-// final image to fit the real screen -- blurry, but glfwGetWindowSize() and
-// glGetIntegerv(GL_VIEWPORT) below always agreed in that virtualized space
-// regardless, so ContentScaleX/Y still came out at the correct 1.0 (there
-// was never a second, framebuffer-vs-window discrepancy for this file's
-// scale-ratio comparison to detect or correct here, unlike Cocoa's real
-// points-vs-pixels split below -- see MeasureContentScale()).
-// EnableWindowsDpiAwareness() (called once, before any window is created --
-// see setupOpenGL()) opts out of that virtualization so the window is
-// created, and rendered, at its real physical pixel size instead.
+// final image to fit the real screen -- blurry, yet invisible to
+// MeasureContentScale() below, because window and viewport sizes do agree in
+// that virtualized space and the scale still comes out at the correct 1.0.
+// EnableWindowsDpiAwareness() opts out of that virtualization so the window
+// is created, and rendered, at its real physical pixel size instead.
 //
-// Resolves its Win32 API dynamically via GetProcAddress rather than linking
-// directly or depending on the toolchain's headers declaring it
-// (SetProcessDpiAwarenessContext only exists on Windows 10 1703+) -- this
-// avoids any new compile-time dependency and degrades gracefully (falls
-// back to the older, Vista+ SetProcessDPIAware, or does nothing) rather than
-// failing to build or link. The DPI_AWARENESS_CONTEXT type and the
-// PER_MONITOR_AWARE_V2 constant are defined locally at their documented,
-// stable values instead of assuming a specific header declares them.
+// The Win32 entry point is resolved dynamically via GetProcAddress rather
+// than linked against or taken from the toolchain's headers
+// (SetProcessDpiAwarenessContext only exists on Windows 10 1703+): this adds
+// no compile-time dependency and degrades gracefully (falling back to the
+// older, Vista+ SetProcessDPIAware, or doing nothing) rather than failing to
+// build or link. The DPI_AWARENESS_CONTEXT type and the PER_MONITOR_AWARE_V2
+// constant are defined locally at their documented, stable values instead of
+// assuming a specific header declares them.
 #ifndef DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 typedef void *MAGNOOM_DPI_AWARENESS_CONTEXT;
 #define DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((MAGNOOM_DPI_AWARENESS_CONTEXT)(-4))
@@ -141,9 +120,25 @@ static void EnableWindowsDpiAwareness(void)
 // size, matching TwSimpleGLFW.c's ComputeHiDPIScale(). This only ever finds
 // a real discrepancy on macOS, where Cocoa keeps a genuine points-vs-pixels
 // split even for a window created through this old, Retina-unaware GLFW2
-// (see setupOpenGL()'s DPI comment for Windows; GLFW2's X11 backend has no
-// separate framebuffer concept either, so this is 1.0 there too). On a
-// standard (non-HiDPI) display, or on Windows/Linux, this is 1.0.
+// (see EnableWindowsDpiAwareness() above for Windows; GLFW2's X11 backend
+// has no separate framebuffer concept either). On a standard (non-HiDPI)
+// display, or on Windows/Linux, this is 1.0.
+//
+// Measured more than once during startup rather than a single time right
+// after glfwOpenWindow() returns: Cocoa has not necessarily finished
+// establishing the window's real Retina backing store at that exact moment,
+// so the viewport can still report the pre-Retina (1x) size then, and a
+// single measurement taken too early can permanently latch onto that wrong
+// value. This matches this project's former shim (vendor/glfw2/TwGLFW2.h's
+// tw_glfw2_measure_scale()).
+//
+// Once startup has settled the scale is locked (setupOpenGL() sets
+// contentScaleLocked) and every later, real resize reuses that fixed ratio.
+// Re-measuring then would be self-referential: glGetIntegerv(GL_VIEWPORT)
+// only ever reflects whatever ApplyFramebufferSize() last passed to
+// glViewport(), one resize callback in arrears, which would freeze the real
+// viewport at its first size forever.
+static int contentScaleLocked = 0;
 static void MeasureContentScale(magnoom_ctx *ctx)
 {
 	if (contentScaleLocked) return;
@@ -421,10 +416,7 @@ void setupOpenGL (magnoom_ctx *ctx)
 		GLFWWindowSizeCallback(windowWidth, windowHeight);
 	}
 	// Startup settling is over: lock ContentScaleX/Y so every later, real
-	// GLFWWindowSizeCallback (the user resizing the window) reuses this
-	// fixed ratio instead of re-measuring it against glGetIntegerv
-	// (GL_VIEWPORT) -- see MeasureContentScale()'s comment for why
-	// re-measuring on a real resize is self-defeating.
+	// resize reuses this fixed ratio (see MeasureContentScale()).
 	contentScaleLocked = 1;
 	setupTweakBar(ctx);
 
@@ -1578,10 +1570,10 @@ void TW_CALL CB_SaveCSV( void *clientData )
     					fputs (ctx->ShortBuffer,pFile);
     				}
 			}
-		printf("averaged output --> %s done!\n", output_path);
 		}
 		}
         fclose (pFile);
+		magnoom_log_write(ctx, "Recording to the file %s is done!", output_path);
 	} else {
 		fprintf(stderr, "Cannot open output file '%s': %s\n", output_path, strerror(errno));
     }
@@ -1634,10 +1626,10 @@ void TW_CALL CB_ReadCSV( void *clientData )
 		}while(c != EOF);
 		fclose(pFile);
 		magnoom_reset_solver_state(ctx);
-		printf("Reading from the file %s succeeded!\n", input_path);
+		magnoom_report_read_result(ctx, input_path, true);
 	} else {
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
-		printf("Reading from the file %s failed!\n", input_path);
+		magnoom_report_read_result(ctx, input_path, false);
 	}
 	ChangeVectorMode(ctx, 1);
 }
@@ -1783,15 +1775,11 @@ void TW_CALL CB_ReadOVF( void *clientData )
 			printf("%s has wrong data format or dimentionality!\n", input_path);
 		}
 		fclose(FilePointer);
-		if (read_ok) {
-			printf("Reading from the file %s succeeded!\n", input_path);
-			magnoom_reset_solver_state(ctx);
-		} else {
-			printf("Reading from the file %s failed!\n", input_path);
-		}
+		magnoom_report_read_result(ctx, input_path, read_ok);
+		if (read_ok) magnoom_reset_solver_state(ctx);
 	}else{
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
-		printf("Reading from the file %s failed!\n", input_path);
+		magnoom_report_read_result(ctx, input_path, false);
 	}
     //metka dlya schiutyvaniya equilibrium state for dm
     for (int i=0; i<ctx->NOS; i++){
@@ -1828,7 +1816,7 @@ void TW_CALL CB_ReadBIN( void *clientData )
 	FILE * FilePointer = fopen(input_path, "rb");
 	if (FilePointer == NULL) {
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
-		printf("Reading from the file %s failed!\n", input_path);
+		magnoom_report_read_result(ctx, input_path, false);
 		return;
 	}
   	for(int k = 0; k<Nz; k++){
@@ -1858,12 +1846,8 @@ void TW_CALL CB_ReadBIN( void *clientData )
 	    }
 	}
 	fclose (FilePointer);
-	if (all_reads_ok) {
-		magnoom_reset_solver_state(ctx);
-		printf("Reading from the file %s succeeded!\n", input_path);
-	} else {
-		printf("Reading from the file %s failed!\n", input_path);
-	}
+	if (all_reads_ok) magnoom_reset_solver_state(ctx);
+	magnoom_report_read_result(ctx, input_path, all_reads_ok);
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -1982,8 +1966,7 @@ static int magnoom_wrap_message(const char *message, int max_chars,
 	if (max_chars > MAGNOOM_MODAL_LINE_CHARS) max_chars = MAGNOOM_MODAL_LINE_CHARS;
 	if (max_chars < 1) max_chars = 1;
 	while (*cursor != '\0' && line_count < max_lines) {
-		size_t remaining = strlen(cursor);
-		size_t take = remaining;
+		size_t take = strlen(cursor);
 		if (take > (size_t)max_chars) {
 			take = (size_t)max_chars;
 			while (take > 0 && cursor[take] != ' ') --take;
@@ -1998,15 +1981,36 @@ static int magnoom_wrap_message(const char *message, int max_chars,
 	return line_count;
 }
 
+static const char *magnoom_modal_bar_name(const magnoom_ctx *ctx)
+{
+	return ctx->modal_is_warning ? "FileWarning" : "FileError";
+}
+
+/* Sizes the modal to cover the whole OpenGL window and splits its
+ * label/value columns evenly: AntTweakBar's default valueswidth (a small,
+ * fixed value meant for an ordinary narrow bar) would leave almost the
+ * entire width to the label column, and neither column is more important
+ * here (the "value" column has no real editors, just the OK button's row). */
+static bool magnoom_apply_modal_layout(const magnoom_ctx *ctx, int pixel_width, int pixel_height)
+{
+	char definition[128];
+	snprintf(definition, sizeof(definition),
+		" %s size='%d %d' position='0 0' valueswidth=%d ",
+		magnoom_modal_bar_name(ctx), pixel_width, pixel_height, pixel_width/2);
+	return TwDefine(definition) != 0;
+}
+
 static void magnoom_open_modal_dialog(magnoom_ctx *ctx)
 {
+	if (ctx->modal_bar != NULL) return;
+
 	char definition[256];
 	int framebuffer_width, framebuffer_height;
 	TwBar *bar;
 	/* Warning dialogs use a distinct, less alarming color from the red
 	 * error dialog -- they're informational (the file operation already
 	 * happened or will proceed regardless), not a failure. */
-	const char *bar_name = ctx->modal_is_warning ? "FileWarning" : "FileError";
+	const char *bar_name = magnoom_modal_bar_name(ctx);
 	const char *bar_color = ctx->modal_is_warning ? "90 20 70" : "180 35 45";
 	const char *bar_label = ctx->modal_is_warning ? "Warning" : "File error";
 	/* AntTweakBar's button labels are single-line and truncate rather than
@@ -2020,7 +2024,6 @@ static void magnoom_open_modal_dialog(magnoom_ctx *ctx)
 	char lines[MAX_LINES][MAGNOOM_MODAL_LINE_CHARS + 1];
 	int line_count;
 
-	if (ctx->modal_bar != NULL) return;
 	{
 		int window_width = 0, window_height = 0;
 		glfwGetWindowSize(&window_width, &window_height);
@@ -2056,19 +2059,11 @@ static void magnoom_open_modal_dialog(magnoom_ctx *ctx)
 	 * covering the entire window means every click lands on this bar first,
 	 * and it isn't movable/resizable, so nothing behind it is reachable
 	 * until OK is pressed. */
-	snprintf(definition, sizeof(definition), " %s color='%s' alpha=130", bar_name, bar_color);
-	TwDefine(definition);
-	snprintf(definition, sizeof(definition), " %s resizable=false movable=false iconifiable=false", bar_name);
-	TwDefine(definition);
-	/* AntTweakBar's default valueswidth (a small, fixed value meant for an
-	 * ordinary narrow bar) leaves almost the entire width to the label
-	 * column once the bar spans the whole window -- split label/value
-	 * columns evenly instead, since neither side is more important here
-	 * (the "value" column has no real editors, just the OK button's row). */
 	snprintf(definition, sizeof(definition),
-		" %s label='%s' size='%d %d' position='0 0' valueswidth=%d ",
-		bar_name, bar_label, framebuffer_width, framebuffer_height, framebuffer_width/2);
-	if (!TwDefine(definition)) {
+		" %s label='%s' color='%s' alpha=130 resizable=false movable=false iconifiable=false ",
+		bar_name, bar_label, bar_color);
+	TwDefine(definition);
+	if (!magnoom_apply_modal_layout(ctx, framebuffer_width, framebuffer_height)) {
 		TwDeleteBar(bar);
 		fprintf(stderr, "%s\n", ctx->modal_message);
 		return;
@@ -2098,18 +2093,13 @@ static void magnoom_open_modal_dialog(magnoom_ctx *ctx)
 }
 
 /* Keeps the (already open) modal's full-window overlay in sync with a real
- * window resize -- called from GLFWWindowSizeCallback. Only resizes the bar
- * and re-splits its label/value columns evenly; the message itself is not
- * re-wrapped, so on a large shrink its lines may truncate again just like
- * before this bar existed (a pre-existing AntTweakBar single-line-button
- * limitation, not something this resize handling introduces). */
+ * window resize -- called from GLFWWindowSizeCallback. The message itself is
+ * not re-wrapped, so on a large shrink its lines may truncate (a pre-existing
+ * AntTweakBar single-line-button limitation, not something introduced here). */
 static void magnoom_resize_modal_dialog(magnoom_ctx *ctx, int pixel_width, int pixel_height)
 {
-	char definition[128];
 	if (ctx->modal_bar == NULL) return;
-	snprintf(definition, sizeof(definition), " %s size='%d %d' position='0 0' valueswidth=%d ",
-		ctx->modal_is_warning ? "FileWarning" : "FileError", pixel_width, pixel_height, pixel_width/2);
-	TwDefine(definition);
+	magnoom_apply_modal_layout(ctx, pixel_width, pixel_height);
 }
 
 static void magnoom_service_modal(magnoom_ctx *ctx)
@@ -3181,6 +3171,26 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarRO(ctx->info_bar, "m_z", TW_TYPE_DOUBLE, &ctx->mtot[2], " help='z-component of average moment per spin' precision=10");
 	TwAddSeparator(ctx->info_bar, "sep3", NULL);
 	TwAddVarRO(ctx->info_bar, "Torque", TW_TYPE_DOUBLE, &ctx->MAX_TORQUE, " help='maximum torque acting on the spin' precision=10");
+
+/*  Log bar F10: rolling view of magnoom_log_write()'s operation-outcome
+ *  history (see magnoom.c). All MAGNOOM_LOG_CAPACITY rows are added once,
+ *  here, as label-only buttons -- the same "one TwAddButton per line"
+ *  technique the warning/error modal uses (magnoom_open_modal_dialog), so a
+ *  row is purely its own text, with no value column beside it. Buttons hold
+ *  no bound memory for AntTweakBar to re-read, so magnoom_log_write()
+ *  pushes each new line into these rows itself, addressing them by
+ *  magnoom_log_row_name()'s shared naming. */
+	ctx->log_bar = TwNewBar("Log");
+	TwDefine(" Log iconified=true ");
+	TwDefine(" Log color='60 60 60' alpha=200 ");
+	TwDefine(" Log help='F10: show/hide the operation log' ");
+	SetBarSize(ctx, ctx->log_bar, 900, 400);
+	SetBarPosition(ctx, ctx->log_bar, 200, 30);
+	for (int i = 0; i < MAGNOOM_LOG_CAPACITY; ++i) {
+		char name[16];
+		magnoom_log_row_name(name, sizeof(name), i);
+		TwAddButton(ctx->log_bar, name, NULL, NULL, "label=' '");
+	}
 }
 
 static int GLFWSpecialToWindowKey(int key)
@@ -3194,6 +3204,7 @@ static int GLFWSpecialToWindowKey(int key)
 		case GLFW_KEY_F4: return WINDOW_KEY_F4;
 		case GLFW_KEY_F5: return WINDOW_KEY_F5;
 		case GLFW_KEY_F6: return WINDOW_KEY_F6;
+		case GLFW_KEY_F10: return WINDOW_KEY_F10;
 		case GLFW_KEY_F12: return WINDOW_KEY_F12;
 		default: return 0;
 	}
@@ -3294,11 +3305,8 @@ void GLFWScrollCallback(int position)
 // Registered as GLFW2's window-size callback (there is no separate
 // framebuffer-size concept to register for); width/height arrive in
 // window/logical units and are converted to pixel units via
-// ContentScaleX/Y. The MeasureContentScale() call is a no-op here once
-// contentScaleLocked is set (see setupOpenGL()): by the time the user can
-// actually trigger a real resize, ContentScaleX/Y is already the fixed
-// ratio established during startup, and must stay fixed rather than be
-// re-derived from the window size this same call is about to change.
+// ContentScaleX/Y. MeasureContentScale() only measures during startup and is
+// a no-op here once the scale is locked (see MeasureContentScale()).
 void GLFWWindowSizeCallback(int width, int height)
 {
 	magnoom_ctx *ctx = g_ctx;
@@ -3637,10 +3645,18 @@ int isiconified;
 					TwDefine(" Anisotropy iconified=true ");
 				}
 				break;
+			case  WINDOW_KEY_F10:
+				TwGetParam(ctx->log_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
+				if (isiconified){
+					TwDefine(" Log iconified=false ");
+				}else{
+					TwDefine(" Log iconified=true ");
+				}
+				break;
 			case  WINDOW_KEY_F12:
 				TwGetParam(ctx->info_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
-					TwDefine(" Info iconified=false ");				
+					TwDefine(" Info iconified=false ");
 				}else{
 					TwDefine(" Info iconified=true ");
 				}

@@ -75,6 +75,8 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 #define MAX_SHELL_NUM 16
 #define MAGNOOM_PATH_CAPACITY 4096
 #define MAGNOOM_MODAL_MESSAGE_CAPACITY 512
+#define MAGNOOM_LOG_CAPACITY 50
+#define MAGNOOM_LOG_LINE_CAPACITY 256
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "vendor/stb/stb_image_write.h"
@@ -476,11 +478,19 @@ typedef struct magnoom_ctx {
 	TwBar*          BextAC_bar;
 	TwBar*          anisotropy_bar;
 	TwBar*          info_bar;
+	TwBar*          log_bar;
 	TwBar*          modal_bar;
 	bool            modal_open_requested;
 	bool            modal_close_requested;
 	bool            modal_is_warning; /* false = error dialog (red), true = warning dialog (dark magenta) */
 	char            modal_message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
+
+	/* Rolling window of the last MAGNOOM_LOG_CAPACITY operation-outcome
+	 * lines, shown live in log_bar; the full history is also appended to
+	 * log_file (opened lazily, see magnoom_log_write()). */
+	char            log_lines[MAGNOOM_LOG_CAPACITY][MAGNOOM_LOG_LINE_CAPACITY];
+	int             log_count;
+	FILE*           log_file;
 
 	/* slice/filter thresholds & flags */
 	int             N_filter;
@@ -791,7 +801,7 @@ static bool ValidateFileFormat(const magnoom_ctx *ctx, const char *path,
 			valid = magnoom_validate_vtk_content(file, ctx);
 			break;
 		case FILE_FORMAT_BIN: {
-			size_t cells = 0;
+			size_t records = 0; /* BIN stores one record per atom, not per unit cell */
 			long length = -1;
 			if (ctx != NULL && ctx->uABC[0] > 0 && ctx->uABC[1] > 0 && ctx->uABC[2] > 0 &&
 				ctx->AtomsPerBlock > 0) {
@@ -801,12 +811,12 @@ static bool ValidateFileFormat(const magnoom_ctx *ctx, const char *path,
 				size_t atoms = (size_t)ctx->AtomsPerBlock;
 				if (na <= SIZE_MAX / nb && na*nb <= SIZE_MAX / nc &&
 					na*nb*nc <= SIZE_MAX / atoms) {
-					cells = na*nb*nc*atoms; /* one record per atom, not per unit cell */
+					records = na*nb*nc*atoms;
 					if (fseek(file, 0, SEEK_END) == 0) length = ftell(file);
 				}
 			}
-			valid = length >= 0 && cells <= (size_t)LONG_MAX / sizeof(magnoom_bin_spin) &&
-			        (size_t)length == cells*sizeof(magnoom_bin_spin);
+			valid = length >= 0 && records <= (size_t)LONG_MAX / sizeof(magnoom_bin_spin) &&
+			        (size_t)length == records*sizeof(magnoom_bin_spin);
 			break;
 		}
 		case FILE_FORMAT_PNG: {
@@ -1002,6 +1012,75 @@ static bool magnoom_resolve_output_path_with_extension(magnoom_ctx *ctx,
 	pthread_mutex_unlock(&ctx->record_mutex);
 	return magnoom_resolve_path_with_extension(destination, capacity,
 		directory, ctx->outputfilename, extension);
+}
+
+/* Names for log_bar's per-line rows ("L00", "L01", ...). setupTweakBar()
+ * creates the row buttons under these names and magnoom_update_log_bar_row()
+ * has to find them again by exactly the same name. */
+static void magnoom_log_row_name(char *destination, size_t capacity, int index)
+{
+	snprintf(destination, capacity, "L%02d", index);
+}
+
+/* Pushes ctx->log_lines[index] into the matching log_bar row. A no-op when
+ * log_bar doesn't exist yet -- before setupTweakBar() has run, or in the
+ * MAGNOOM_NO_MAIN test build, which never creates it at all. */
+static void magnoom_update_log_bar_row(magnoom_ctx *ctx, int index)
+{
+	char name[16];
+	if (ctx->log_bar == NULL) return;
+	magnoom_log_row_name(name, sizeof(name), index);
+	TwSetParam(ctx->log_bar, name, "label", TW_PARAM_CSTRING, 1, ctx->log_lines[index]);
+}
+
+/* Prints an operation-outcome line to the terminal, appends it to
+ * magnoom.log, and adds it to the rolling window shown live in log_bar.
+ * The log file is opened lazily, on first use, so it always follows
+ * wherever ctx->output_directory ends up rather than whatever it was at
+ * startup, and it keeps the full, untruncated history: the in-bar copy is
+ * plainly truncated to MAGNOOM_LOG_LINE_CAPACITY rather than word-wrapped
+ * like the modal dialog, since the whole line stays recoverable there. */
+static void magnoom_log_write(magnoom_ctx *ctx, const char *format, ...)
+{
+	char line[512];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(line, sizeof(line), format, args);
+	va_end(args);
+
+	printf("%s\n", line);
+
+	if (ctx->log_file == NULL) {
+		char log_path[MAGNOOM_PATH_CAPACITY];
+		if (magnoom_resolve_output_path(ctx, "magnoom.log", log_path, sizeof(log_path)))
+			ctx->log_file = fopen(log_path, "a");
+	}
+	if (ctx->log_file != NULL) {
+		fprintf(ctx->log_file, "%s\n", line);
+		fflush(ctx->log_file);
+	}
+
+	/* Once the window is full the oldest line is dropped and every other
+	 * line moves up a row, so all rows need pushing again; while it is
+	 * still filling, only the row just appended changed. */
+	bool window_shifted = ctx->log_count == MAGNOOM_LOG_CAPACITY;
+	if (window_shifted) {
+		memmove(ctx->log_lines[0], ctx->log_lines[1],
+			(MAGNOOM_LOG_CAPACITY - 1) * MAGNOOM_LOG_LINE_CAPACITY);
+		ctx->log_count--;
+	}
+	snprintf(ctx->log_lines[ctx->log_count], MAGNOOM_LOG_LINE_CAPACITY, "%s", line);
+	ctx->log_count++;
+
+	int first_dirty_row = window_shifted ? 0 : ctx->log_count - 1;
+	for (int i = first_dirty_row; i < ctx->log_count; ++i) magnoom_update_log_bar_row(ctx, i);
+}
+
+/* Single wording for the outcome line printed after every attempted
+ * spin-configuration import, whatever the file format. */
+static void magnoom_report_read_result(magnoom_ctx *ctx, const char *path, bool ok)
+{
+	magnoom_log_write(ctx, "Reading from the file %s %s!", path, ok ? "succeeded" : "failed");
 }
 
 static bool magnoom_flush_records_locked(magnoom_ctx *ctx)
@@ -1746,7 +1825,7 @@ void Save_OVF_b8(magnoom_ctx *ctx, double* S, const char *ovf_filename){
         fputs ("# End: Data Binary 4\n",pFile);
         fputs ("# End: Segment\n",pFile);
         fclose (pFile);
-		printf("Recording to the file %s is done!\n", ovf_filename);
+		magnoom_log_write(ctx, "Recording to the file %s is done!", ovf_filename);
 	} else {
 		fprintf(stderr, "Cannot open output file '%s': %s\n", ovf_filename, strerror(errno));
     }
@@ -1789,7 +1868,7 @@ void SaveBin(magnoom_ctx *ctx, double* S, const char *bin_filename){
     }
   }
   fclose (pFile);
-  printf("Recording to the file %s is done!\n", bin_filename);
+  magnoom_log_write(ctx, "Recording to the file %s is done!", bin_filename);
 }
 
 
@@ -1858,9 +1937,9 @@ void SavePng(magnoom_ctx *ctx, double* S, const char *png_filename, enSliceMode 
       }
     }
     if (stbi_write_png(png_filename, width, height, 3, image, width*3))
-      printf("Image has been saved to %s\n",png_filename);
+      magnoom_log_write(ctx, "Image has been saved to %s", png_filename);
     else
-      printf("Unable to save PNG image to %s\n",png_filename);
+      magnoom_log_write(ctx, "Unable to save PNG image to %s", png_filename);
     free(image);
   }
 }
@@ -1923,7 +2002,7 @@ void Save_VTS_b4(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float * P
         fputs ("</VTKFile>\n",pFile);
         fclose (pFile);
     }
-    printf("Recording to the file %s is done!\n", vts_filename);
+    magnoom_log_write(ctx, "Recording to the file %s is done!", vts_filename);
 }
 
 void Save_VTS_ascii(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float * Px, float * Py, float * Pz, float box[][3], const char *vts_filename){
@@ -1984,7 +2063,7 @@ void Save_VTS_ascii(magnoom_ctx *ctx, double* Sx, double* Sy, double* Sz, float 
         fputs ("</VTKFile>\n",pFile);
         fclose (pFile);
     }
-    printf("Recording to the file %s is done!\n", vts_filename);
+    magnoom_log_write(ctx, "Recording to the file %s is done!", vts_filename);
 }
 
 /// Swap endianness of a value
@@ -2148,7 +2227,7 @@ void Save_VTK(magnoom_ctx *ctx, double* S, const int mode, const char *vtk_filen
             }
         }
         fclose (pFile);
-        printf("Recording to the file %s is done!\n", vtk_filename);
+        magnoom_log_write(ctx, "Recording to the file %s is done!", vtk_filename);
 	} else {
 		fprintf(stderr, "Cannot open output file '%s': %s\n", vtk_filename, strerror(errno));
     }
@@ -2335,7 +2414,7 @@ void Save_VTK_6(magnoom_ctx *ctx, double* S,
             }
         }
         fclose (pFile);
-        printf("Recording to the file %s is done!\n", vtk_filename);
+        magnoom_log_write(ctx, "Recording to the file %s is done!", vtk_filename);
 	} else {
 		fprintf(stderr, "Cannot open output file '%s': %s\n", vtk_filename, strerror(errno));
     }
@@ -2477,14 +2556,10 @@ if(FilePointer!=NULL) {
             printf("%s cannot read data in vtk file!\n", vtk_filename);
         }
         fclose(FilePointer);
-        if (read_ok) {
-            printf("Reading from the file %s succeeded!\n", vtk_filename);
-        } else {
-            printf("Reading from the file %s failed!\n", vtk_filename);
-        }
+        magnoom_report_read_result(ctx, vtk_filename, read_ok);
     }else{
         fprintf(stderr, "Cannot open input file '%s': %s\n", vtk_filename, strerror(errno));
-        printf("Reading from the file %s failed!\n", vtk_filename);
+        magnoom_report_read_result(ctx, vtk_filename, false);
     }
 }
 
@@ -2965,6 +3040,8 @@ main (int argc, char **argv){
 
 	free(mag_ctx.Jexc);  			free(mag_ctx.Bexc);  			free(mag_ctx.Dexc);
 	free(mag_ctx.VDMX);  			free(mag_ctx.VDMY);  			free(mag_ctx.VDMZ);
+
+	if (mag_ctx.log_file != NULL) fclose(mag_ctx.log_file);
 
 	free(mag_ctx.S);     			free(mag_ctx.bS);
 	free(mag_ctx.tS);    			free(mag_ctx.t2S);   			free(mag_ctx.t3S);
