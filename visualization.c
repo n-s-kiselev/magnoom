@@ -46,6 +46,8 @@ void drawVBO(magnoom_ctx *);
 
 void idle(magnoom_ctx *);
 void setupTweakBar(magnoom_ctx *);
+static void magnoom_request_warning_dialog(magnoom_ctx *, const char *);
+static void magnoom_resize_modal_dialog(magnoom_ctx *, int, int);
 void GLFWKeyCallback(int, int);
 void GLFWCharCallback(int, int);
 void GLFWMouseButtonCallback(int, int);
@@ -1629,11 +1631,13 @@ void TW_CALL CB_ReadCSV( void *clientData )
 				VEC_Z(ctx->bS,i)=VEC_Z(ctx->S,i)=sz;
 		 	}
 		 	i++;
-		}while(c != EOF); 
+		}while(c != EOF);
 		fclose(pFile);
 		magnoom_reset_solver_state(ctx);
+		printf("Reading from the file %s succeeded!\n", input_path);
 	} else {
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
+		printf("Reading from the file %s failed!\n", input_path);
 	}
 	ChangeVectorMode(ctx, 1);
 }
@@ -1656,6 +1660,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
     int   binType = 4;
 	float temp4_x, temp4_y, temp4_z;
 	double temp8_x, temp8_y, temp8_z;
+	bool  read_ok = false;
 	if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
     FILE * FilePointer = fopen(input_path, "rb");
 	if(FilePointer!=NULL) {	
@@ -1714,6 +1719,7 @@ void TW_CALL CB_ReadOVF( void *clientData )
 						}
 					}
 				}
+				read_ok = true;
 			}else if (strncmp(keyW2, "Binary",6)==0){
 				if(strncmp(keyW3, "4",1)==0){
 					binType = 4;
@@ -1764,29 +1770,46 @@ void TW_CALL CB_ReadOVF( void *clientData )
 											VEC_Z(ctx->S,I)=VEC_Z(ctx->bS,I)=temp8_z;
 										}
 									}
-								}	
+								}
 							}
 						}
 					}
+					read_ok = true;
 				}else{printf("problem\n");}
 			}else{
 				printf("Do not know what to do with \"%s\" data format in %s\n", keyW2, input_path);
 			}
 		}else{
 			printf("%s has wrong data format or dimentionality!\n", input_path);
-		}       
-		// when everything is done
-		printf("Done!\n");
+		}
 		fclose(FilePointer);
-		magnoom_reset_solver_state(ctx);
-	}else{fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));}
+		if (read_ok) {
+			printf("Reading from the file %s succeeded!\n", input_path);
+			magnoom_reset_solver_state(ctx);
+		} else {
+			printf("Reading from the file %s failed!\n", input_path);
+		}
+	}else{
+		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
+		printf("Reading from the file %s failed!\n", input_path);
+	}
     //metka dlya schiutyvaniya equilibrium state for dm
     for (int i=0; i<ctx->NOS; i++){
         VEC_X(ctx->t3S,i)=VEC_X(ctx->S,i);
         VEC_Y(ctx->t3S,i)=VEC_Y(ctx->S,i);
-        VEC_Z(ctx->t3S,i)=VEC_Z(ctx->S,i);                       
+        VEC_Z(ctx->t3S,i)=VEC_Z(ctx->S,i);
     }
 	ChangeVectorMode(ctx, 1);
+	if (read_ok && ctx->AtomsPerBlock > 1) {
+		char message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
+		snprintf(message, sizeof(message),
+			"This structure has %d atoms per unit cell. The OVF file stores one vector per "
+			"cell, so every atom in a cell was just set to that same shared (approximate) "
+			"vector -- this is not the original per-atom state. For an exact import, use a "
+			"CSV (name.csv) or BIN (name.bin) file instead.",
+			ctx->AtomsPerBlock);
+		magnoom_request_warning_dialog(ctx, message);
+	}
 }
 
 void TW_CALL CB_ReadBIN( void *clientData )
@@ -1800,35 +1823,47 @@ void TW_CALL CB_ReadBIN( void *clientData )
 
 
 	int Nx = ctx->uABC[0], Ny = ctx->uABC[1], Nz = ctx->uABC[2];
+	bool all_reads_ok = true;
 	if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
 	FILE * FilePointer = fopen(input_path, "rb");
 	if (FilePointer == NULL) {
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
+		printf("Reading from the file %s failed!\n", input_path);
 		return;
 	}
   	for(int k = 0; k<Nz; k++){
 	    for(int j = 0; j<Ny; j++){
 			for(int i = 0; i <Nx;i++){
-				magnoom_bin_spin my_par_red;
-				if (fread(&my_par_red, sizeof(my_par_red), 1, FilePointer)){
-					double nx,ny,nz;
-					unsigned short int p=my_par_red.t, q=my_par_red.f;
+				int n = (i)+(j)*Nx+k*Nx*Ny; /* index of the block */
+				for (int atom = 0; atom < ctx->AtomsPerBlock; atom++){
+					magnoom_bin_spin my_par_red;
+					if (fread(&my_par_red, sizeof(my_par_red), 1, FilePointer)){
+						double nx,ny,nz;
+						unsigned short int p=my_par_red.t, q=my_par_red.f;
 
-					double T = (double)(p+0.5)*PI/num;
-					double F = (double)2*(q+0.5)*PI/num;
+						double T = (double)(p+0.5)*PI/num;
+						double F = (double)2*(q+0.5)*PI/num;
 
-					nx = sin(T)*cos(F);
-					ny = sin(T)*sin(F);
-					nz = cos(T);
-					int n = (i)+(j)*Nx+k*Nx*Ny;
-					VEC_X(ctx->S,n) = nx; VEC_Y(ctx->S,n) = ny; VEC_Z(ctx->S,n) = nz;
-					VEC_X(ctx->bS,n) = nx; VEC_Y(ctx->bS,n) = ny; VEC_Z(ctx->bS,n) = nz;
+						nx = sin(T)*cos(F);
+						ny = sin(T)*sin(F);
+						nz = cos(T);
+						int I = n*ctx->AtomsPerBlock + atom;
+						VEC_X(ctx->S,I) = nx; VEC_Y(ctx->S,I) = ny; VEC_Z(ctx->S,I) = nz;
+						VEC_X(ctx->bS,I) = nx; VEC_Y(ctx->bS,I) = ny; VEC_Z(ctx->bS,I) = nz;
+					}else{
+						all_reads_ok = false;
+					}
 				}
 			}
 	    }
 	}
 	fclose (FilePointer);
-	magnoom_reset_solver_state(ctx);
+	if (all_reads_ok) {
+		magnoom_reset_solver_state(ctx);
+		printf("Reading from the file %s succeeded!\n", input_path);
+	} else {
+		printf("Reading from the file %s failed!\n", input_path);
+	}
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -1851,6 +1886,16 @@ void TW_CALL CB_Save_OVF_b8( void *clientData )
 	if (!magnoom_resolve_output_path_with_extension(ctx, ".ovf",
 		output_path, sizeof(output_path))) return;
 	Save_OVF_b8(ctx, ctx->bS, output_path);
+	if (ctx->AtomsPerBlock > 1) {
+		char message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
+		snprintf(message, sizeof(message),
+			"This structure has %d atoms per unit cell. OVF stores one vector per cell, "
+			"so every atom in a cell was collapsed to a single shared vector -- per-atom "
+			"detail was not preserved. For an exact export, save as CSV (name.csv) or "
+			"BIN (name.bin) instead.",
+			ctx->AtomsPerBlock);
+		magnoom_request_warning_dialog(ctx, message);
+	}
 }
 
 void TW_CALL CB_Save_VTK_b4( void *clientData )
@@ -1893,13 +1938,27 @@ void TW_CALL CB_Save_PNG( void *clientData )
 	SavePng(ctx, ctx->bS, output_path, ctx->WhichSliceMode, ctx->A_layer_min-1, ctx->B_layer_min-1, ctx->C_layer_min-1);//metka 0->1
 }
 
-static void magnoom_request_error_dialog(magnoom_ctx *ctx, const char *message)
+static void magnoom_request_modal_dialog(magnoom_ctx *ctx, const char *message, bool is_warning)
 {
 	if (ctx->modal_bar != NULL || ctx->modal_open_requested) return;
 	if (!magnoom_copy_path(ctx->modal_message, sizeof(ctx->modal_message), message))
 		magnoom_copy_path(ctx->modal_message, sizeof(ctx->modal_message), "The file operation failed.");
+	ctx->modal_is_warning = is_warning;
 	ctx->modal_close_requested = false;
 	ctx->modal_open_requested = true;
+}
+
+static void magnoom_request_error_dialog(magnoom_ctx *ctx, const char *message)
+{
+	magnoom_request_modal_dialog(ctx, message, false);
+}
+
+/* Informational only: does not block or undo the file operation it follows --
+ * unlike an error dialog, the operation that triggered it has already
+ * happened (or will proceed) by the time this is shown. */
+static void magnoom_request_warning_dialog(magnoom_ctx *ctx, const char *message)
+{
+	magnoom_request_modal_dialog(ctx, message, true);
 }
 
 #ifndef MAGNOOM_NO_MAIN
@@ -1909,24 +1968,57 @@ static void TW_CALL CB_CloseErrorDialog(void *clientData)
 	ctx->modal_close_requested = true;
 }
 
-static void magnoom_set_bar_visibility(TwBar *bar, int visible)
+/* Greedily breaks message into lines of at most max_chars (clamped to the
+ * MAGNOOM_MODAL_LINE_CHARS buffer capacity), breaking on the last space at
+ * or before the limit so words aren't split (a single word longer than the
+ * limit is hard-broken as a last resort). Returns the number of lines
+ * written (capped at max_lines). */
+#define MAGNOOM_MODAL_LINE_CHARS 96
+static int magnoom_wrap_message(const char *message, int max_chars,
+	char lines[][MAGNOOM_MODAL_LINE_CHARS + 1], int max_lines)
 {
-	TwSetParam(bar, NULL, "visible", TW_PARAM_INT32, 1, &visible);
+	int line_count = 0;
+	const char *cursor = message;
+	if (max_chars > MAGNOOM_MODAL_LINE_CHARS) max_chars = MAGNOOM_MODAL_LINE_CHARS;
+	if (max_chars < 1) max_chars = 1;
+	while (*cursor != '\0' && line_count < max_lines) {
+		size_t remaining = strlen(cursor);
+		size_t take = remaining;
+		if (take > (size_t)max_chars) {
+			take = (size_t)max_chars;
+			while (take > 0 && cursor[take] != ' ') --take;
+			if (take == 0) take = (size_t)max_chars;
+		}
+		memcpy(lines[line_count], cursor, take);
+		lines[line_count][take] = '\0';
+		line_count++;
+		cursor += take;
+		while (*cursor == ' ') ++cursor;
+	}
+	return line_count;
 }
 
-static void magnoom_restore_modal_bars(magnoom_ctx *ctx)
-{
-	for (int i = 0; i < ctx->modal_saved_count; ++i)
-		magnoom_set_bar_visibility(ctx->modal_saved_bars[i], ctx->modal_saved_visibility[i]);
-	ctx->modal_saved_count = 0;
-}
-
-static void magnoom_open_error_dialog(magnoom_ctx *ctx)
+static void magnoom_open_modal_dialog(magnoom_ctx *ctx)
 {
 	char definition[256];
 	int framebuffer_width, framebuffer_height;
-	int bar_width, bar_height, position_x, position_y;
 	TwBar *bar;
+	/* Warning dialogs use a distinct, less alarming color from the red
+	 * error dialog -- they're informational (the file operation already
+	 * happened or will proceed regardless), not a failure. */
+	const char *bar_name = ctx->modal_is_warning ? "FileWarning" : "FileError";
+	const char *bar_color = ctx->modal_is_warning ? "90 20 70" : "180 35 45";
+	const char *bar_label = ctx->modal_is_warning ? "Warning" : "File error";
+	/* AntTweakBar's button labels are single-line and truncate rather than
+	 * wrap -- unlike the auto-generated Help bar (TW_HELP), whose word-wrap
+	 * is internal to that one built-in bar and not exposed through the
+	 * public API. Reproduce the same readable, multi-line look here by
+	 * word-wrapping the message ourselves and adding one label-only button
+	 * per line (the same "label-only button as a text row" pattern already
+	 * used for the "Bext AC"/"Bext DC" section headers in the Info bar). */
+	enum { MAX_LINES = 12 };
+	char lines[MAX_LINES][MAGNOOM_MODAL_LINE_CHARS + 1];
+	int line_count;
 
 	if (ctx->modal_bar != NULL) return;
 	{
@@ -1935,47 +2027,89 @@ static void magnoom_open_error_dialog(magnoom_ctx *ctx)
 		framebuffer_width = (int)(window_width * ctx->ContentScaleX + 0.5);
 		framebuffer_height = (int)(window_height * ctx->ContentScaleY + 0.5);
 	}
-	bar_width = framebuffer_width < 560 ? framebuffer_width : 560;
-	bar_height = 200;
-	if (bar_width < 220) bar_width = 220;
-	position_x = (framebuffer_width - bar_width)/2;
-	position_y = (framebuffer_height - bar_height)/2;
-	if (position_x < 0) position_x = 0;
-	if (position_y < 0) position_y = 0;
 
-	bar = TwNewBar("FileError");
+	{
+		/* ~7px/char at ContentScaleX==1.0 is a rough estimate matching
+		 * AntTweakBar's own default-font sizing heuristic (see the built-in
+		 * Help bar's m_ValuesWidth = 12*(charHeight/2) in TwMgr.cpp) --
+		 * good enough to keep wrapped lines comfortably inside the bar
+		 * across window sizes without needing the font metrics themselves,
+		 * which the public API doesn't expose. */
+		int approx_char_px = (int)(7 * ctx->ContentScaleX + 0.5);
+		int max_line_chars;
+		if (approx_char_px < 1) approx_char_px = 1;
+		max_line_chars = (framebuffer_width - 20) / approx_char_px;
+		if (max_line_chars < 10) max_line_chars = 10;
+		line_count = magnoom_wrap_message(ctx->modal_message, max_line_chars, lines, MAX_LINES);
+	}
+	if (line_count == 0) line_count = 1;
+
+	bar = TwNewBar(bar_name);
 	if (bar == NULL) {
 		fprintf(stderr, "%s\n", ctx->modal_message);
 		return;
 	}
-	TwDefine(" FileError color='180 35 45' alpha=200");
-	TwDefine(" FileError resizable=false movable=false iconifiable=false");
+	/* Covers the whole OpenGL window rather than a small centered box, at a
+	 * low alpha, so the scene and every other (still-open, still-visible)
+	 * ATB bar remain visible underneath. It doesn't need to hide or close
+	 * them to keep them un-clickable: being on top (TwSetTopBar below) and
+	 * covering the entire window means every click lands on this bar first,
+	 * and it isn't movable/resizable, so nothing behind it is reachable
+	 * until OK is pressed. */
+	snprintf(definition, sizeof(definition), " %s color='%s' alpha=130", bar_name, bar_color);
+	TwDefine(definition);
+	snprintf(definition, sizeof(definition), " %s resizable=false movable=false iconifiable=false", bar_name);
+	TwDefine(definition);
+	/* AntTweakBar's default valueswidth (a small, fixed value meant for an
+	 * ordinary narrow bar) leaves almost the entire width to the label
+	 * column once the bar spans the whole window -- split label/value
+	 * columns evenly instead, since neither side is more important here
+	 * (the "value" column has no real editors, just the OK button's row). */
 	snprintf(definition, sizeof(definition),
-		" FileError label='File error' size='%d %d' position='%d %d' ",
-		bar_width, bar_height, position_x, position_y);
-	if (!TwDefine(definition) ||
-		!TwAddButton(bar, "Message", NULL, NULL, "label='File operation failed.'") ||
-		!TwSetParam(bar, "Message", "label", TW_PARAM_CSTRING, 1, ctx->modal_message) ||
-		!TwAddButton(bar, "OK", CB_CloseErrorDialog, ctx, "label='OK'")) {
+		" %s label='%s' size='%d %d' position='0 0' valueswidth=%d ",
+		bar_name, bar_label, framebuffer_width, framebuffer_height, framebuffer_width/2);
+	if (!TwDefine(definition)) {
 		TwDeleteBar(bar);
 		fprintf(stderr, "%s\n", ctx->modal_message);
 		return;
 	}
+	{
+		/* The line text may contain characters (quotes, semicolons, ...)
+		 * that would need escaping inside a TwDefine-style definition
+		 * string -- added with a safe placeholder label instead, then set
+		 * for real via TwSetParam, which takes a raw C-string with no
+		 * parsing, exactly like the single-line "Message" button did before. */
+		bool ok = true;
+		for (int i = 0; i < line_count && ok; ++i) {
+			char name[16];
+			snprintf(name, sizeof(name), "Line%d", i);
+			ok = TwAddButton(bar, name, NULL, NULL, "label='.'") &&
+				TwSetParam(bar, name, "label", TW_PARAM_CSTRING, 1, lines[i]);
+		}
+		if (!ok || !TwAddButton(bar, "OK", CB_CloseErrorDialog, ctx, "label='OK'")) {
+			TwDeleteBar(bar);
+			fprintf(stderr, "%s\n", ctx->modal_message);
+			return;
+		}
+	}
 
 	ctx->modal_bar = bar;
-	ctx->modal_saved_count = 0;
-	int bar_count = TwGetBarCount();
-	for (int i = 0; i < bar_count && ctx->modal_saved_count < MAGNOOM_MODAL_BAR_CAPACITY; ++i) {
-		TwBar *current = TwGetBarByIndex(i);
-		int visible = 1;
-		if (current == bar) continue;
-		TwGetParam(current, NULL, "visible", TW_PARAM_INT32, 1, &visible);
-		ctx->modal_saved_bars[ctx->modal_saved_count] = current;
-		ctx->modal_saved_visibility[ctx->modal_saved_count] = visible;
-		ctx->modal_saved_count++;
-		magnoom_set_bar_visibility(current, 0);
-	}
 	TwSetTopBar(bar);
+}
+
+/* Keeps the (already open) modal's full-window overlay in sync with a real
+ * window resize -- called from GLFWWindowSizeCallback. Only resizes the bar
+ * and re-splits its label/value columns evenly; the message itself is not
+ * re-wrapped, so on a large shrink its lines may truncate again just like
+ * before this bar existed (a pre-existing AntTweakBar single-line-button
+ * limitation, not something this resize handling introduces). */
+static void magnoom_resize_modal_dialog(magnoom_ctx *ctx, int pixel_width, int pixel_height)
+{
+	char definition[128];
+	if (ctx->modal_bar == NULL) return;
+	snprintf(definition, sizeof(definition), " %s size='%d %d' position='0 0' valueswidth=%d ",
+		ctx->modal_is_warning ? "FileWarning" : "FileError", pixel_width, pixel_height, pixel_width/2);
+	TwDefine(definition);
 }
 
 static void magnoom_service_modal(magnoom_ctx *ctx)
@@ -1984,14 +2118,17 @@ static void magnoom_service_modal(magnoom_ctx *ctx)
 		TwDeleteBar(ctx->modal_bar);
 		ctx->modal_bar = NULL;
 		ctx->modal_close_requested = false;
-		magnoom_restore_modal_bars(ctx);
 	}
 	if (ctx->modal_open_requested && ctx->modal_bar == NULL) {
 		ctx->modal_open_requested = false;
-		magnoom_open_error_dialog(ctx);
+		magnoom_open_modal_dialog(ctx);
 	}
 }
 #endif
+
+#define MAGNOOM_SUPPORTED_FORMATS_HINT \
+	"The list of supported formats: csv, vtk, ovf, bin " \
+	"(for details see the magnoom wiki: https://github.com/n-s-kiselev/magnoom/wiki)."
 
 static bool magnoom_get_requested_file_format(magnoom_ctx *ctx, const char *filename,
 	bool importing, FileFormatEnum *format)
@@ -2000,24 +2137,25 @@ static bool magnoom_get_requested_file_format(magnoom_ctx *ctx, const char *file
 	char message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
 
 	if (extension == NULL) {
-		snprintf(message, sizeof(message), "The file name has no extension.");
+		snprintf(message, sizeof(message), "The file name has no extension. " MAGNOOM_SUPPORTED_FORMATS_HINT);
 		magnoom_request_error_dialog(ctx, message);
 		return false;
 	}
 	*format = GetFileFormatFromExtension(filename);
 	if (*format == FILE_FORMAT_UNKNOWN) {
-		snprintf(message, sizeof(message), "The file extension is not supported.");
+		snprintf(message, sizeof(message), "The file extension is not supported. " MAGNOOM_SUPPORTED_FORMATS_HINT);
 		magnoom_request_error_dialog(ctx, message);
 		return false;
 	}
 	if (importing && !magnoom_file_format_can_import(*format)) {
-		snprintf(message, sizeof(message), "%s files are export-only and cannot be imported.",
-			fileFormatNames[*format]);
+		snprintf(message, sizeof(message), "%s files are export-only and cannot be imported. "
+			MAGNOOM_SUPPORTED_FORMATS_HINT, fileFormatNames[*format]);
 		magnoom_request_error_dialog(ctx, message);
 		return false;
 	}
 	if (!importing && !magnoom_file_format_can_export(*format)) {
-		snprintf(message, sizeof(message), "%s files cannot be exported.", fileFormatNames[*format]);
+		snprintf(message, sizeof(message), "%s files cannot be exported. " MAGNOOM_SUPPORTED_FORMATS_HINT,
+			fileFormatNames[*format]);
 		magnoom_request_error_dialog(ctx, message);
 		return false;
 	}
@@ -3170,6 +3308,9 @@ void GLFWWindowSizeCallback(int width, int height)
 	if (pixelWidth < 1) pixelWidth = 1;
 	if (pixelHeight < 1) pixelHeight = 1;
 	ApplyFramebufferSize(ctx, pixelWidth, pixelHeight);
+#ifndef MAGNOOM_NO_MAIN
+	magnoom_resize_modal_dialog(ctx, pixelWidth, pixelHeight);
+#endif
 }
 
 

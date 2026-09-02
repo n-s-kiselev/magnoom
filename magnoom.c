@@ -74,7 +74,6 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 #define MAX_ATOMS_PER_BLOCK 5
 #define MAX_SHELL_NUM 16
 #define MAGNOOM_PATH_CAPACITY 4096
-#define MAGNOOM_MODAL_BAR_CAPACITY 32
 #define MAGNOOM_MODAL_MESSAGE_CAPACITY 512
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -478,11 +477,9 @@ typedef struct magnoom_ctx {
 	TwBar*          anisotropy_bar;
 	TwBar*          info_bar;
 	TwBar*          modal_bar;
-	TwBar*          modal_saved_bars[MAGNOOM_MODAL_BAR_CAPACITY];
-	int             modal_saved_visibility[MAGNOOM_MODAL_BAR_CAPACITY];
-	int             modal_saved_count;
 	bool            modal_open_requested;
 	bool            modal_close_requested;
+	bool            modal_is_warning; /* false = error dialog (red), true = warning dialog (dark magenta) */
 	char            modal_message[MAGNOOM_MODAL_MESSAGE_CAPACITY];
 
 	/* slice/filter thresholds & flags */
@@ -796,12 +793,15 @@ static bool ValidateFileFormat(const magnoom_ctx *ctx, const char *path,
 		case FILE_FORMAT_BIN: {
 			size_t cells = 0;
 			long length = -1;
-			if (ctx != NULL && ctx->uABC[0] > 0 && ctx->uABC[1] > 0 && ctx->uABC[2] > 0) {
+			if (ctx != NULL && ctx->uABC[0] > 0 && ctx->uABC[1] > 0 && ctx->uABC[2] > 0 &&
+				ctx->AtomsPerBlock > 0) {
 				size_t na = (size_t)ctx->uABC[0];
 				size_t nb = (size_t)ctx->uABC[1];
 				size_t nc = (size_t)ctx->uABC[2];
-				if (na <= SIZE_MAX / nb && na*nb <= SIZE_MAX / nc) {
-					cells = na*nb*nc;
+				size_t atoms = (size_t)ctx->AtomsPerBlock;
+				if (na <= SIZE_MAX / nb && na*nb <= SIZE_MAX / nc &&
+					na*nb*nc <= SIZE_MAX / atoms) {
+					cells = na*nb*nc*atoms; /* one record per atom, not per unit cell */
 					if (fseek(file, 0, SEEK_END) == 0) length = ftell(file);
 				}
 			}
@@ -1412,11 +1412,11 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 
 	/* Keep exactly one complete crystal basis below active. */
 	/* Simple cubic, one atom: */
-	const float basis[][3] = {{0.5f, 0.5f, 0.5f}};
-	ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f; ctx->abc[0][2]=0.0f;
-	ctx->abc[1][0]=0.0f; ctx->abc[1][1]=1.0f; ctx->abc[1][2]=0.0f;
-	ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f; ctx->abc[2][2]=1.0f;
-	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+	// const float basis[][3] = {{0.5f, 0.5f, 0.5f}};
+	// ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f; ctx->abc[0][2]=0.0f;
+	// ctx->abc[1][0]=0.0f; ctx->abc[1][1]=1.0f; ctx->abc[1][2]=0.0f;
+	// ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f; ctx->abc[2][2]=1.0f;
+	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
 	// B20 basis (u = 0.138), cubic unit cell:
 	// const float uB20 = 0.138f;
@@ -1432,20 +1432,20 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
 	/* EuSi fractional coordinates converted to normalized Cartesian positions:*/
-	// const float c_EuSi = 3.9845f;
-	// const float a_EuSi = 4.6955f/c_EuSi;
-	// const float b_EuSi = 11.1528f/c_EuSi;
-	// const float u_Eu = 0.3595f;
-	// const float basis[][3] = {
-	//     {0.25f, 0.0f,          u_Eu*b_EuSi},
-	//     {0.75f, 0.0f,          (1.0f-u_Eu)*b_EuSi},
-	//     {0.75f, 0.5f*a_EuSi, (0.5f-u_Eu)*b_EuSi},
-	//     {0.25f, 0.5f*a_EuSi, (0.5f+u_Eu)*b_EuSi}
-	// };
-	// ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f;   ctx->abc[0][2]=0.0f;
-	// ctx->abc[1][0]=0.0f; ctx->abc[1][1]=a_EuSi; ctx->abc[1][2]=0.0f;
-	// ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f;   ctx->abc[2][2]=b_EuSi;
-	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
+	const float c_EuSi = 3.9845f;
+	const float a_EuSi = 4.6955f/c_EuSi;
+	const float b_EuSi = 11.1528f/c_EuSi;
+	const float u_Eu = 0.3595f;
+	const float basis[][3] = {
+	    {0.25f, 0.0f,          u_Eu*b_EuSi},
+	    {0.75f, 0.0f,          (1.0f-u_Eu)*b_EuSi},
+	    {0.75f, 0.5f*a_EuSi, (0.5f-u_Eu)*b_EuSi},
+	    {0.25f, 0.5f*a_EuSi, (0.5f+u_Eu)*b_EuSi}
+	};
+	ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f;   ctx->abc[0][2]=0.0f;
+	ctx->abc[1][0]=0.0f; ctx->abc[1][1]=a_EuSi; ctx->abc[1][2]=0.0f;
+	ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f;   ctx->abc[2][2]=b_EuSi;
+	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
 	// FCC2 basis, orthogonal unit cell:
 	// const float sqrt2 = sqrtf(2.0f);
@@ -1763,23 +1763,27 @@ void SaveBin(magnoom_ctx *ctx, double* S, const char *bin_filename){
     for(int k = 0; k < ctx->uABC[2]; k++){
         for(int j = 0; j < ctx->uABC[1]; j++){
             for(int i = 0; i < ctx->uABC[0]; i++){
-            int n = i+j*ctx->uABC[0]+k*ctx->uABC[0]*ctx->uABC[1];
+            int n = i+j*ctx->uABC[0]+k*ctx->uABC[0]*ctx->uABC[1]; /* index of the block */
+            n = n*ctx->AtomsPerBlock; /* index of the first spin in the block */
 
-            double nx = VEC_X(S,n), ny = VEC_Y(S,n), nz = VEC_Z(S,n);
+            for (int atom = 0; atom < ctx->AtomsPerBlock; atom++){
+                int N = n + atom;
+                double nx = VEC_X(S,N), ny = VEC_Y(S,N), nz = VEC_Z(S,N);
 
-            double T, F;
-            T = acos(nz)/PI;
-            F = atan2(ny,nx)/PI;
-            if(F <= 0) F += 2.0;
-            F /= 2;
+                double T, F;
+                T = acos(nz)/PI;
+                F = atan2(ny,nx)/PI;
+                if(F <= 0) F += 2.0;
+                F /= 2;
 
-            unsigned short int p=0, q=0;
+                unsigned short int p=0, q=0;
 
-            q = T*num;
-            p = F*num;
+                q = T*num;
+                p = F*num;
 
-            magnoom_bin_spin my_par = {q, p};
-            fwrite(&my_par, sizeof(my_par), 1, pFile);
+                magnoom_bin_spin my_par = {q, p};
+                fwrite(&my_par, sizeof(my_par), 1, pFile);
+            }
 
       }
     }
@@ -2389,6 +2393,7 @@ char  keyW4 [256];//key word 4
 int   binType = 0;
 float temp4_x, temp4_y, temp4_z;
 double temp8_x, temp8_y, temp8_z;
+bool  read_ok = false;
 FILE * FilePointer = fopen(vtk_filename, "rb");
 if(FilePointer!=NULL) {
         lineLength=ReadHeaderLine(FilePointer, line);//read and check the first nonempty line which starts with '#'
@@ -2466,13 +2471,21 @@ if(FilePointer!=NULL) {
                         }
                     }
                 }
+                read_ok = true;
             }
         }else{
             printf("%s cannot read data in vtk file!\n", vtk_filename);
         }
         fclose(FilePointer);
-        printf("Done!\n");// when everything is done
-    }else{fprintf(stderr, "Cannot open input file '%s': %s\n", vtk_filename, strerror(errno));}
+        if (read_ok) {
+            printf("Reading from the file %s succeeded!\n", vtk_filename);
+        } else {
+            printf("Reading from the file %s failed!\n", vtk_filename);
+        }
+    }else{
+        fprintf(stderr, "Cannot open input file '%s': %s\n", vtk_filename, strerror(errno));
+        printf("Reading from the file %s failed!\n", vtk_filename);
+    }
 }
 
 #include "linmath.h"		/*All global variables and constants*/

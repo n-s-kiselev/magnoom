@@ -140,6 +140,7 @@ static void test_file_format_validation(void)
     ctx.uABC[0] = 2;
     ctx.uABC[1] = 1;
     ctx.uABC[2] = 1;
+    ctx.AtomsPerBlock = 1;
     ctx.NOS = 2;
 
     CHECK(write_test_file(path, csv, sizeof(csv) - 1));
