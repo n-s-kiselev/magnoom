@@ -44,6 +44,11 @@ magnoom
 /assets/icon/.magnoom-*.bak
 /assets/icon/.magnoom-publish-*
 
+# Developer-only icon source and explanation files, not needed to build magnoom
+/assets/icon/magnoom.svg
+/assets/icon/README.md
+/assets/icon/icon_instructions.md
+
 # Archives (should not be vendored as opaque blobs; use source or a submodule)
 *.zip
 

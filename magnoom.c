@@ -63,7 +63,7 @@
 #endif
 
 static const char SOFTWARE_NAME[] = "Magnoom";
-static const char SOFTWARE_VERSION[] = "1.06";
+static const char SOFTWARE_VERSION[] = "1.07";
 
 #define ABS(x) ((x)<0?-(x):(x))
 
