@@ -403,6 +403,24 @@ static bool ensure_submodules(void)
     return true;
 }
 
+static void print_missing_library_hint(void)
+{
+#if defined(__APPLE__)
+    nob_log(NOB_INFO, "If the build failed because of a missing header, framework, or tool, "
+            "install the Xcode Command Line Tools (`xcode-select --install`) and try again.");
+#elif defined(_WIN32)
+    nob_log(NOB_INFO, "If the build failed because of a missing header, library, or tool "
+            "(cc/c++/windres/ar), install a MinGW-w64 toolchain, e.g. via MSYS2: "
+            "`pacman -S mingw-w64-x86_64-gcc`, and try again.");
+#else
+    nob_log(NOB_INFO, "If the build failed because of a missing header or library, install the "
+            "X11/OpenGL development packages for your distribution and try again, e.g.:\n"
+            "  Debian/Ubuntu: sudo apt install libgl1-mesa-dev libx11-dev libxrandr-dev\n"
+            "  Fedora:        sudo dnf install mesa-libGL-devel libX11-devel libXrandr-devel\n"
+            "  Arch:          sudo pacman -S mesa libx11 libxrandr");
+#endif
+}
+
 static void usage(const char *program)
 {
     printf("usage: %s [-clean] [-test] [-help]\n", program);
@@ -434,12 +452,18 @@ int main(int argc, char **argv)
     if (!nob_mkdir_if_not_exists(BUILD_DIR) || !nob_mkdir_if_not_exists(ATB_BUILD_DIR)) return 1;
     if (run_tests) {
         if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() ||
-            !build_block_setter_test_object() || !build_block_setter_test()) return 1;
+            !build_block_setter_test_object() || !build_block_setter_test()) {
+            print_missing_library_hint();
+            return 1;
+        }
         return run_block_setter_test() ? 0 : 1;
     }
     if (!build_ant_tweak_bar() || !build_glad() || !build_glfw() ||
         !build_windows_resource() || !build_magnoom_object() ||
-        !build_magnoom() || !package_platform_assets()) return 1;
+        !build_magnoom() || !package_platform_assets()) {
+        print_missing_library_hint();
+        return 1;
+    }
     nob_log(NOB_INFO, "built %s", OUTPUT EXE_EXT);
     return 0;
 }
