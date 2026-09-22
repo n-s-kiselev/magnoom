@@ -5500,9 +5500,8 @@ void drawVBO(magnoom_ctx *ctx)
 	ctx->spin_mesh.uses_normals = 0;
 
 	if (ctx->WhichVectorMode == uPOINT) {
-		DrawVBOMeshIndexed(&ctx->spin_mesh, GL_POINTS, spin_count, 0);
 		glPointSize(10.f * ctx->Scale);
-		glDrawElements(GL_POINTS, spin_count, GL_UNSIGNED_INT, (void*)0);
+		DrawVBOMeshIndexed(&ctx->spin_mesh, GL_POINTS, spin_count, 0);
 		if (restore_lighting) glEnable(GL_LIGHTING);
 		return;
 	}
