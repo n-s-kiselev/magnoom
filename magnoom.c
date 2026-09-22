@@ -89,7 +89,6 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 #define iTPI    (1.0 / TPI)
 #define D2R     (PI / 180.0)
 #define R2D     (180.0 / PI)
-#define HIDDEN_VECTOR_SCALE 24000000
 // active mouse buttons (or them together):
 #define LEFT   4
 #define MIDDLE 2
@@ -111,7 +110,6 @@ enum            Average_mode{ALONG_A,ALONG_B, ALONG_C, ALONG_0};
 typedef enum    {ORTHO, PERSP} enProjections;
 typedef enum    {RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B,
                  HOPFION1, SPIRAL, SKYRMION_L, GLOBULA, MultyQ, NORM} enIniState;
-typedef enum    {DEFAULT_G, CILINDER_G, SPHERE_G} enGeom;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
 typedef enum    {ANISOTROPY_GLOBAL, ANISOTROPY_INDIVIDUAL} AnisotropyMode;
@@ -225,7 +223,6 @@ typedef struct magnoom_ctx {
 	float*          BlockPosX;
 	float*          BlockPosY;
 	float*          BlockPosZ;
-	int*            Kind;
 	double*         HeffX;
 	double*         HeffY;
 	double*         HeffZ;
@@ -365,7 +362,6 @@ typedef struct magnoom_ctx {
 	int             NOS_AL;
 	int             NOS_BL;
 	int             NOS_CL;
-	int             NOSK;
 	double          iNOS;
 	int             NOB;
 	int             NOB_AL;
@@ -438,9 +434,10 @@ typedef struct magnoom_ctx {
 
 	/* initial-state generation parameters */
 	enIniState      WhichInitialState;
-	enGeom          WhichGeometry;
-	float           chSizeG;
 	float           chSize;
+	float           chParam1;
+	float           chParam2;
+	float           chParam3;
 	float           chDir[3];
 	float           RotateAllSpins;
 
@@ -1368,7 +1365,6 @@ bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positio
 	ctx->NOS_BL = atom_count*ctx->NOB_BL;
 	ctx->NOS_CL = atom_count*ctx->NOB_CL;
 	ctx->iNOS = 1.0/ctx->NOS;
-	ctx->NOSK = 0;
 	ctx->GreedFilterMaxA = ctx->uABC[0]-1;
 	ctx->GreedFilterMaxB = ctx->uABC[1]-1;
 	ctx->GreedFilterMaxC = ctx->uABC[2]-1;
@@ -1418,29 +1414,31 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->Bij[3]=0.0f; ctx->Bij[4]=0.0f; ctx->Bij[5]=0.0f;
 	ctx->Dij[0]=0.0f; ctx->Dij[1]=0.0f; ctx->Dij[2]=0.0f;
 	ctx->Dij[3]=0.0f; ctx->Dij[4]=0.0f; ctx->Dij[5]=0.0f;
+	//NSK
+	ctx->Dij[0]=2*PI/32.0f;
 
 	/* Magnetocrystalline anisotropy */
 	ctx->anisotropy_mode = ANISOTROPY_GLOBAL;
 	/* Tetragonal anisotropy*/
 	/*EuSi v0*/
 	/* E = K1 sin^2T + K2 sin^4T + K3 sin^4T cos4F*/
-	double K1 = 0.0;//-0.1;
-	double K2 = 0.0;//0.1;
-	double K3 = 0.0;
+	// double K1 = 0.0;//-0.1;
+	// double K2 = 0.0;//0.1;
+	// double K3 = 0.0;
 
 	/* K11=K22=-K1, K33=0; K1111=K2222=-(K2+4K3), K1122=-K2/3, K3333=-3K3,
 	 * K1133=K2233=-K3 -- see the wiki's Anisotropy (F6) page. */
-	if (!k2_set(ctx->anisotropy_local[0].K2, 0, 0, -K1) ||
-		!k2_set(ctx->anisotropy_local[0].K2, 1, 1, -K1) ||
-		!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 0, 0, -(K2+4*K3)) ||
-		!k4_set(ctx->anisotropy_local[0].K4, 1, 1, 1, 1, -(K2+4*K3)) ||
-		!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 1, 1, -K2/3) ||
-		!k4_set(ctx->anisotropy_local[0].K4, 2, 2, 2, 2, -3*K3) ||
-		!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 2, 2, -K3) ||
-		!k4_set(ctx->anisotropy_local[0].K4, 1, 1, 2, 2, -K3)) {
-		fprintf(stderr, "magnoom_ctx_init: invalid compiled-in default anisotropy tensor component.\n");
-		return false;
-	}
+	// if (!k2_set(ctx->anisotropy_local[0].K2, 0, 0, -K1) ||
+	// 	!k2_set(ctx->anisotropy_local[0].K2, 1, 1, -K1) ||
+	// 	!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 0, 0, -(K2+4*K3)) ||
+	// 	!k4_set(ctx->anisotropy_local[0].K4, 1, 1, 1, 1, -(K2+4*K3)) ||
+	// 	!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 1, 1, -K2/3) ||
+	// 	!k4_set(ctx->anisotropy_local[0].K4, 2, 2, 2, 2, -3*K3) ||
+	// 	!k4_set(ctx->anisotropy_local[0].K4, 0, 0, 2, 2, -K3) ||
+	// 	!k4_set(ctx->anisotropy_local[0].K4, 1, 1, 2, 2, -K3)) {
+	// 	fprintf(stderr, "magnoom_ctx_init: invalid compiled-in default anisotropy tensor component.\n");
+	// 	return false;
+	// }
 
 	for (int atom = 0; atom < MAX_ATOMS_PER_BLOCK; ++atom) {
 		ctx->anisotropy_quaternion[atom][3] = 1.0;
@@ -1455,6 +1453,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	ctx->BextDCDirection[0]=0.0f; ctx->BextDCDirection[1]=0.0f; ctx->BextDCDirection[2]=1.0f;
+	ctx->BextDCMagnitude = 0.6*ctx->Dij[0]*ctx->Dij[0];
 	ctx->BextACDirection[0]=0.0f; ctx->BextACDirection[1]=0.0f; ctx->BextACDirection[2]=1.0f;
 	ctx->BextACOmega = 0.005;
 	ctx->BextACPulseWidth = 20.0f;
@@ -1511,19 +1510,23 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	// int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
 	/* EuSi fractional coordinates converted to normalized Cartesian positions:*/
-	const float c_EuSi = 3.9845f;
-	const float a_EuSi = 4.6955f/c_EuSi;
-	const float b_EuSi = 11.1528f/c_EuSi;
+
+	float a_EuSi = 4.6955f;
+	float b_EuSi = 11.1528f;
+	float c_EuSi = 3.9845f;
+	a_EuSi /= b_EuSi;
+	c_EuSi /= b_EuSi;
+	b_EuSi /= b_EuSi;
 	const float u_Eu = 0.3595f;
 	const float basis[][3] = {
-	    {0.25f, 0.0f,          u_Eu*b_EuSi},
-	    {0.75f, 0.0f,          (1.0f-u_Eu)*b_EuSi},
-	    {0.75f, 0.5f*a_EuSi, (0.5f-u_Eu)*b_EuSi},
-	    {0.25f, 0.5f*a_EuSi, (0.5f+u_Eu)*b_EuSi}
+	    {0.25f*c_EuSi, 0.0f*a_EuSi, 	   u_Eu*b_EuSi},
+	    {0.75f*c_EuSi, 0.0f*a_EuSi, (1.0f-u_Eu)*b_EuSi},
+	    {0.75f*c_EuSi, 0.5f*a_EuSi, (0.5f-u_Eu)*b_EuSi},
+	    {0.25f*c_EuSi, 0.5f*a_EuSi, (0.5f+u_Eu)*b_EuSi}
 	};
-	ctx->abc[0][0]=1.0f; ctx->abc[0][1]=0.0f;   ctx->abc[0][2]=0.0f;
-	ctx->abc[1][0]=0.0f; ctx->abc[1][1]=a_EuSi; ctx->abc[1][2]=0.0f;
-	ctx->abc[2][0]=0.0f; ctx->abc[2][1]=0.0f;   ctx->abc[2][2]=b_EuSi;
+	ctx->abc[0][0]=c_EuSi; ctx->abc[0][1]=0.0f;   ctx->abc[0][2]=0.0f;
+	ctx->abc[1][0]=  0.0f; ctx->abc[1][1]=a_EuSi; ctx->abc[1][2]=0.0f;
+	ctx->abc[2][0]=  0.0f; ctx->abc[2][1]=0.0f;   ctx->abc[2][2]=b_EuSi;
 	int atom_count = (int)(sizeof(basis)/sizeof(basis[0]));
 
 	// FCC2 basis, orthogonal unit cell:
@@ -1596,10 +1599,8 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 
 	/* initial-state generation parameters */
 	ctx->WhichInitialState = RND;
-	ctx->WhichGeometry = DEFAULT_G;
-	ctx->chSizeG = 50.0f;
 	ctx->chSize = 12.0f;
-	ctx->chDir[0]=0.0f; ctx->chDir[1]=1.0f; ctx->chDir[2]=0.0f;
+	ctx->chDir[0]=0.0f; ctx->chDir[1]=0.0f; ctx->chDir[2]=1.0f;
 
 	/* color scheme (visualization) */
 	ctx->WhichBackgroundColor = MANUAL;
@@ -2591,7 +2592,6 @@ void ReallocateMemoryForSpins(magnoom_ctx *ctx, int NOS){
 	}
 	ctx->S  = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- for 10^6 spins allocated memory for ctx->S = 24 Mega Byte
 	ctx->bS = (double *)calloc(3*(size_t)NOS, sizeof(double)); // <-- + 24 Mega Byte
-	ctx->Kind = (int *)calloc(NOS, sizeof(int));
 }
 
 void ReallocateMemoryForAllOther(magnoom_ctx *ctx, int NOS){
@@ -2915,7 +2915,6 @@ main (int argc, char **argv){
 
 	GetBox(&mag_ctx);
 	UpdateSpinPositions(&mag_ctx);
-	UpdateKind(&mag_ctx);
 	InitSpinComponents( &mag_ctx, mag_ctx.PosX, mag_ctx.PosY, mag_ctx.PosZ, mag_ctx.S, 0);
 	for (int i=0;i<mag_ctx.NOS;i++) { VEC_X(mag_ctx.bS,i)=VEC_X(mag_ctx.S,i); VEC_Y(mag_ctx.bS,i)=VEC_Y(mag_ctx.S,i); VEC_Z(mag_ctx.bS,i)=VEC_Z(mag_ctx.S,i);}
 

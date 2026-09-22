@@ -170,7 +170,6 @@
 // int			NOS_BL=AtomsPerBlock*uABC[0]*uABC[2]; // number of spins per B layer
 // int			NOS_CL=AtomsPerBlock*uABC[0]*uABC[1]; // number of spins per C layer
 
-// int 		NOSK = 0;
 
 // double 		iNOS = 1.0/NOS;
 

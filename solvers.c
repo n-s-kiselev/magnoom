@@ -1637,12 +1637,10 @@ void *CALC_THREAD(void *void_ptr)
 				// printf("ich bin hier!\n");
 				for (int i=0;i<ctx->NOS;i++)
 				{
-					if (ctx->Kind[i]!=0){
 					double absS = 1.0f/sqrt(VEC_X(ctx->S,i)*VEC_X(ctx->S,i)+VEC_Y(ctx->S,i)*VEC_Y(ctx->S,i)+VEC_Z(ctx->S,i)*VEC_Z(ctx->S,i));
 					VEC_X(ctx->S,i) = VEC_X(ctx->S,i) * absS;
 					VEC_Y(ctx->S,i) = VEC_Y(ctx->S,i) * absS;
 					VEC_Z(ctx->S,i) = VEC_Z(ctx->S,i) * absS;
-					}		
 				}
 			}
 

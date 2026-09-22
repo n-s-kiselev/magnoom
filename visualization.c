@@ -38,7 +38,6 @@ void InitSpinComponents(magnoom_ctx *, float * , float * , float * , double * , 
 void UpdateIndices(magnoom_ctx *);
 void UpdateVerticesNormalsColors(magnoom_ctx *);
 void UpdateVerticesNormalsColors_BextDC(magnoom_ctx *);
-void UpdateKind(magnoom_ctx *);
 // drawing functions
 void GetBox(magnoom_ctx *);
 void drawVBO(magnoom_ctx *);
@@ -982,13 +981,6 @@ void TW_CALL CB_SetInitial( void *clientData )
 	ChangeInitialState(ctx);
 }
 
-void TW_CALL CB_SetShape( void *clientData )
-{
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	UpdateKind(ctx);
-	ChangeVectorMode(ctx, 1);
-}
-
 void TW_CALL CB_RotateAllSpins( void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
@@ -1900,7 +1892,6 @@ void TW_CALL CB_Save_VTK_b4( void *clientData )
         //         Spins_xyz[3*n+1]=ctx->Sy[n];
         //         Spins_xyz[3*n+2]=ctx->Sz[n];         
         // }
-        //     save_vtk(vts_filename,"name",3,Spins_xyz,"special_flag",1,ctx->Kind,ctx->uABC[0],ctx->uABC[1],ctx->uABC[2],ctx->uABC[0],ctx->uABC[1],ctx->uABC[2],1);
         // 
 }
 
@@ -2193,72 +2184,6 @@ void TW_CALL CB_Export(void *clientData)
 		case FILE_FORMAT_PNG: CB_Save_PNG(ctx); break;
 		default: break;
 	}
-}
-
-void UpdateKind(magnoom_ctx *ctx)
-{
-	int *Kind = ctx->Kind;
-	const float *Px = ctx->PosX;
-	const float *Py = ctx->PosY;
-	const float *Pz = ctx->PosZ;
-	const int NOS = ctx->NOS;
-	float dist, dist_max = ctx->chSizeG * ctx->chSizeG;
-	ctx->NOSK = 0;
-	switch(ctx->WhichGeometry){
-		case CILINDER_G:
-			for (int i=0; i<NOS; i++){
-				dist = Px[i]*Px[i]+Py[i]*Py[i];
-				if (dist>dist_max){
-					Kind[i] = 0;
-				}else{
-					Kind[i] = 1;
-					ctx->NOSK++;
-				}
-			}
-		break;
-
-		case SPHERE_G:
-			for (int i=0; i<NOS; i++){
-				dist = Px[i]*Px[i]+Py[i]*Py[i]+Pz[i]*Pz[i];
-				if (dist>dist_max){
-					Kind[i] = 0;
-				}else{
-					Kind[i] = 1;
-					ctx->NOSK++;
-				}
-			}
-		break;
-
-		default:
-			for (int i=0; i<NOS; i++){
-					Kind[i] = 1;
-				}
-			ctx->NOSK = NOS;
-		break;
-	}
-
-    for (int n=0; n<NOS; n++)
-    {   
-        VEC_X(ctx->S,n)*= Kind[n];
-        VEC_Y(ctx->S,n)*= Kind[n];
-        VEC_Z(ctx->S,n)*= Kind[n];
-
-        VEC_X(ctx->bS,n)*= Kind[n];
-        VEC_Y(ctx->bS,n)*= Kind[n];
-        VEC_Z(ctx->bS,n)*= Kind[n];
-        
-        VEC_X(ctx->tS,n)*= Kind[n];
-        VEC_Y(ctx->tS,n)*= Kind[n];
-        VEC_Z(ctx->tS,n)*= Kind[n]; 
-        
-        VEC_X(ctx->t2S,n)*= Kind[n];
-        VEC_Y(ctx->t2S,n)*= Kind[n];
-        VEC_Z(ctx->t2S,n)*= Kind[n];  
-
-        VEC_X(ctx->t3S,n)*= Kind[n];
-        VEC_Y(ctx->t3S,n)*= Kind[n];
-        VEC_Z(ctx->t3S,n)*= Kind[n]; 
-    }
 }
 
 static bool ParseConfigFloat(const char *text, float *result)
@@ -2918,27 +2843,12 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwDefine(" Initial_State color='70 70 100' alpha=200"); // change default tweak bar color
 	SetBarSize(ctx, ctx->initial_bar, 220, 530);
 	TwDefine(" Initial_State help='F4: show/hide Initial state bar' "); // change default tweak bar size and color
-/*	{
-	TwEnumVal		enGeomTw[] = { 	{DEFAULT_G, 	"Default"		    }, 
-									{CILINDER_G, 	"Cilinder"	        }, 
-									{SPHERE_G, 		"Sphere"	        }
-									};
-	TwType			TV_TYPE_GEOMETRY = TwDefineEnum("DomainShape", enGeomTw, 3);
-	TwAddVarRW(initial_bar, "Choose shape", TV_TYPE_GEOMETRY, &WhichGeometry, "help='Choose shape of the simulated domain'");
-	}
-	TwAddVarRW(initial_bar, "Size", TW_TYPE_FLOAT,  &chSizeG, 
-	" min=0 max=100000 step=0.5 help='characteristic size of the shape (radius)' ");
-
-	TwAddButton(initial_bar, "Set shape", CB_SetShape, ctx, " label='Set shape' ");
-
-	TwAddSeparator(initial_bar, "sep00", NULL);
-*/
 	{
 	TwEnumVal		enIniStateTw[] = { 	{RND, 		"Random"		        }, 
 										{HOMO, 		"Homogeneous"	        }, 
 										{SKYRM1, 	"Skyrmion Q=1"	        }, 
 										{SKYRM2, 	"Skyrmion Q=2"	        }, 
-										{SKYRM3, 	"Skyrmion Q=3"	        }, 
+										{SKYRM3, 	"Bimeron in cone"       }, 
 										{BOBBER_T, 	"Bobber top"	        },  
 										{BOBBER_B, 	"Bobber bottom"	        },
 										{BOBBER_L,	"Bobber lattice"	    }, 
@@ -2955,9 +2865,12 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarRW(ctx->initial_bar, "Choose ini. state", TV_TYPE_INI_STATE, &ctx->WhichInitialState, "help='Choose initial spin configuration'");
 	}
 
-	TwAddVarRW(ctx->initial_bar, "chSize", TW_TYPE_FLOAT,  &ctx->chSize, " min=-100000 max=100000 step=0.5 help='characteristic size of modulated state: Skyrmion diameter or spiral period' ");
+	TwAddVarRW(ctx->initial_bar, "Size", TW_TYPE_FLOAT,  &ctx->chSize, " min=-100000 max=100000 step=0.5 help='characteristic size of modulated state: Skyrmion diameter or spiral period' ");
+	TwAddVarRW(ctx->initial_bar, "Param1", TW_TYPE_FLOAT,  &ctx->chParam1, " min=-100000 max=100000 step=0.5 help='extra parameter that can be used to constract complex spin configurations' ");
+	TwAddVarRW(ctx->initial_bar, "Param2", TW_TYPE_FLOAT,  &ctx->chParam2, " min=-100000 max=100000 step=0.5 help='extra parameter that can be used to constract complex spin configurations' ");
+	TwAddVarRW(ctx->initial_bar, "Param3", TW_TYPE_FLOAT,  &ctx->chParam3, " min=-100000 max=100000 step=0.5 help='extra parameter that can be used to constract complex spin configurations' ");
 
-	TwAddVarRW(ctx->initial_bar, "chDir", TW_TYPE_DIR3F,  &ctx->chDir, " help='direction of modulations e.g. k-vector of the spin spiral.' ");
+	TwAddVarRW(ctx->initial_bar, "Direction", TW_TYPE_DIR3F,  &ctx->chDir, " help='direction of modulations e.g. k-vector of the spin spiral.' ");
 
 	TwAddButton(ctx->initial_bar, "Set initial", CB_SetInitial, ctx, "key=I label='insert initial state' ");
 
@@ -3299,7 +3212,8 @@ void GLFWScrollCallback(int position)
 	if (ctx->modal_open_requested) return;
 	if (TwEventMouseWheelGLFW(ctx->MouseWheelPosition)) return;
 	if (ctx->modal_bar != NULL) return;
-	ctx->TransXYZ[2] += (float)delta * 0.5f;
+	float step = WindowShiftIsDown() ? 5.0f : 0.5f;
+	ctx->TransXYZ[2] += (float)delta * step;
 }
 
 // Registered as GLFW2's window-size callback (there is no separate
@@ -4508,9 +4422,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 								
 								A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-								Vout[i+0] =ctx->Kind[N]*( (-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			  )*ctx->Scale*vlength + Px[N]);
-								Vout[i+1] =ctx->Kind[N]*( ( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			  )*ctx->Scale*vlength + Py[N]);
-								Vout[i+2] =ctx->Kind[N]*( ( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1]) )*ctx->Scale*vlength + Pz[N]);	
+								Vout[i+0] = (-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2])*ctx->Scale*vlength + Px[N];
+								Vout[i+1] = ( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2])*ctx->Scale*vlength + Py[N];
+								Vout[i+2] = ( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1]))*ctx->Scale*vlength + Pz[N];
 
 								//slow version is commented but easy to read:
 								// tmpV1[0] = Ninp[3*k+0];
@@ -4560,9 +4474,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 					if (S[2]==-1){
 					for (int k=0; k<Kinp/3; k++){// k runs over ctx->vertices 
 							i = j*Kinp + 3*k;
-							Vout[i+0] = ctx->Kind[N]*((-Vinp[3*k+0])*ctx->Scale*vlength + Px[N]);
-							Vout[i+1] = ctx->Kind[N]*(( Vinp[3*k+1])*ctx->Scale*vlength + Py[N]);
-							Vout[i+2] = ctx->Kind[N]*((-Vinp[3*k+2])*ctx->Scale*vlength + Pz[N]);	
+							Vout[i+0] = (-Vinp[3*k+0])*ctx->Scale*vlength + Px[N];
+							Vout[i+1] = ( Vinp[3*k+1])*ctx->Scale*vlength + Py[N];
+							Vout[i+2] = (-Vinp[3*k+2])*ctx->Scale*vlength + Pz[N];
 
 							Nout[i+0] = -Ninp[3*k+0];
 							Nout[i+1] =  Ninp[3*k+1];
@@ -4588,9 +4502,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 							
 							A = (-S[1]*Vinp[3*k+0] + S[0]*Vinp[3*k+1])*(1. - S[2])*U; 
 
-							Vout[i+0] =ctx->Kind[N]*((-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2]			 )*ctx->Scale*vlength + Px[N]);
-							Vout[i+1] =ctx->Kind[N]*(( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2]			 )*ctx->Scale*vlength + Py[N]);
-							Vout[i+2] =ctx->Kind[N]*(( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1]) )*ctx->Scale*vlength + Pz[N]);
+							Vout[i+0] = (-S[1]*A + Vinp[3*k+0]*S[2] + S[0]*Vinp[3*k+2])*ctx->Scale*vlength + Px[N];
+							Vout[i+1] = ( S[0]*A + Vinp[3*k+1]*S[2] + S[1]*Vinp[3*k+2])*ctx->Scale*vlength + Py[N];
+							Vout[i+2] = ( Vinp[3*k+2]*S[2] - (S[0]*Vinp[3*k+0]+S[1]*Vinp[3*k+1]))*ctx->Scale*vlength + Pz[N];
 
 							//slow version is commented but easy to read:
 							// tmpV1[0] = Ninp[3*k+0];
@@ -4666,9 +4580,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 						{
 							i = j*Kinp + 3*k;	// vertex index
                             N = n*ctx->AtomsPerBlock;//first index of the atom in the blok defines visible/invisible
-							Vout[i+0] = (Vinp[3*k+0] + ctx->BlockPosX[n])*ctx->Kind[N];
-							Vout[i+1] = (Vinp[3*k+1] + ctx->BlockPosY[n])*ctx->Kind[N];
-							Vout[i+2] = (Vinp[3*k+2] + ctx->BlockPosZ[n])*ctx->Kind[N];	
+							Vout[i+0] = Vinp[3*k+0] + ctx->BlockPosX[n];
+							Vout[i+1] = Vinp[3*k+1] + ctx->BlockPosY[n];
+							Vout[i+2] = Vinp[3*k+2] + ctx->BlockPosZ[n];
 
 							Nout[i+0] = Ninp[3*k+0];
 							Nout[i+1] = Ninp[3*k+1];
@@ -4716,9 +4630,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 					{
 						i = j*Kinp + 3*k;	// vertex index
                         N=n*ctx->AtomsPerBlock;//first index of the atom in the blok defines visible/invisible
-						Vout[i+0] = (Vinp[3*k+0] + ctx->BlockPosX[n])*ctx->Kind[N];
-						Vout[i+1] = (Vinp[3*k+1] + ctx->BlockPosY[n])*ctx->Kind[N];
-						Vout[i+2] = (Vinp[3*k+2] + ctx->BlockPosZ[n])*ctx->Kind[N];	
+						Vout[i+0] = Vinp[3*k+0] + ctx->BlockPosX[n];
+						Vout[i+1] = Vinp[3*k+1] + ctx->BlockPosY[n];
+						Vout[i+2] = Vinp[3*k+2] + ctx->BlockPosZ[n];
 
 						Nout[i+0] = Ninp[3*k+0];
 						Nout[i+1] = Ninp[3*k+1];
@@ -4777,9 +4691,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 							Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
 							Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
 							Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
-							Cout[i+0] = RGB[0]*ctx->Kind[n+atom];	// x-component of vertex normal
-							Cout[i+1] = RGB[1]*ctx->Kind[n+atom];	// y-component of vertex normal
-							Cout[i+2] = RGB[2]*ctx->Kind[n+atom];	// z-component of vertex normal
+							Cout[i+0] = RGB[0];	// x-component of vertex normal
+							Cout[i+1] = RGB[1];	// y-component of vertex normal
+							Cout[i+2] = RGB[2];	// z-component of vertex normal
 					    }
 					}
 				}//if (F)
@@ -4805,16 +4719,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 			        // HSVtoRGB( S, RGB, InvertValue, InvertHue);
 			        j++;
 					i = j*Kinp;			// index of first cane vertex 
-					int Factor = ctx->Kind[n+atom];
-					if (Factor==0) {
-					Vout[i+0] = 1000000;	// new x-component of vertex + translation
-					Vout[i+1] = 1000000;	// new y-component of vertex + translation
-					Vout[i+2] = 1000000;	// new z-component of vertex + translation
-					}else{
 					Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
 					Vout[i+1] = Py[n+atom];	// new y-component of vertex + translation
 					Vout[i+2] = Pz[n+atom];	// new z-component of vertex + translation
-					}
 					Cout[i+0] = RGB[0];	// x-component of vertex normal
 					Cout[i+1] = RGB[1];	// y-component of vertex normal
 					Cout[i+2] = RGB[2];	// z-component of vertex normal
@@ -4866,9 +4773,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 					        j++;
 							//i = (n-nini)*Kinp;							// index of ferst cane vertex 
 							i = j*Kinp;
-							Vout[i+0] = ctx->Kind[n+atom]*( S[0]*(1-ctx->Pivot)*ctx->Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
-							Vout[i+1] = ctx->Kind[n+atom]*( S[1]*(1-ctx->Pivot)*ctx->Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
-							Vout[i+2] = ctx->Kind[n+atom]*( S[2]*(1-ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
+							Vout[i+0] = S[0]*(1-ctx->Pivot)*ctx->Scale*vlength + Px[n+atom];	// new x-component of vertex + translation
+							Vout[i+1] = S[1]*(1-ctx->Pivot)*ctx->Scale*vlength + Py[n+atom];	// new y-component of vertex + translation
+							Vout[i+2] = S[2]*(1-ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom];	// new z-component of vertex + translation
 							//i = n*Kinp/3*4;		// ctx->colors contains 4 floats
 							Cout[i+0] = RGB[0];					// x-component of vertex normal
 							Cout[i+1] = RGB[1];					// y-component of vertex normal
@@ -4877,13 +4784,13 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 							//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 							//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
 							i = j*Kinp+ 3*1;
-							Vout[i+0] = ctx->Kind[n+atom]*(-S[0]*(ctx->Pivot)*ctx->Scale*vlength + Px[n+atom]);		// new x-component of vertex + translation
-							Vout[i+1] = ctx->Kind[n+atom]*(-S[1]*(ctx->Pivot)*ctx->Scale*vlength + Py[n+atom]);		// new y-component of vertex + translation
-							Vout[i+2] = ctx->Kind[n+atom]*(-S[2]*(ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom]);		// new z-component of vertex + translation
+							Vout[i+0] = -S[0]*(ctx->Pivot)*ctx->Scale*vlength + Px[n+atom];		// new x-component of vertex + translation
+							Vout[i+1] = -S[1]*(ctx->Pivot)*ctx->Scale*vlength + Py[n+atom];		// new y-component of vertex + translation
+							Vout[i+2] = -S[2]*(ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom];		// new z-component of vertex + translation
 							//i = n*Kinp/3*4+4;			// ctx->colors contains 4 floats
-							Cout[i+0] = RGB[0];//*ctx->Kind[n+atom];					// x-component of vertex normal
-							Cout[i+1] = RGB[1];//*ctx->Kind[n+atom];					// y-component of vertex normal
-							Cout[i+2] = RGB[2];//*ctx->Kind[n+atom];					// z-component of vertex normal
+							Cout[i+0] = RGB[0];					// x-component of vertex normal
+							Cout[i+1] = RGB[1];					// y-component of vertex normal
+							Cout[i+2] = RGB[2];					// z-component of vertex normal
 							//Cout[i+3] = 1.f;
 							//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 						}
@@ -4912,11 +4819,9 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 			        j++;
 					//i = (n-nini)*Kinp;							// index of ferst cane vertex 
 					i = j*Kinp;
-					int Factor = ctx->Kind[n+atom];
-					if (Factor==0) Factor=HIDDEN_VECTOR_SCALE;
-					Vout[i+0] = Factor*( S[0]*(1-ctx->Pivot)*ctx->Scale*vlength + Px[n+atom]);	// new x-component of vertex + translation
-					Vout[i+1] = Factor*( S[1]*(1-ctx->Pivot)*ctx->Scale*vlength + Py[n+atom]);	// new y-component of vertex + translation
-					Vout[i+2] = Factor*( S[2]*(1-ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom]);	// new z-component of vertex + translation
+					Vout[i+0] = S[0]*(1-ctx->Pivot)*ctx->Scale*vlength + Px[n+atom];	// new x-component of vertex + translation
+					Vout[i+1] = S[1]*(1-ctx->Pivot)*ctx->Scale*vlength + Py[n+atom];	// new y-component of vertex + translation
+					Vout[i+2] = S[2]*(1-ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom];	// new z-component of vertex + translation
 					//i = n*Kinp/3*4;		// ctx->colors contains 4 floats
 					Cout[i+0] = RGB[0];					// x-component of vertex normal
 					Cout[i+1] = RGB[1];					// y-component of vertex normal
@@ -4925,13 +4830,13 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 					//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 					//i = (n-nini)*Kinp + 3*1;					// index of ferst cane vertex 
 					i = j*Kinp+ 3*1;
-					Vout[i+0] = Factor*(-S[0]*(ctx->Pivot)*ctx->Scale*vlength + Px[n+atom]);		// new x-component of vertex + translation
-					Vout[i+1] = Factor*(-S[1]*(ctx->Pivot)*ctx->Scale*vlength + Py[n+atom]);		// new y-component of vertex + translation
-					Vout[i+2] = Factor*(-S[2]*(ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom]);		// new z-component of vertex + translation
+					Vout[i+0] = -S[0]*(ctx->Pivot)*ctx->Scale*vlength + Px[n+atom];		// new x-component of vertex + translation
+					Vout[i+1] = -S[1]*(ctx->Pivot)*ctx->Scale*vlength + Py[n+atom];		// new y-component of vertex + translation
+					Vout[i+2] = -S[2]*(ctx->Pivot)*ctx->Scale*vlength + Pz[n+atom];		// new z-component of vertex + translation
 					//i = n*Kinp/3*4+4;			// ctx->colors contains 4 floats
-					Cout[i+0] = ctx->Kind[n+atom]*RGB[0];					// x-component of vertex normal
-					Cout[i+1] = ctx->Kind[n+atom]*RGB[1];					// y-component of vertex normal
-					Cout[i+2] = ctx->Kind[n+atom]*RGB[2];					// z-component of vertex normal
+					Cout[i+0] = RGB[0];					// x-component of vertex normal
+					Cout[i+1] = RGB[1];					// y-component of vertex normal
+					Cout[i+2] = RGB[2];					// z-component of vertex normal
 					//Cout[i+3] = 1.f;
 					//printf( "|V1=%f,%f,%f \n",Vout[i+0],Vout[i+1],Vout[i+2]);
 				}
