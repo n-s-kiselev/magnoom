@@ -939,8 +939,15 @@ void TW_CALL CB_ExportAnisotropyMap(void *clientData)
 void TW_CALL CB_SetNumImages(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	ctx->num_images = *( int *)value;
-    ReallocateMemoryForImages(ctx, ctx->num_images, ctx->NOS);
+    const int num_images = *(const int *)value;
+    if (num_images <= 0 || num_images == ctx->num_images) return;
+
+    magnoom_stop_engine(ctx);
+    if (ReallocateMemoryForImages(ctx, num_images, ctx->NOS)) {
+		ctx->num_images = num_images;
+		ctx->BextACModeRecording = 0;
+		ctx->current_rec_num_mode = 0;
+    }
 }
 
 void TW_CALL CB_GetNumImages(void *value, void *clientData)
@@ -1582,10 +1589,12 @@ void TW_CALL CB_ReadCSV( void *clientData )
     if (!magnoom_resolve_input_path(ctx, input_path, sizeof(input_path))) return;
     FILE * pFile = fopen(input_path, "r");
     if(pFile) {
-		char c;
+		int c;
 		char line[120];
 		float px,py,pz,sx,sy,sz;
 		int pos=0;
+		bool read_ok = true;
+		bool line_too_long = false;
         //unkoment if the csv file has headers of the columns 
         // do{ // read titles of the columns 
         //  	c = (char)fgetc(pFile);//get char and move pointer to the next position
@@ -1598,15 +1607,20 @@ void TW_CALL CB_ReadCSV( void *clientData )
 		do { // read all lines in file
     		pos = 0;//initial position in line
 		    do{ // read one line
-		    	c = (char)fgetc(pFile);//get char and move pointer to the next position
+				c = fgetc(pFile);//get char and move pointer to the next position
 		    	if (c != EOF) {
-		    			if (c==',') c = ' ';
-		    		 	line[pos++] = c;	
+					if (c==',') c = ' ';
+					if (pos < (int)sizeof(line)-1) line[pos++] = (char)c;
+					else line_too_long = true;
 		    	}
 		    }while(c != EOF && c != '\n');
 
 		    line[pos] = 0;//add a line end.
-			sscanf(line, "%f %f %f %f %f %f ", &px,&py,&pz,&sx,&sy,&sz);
+			if (c == EOF && pos == 0) break;
+			if (line_too_long || sscanf(line, "%f %f %f %f %f %f ", &px,&py,&pz,&sx,&sy,&sz) != 6) {
+				read_ok = false;
+				break;
+			}
             // sscanf(line, "%f %f %f ", &sx,&sy,&sz);
 			//printf("%f,%f,%f,%f,%f,%f\n", px,py,pz,sx,sy,sz);
 			if (i<ctx->NOS) 
@@ -1621,8 +1635,8 @@ void TW_CALL CB_ReadCSV( void *clientData )
 		 	i++;
 		}while(c != EOF);
 		fclose(pFile);
-		magnoom_reset_solver_state(ctx);
-		magnoom_report_read_result(input_path, true);
+		if (read_ok) magnoom_reset_solver_state(ctx);
+		magnoom_report_read_result(input_path, read_ok);
 	} else {
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
 		magnoom_report_read_result(input_path, false);
@@ -1639,9 +1653,9 @@ void TW_CALL CB_ReadOVF( void *clientData )
 	char  line[256];//whole line of header should be not longer then 256 characters
 	int   lineLength=0;
 	int   valuedim=3;
-	int   xnodes;
-	int   ynodes;
-	int   znodes;
+	int   xnodes = 0;
+	int   ynodes = 0;
+	int   znodes = 0;
     char  keyW1 [256];//key word 1
     char  keyW2 [256];//key word 2
     char  keyW3 [256];//key word 3
@@ -1695,19 +1709,28 @@ void TW_CALL CB_ReadOVF( void *clientData )
 			if (strncmp(keyW2, "Text",4)==0){
 				//Text data format
 				printf("...reading data in text format: %s \n", input_path);
+				read_ok = true;
 				for (int k=0; k<znodes; k++){
 					for (int j=0; j<ynodes; j++){
 						for (int i=0; i<xnodes; i++){
 							ReadDataLine(FilePointer, line);
 							if (k<ctx->uABC[2] && j<ctx->uABC[1] && i<ctx->uABC[0]){
+								double sx, sy, sz;
 								n = i + j*ctx->uABC[0] + k*ctx->uABC[0]*ctx->uABC[1];
-								sscanf(line, "%lf %lf %lf", &VEC_X(ctx->bS,n),&VEC_Y(ctx->bS,n),&VEC_Z(ctx->bS,n));
-								VEC_X(ctx->S,n)=VEC_X(ctx->bS,n); VEC_Y(ctx->S,n)=VEC_Y(ctx->bS,n);VEC_Z(ctx->S,n)=VEC_Z(ctx->bS,n);
+								if (sscanf(line, "%lf %lf %lf", &sx, &sy, &sz) != 3) {
+									read_ok = false;
+									break;
+								}
+								for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
+									int I = n*ctx->AtomsPerBlock + atom;
+									VEC_X(ctx->S,I)=VEC_X(ctx->bS,I)=sx;
+									VEC_Y(ctx->S,I)=VEC_Y(ctx->bS,I)=sy;
+									VEC_Z(ctx->S,I)=VEC_Z(ctx->bS,I)=sz;
+								}
 							}
 						}
 					}
 				}
-				read_ok = true;
 			}else if (strncmp(keyW2, "Binary",6)==0){
 				if(strncmp(keyW3, "4",1)==0){
 					binType = 4;

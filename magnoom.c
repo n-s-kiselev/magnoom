@@ -2503,14 +2503,29 @@ if(FilePointer!=NULL) {
 
 #include "linmath.h"		/*All global variables and constants*/
 
-void ReallocateMemoryForImages(magnoom_ctx *ctx, int NumImages, int NOS){
-    if ((size_t)NumImages > SIZE_MAX / 3 / (size_t)NOS / sizeof(double)) {
-        fprintf(stderr, "ReallocateMemoryForImages: NumImages*NOS*3 would overflow, aborting allocation.\n");
-        return;
+bool ReallocateMemoryForImages(magnoom_ctx *ctx, int NumImages, int NOS){
+    double *image;
+    double *dimage;
+
+    if (NumImages <= 0 || NOS <= 0 || (size_t)NumImages > SIZE_MAX / 3 / (size_t)NOS / sizeof(double)) {
+        fprintf(stderr, "ReallocateMemoryForImages: invalid image dimensions.\n");
+        return false;
     }
     size_t count = 3*(size_t)NumImages*(size_t)NOS;
-    ctx->Image  = (double *) calloc(count, sizeof(double));
-    ctx->dImage = (double *) calloc(count, sizeof(double));
+    image = (double *)calloc(count, sizeof(double));
+    dimage = (double *)calloc(count, sizeof(double));
+    if (image == NULL || dimage == NULL) {
+        free(image);
+        free(dimage);
+        fprintf(stderr, "ReallocateMemoryForImages: allocation failed.\n");
+        return false;
+    }
+
+    free(ctx->Image);
+    free(ctx->dImage);
+    ctx->Image = image;
+    ctx->dImage = dimage;
+    return true;
 }
 
 #include "math_utils.c"		/*All mathematical fuctions*/
@@ -2841,7 +2856,7 @@ main (int argc, char **argv){
 
 	ReallocateMemoryForSpins(&mag_ctx, mag_ctx.NOS);
 	ReallocateMemoryForAllOther(&mag_ctx, mag_ctx.NOS);
-	ReallocateMemoryForImages(&mag_ctx, mag_ctx.num_images, mag_ctx.NOS);
+	if (!ReallocateMemoryForImages(&mag_ctx, mag_ctx.num_images, mag_ctx.NOS)) return 1;
 
 
 	pthread_mutex_init(&mag_ctx.culc_mutex,0);
@@ -2979,7 +2994,7 @@ main (int argc, char **argv){
 
 	free(mag_ctx.S);     			free(mag_ctx.bS);
 	free(mag_ctx.tS);    			free(mag_ctx.t2S);   			free(mag_ctx.t3S);
-	/* mag_ctx.Image/dImage intentionally not freed here -- pre-existing     */
+	free(mag_ctx.Image);			free(mag_ctx.dImage);
 	/* (unfixed) leak, preserved as-is.                                      */
 	free(mag_ctx.HeffX); 			free(mag_ctx.HeffY); 			free(mag_ctx.HeffZ);
 	free(mag_ctx.NoiseX);   			free(mag_ctx.NoiseY);   			free(mag_ctx.NoiseZ);
