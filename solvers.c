@@ -1,3 +1,18 @@
+static void CalcThreadBarrier(magnoom_ctx *ctx, int threadindex)
+{
+	if (threadindex == THREADS_NUMBER - 1) {
+		sem_post(ctx->sem_in[(threadindex + 1) % THREADS_NUMBER]);
+		sem_wait(ctx->sem_in[threadindex]);
+		sem_post(ctx->sem_out[(threadindex + 1) % THREADS_NUMBER]);
+		sem_wait(ctx->sem_out[threadindex]);
+	} else {
+		sem_wait(ctx->sem_in[threadindex]);
+		sem_post(ctx->sem_in[(threadindex + 1) % THREADS_NUMBER]);
+		sem_wait(ctx->sem_out[threadindex]);
+		sem_post(ctx->sem_out[(threadindex + 1) % THREADS_NUMBER]);
+	}
+}
+
 void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 					int naini, 	int nafin,
 					int nbini, 	int nbfin,
@@ -17,8 +32,6 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 	const float *VDMy = ctx->VDMY;
 	const float *VDMz = ctx->VDMZ;
 	const AnisotropyMode anisotropy_mode = ctx->anisotropy_mode;
-	const float *BextDCDirection = ctx->BextDCDirection;
-	const float BextDCMagnitude = ctx->BextDCMagnitude;
 	double *heffx = ctx->HeffX;
 	double *heffy = ctx->HeffY;
 	double *heffz = ctx->HeffZ;
@@ -46,14 +59,9 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 				{
 					i = Ip + ctx->AtomsPerBlock * ( na + nb1 + nc1 );// index of spin "i"
 					// External-field Zeeman contribution:
-					heffx[i] = BextDCMagnitude*BextDCDirection[0]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[0];
-					heffy[i] = BextDCMagnitude*BextDCDirection[1]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[1];
-					heffz[i] = BextDCMagnitude*BextDCDirection[2]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[2];
-					if(nc==0||nc==Nc-1){
-					heffx[i] /= 2;
-					heffy[i] /= 2;
-					heffz[i] /= 2;
-					}
+					heffx[i] = ctx->BextDCMagnitude*ctx->BextDCDirection[0] + ctx->BextACScalar*ctx->BextACDirection[0];
+					heffy[i] = ctx->BextDCMagnitude*ctx->BextDCDirection[1] + ctx->BextACScalar*ctx->BextACDirection[1];
+					heffz[i] = ctx->BextDCMagnitude*ctx->BextDCDirection[2] + ctx->BextACScalar*ctx->BextACDirection[2];
 
 					double spin[3] = {VEC_X(s,i), VEC_Y(s,i), VEC_Z(s,i)};
 					double gradient[3];
@@ -88,13 +96,13 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 		//for (int nc=0; nc<Nc; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		for (int nc=ncini; nc<ncfin; nc++)//nc(a,b)=neghbor in the direction of c(a,b)-vector
 		{
-			bc_c = 1 - (1-ctx->Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
+				bc_c = ctx->Boundary[2] || (nc + L >= 0 && nc + L < Nc);
 			for (int nb=nbini; nb<nbfin; nb++)
 			{
-				bc_b = 1 - (1-ctx->Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
+					bc_b = ctx->Boundary[1] || (nb + K >= 0 && nb + K < Nb);
 				for (int na=naini; na<nafin; na++)
 				{
-					bc_a = 1 - (1-ctx->Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
+						bc_a = ctx->Boundary[0] || (na + J >= 0 && na + J < Na);
 					bc_f = bc_a*bc_b*bc_c;
 					na1 = na;
 					nb1 = Na * nb;
@@ -130,24 +138,20 @@ void GetEffectiveField(	magnoom_ctx *ctx, const double* s,
 	}
 }
 
+double GetTotalEnergy(magnoom_ctx *ctx);
+
 double GetTotalEnergyMoment(magnoom_ctx *ctx)
 {
 	const double *s = ctx->bS;
-	const double *Hx = ctx->HeffX;
-	const double *Hy = ctx->HeffY;
-	const double *Hz = ctx->HeffZ;
-	double *Etot = ctx->Etot0;
 	double *Mtot = ctx->outputMtotal;
 	const int N = ctx->NOS;
-	double tmp0 = 0;
+	const double total_energy = GetTotalEnergy(ctx);
 	Mtot[0] = 0;
 	Mtot[1] = 0;
 	Mtot[2] = 0;
 	for (int i=0; i<N; i++)
 	{
 
-		Etot[i] = 1.0-Hx[i]*VEC_X(s,i) - Hy[i]*VEC_Y(s,i) - Hz[i]*VEC_Z(s,i);
-		// metka test stochastic LLG
 		double vtemp[3];
 		// opposite to the rotation of the vector of external field
 		RotateVector(VEC_X(s,i),VEC_Y(s,i),VEC_Z(s,i),0,0,1,-ctx->BextDCPhi,vtemp); //rotate about y by theta of the external field
@@ -158,9 +162,8 @@ double GetTotalEnergyMoment(magnoom_ctx *ctx)
 		// Mtot[0] = Mtot[0] + sx[i];
 		// Mtot[1] = Mtot[1] + sy[i];
 		// Mtot[2] = Mtot[2] + sz[i];
-		tmp0 = tmp0 + Etot[i];
 	}
-	return tmp0/N;
+	return total_energy;
 }
 
 double GetTotalEnergyFerro(magnoom_ctx *ctx)
@@ -197,7 +200,9 @@ double GetTotalEnergyFerro(magnoom_ctx *ctx)
 	double spin[3] = {sx, sy, sz};
 	// External-field Zeeman contribution:
 	//Etot[i] =-BextDCMagnitude*(BextDCDirection[0]*sx+BextDCDirection[1]*sy+BextDCDirection[2]*sz);
-	Etot[i] =-BextDCMagnitude*((BextDCDirection[0]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[0])*sx+(BextDCDirection[1]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[1])*sy+(BextDCDirection[2]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[2])*sz);
+		Etot[i] = -(BextDCMagnitude*BextDCDirection[0] + ctx->BextACScalar*ctx->BextACDirection[0])*sx
+			- (BextDCMagnitude*BextDCDirection[1] + ctx->BextACScalar*ctx->BextACDirection[1])*sy
+			- (BextDCMagnitude*BextDCDirection[2] + ctx->BextACScalar*ctx->BextACDirection[2])*sz;
 	Etot[i] += anisotropy_energy(&ctx->anisotropy_global[atom], spin);
 	}
 	// pairwise spin interactions
@@ -228,13 +233,13 @@ double GetTotalEnergyFerro(magnoom_ctx *ctx)
 		dz= VDMz[ni];// and if so, then DM (= Dij) should be set to 1.0
 		for (int nc=0; nc<Nc; nc++)
 		{
-			bc_c = 1 - (1-ctx->Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
+			bc_c = ctx->Boundary[2] || (nc + L >= 0 && nc + L < Nc);
 			for (int nb=0; nb<Nb; nb++)
 			{
-				bc_b = 1 - (1-ctx->Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
+				bc_b = ctx->Boundary[1] || (nb + K >= 0 && nb + K < Nb);
 				for (int na=0; na<Na; na++)
 				{
-					bc_a = 1 - (1-ctx->Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
+					bc_a = ctx->Boundary[0] || (na + J >= 0 && na + J < Na);
 					bc_f = bc_a*bc_b*bc_c;
 					na1 = na;
 					nb1 = Na * nb;
@@ -291,7 +296,9 @@ GetTotalEnergy(magnoom_ctx *ctx)
 	const int atom = anisotropy_mode == ANISOTROPY_GLOBAL ? 0 : i%ctx->AtomsPerBlock;
 	double spin[3] = {VEC_X(s,i), VEC_Y(s,i), VEC_Z(s,i)};
 	// External-field Zeeman contribution:
-	Etot[i] =-BextDCMagnitude*((BextDCDirection[0]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[0])*VEC_X(s,i)+(BextDCDirection[1]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[1])*VEC_Y(s,i)+(BextDCDirection[2]+ctx->BextACEnabled*ctx->BextACScalar*ctx->BextACDirection[2])*VEC_Z(s,i));
+	Etot[i] = -(BextDCMagnitude*BextDCDirection[0] + ctx->BextACScalar*ctx->BextACDirection[0])*VEC_X(s,i)
+		- (BextDCMagnitude*BextDCDirection[1] + ctx->BextACScalar*ctx->BextACDirection[1])*VEC_Y(s,i)
+		- (BextDCMagnitude*BextDCDirection[2] + ctx->BextACScalar*ctx->BextACDirection[2])*VEC_Z(s,i);
 	Etot[i] += anisotropy_energy(&ctx->anisotropy_global[atom], spin);
 	Mtot[0] = Mtot[0] + VEC_X(s,i);
 	Mtot[1] = Mtot[1] + VEC_Y(s,i);
@@ -327,13 +334,13 @@ GetTotalEnergy(magnoom_ctx *ctx)
 		dz= VDMz[ni];// and if so, then DM (= Dij) should be set to 1.0
 		for (int nc=0; nc<Nc; nc++)
 		{
-			bc_c = 1 - (1-ctx->Boundary[2])*(( (2*Nc) + (nc+L) )/Nc )%2; // boundary condition along "c"
+			bc_c = ctx->Boundary[2] || (nc + L >= 0 && nc + L < Nc);
 			for (int nb=0; nb<Nb; nb++)
 			{
-				bc_b = 1 - (1-ctx->Boundary[1])*(( (2*Nb) + (nb+K) )/Nb )%2; // boundary condition along "b"
+				bc_b = ctx->Boundary[1] || (nb + K >= 0 && nb + K < Nb);
 				for (int na=0; na<Na; na++)
 				{
-					bc_a = 1 - (1-ctx->Boundary[0])*(( (2*Na) + (na+J) )/Na )%2; // boundary condition along "a"
+					bc_a = ctx->Boundary[0] || (na + J >= 0 && na + J < Na);
 					bc_f = bc_a*bc_b*bc_c;
 					na1 = na;
 					nb1 = Na * nb;
@@ -389,9 +396,9 @@ GetFluctuations(magnoom_ctx *ctx){
 	const int N = ctx->NOS;
 	for (int i=0; i<N; i++){
 		float r[3];
-		float A=sqrt(2*fabs(log(ctx->t_step)));
+		float A=sqrt(2*fabs(log(fmaxf(ctx->t_step, FLT_MIN))));
 		for(int j=0; j<3; j++){
-			float U = rand() / (float)RAND_MAX;
+			double U = ((double)rand() + 1.0) / ((double)RAND_MAX + 2.0);
 			float V = rand() / (float)RAND_MAX;
 			r[j] = sqrt(-2*log(U))*cos(2*PI*V);	
 			if(r[j]>A){
@@ -457,6 +464,7 @@ StochasticLLG(	magnoom_ctx *ctx, int thread,
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//prediction step of midpoint solver:
 	int Na = ctx->uABC[0];
@@ -532,6 +540,7 @@ StochasticLLG(	magnoom_ctx *ctx, int thread,
 		}
 	}
 
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//final step of midpoint solver:
@@ -628,6 +637,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//Predictor step:
 	int Na = ctx->uABC[0];
@@ -676,6 +686,7 @@ StochasticLLG_Heun(	magnoom_ctx *ctx, int thread,
 		}
 	}
 
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//corrector step:
@@ -773,13 +784,13 @@ StochasticLLG_RK2(	magnoom_ctx *ctx, int thread,
 
 	double xi = Xi; 
 	double u = Curr_u;
-	double c1 = (xi-alpha)*u, c2=(1+xi*alpha)*u/alpha;
-	// c2 = (alpha>1e-20)? (1+xi*alpha)*u/alpha : 0;
+	double c1 = (xi-alpha)*u, c2 = alpha != 0.0f ? (1+xi*alpha)*u/alpha : 0.0;
 
 	//electric DC current vector (VCu) and density (Cu)
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k1:
 	int Na = ctx->uABC[0];
@@ -858,6 +869,7 @@ StochasticLLG_RK2(	magnoom_ctx *ctx, int thread,
 		}
 	}
 
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//corrector step:
@@ -969,6 +981,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 	Cx = ctx->VCu[0] * ctx->Cu;
 	Cy = ctx->VCu[1] * ctx->Cu;
 	Cz = ctx->VCu[2] * ctx->Cu;
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//Predictor step:
 	int Na = ctx->uABC[0];
@@ -978,7 +991,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 
 	double xi = Xi; 
 	double u = Curr_u;
-	double c1 = (xi-alpha)*u, c2=(1+xi*alpha)*u/alpha;
+	double c1 = (xi-alpha)*u, c2 = alpha != 0.0f ? (1+xi*alpha)*u/alpha : 0.0;
 
 	//k1:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -1053,6 +1066,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 		}
 	}
 	//Heff(y_n+k1/2):
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	//k2:
@@ -1130,6 +1144,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 		}
 	}
 	//Heff(y_n+k2/2):
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k3:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -1204,6 +1219,7 @@ StochasticLLG_RK4(	magnoom_ctx *ctx, int thread,
 		}
 	}
 	//Heff(y_n+k3):
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, tn, naini, nafin, nbini, nbfin, ncini, ncfin);
 	//k4:
 	for (int Ip=0; Ip<ctx->AtomsPerBlock; Ip++)
@@ -1303,6 +1319,7 @@ void Relax(	magnoom_ctx *ctx, int thread,
 	double *in = ctx->S;
 	bool *proj = ctx->Proj;
 	
+	CalcThreadBarrier(ctx, thread);
 	GetEffectiveField(ctx, in, naini, nafin, nbini, nbfin, ncini, ncfin);
 
 	double Hx, Hy, Hz, temp;// components of the effective field
@@ -1365,32 +1382,40 @@ double EvaluateBextAC(magnoom_ctx *ctx)
 {
 	double R=0;
 	double temp;
+	const double time = ctx->t_step * ctx->ITERATION;
+	const double omega = ctx->BextACOmega;
+
+	if (ctx->BextACEnabled == 0 || !isfinite(ctx->BextACAmplitude)) {
+		ctx->BextAC[0] = 0.0;
+		ctx->BextAC[1] = 0.0;
+		ctx->BextAC[2] = 0.0;
+		return 0.0;
+	}
 	switch (ctx->BextACWaveform){
 		case BEXT_AC_SIN:
-			R = ctx->BextACEnabled*ctx->BextACAmplitude*sin(ctx->BextACOmega*ctx->t_step*ctx->ITERATION);
+			R = isfinite(omega) ? ctx->BextACAmplitude*sin(omega*time) : 0.0;
 		break;
 
 		case BEXT_AC_GAUSSIAN:
-			temp = (ctx->t_step*ctx->ITERATION-ctx->BextACTimeOffset)/ctx->BextACPulseWidth;
-			R = ctx->BextACEnabled*ctx->BextACAmplitude*exp(-0.5*temp*temp );
+			if (ctx->BextACPulseWidth > 0.0f) {
+				temp = (time-ctx->BextACTimeOffset)/ctx->BextACPulseWidth;
+				R = ctx->BextACAmplitude*exp(-0.5*temp*temp);
+			}
 		break;
 
 		case BEXT_AC_SINC:
-			if (ctx->t_step*ctx->ITERATION<=ctx->BextACPulseWidth){
-				if (ctx->t_step*ctx->ITERATION==ctx->BextACTimeOffset){
-					R = ctx->BextACEnabled*ctx->BextACAmplitude*1;
-				}else{
-					R = ctx->BextACEnabled*ctx->BextACAmplitude*sin((ctx->BextACOmega*(ctx->t_step*ctx->ITERATION-ctx->BextACTimeOffset)))/(ctx->BextACOmega*(ctx->t_step*ctx->ITERATION-ctx->BextACTimeOffset));
-				}
-			}else{ R = 0.0; }
+			if (ctx->BextACPulseWidth > 0.0f && time <= ctx->BextACPulseWidth && isfinite(omega)) {
+				temp = omega*(time-ctx->BextACTimeOffset);
+				R = ctx->BextACAmplitude*(fabs(temp) < 1e-12 ? 1.0 : sin(temp)/temp);
+			}
 		break;
 
 		case BEXT_AC_CIRCULAR:
-			if(ctx->BextACEnabled!=0){
-				ctx->BextACDirection[0] = cos(ctx->BextACOmega*ctx->t_step*ctx->ITERATION);
-				ctx->BextACDirection[1] = sin(ctx->BextACOmega*ctx->t_step*ctx->ITERATION);
+			if (isfinite(omega)) {
+				ctx->BextACDirection[0] = cos(omega*time);
+				ctx->BextACDirection[1] = sin(omega*time);
 				ctx->BextACDirection[2] = 0.0f;
-				R = ctx->BextACEnabled*ctx->BextACAmplitude;
+				R = ctx->BextACAmplitude;
 			}
 		break;
 	}
@@ -1404,6 +1429,7 @@ static void RecordBextACMode(magnoom_ctx *ctx)
 {
 	// Save mode snapshot.
 	if (ctx->BextACModeRecording*ctx->BextACEnabled!=0){
+		if (!isfinite(ctx->BextACPeriod) || ctx->BextACPeriod <= 0.0) return;
 		float phase = ctx->BextACOmega*ctx->t_step*ctx->ITERATION*iTPI;
 		phase = phase - floor(phase);
 		int Im=-1;
@@ -1577,7 +1603,10 @@ void *CALC_THREAD(void *void_ptr)
 				glfwSleep((double)ctx->SleepTime / 1000000.0);
 		} while (engine_state == WAIT && !ctx->EngineShutdown);
 		if (ctx->EngineShutdown) break;
-		ctx->BextACScalar = EvaluateBextAC(ctx);
+		CalcThreadBarrier(ctx, threadindex);
+		if (threadindex == THREADS_NUMBER - 1)
+			ctx->BextACScalar = EvaluateBextAC(ctx);
+		CalcThreadBarrier(ctx, threadindex);
 		
 		switch (ctx->WhichIntegrationScheme){
 			case HEUN: 
@@ -1601,14 +1630,10 @@ void *CALC_THREAD(void *void_ptr)
 				Relax(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 		}
-		if (threadindex==0 && ctx->Temperature > 0) GetFluctuations(ctx);
+		CalcThreadBarrier(ctx, threadindex);
 
 		if (threadindex==THREADS_NUMBER-1){ 
-			
-			//first thread opens the first (in) door in the next (second) thread
-			sem_post(ctx->sem_in[(threadindex+1)%THREADS_NUMBER]);
-			// first (in)door will be open from the last thread (first sem_post)
-			sem_wait(ctx->sem_in[threadindex]);
+			if (ctx->Temperature > 0) GetFluctuations(ctx);
 			
 			ctx->MAX_TORQUE=0;
 			for (int i=0;i<THREADS_NUMBER;i++){
@@ -1689,10 +1714,7 @@ void *CALC_THREAD(void *void_ptr)
 				ctx->EngineRunState = WAIT;
 			pthread_mutex_unlock(&ctx->culc_mutex);
 
-			// now it opens the second (out) door in the next (second) thread
-			sem_post(ctx->sem_out[(threadindex+1)%THREADS_NUMBER]);
-			// second (out)door will be open from the last thread (second sem_post)
-			sem_wait(ctx->sem_out[threadindex]);
+			CalcThreadBarrier(ctx, threadindex);
 			pthread_mutex_lock(&ctx->culc_mutex);
 			if (ctx->EngineRunState == WAIT) ctx->EngineIdle = true;
 			pthread_mutex_unlock(&ctx->culc_mutex);

@@ -2,7 +2,7 @@ enum WindowMouseButton { WINDOW_MOUSE_LEFT, WINDOW_MOUSE_MIDDLE, WINDOW_MOUSE_RI
 enum WindowButtonState { WINDOW_BUTTON_DOWN, WINDOW_BUTTON_UP };
 enum WindowSpecialKey {
 	WINDOW_KEY_UP = 1, WINDOW_KEY_DOWN, WINDOW_KEY_F1, WINDOW_KEY_F2,
-	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6, WINDOW_KEY_F10, WINDOW_KEY_F12
+	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6, WINDOW_KEY_F12
 };
 
 // which button:
@@ -952,7 +952,9 @@ void TW_CALL CB_GetNumImages(void *value, void *clientData)
 void TW_CALL CB_SetBextACPeriod(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->BextACPeriod = *( double *)value; // copy value to BextACPeriod
+    const double period = *(double *)value;
+    if (!isfinite(period) || period <= 0.0) return;
+    ctx->BextACPeriod = period;
     ctx->BextACOmega = TPI/ctx->BextACPeriod;
 }
 
@@ -965,7 +967,9 @@ void TW_CALL CB_GetBextACPeriod(void *value, void *clientData)
 void TW_CALL CB_SetBextACOmega(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	ctx->BextACOmega = *( double *)value;
+    const double omega = *(double *)value;
+    if (!isfinite(omega) || omega <= 0.0) return;
+	ctx->BextACOmega = omega;
     ctx->BextACPeriod = TPI/ctx->BextACOmega;
 }
 
@@ -1565,7 +1569,7 @@ void TW_CALL CB_SaveCSV( void *clientData )
 		}
 		}
         fclose (pFile);
-		magnoom_log_write(ctx, "Recording to the file %s is done!", output_path);
+		magnoom_report_operation(true, "Recording to the file %s is done!", output_path);
 	} else {
 		fprintf(stderr, "Cannot open output file '%s': %s\n", output_path, strerror(errno));
     }
@@ -1618,10 +1622,10 @@ void TW_CALL CB_ReadCSV( void *clientData )
 		}while(c != EOF);
 		fclose(pFile);
 		magnoom_reset_solver_state(ctx);
-		magnoom_report_read_result(ctx, input_path, true);
+		magnoom_report_read_result(input_path, true);
 	} else {
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
-		magnoom_report_read_result(ctx, input_path, false);
+		magnoom_report_read_result(input_path, false);
 	}
 	ChangeVectorMode(ctx, 1);
 }
@@ -1767,11 +1771,11 @@ void TW_CALL CB_ReadOVF( void *clientData )
 			printf("%s has wrong data format or dimentionality!\n", input_path);
 		}
 		fclose(FilePointer);
-		magnoom_report_read_result(ctx, input_path, read_ok);
+		magnoom_report_read_result(input_path, read_ok);
 		if (read_ok) magnoom_reset_solver_state(ctx);
 	}else{
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
-		magnoom_report_read_result(ctx, input_path, false);
+		magnoom_report_read_result(input_path, false);
 	}
     //metka dlya schiutyvaniya equilibrium state for dm
     for (int i=0; i<ctx->NOS; i++){
@@ -1808,7 +1812,7 @@ void TW_CALL CB_ReadBIN( void *clientData )
 	FILE * FilePointer = fopen(input_path, "rb");
 	if (FilePointer == NULL) {
 		fprintf(stderr, "Cannot open input file '%s': %s\n", input_path, strerror(errno));
-		magnoom_report_read_result(ctx, input_path, false);
+		magnoom_report_read_result(input_path, false);
 		return;
 	}
   	for(int k = 0; k<Nz; k++){
@@ -1839,7 +1843,7 @@ void TW_CALL CB_ReadBIN( void *clientData )
 	}
 	fclose (FilePointer);
 	if (all_reads_ok) magnoom_reset_solver_state(ctx);
-	magnoom_report_read_result(ctx, input_path, all_reads_ok);
+	magnoom_report_read_result(input_path, all_reads_ok);
 	ChangeVectorMode(ctx, 1);
 }
 
@@ -3085,25 +3089,6 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddSeparator(ctx->info_bar, "sep3", NULL);
 	TwAddVarRO(ctx->info_bar, "Torque", TW_TYPE_DOUBLE, &ctx->MAX_TORQUE, " help='maximum torque acting on the spin' precision=10");
 
-/*  Log bar F10: rolling view of magnoom_log_write()'s operation-outcome
- *  history (see magnoom.c). All MAGNOOM_LOG_CAPACITY rows are added once,
- *  here, as label-only buttons -- the same "one TwAddButton per line"
- *  technique the warning/error modal uses (magnoom_open_modal_dialog), so a
- *  row is purely its own text, with no value column beside it. Buttons hold
- *  no bound memory for AntTweakBar to re-read, so magnoom_log_write()
- *  pushes each new line into these rows itself, addressing them by
- *  magnoom_log_row_name()'s shared naming. */
-	ctx->log_bar = TwNewBar("Log");
-	TwDefine(" Log iconified=true ");
-	TwDefine(" Log color='60 60 60' alpha=200 ");
-	TwDefine(" Log help='F10: show/hide the operation log' ");
-	SetBarSize(ctx, ctx->log_bar, 900, 400);
-	SetBarPosition(ctx, ctx->log_bar, 200, 30);
-	for (int i = 0; i < MAGNOOM_LOG_CAPACITY; ++i) {
-		char name[16];
-		magnoom_log_row_name(name, sizeof(name), i);
-		TwAddButton(ctx->log_bar, name, NULL, NULL, "label=' '");
-	}
 }
 
 static int GLFWSpecialToWindowKey(int key)
@@ -3117,7 +3102,6 @@ static int GLFWSpecialToWindowKey(int key)
 		case GLFW_KEY_F4: return WINDOW_KEY_F4;
 		case GLFW_KEY_F5: return WINDOW_KEY_F5;
 		case GLFW_KEY_F6: return WINDOW_KEY_F6;
-		case GLFW_KEY_F10: return WINDOW_KEY_F10;
 		case GLFW_KEY_F12: return WINDOW_KEY_F12;
 		default: return 0;
 	}
@@ -3557,14 +3541,6 @@ int isiconified;
 					TwDefine(" Anisotropy iconified=false ");
 				}else{
 					TwDefine(" Anisotropy iconified=true ");
-				}
-				break;
-			case  WINDOW_KEY_F10:
-				TwGetParam(ctx->log_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-					TwDefine(" Log iconified=false ");
-				}else{
-					TwDefine(" Log iconified=true ");
 				}
 				break;
 			case  WINDOW_KEY_F12:
