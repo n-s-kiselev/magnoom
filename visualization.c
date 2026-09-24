@@ -940,6 +940,7 @@ void TW_CALL CB_SetNumImages(const void *value, void *clientData )
 {
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
     const int num_images = *(const int *)value;
+    if (!ctx->ImageRecordingEnabled) return;
     if (num_images <= 0 || num_images == ctx->num_images) return;
 
     magnoom_stop_engine(ctx);
@@ -1060,16 +1061,38 @@ void TW_CALL CB_GetOutputDirectory(void *value, void *clientData)
 	magnoom_copy_path((char *)value, sizeof(ctx->output_directory), ctx->output_directory);
 }
 
-void TW_CALL CB_SetSliceMode(const void *value, void *clientData ){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    ctx->WhichSliceMode = *( enSliceMode *)value; // copy value to ctx->WhichSliceMode
-    ChangeVectorMode(ctx, 0);
+typedef struct SliceControl {
+    magnoom_ctx *ctx;
+    int axis;
+} SliceControl;
+
+void TW_CALL CB_SetSliceVisible(const void *value, void *clientData)
+{
+    SliceControl *control = (SliceControl *)clientData;
+    control->ctx->SliceVisible[control->axis] = *(const int *)value != 0;
+    ChangeVectorMode(control->ctx, 1);
 }
 
+void TW_CALL CB_GetSliceVisible(void *value, void *clientData)
+{
+    SliceControl *control = (SliceControl *)clientData;
+    *(int *)value = control->ctx->SliceVisible[control->axis];
+}
 
-void TW_CALL CB_GetSliceMode(void *value, void *clientData){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->WhichSliceMode; // just copy ctx->WhichSliceMode to value
+void TW_CALL CB_SetSliceLayer(const void *value, void *clientData)
+{
+    SliceControl *control = (SliceControl *)clientData;
+    int layer = *(const int *)value;
+    if (layer >= 1 && layer <= control->ctx->uABC[control->axis]) {
+        control->ctx->SliceLayer[control->axis] = layer;
+        ChangeVectorMode(control->ctx, 1);
+    }
+}
+
+void TW_CALL CB_GetSliceLayer(void *value, void *clientData)
+{
+    SliceControl *control = (SliceControl *)clientData;
+    *(int *)value = control->ctx->SliceLayer[control->axis];
 }
 
 void TW_CALL CB_GetThetaMax1(void *value, void *clientData){
@@ -1251,98 +1274,98 @@ void TW_CALL CB_SetPhiMin3(const void *value, void *clientData ){
 	}
 }
 /**********************************************************************/
-void TW_CALL CB_GetGreedMaxA(void *value, void *clientData){
+void TW_CALL CB_GetGridMaxA(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->GreedFilterMaxA; 
+    *(int *)value = ctx->GridFilterMaxA; 
 }
 
-void TW_CALL CB_SetGreedMaxA(const void *value, void *clientData ){
+void TW_CALL CB_SetGridMaxA(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
 	int test= *( int *)value; 
-	if (test<ctx->uABC[0] && test>ctx->GreedFilterMinA){
-        ctx->GreedFilterMaxA = test;
+	if (test<ctx->uABC[0] && test>ctx->GridFilterMinA){
+        ctx->GridFilterMaxA = test;
         ChangeVectorMode(ctx, 0);
 	}
 }
 
-void TW_CALL CB_GetGreedMinA(void *value, void *clientData){
+void TW_CALL CB_GetGridMinA(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->GreedFilterMinA; 
+    *(int *)value = ctx->GridFilterMinA; 
 }
 
-void TW_CALL CB_SetGreedMinA(const void *value, void *clientData ){
+void TW_CALL CB_SetGridMinA(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
 	int test= *( int *)value; 
-	if (test<ctx->GreedFilterMaxA && test>=0){
-        ctx->GreedFilterMinA = test;
-        ChangeVectorMode(ctx, 0);
-	}
-}
-/*************/
-void TW_CALL CB_GetGreedMaxB(void *value, void *clientData){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->GreedFilterMaxB; 
-}
-
-void TW_CALL CB_SetGreedMaxB(const void *value, void *clientData ){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	int test= *( int *)value; 
-	if (test<ctx->uABC[1] && test>ctx->GreedFilterMinB){
-        ctx->GreedFilterMaxB = test;
-        ChangeVectorMode(ctx, 0);
-	}
-}
-
-void TW_CALL CB_GetGreedMinB(void *value, void *clientData){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->GreedFilterMinB; 
-}
-
-void TW_CALL CB_SetGreedMinB(const void *value, void *clientData ){
-    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	int test= *( int *)value; 
-	if (test<ctx->GreedFilterMaxB && test>=0){
-        ctx->GreedFilterMinB = test;
+	if (test<ctx->GridFilterMaxA && test>=0){
+        ctx->GridFilterMinA = test;
         ChangeVectorMode(ctx, 0);
 	}
 }
 /*************/
-void TW_CALL CB_GetGreedMaxC(void *value, void *clientData){
+void TW_CALL CB_GetGridMaxB(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->GreedFilterMaxC; 
+    *(int *)value = ctx->GridFilterMaxB; 
 }
 
-void TW_CALL CB_SetGreedMaxC(const void *value, void *clientData ){
+void TW_CALL CB_SetGridMaxB(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
 	int test= *( int *)value; 
-	if (test<ctx->uABC[2] && test>ctx->GreedFilterMinC){
-        ctx->GreedFilterMaxC = test;
+	if (test<ctx->uABC[1] && test>ctx->GridFilterMinB){
+        ctx->GridFilterMaxB = test;
         ChangeVectorMode(ctx, 0);
 	}
 }
 
-void TW_CALL CB_GetGreedMinC(void *value, void *clientData){
+void TW_CALL CB_GetGridMinB(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(int *)value = ctx->GreedFilterMinC; 
+    *(int *)value = ctx->GridFilterMinB; 
 }
 
-void TW_CALL CB_SetGreedMinC(const void *value, void *clientData ){
+void TW_CALL CB_SetGridMinB(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
 	int test= *( int *)value; 
-	if (test<ctx->GreedFilterMaxC && test>=0){
-        ctx->GreedFilterMinC = test;
+	if (test<ctx->GridFilterMaxB && test>=0){
+        ctx->GridFilterMinB = test;
+        ChangeVectorMode(ctx, 0);
+	}
+}
+/*************/
+void TW_CALL CB_GetGridMaxC(void *value, void *clientData){
+    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+    *(int *)value = ctx->GridFilterMaxC; 
+}
+
+void TW_CALL CB_SetGridMaxC(const void *value, void *clientData ){
+    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	int test= *( int *)value; 
+	if (test<ctx->uABC[2] && test>ctx->GridFilterMinC){
+        ctx->GridFilterMaxC = test;
         ChangeVectorMode(ctx, 0);
 	}
 }
 
-void TW_CALL CB_GetGreedFilterInvert(void *value, void *clientData){
+void TW_CALL CB_GetGridMinC(void *value, void *clientData){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-    *(bool *)value = ctx->GreedFilterInvert; 
+    *(int *)value = ctx->GridFilterMinC; 
 }
 
-void TW_CALL CB_SetGreedFilterInvert(const void *value, void *clientData ){
+void TW_CALL CB_SetGridMinC(const void *value, void *clientData ){
     magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	ctx->GreedFilterInvert= *( bool *)value; 
+	int test= *( int *)value; 
+	if (test<ctx->GridFilterMaxC && test>=0){
+        ctx->GridFilterMinC = test;
+        ChangeVectorMode(ctx, 0);
+	}
+}
+
+void TW_CALL CB_GetGridFilterInvert(void *value, void *clientData){
+    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+    *(bool *)value = ctx->GridFilterInvert; 
+}
+
+void TW_CALL CB_SetGridFilterInvert(const void *value, void *clientData ){
+    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+	ctx->GridFilterInvert= *( bool *)value; 
     ChangeVectorMode(ctx, 0);
 }
 
@@ -1379,16 +1402,16 @@ void TW_CALL CB_SetSpinFilter3(const void *value, void *clientData ){
     ChangeVectorMode(ctx, 0);
 }
 
-void TW_CALL CB_GetGreedFilter(void *value, void *clientData)
+void TW_CALL CB_GetGridFilter(void *value, void *clientData)
 {
 	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	*(bool *)value = ctx->GreedFilter; 
+	*(bool *)value = ctx->GridFilter; 
 }
 
-void TW_CALL CB_SetGreedFilter(const void *value, void *clientData )
+void TW_CALL CB_SetGridFilter(const void *value, void *clientData )
 {
 	magnoom_ctx *ctx = (magnoom_ctx *)clientData;
-	ctx->GreedFilter= *( bool *)value; 
+	ctx->GridFilter= *( bool *)value; 
 	ChangeVectorMode(ctx, 0);
 }
 
@@ -1429,19 +1452,19 @@ void TW_CALL CB_SaveCSV( void *clientData )
     	int bnfin=ctx->uABC[1];
     	int cnini=0;
     	int cnfin=ctx->uABC[2];
-    	if (ctx->save_slice==1){
-    		switch( ctx->WhichSliceMode){
-    			case A_AXIS:
-    				anini=ctx->A_layer_min-1;
-    		        anfin=ctx->A_layer_max;
-    			break;
-    			case B_AXIS:
-    				bnini=ctx->B_layer_min-1;
-    		        bnfin=ctx->B_layer_max;
-    			break;
-    			case C_AXIS:
-    				cnini=ctx->C_layer_min-1;
-    		        cnfin=ctx->C_layer_max;
+	if (ctx->save_slice==1){
+		switch( ctx->ExportSliceAxis){
+			case A_AXIS:
+				anini=ctx->SliceLayer[A_AXIS]-1;
+		        anfin=anini+1;
+			break;
+			case B_AXIS:
+				bnini=ctx->SliceLayer[B_AXIS]-1;
+		        bnfin=bnini+1;
+			break;
+			case C_AXIS:
+				cnini=ctx->SliceLayer[C_AXIS]-1;
+		        cnfin=cnini+1;
     			break;
     			default:
     			break;
@@ -1937,7 +1960,8 @@ void TW_CALL CB_Save_PNG( void *clientData )
 	char output_path[MAGNOOM_PATH_CAPACITY];
 	if (!magnoom_resolve_output_path_with_extension(ctx, ".png",
 		output_path, sizeof(output_path))) return;
-	SavePng(ctx, ctx->bS, output_path, ctx->WhichSliceMode, ctx->A_layer_min-1, ctx->B_layer_min-1, ctx->C_layer_min-1);//metka 0->1
+	SavePng(ctx, ctx->bS, output_path, ctx->ExportSliceAxis,
+		ctx->SliceLayer[A_AXIS]-1, ctx->SliceLayer[B_AXIS]-1, ctx->SliceLayer[C_AXIS]-1);
 }
 
 static void magnoom_request_modal_dialog(magnoom_ctx *ctx, const char *message, bool is_warning)
@@ -2303,6 +2327,7 @@ static const ConfigScalarField CONFIG_SCALAR_FIELDS[] = {
 	{"BCa", CONFIG_FIELD_INT, offsetof(magnoom_ctx, Boundary[0])},
 	{"BCb", CONFIG_FIELD_INT, offsetof(magnoom_ctx, Boundary[1])},
 	{"BCc", CONFIG_FIELD_INT, offsetof(magnoom_ctx, Boundary[2])},
+	{"ImageRecording", CONFIG_FIELD_INT, offsetof(magnoom_ctx, ImageRecordingEnabled)},
 };
 
 static bool ApplyConfigScalarField(magnoom_ctx *ctx, const ConfigScalarField *field,
@@ -2437,6 +2462,9 @@ bool writeDefaultConfigFile(const magnoom_ctx *ctx, const char *filename)
 	fprintf(FilePointer, "BCa = %d\nBCb = %d\nBCc = %d\n",
 		ctx->Boundary[0], ctx->Boundary[1], ctx->Boundary[2]);
 
+	fprintf(FilePointer, "\n# Optional phase-resolved image recording buffers\n");
+	fprintf(FilePointer, "ImageRecording = %d\n", ctx->ImageRecordingEnabled ? 1 : 0);
+
 	fprintf(FilePointer, "\n# Atom positions (fractional coordinates in the unit cell)\n");
 	for (int atom = 0; atom < ctx->AtomsPerBlock; ++atom) {
 		fprintf(FilePointer, "Atom%dx = %g\nAtom%dy = %g\nAtom%dz = %g\n",
@@ -2543,6 +2571,11 @@ bool readConfigFile(magnoom_ctx *ctx)
 				return false;
 			}
 		}
+	}
+	if (ctx->ImageRecordingEnabled != 0 && ctx->ImageRecordingEnabled != 1) {
+		fprintf(stderr, "%s: ImageRecording must be 0 or 1.\n", configfilename);
+		fclose(FilePointer);
+		return false;
 	}
 	if (!magnoom_ctx_set_block(ctx, atom_count, basis_positions)) {
 		fprintf(stderr, "%s defines an invalid set of atom positions.\n", configfilename);
@@ -2710,23 +2743,30 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwDefine(" View/Appearance opened=false ");
 
 	{
-	TwEnumVal		enSliceModeTw[] = { 
-										{A_AXIS, "a-axis"}, 
-										{B_AXIS, "b-axis"}, 
-										{C_AXIS, "c-axis"},
-										{FILTER, "filter"}
-									  };
-	TwType			TV_TYPE_VEC_MOD = TwDefineEnum("Slicing", enSliceModeTw, 4);
-	TwAddVarCB(ctx->view_bar, "Slicing mode", TV_TYPE_VEC_MOD, CB_SetSliceMode, CB_GetSliceMode, ctx, "keyIncr='/' keyDecr='?' help='Slising plane perpenticulat to the choosen axis' group='Filters&Slices' ");
+		static SliceControl slice_controls[3];
+		const char *axis_name[] = { "a", "b", "c" };
+		for (int axis = 0; axis < 3; axis++) {
+			char options[160];
+			slice_controls[axis].ctx = ctx;
+			slice_controls[axis].axis = axis;
+			snprintf(options, sizeof(options), " label='%s slice' true='Shown' false='Hidden' group='Slices'", axis_name[axis]);
+			TwAddVarCB(ctx->view_bar, axis_name[axis], TW_TYPE_BOOL32, CB_SetSliceVisible,
+				CB_GetSliceVisible, &slice_controls[axis], options);
+			snprintf(options, sizeof(options), " label='%s layer' min=1 max=%d step=1 group='Slices'",
+				axis_name[axis], ctx->uABC[axis]);
+			TwAddVarCB(ctx->view_bar, axis == A_AXIS ? "a_layer" : axis == B_AXIS ? "b_layer" : "c_layer",
+				TW_TYPE_INT32, CB_SetSliceLayer, CB_GetSliceLayer, &slice_controls[axis], options);
+		}
 	}
-	TwAddVarCB(ctx->view_bar, "GreedFilter", TW_TYPE_BOOL32, CB_SetGreedFilter, CB_GetGreedFilter, ctx, 
-		" label='Greed filter' true='On' false='Off' group='Filters&Slices' ");
+	TwDefine(" View/Slices opened=false ");
+	TwAddVarCB(ctx->view_bar, "GridFilter", TW_TYPE_BOOL32, CB_SetGridFilter, CB_GetGridFilter, ctx,
+		" label='Grid filter' true='On' false='Off' group='Filters' ");
 	TwAddVarCB(ctx->view_bar, "Spin_filter1", TW_TYPE_BOOL32, CB_SetSpinFilter1, CB_GetSpinFilter1, ctx, 
-		" label='Spin filter N1' true='On' false='Off' group='Filters&Slices' ");
+		" label='Spin filter N1' true='On' false='Off' group='Filters' ");
 	TwAddVarCB(ctx->view_bar, "Spin_filter2", TW_TYPE_BOOL32, CB_SetSpinFilter2, CB_GetSpinFilter2, ctx, 
-		" label='Spin filter N2' true='On' false='Off' group='Filters&Slices' ");
+		" label='Spin filter N2' true='On' false='Off' group='Filters' ");
 	TwAddVarCB(ctx->view_bar, "Spin_filter3", TW_TYPE_BOOL32, CB_SetSpinFilter3, CB_GetSpinFilter3, ctx, 
-		" label='Spin filter N3' true='On' false='Off' group='Filters&Slices' ");
+		" label='Spin filter N3' true='On' false='Off' group='Filters' ");
 
 	TwAddVarCB(ctx->view_bar, "T_max1", TW_TYPE_INT32, CB_SetThetaMax1, CB_GetThetaMax1, ctx, 
 		" group='Spin_filter_1' label='Theta max 1' min=0 max=180  help='max value for polar angle theta'");
@@ -2755,22 +2795,22 @@ void setupTweakBar(magnoom_ctx *ctx)
 	TwAddVarCB(ctx->view_bar, "F_min3", TW_TYPE_INT32, CB_SetPhiMin3, CB_GetPhiMin3, ctx, 
 		" group='Spin_filter_3' label='Phi min 3' min=0 max=360 step=1 help='min value for azimuthal angle phi'");
 
-	TwDefine(" View/Spin_filter_1 opened=false group='Filters&Slices'");
-	TwDefine(" View/Spin_filter_2 opened=false group='Filters&Slices'");
-	TwDefine(" View/Spin_filter_3 opened=false group='Filters&Slices'");
+	TwDefine(" View/Spin_filter_1 opened=false group='Filters'");
+	TwDefine(" View/Spin_filter_2 opened=false group='Filters'");
+	TwDefine(" View/Spin_filter_3 opened=false group='Filters'");
 
-	TwAddVarCB(ctx->view_bar, "GFmaxA", TW_TYPE_INT32, CB_SetGreedMaxA, CB_GetGreedMaxA, ctx, " group='Greed_filter' label='max na' ");
-	TwAddVarCB(ctx->view_bar, "GFminA", TW_TYPE_INT32, CB_SetGreedMinA, CB_GetGreedMinA, ctx, " group='Greed_filter' label='min na' ");
-	TwAddVarCB(ctx->view_bar, "GFmaxB", TW_TYPE_INT32, CB_SetGreedMaxB, CB_GetGreedMaxB, ctx, " group='Greed_filter' label='max nb' ");
-	TwAddVarCB(ctx->view_bar, "GFminB", TW_TYPE_INT32, CB_SetGreedMinB, CB_GetGreedMinB, ctx, " group='Greed_filter' label='min nb' ");
-	TwAddVarCB(ctx->view_bar, "GFmaxC", TW_TYPE_INT32, CB_SetGreedMaxC, CB_GetGreedMaxC, ctx, " group='Greed_filter' label='max nc' ");
-	TwAddVarCB(ctx->view_bar, "GFminC", TW_TYPE_INT32, CB_SetGreedMinC, CB_GetGreedMinC, ctx, " group='Greed_filter' label='min nc' ");
+	TwAddVarCB(ctx->view_bar, "GFmaxA", TW_TYPE_INT32, CB_SetGridMaxA, CB_GetGridMaxA, ctx, " group='Grid_filter' label='max na' ");
+	TwAddVarCB(ctx->view_bar, "GFminA", TW_TYPE_INT32, CB_SetGridMinA, CB_GetGridMinA, ctx, " group='Grid_filter' label='min na' ");
+	TwAddVarCB(ctx->view_bar, "GFmaxB", TW_TYPE_INT32, CB_SetGridMaxB, CB_GetGridMaxB, ctx, " group='Grid_filter' label='max nb' ");
+	TwAddVarCB(ctx->view_bar, "GFminB", TW_TYPE_INT32, CB_SetGridMinB, CB_GetGridMinB, ctx, " group='Grid_filter' label='min nb' ");
+	TwAddVarCB(ctx->view_bar, "GFmaxC", TW_TYPE_INT32, CB_SetGridMaxC, CB_GetGridMaxC, ctx, " group='Grid_filter' label='max nc' ");
+	TwAddVarCB(ctx->view_bar, "GFminC", TW_TYPE_INT32, CB_SetGridMinC, CB_GetGridMinC, ctx, " group='Grid_filter' label='min nc' ");
 
-    TwAddVarCB(ctx->view_bar, "GreedFilterInvert", TW_TYPE_BOOL32, CB_SetGreedFilterInvert, CB_GetGreedFilterInvert, ctx, " label='Invert G filter' true='On' false='Off' group='Greed_filter' ");
+    TwAddVarCB(ctx->view_bar, "GridFilterInvert", TW_TYPE_BOOL32, CB_SetGridFilterInvert, CB_GetGridFilterInvert, ctx, " label='Invert G filter' true='On' false='Off' group='Grid_filter' ");
 
 
-	TwDefine(" View/Greed_filter opened=false group='Filters&Slices'");
-	TwDefine(" View/Filters&Slices opened=false ");
+	TwDefine(" View/Grid_filter opened=false group='Filters'");
+	TwDefine(" View/Filters opened=false ");
 
 
 	TwAddVarCB(ctx->view_bar, "ColorShift", TW_TYPE_INT32, CB_SetColorShift, CB_GetColorShift, ctx, " label='Rotate hue' min=0 max=360 help='rotate color hue in xy-plane' group='HSV to RGB'");
@@ -2875,7 +2915,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 										{HOMO, 		"Homogeneous"	        }, 
 										{SKYRM1, 	"Skyrmion Q=1"	        }, 
 										{SKYRM2, 	"Skyrmion Q=2"	        }, 
-										{SKYRM3, 	"Bimeron in cone"       }, 
+										{BIMERON, 	"Bimeron in cone"       }, 
 										{BOBBER_T, 	"Bobber top"	        },  
 										{BOBBER_B, 	"Bobber bottom"	        },
 										{BOBBER_L,	"Bobber lattice"	    }, 
@@ -2919,7 +2959,13 @@ void setupTweakBar(magnoom_ctx *ctx)
 		"label='Import' help='Import CSV, OVF, VTK, or BIN according to the input file extension'");
 
 	TwAddSeparator(ctx->initial_bar, "sep2", NULL);
-	TwAddVarRW(ctx->initial_bar, "Save slice", TW_TYPE_BOOL32, &ctx->save_slice, " label='Save slice' help='Save current slice only' ");
+	TwAddVarRW(ctx->initial_bar, "Save slice", TW_TYPE_BOOL32, &ctx->save_slice, " label='Save slice' help='Save selected export plane only' ");
+	{
+		TwEnumVal export_axis[] = {{A_AXIS, "a-normal"}, {B_AXIS, "b-normal"}, {C_AXIS, "c-normal"}};
+		TwType export_axis_type = TwDefineEnum("Export slice axis", export_axis, 3);
+		TwAddVarRW(ctx->initial_bar, "Export plane", export_axis_type, &ctx->ExportSliceAxis,
+			" label='Export plane' help='Plane used by sliced CSV and PNG export'");
+	}
 	{
 	TwEnumVal		enAverage_mode[] = {{ALONG_A, 	"Along a-axis"	}, 
 										{ALONG_B, 	"Along b-axis"	}, 
@@ -2946,9 +2992,13 @@ void setupTweakBar(magnoom_ctx *ctx)
 	SetBarSize(ctx, ctx->BextAC_bar, 220, 530);
 	TwDefine(" BextAC help='F5: show/hide Bext AC bar' "); // change default tweak bar size and color
 	TwAddVarRW(ctx->BextAC_bar, "BextACEnabled", TW_TYPE_BOOL32, &ctx->BextACEnabled, "keyIncr='f' label='Bext AC enabled' true='on' false='off' help='Enable the time-dependent external-field component'");
-    TwAddVarRW(ctx->BextAC_bar, "BextACModeRecording", TW_TYPE_BOOL32, &ctx->BextACModeRecording, "label='Mode recording' true='on' false='off' help='Record the phase-resolved dynamical mode'");
-    TwAddVarRW(ctx->BextAC_bar, "Average Dynamical Mode", TW_TYPE_INT32, &ctx->rec_num_mode, "label='Num Mode Average' help='Number over which dynamical mode is averaged'");
-    TwAddVarCB(ctx->BextAC_bar, "ModeRecordingPhaseCount", TW_TYPE_INT32, CB_SetNumImages, CB_GetNumImages, ctx, "label='Phase count' min=1 help='Number of phase bins used for dynamical-mode recording' ");
+	if (ctx->ImageRecordingEnabled) {
+		TwAddVarRW(ctx->BextAC_bar, "BextACModeRecording", TW_TYPE_BOOL32, &ctx->BextACModeRecording, "label='Mode recording' true='on' false='off' help='Record the phase-resolved dynamical mode'");
+		TwAddVarRW(ctx->BextAC_bar, "Average Dynamical Mode", TW_TYPE_INT32, &ctx->rec_num_mode, "label='Num Mode Average' help='Number over which dynamical mode is averaged'");
+		TwAddVarCB(ctx->BextAC_bar, "ModeRecordingPhaseCount", TW_TYPE_INT32, CB_SetNumImages, CB_GetNumImages, ctx, "label='Phase count' min=1 help='Number of phase bins used for dynamical-mode recording' ");
+	} else {
+		ctx->BextACModeRecording = 0;
+	}
 
 	TwAddVarRW(ctx->BextAC_bar, "BextACAmplitude", TW_TYPE_FLOAT, &ctx->BextACAmplitude, "label='Bext AC amplitude' help='Set the time-dependent external-field amplitude' ");
 
@@ -3138,11 +3188,25 @@ static int WindowShiftIsDown(void)
 	return glfwGetKey(GLFW_KEY_LSHIFT) == GLFW_PRESS || glfwGetKey(GLFW_KEY_RSHIFT) == GLFW_PRESS;
 }
 
+static int WindowControlIsDown(void)
+{
+	return glfwGetKey(GLFW_KEY_LCTRL) == GLFW_PRESS || glfwGetKey(GLFW_KEY_RCTRL) == GLFW_PRESS;
+}
+
 void GLFWKeyCallback(int key, int action)
 {
 	magnoom_ctx *ctx = g_ctx;
 	if (ctx->modal_open_requested) {
 		if (action == GLFW_RELEASE) (void)TwEventKeyGLFW(key, action);
+		return;
+	}
+	if (action == GLFW_PRESS && WindowControlIsDown() && key >= '1' && key <= '6') {
+		int index = key - '1';
+		if (index < 3) ctx->SliceVisible[index] = !ctx->SliceVisible[index];
+		else if (index == 3) ctx->SpinFilter1 = !ctx->SpinFilter1;
+		else if (index == 4) ctx->SpinFilter2 = !ctx->SpinFilter2;
+		else ctx->SpinFilter3 = !ctx->SpinFilter3;
+		ChangeVectorMode(ctx, 1);
 		return;
 	}
 	if (TwEventKeyGLFW(key, action)) return;
@@ -3300,6 +3364,7 @@ void HandleKeyDown( magnoom_ctx *ctx, unsigned char key )
 	  // if( false ) fprintf( stderr, "Keyboard: '%c' (0x%0x)\n", c, c );
 		switch( key )
 		{
+#if 0
 			case '<':
 				switch(ctx->WhichSliceMode)
                 {case A_AXIS:
@@ -3363,6 +3428,7 @@ void HandleKeyDown( magnoom_ctx *ctx, unsigned char key )
 				 break;		 
 				}
 			break;
+#endif
 
 			case 'q':
 			case 'Q':
@@ -3488,6 +3554,7 @@ int isiconified;
       // your code here to handle the event	
 		switch( key )
 		{
+#if 0
 			case WINDOW_KEY_UP:
 				switch (ctx->WhichSliceMode)
 				{case A_AXIS:
@@ -3518,6 +3585,7 @@ int isiconified;
 				 break;
 				}
 				break;
+#endif
 			case  WINDOW_KEY_F1:
 				TwGetParam(ctx->help_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
@@ -3587,8 +3655,7 @@ void ExecuteCommand( magnoom_ctx *ctx, int id )
 		case XUP:
 			Xup(ctx);
 			break;
-
-		case YUP:
+			case YUP:
 			Yup(ctx);
 			break;
 
@@ -3625,16 +3692,10 @@ void ChangeVectorMode( magnoom_ctx *ctx, int id )
 		UpdateIndices(ctx);
 		case 1:	// change only the layer(s) for drawing
 		UpdateVerticesNormalsColors(ctx);
-		// FILTER slice mode uses N_filter subset
-		if (ctx->WhichSliceMode == FILTER) {
-			ctx->spin_mesh.index_count  = ctx->N_filter * ctx->IdNumProto;
-			ctx->spin_mesh.component_count = ctx->N_filter * ctx->VCNumProto;
-		} else {
-			ctx->spin_mesh.index_count  = ctx->IdNum;
-			ctx->spin_mesh.component_count = ctx->VCNum;
-		}
-		ctx->spin_mesh.component_capacity = ctx->spin_mesh.component_count;
-		ctx->spin_mesh.index_capacity = ctx->spin_mesh.index_count;
+		ctx->spin_mesh.index_count = ctx->N_filter * ctx->IdNumProto;
+		ctx->spin_mesh.component_count = ctx->N_filter * ctx->VCNumProto;
+		ctx->spin_mesh.component_capacity = ctx->VCNum;
+		ctx->spin_mesh.index_capacity = ctx->IdNum;
 		ctx->spin_mesh.uses_normals = (ctx->WhichVectorMode == BOX1 || ctx->WhichVectorMode == ARROW1 || ctx->WhichVectorMode == CONE1) ? 1 : 0;
 		unsigned int upload_mask = ctx->spin_mesh.uses_normals
 			? VBO_UPLOAD_ALL
@@ -3661,15 +3722,39 @@ void ChangeColorMap ( magnoom_ctx *ctx, int id )
 	}
 }
 
+static int BoundedRenderElementCount(const magnoom_ctx *ctx, int requested, int uses_normals)
+{
+	size_t attribute_arrays = uses_normals ? 3u : 2u;
+	size_t bytes_per_element;
+	size_t limit;
+	size_t vertices_per_element;
+
+	if (requested <= 0 || ctx->VCNumProto <= 0 || ctx->IdNumProto <= 0) return 0;
+	vertices_per_element = (size_t)ctx->VCNumProto/3u;
+	bytes_per_element = 2u*(attribute_arrays*(size_t)ctx->VCNumProto*sizeof(float) +
+		(size_t)ctx->IdNumProto*sizeof(GLuint));
+	if (bytes_per_element == 0) return 0;
+
+	limit = MAGNOOM_RENDER_MEMORY_BUDGET/bytes_per_element;
+	if (limit > (size_t)INT_MAX/(size_t)ctx->VCNumProto)
+		limit = (size_t)INT_MAX/(size_t)ctx->VCNumProto;
+	if (limit > (size_t)INT_MAX/(size_t)ctx->IdNumProto)
+		limit = (size_t)INT_MAX/(size_t)ctx->IdNumProto;
+	if (vertices_per_element > 0 && limit > (size_t)UINT_MAX/vertices_per_element)
+		limit = (size_t)UINT_MAX/vertices_per_element;
+	if (limit > (size_t)requested) limit = (size_t)requested;
+	return (int)limit;
+}
+
 void ReallocateArrayDrawing(magnoom_ctx *ctx)
 {
 	free(ctx->vertexProto); free(ctx->normalProto); free(ctx->indicesProto);
 	free(ctx->vertices); free(ctx->normals); free(ctx->colors); free(ctx->indices);
 
-	int NOS_L=0;
-	int NOB_L=0;
-  
-	switch( ctx->WhichSliceMode)  // see also UpdateIndices(ctx)
+	int NOS_L=ctx->NOS;
+	int NOB_L=ctx->NOB;
+#if 0
+	switch( ctx->WhichSliceMode)
 	{
 		case A_AXIS:
 		NOS_L=ctx->NOS_AL * (1+ctx->A_layer_max - ctx->A_layer_min);
@@ -3709,6 +3794,7 @@ void ReallocateArrayDrawing(magnoom_ctx *ctx)
 		NOB_L=ctx->NOS/ctx->AtomsPerBlock;
 		break;
 	}
+#endif
 
 	switch( ctx->WhichVectorMode )
 	{
@@ -3717,13 +3803,14 @@ void ReallocateArrayDrawing(magnoom_ctx *ctx)
 			ctx->ElNumProto = 5*ctx->arrowFaces-4; // number of triangles per arrow
 			ctx->IdNumProto = 3*ctx->ElNumProto; // number of indixes per arrow
 			ctx->VCNumProto = 3*(2*(1+ctx->arrowFaces)-2+4*ctx->arrowFaces+3*ctx->arrowFaces);
+			ctx->RenderElementCapacity = BoundedRenderElementCount(ctx, NOS_L, 1);
 			// Allocate memory for arrow prototype  
 			ctx->vertexProto  = (float  *)malloc(ctx->VCNumProto * sizeof( float  ));
 			ctx->normalProto  = (float  *)malloc(ctx->VCNumProto * sizeof( float  ));
 			ctx->indicesProto = (GLuint *)malloc(ctx->IdNumProto * sizeof( GLuint ));	
-			ctx->ElNum = NOS_L * ctx->ElNumProto;
-			ctx->IdNum = NOS_L * ctx->IdNumProto;
-			ctx->VCNum = NOS_L * ctx->VCNumProto;
+			ctx->ElNum = ctx->RenderElementCapacity * ctx->ElNumProto;
+			ctx->IdNum = ctx->RenderElementCapacity * ctx->IdNumProto;
+			ctx->VCNum = ctx->RenderElementCapacity * ctx->VCNumProto;
 			// Allocate memory for all ARROW1 (spins) 
 			ctx->vertices	= (float  *)malloc(ctx->VCNum * sizeof( float  ));
 			ctx->normals 	= (float  *)malloc(ctx->VCNum * sizeof( float  ));
@@ -3736,13 +3823,14 @@ void ReallocateArrayDrawing(magnoom_ctx *ctx)
 			ctx->ElNumProto = 2*ctx->arrowFaces-2; // number of triangles per cone
 			ctx->IdNumProto = 3*ctx->ElNumProto; // number of indixes per cone
 			ctx->VCNumProto = 3*((ctx->arrowFaces)+3*ctx->arrowFaces);// number of vertecies per cone			
+			ctx->RenderElementCapacity = BoundedRenderElementCount(ctx, NOS_L, 1);
 			// Allocate memory for arrow prototype  
 			ctx->vertexProto  = (float  *)malloc(ctx->VCNumProto * sizeof( float  ));
 			ctx->normalProto  = (float  *)malloc(ctx->VCNumProto * sizeof( float  ));
 			ctx->indicesProto = (GLuint *)malloc(ctx->IdNumProto * sizeof( GLuint ));	
-			ctx->ElNum = NOS_L * ctx->ElNumProto;
-			ctx->IdNum = NOS_L * ctx->IdNumProto;
-			ctx->VCNum = NOS_L * ctx->VCNumProto;	
+			ctx->ElNum = ctx->RenderElementCapacity * ctx->ElNumProto;
+			ctx->IdNum = ctx->RenderElementCapacity * ctx->IdNumProto;
+			ctx->VCNum = ctx->RenderElementCapacity * ctx->VCNumProto;
 			// Allocate memory for all CONES (spins) 
 			ctx->vertices	= (float  *)malloc(ctx->VCNum * sizeof( float  ));
 			ctx->normals 	= (float  *)malloc(ctx->VCNum * sizeof( float  ));
@@ -3754,13 +3842,14 @@ void ReallocateArrayDrawing(magnoom_ctx *ctx)
 			ctx->ElNumProto = 6*2; // number of triangles per box
 			ctx->IdNumProto = 3*ctx->ElNumProto; // number of indixes per box
 			ctx->VCNumProto = 6*4*3; // number of vertecies per box			
+			ctx->RenderElementCapacity = BoundedRenderElementCount(ctx, NOB_L, 1);
 			// Allocate memory for box prototype  
 			ctx->vertexProto  = (float  *)malloc(ctx->VCNumProto* sizeof( float  ));
 			ctx->normalProto  = (float  *)malloc(ctx->VCNumProto* sizeof( float  ));
 			ctx->indicesProto = (GLuint *)malloc(ctx->IdNumProto* sizeof( GLuint ));	
-			ctx->ElNum = NOB_L * ctx->ElNumProto;
-			ctx->IdNum = NOB_L * ctx->IdNumProto;
-			ctx->VCNum = NOB_L * ctx->VCNumProto;	
+			ctx->ElNum = ctx->RenderElementCapacity * ctx->ElNumProto;
+			ctx->IdNum = ctx->RenderElementCapacity * ctx->IdNumProto;
+			ctx->VCNum = ctx->RenderElementCapacity * ctx->VCNumProto;
 			// Allocate memory for all boxes (spins averaged over Block) 
 			ctx->vertices	= (float  *)malloc(ctx->VCNum * sizeof( float  ));
 			ctx->normals 	= (float  *)malloc(ctx->VCNum * sizeof( float  ));
@@ -3772,12 +3861,13 @@ void ReallocateArrayDrawing(magnoom_ctx *ctx)
 			// arrowFaces - number of arrow faces
 			ctx->IdNumProto = 1; // number of indixes per point
 			ctx->VCNumProto = 3; // number component of ctx->vertices per point
+			ctx->RenderElementCapacity = BoundedRenderElementCount(ctx, NOS_L, 0);
 			// Allocate memory for point prototype
 			ctx->vertexProto  = (float  *)malloc(ctx->VCNumProto * sizeof( float  ));
 			ctx->normalProto  = NULL;
 			ctx->indicesProto = (GLuint *)malloc(ctx->IdNumProto * sizeof( GLuint ));	
-			ctx->IdNum = NOS_L * ctx->IdNumProto;
-			ctx->VCNum = NOS_L * ctx->VCNumProto; // total number of all components of all ctx->vertices 
+			ctx->IdNum = ctx->RenderElementCapacity * ctx->IdNumProto;
+			ctx->VCNum = ctx->RenderElementCapacity * ctx->VCNumProto; // total number of all components of all ctx->vertices
 			// Allocate memory for all points (spins) 
 			ctx->vertices	= (float  *)malloc(ctx->VCNum * sizeof( float  ));
 			ctx->normals 	= NULL;
@@ -3790,12 +3880,13 @@ void ReallocateArrayDrawing(magnoom_ctx *ctx)
 		default:
 			ctx->IdNumProto = 2; // number of indixes per cane
 			ctx->VCNumProto = 3*2; // number component of ctx->vertices per cane
+			ctx->RenderElementCapacity = BoundedRenderElementCount(ctx, NOS_L, 0);
 			// Allocate memory for cane prototype
 			ctx->vertexProto  = (float  *)malloc(ctx->VCNumProto * sizeof( float  ));
 			ctx->normalProto  = NULL;
 			ctx->indicesProto = (GLuint *)malloc(ctx->IdNumProto * sizeof( GLuint ));	
-			ctx->IdNum = NOS_L * ctx->IdNumProto;
-			ctx->VCNum = NOS_L * ctx->VCNumProto; // total number of all components of all ctx->vertices 
+			ctx->IdNum = ctx->RenderElementCapacity * ctx->IdNumProto;
+			ctx->VCNum = ctx->RenderElementCapacity * ctx->VCNumProto; // total number of all components of all ctx->vertices
 			// Allocate memory for all CANES (spins) 
 			ctx->vertices	= (float  *)malloc(ctx->VCNum * sizeof( float  ));
 			ctx->normals 	= NULL;
@@ -4242,71 +4333,18 @@ void UpdateIndices(magnoom_ctx *ctx)
 	GLuint *Iout = ctx->indices;
 	const int VerN = ctx->VCNumProto;
 	int i,j;
-	int NOS_L=0;
-	int NOB_L=0;
-    // NumberElementInSlice(NOS_L, NOB_L);
-    switch( ctx->WhichSliceMode)
-    {
-        case A_AXIS:
-        NOS_L=ctx->NOS_AL * (1+ctx->A_layer_max - ctx->A_layer_min);
-        if (ctx->A_layer_max - ctx->A_layer_min<2){
-            NOB_L=ctx->NOB_AL * (1+ctx->A_layer_max - ctx->A_layer_min);
-        }else{
-            NOB_L=2*ctx->NOB_AL+2*(ctx->A_layer_max - ctx->A_layer_min-1)*(ctx->uABC[1]-1+ctx->uABC[2]-1);
-            if (ctx->uABC[2]==1 || ctx->uABC[1]==1){
-                NOB_L=ctx->NOB_AL * (1+ctx->A_layer_max - ctx->A_layer_min);
-            } 
-        }
-        break;
-        case B_AXIS:
-        NOS_L=ctx->NOS_BL * (1+ctx->B_layer_max - ctx->B_layer_min);
-        if (ctx->B_layer_max - ctx->B_layer_min<2){
-            NOB_L=ctx->NOB_BL * (1+ctx->B_layer_max - ctx->B_layer_min);
-        }else{
-            NOB_L=2*ctx->NOB_BL + 2*(ctx->B_layer_max - ctx->B_layer_min-1)*(ctx->uABC[0]-1+ctx->uABC[2]-1);
-            if (ctx->uABC[0]==1 || ctx->uABC[2]==1){
-                NOB_L=ctx->NOB_BL * (1+ctx->B_layer_max - ctx->B_layer_min);
-            } 
-        }
-        break;
-        case C_AXIS:
-        NOS_L=ctx->NOS_CL * (1+ctx->C_layer_max - ctx->C_layer_min);
-        if (ctx->C_layer_max - ctx->C_layer_min<2){
-            NOB_L=ctx->NOB_CL * (1+ctx->C_layer_max - ctx->C_layer_min);
-        }else{
-            NOB_L=2*ctx->NOB_CL + 2*(ctx->C_layer_max - ctx->C_layer_min-1)*(ctx->uABC[0]-1+ctx->uABC[1]-1);
-            if (ctx->uABC[0]==1 || ctx->uABC[1]==1){
-                NOB_L=ctx->NOB_CL * (1+ctx->C_layer_max - ctx->C_layer_min);
-            } 
-        }
-        break;
-        case FILTER:
-        NOS_L=ctx->NOS;
-        NOB_L=ctx->NOS/ctx->AtomsPerBlock;
-        break;
-    }
-
-	if (ctx->WhichVectorMode==BOX1){
-		for (int n = 0; n<NOB_L; n++)//NOB_L number of blocks per layer(s)
-		{
-			i = n*(VerN/3); // shift in vertex array 
-			j = n*Kinp; // shift in index array (for arrow and cone vertex num<index num!)
-			for (int k=0; k<Kinp; k++) Iout[j+k] = i+Iinp[k];		
-		}
-	}else{
-		for (int n = 0; n<NOS_L; n++)//NOS_L number of spins per layer(s)
-		{
-			i = n*(VerN/3); // shift in vertex array 
-			j = n*Kinp; // shift in index array (for arrow and cone vertex num<index num!)
-			for (int k=0; k<Kinp; k++) Iout[j+k] = i+Iinp[k];		
-		}		
-	}		
+	for (int n = 0; n<ctx->RenderElementCapacity; n++) {
+		i = n*(VerN/3);
+		j = n*Kinp;
+		for (int k=0; k<Kinp; k++) Iout[j+k] = i+Iinp[k];
+	}
 }
 
 
 
-void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
+static void LegacyUpdateVerticesNormalsColors(magnoom_ctx *ctx)
 {
+#if 0
 	const float *Vinp = ctx->vertexProto;
 	const float *Ninp = ctx->normalProto;
 	const int Kinp = ctx->VCNumProto;
@@ -4359,11 +4397,11 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 			for (int cn = 0; cn<ctx->uABC[2]; cn++) {
 				n = an+bn*ctx->uABC[0]+cn*ctx->uABC[0]*ctx->uABC[1];// index of the block
 				n = n*ctx->AtomsPerBlock;//index of the first spin in the block
-				if (ctx->GreedFilter){
-					F=(an>=ctx->GreedFilterMinA && an<=ctx->GreedFilterMaxA) &&
-						  (bn>=ctx->GreedFilterMinB && bn<=ctx->GreedFilterMaxB) &&
-						  (cn>=ctx->GreedFilterMinC && cn<=ctx->GreedFilterMaxC) ;
-					if (ctx->GreedFilterInvert) F=!F;					
+				if (ctx->GridFilter){
+					F=(an>=ctx->GridFilterMinA && an<=ctx->GridFilterMaxA) &&
+						  (bn>=ctx->GridFilterMinB && bn<=ctx->GridFilterMaxB) &&
+						  (cn>=ctx->GridFilterMinC && cn<=ctx->GridFilterMaxC) ;
+					if (ctx->GridFilterInvert) F=!F;					
 				}else{F=true;}
 
 
@@ -4401,6 +4439,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 
 						if (F)
 						{
+							if (j + 1 >= ctx->RenderElementCapacity) goto render_complete;
 							HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
                             vlength = Unitf(S,S);
 							ctx->N_filter++;
@@ -4469,6 +4508,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
                     HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
 					vlength = Unitf(S,S);
 			        // HSVtoRGB( S, RGB, InvertValue, InvertHue);
+					if (j + 1 >= ctx->RenderElementCapacity) goto render_complete;
 					j++;
 					if (S[2]==-1){
 					for (int k=0; k<Kinp/3; k++){// k runs over ctx->vertices 
@@ -4539,11 +4579,11 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 			for (int an = 0; an<ctx->uABC[0]; an++) {
 			for (int bn = 0; bn<ctx->uABC[1]; bn++) {
 			for (int cn = 0; cn<ctx->uABC[2]; cn++) {	
-				if (ctx->GreedFilter){
-						F =	(an>=ctx->GreedFilterMinA && an<=ctx->GreedFilterMaxA) &&
-							(bn>=ctx->GreedFilterMinB && bn<=ctx->GreedFilterMaxB) &&
-							(cn>=ctx->GreedFilterMinC && cn<=ctx->GreedFilterMaxC) ;
-						if (ctx->GreedFilterInvert) F=!F;					
+				if (ctx->GridFilter){
+						F =	(an>=ctx->GridFilterMinA && an<=ctx->GridFilterMaxA) &&
+							(bn>=ctx->GridFilterMinB && bn<=ctx->GridFilterMaxB) &&
+							(cn>=ctx->GridFilterMinC && cn<=ctx->GridFilterMaxC) ;
+						if (ctx->GridFilterInvert) F=!F;					
 					}else{F=true;}
 
 				if (F)
@@ -4569,6 +4609,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 
 					if (F)
 					{
+						if (j + 1 >= ctx->RenderElementCapacity) goto render_complete;
 						ctx->N_filter++;
                         HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
 					    (void)Unitf(S,S);
@@ -4624,6 +4665,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 				    (void)Unitf(S,S);
 				    // HSVtoRGB( S, RGB, InvertValue, InvertHue);
 
+					if (j + 1 >= ctx->RenderElementCapacity) goto render_complete;
 					j++;
 					for (int k=0; k<Kinp/3; k++) // k runs over ctx->vertices of the box 
 					{
@@ -4658,11 +4700,11 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 			{
 			for (int cn = 0; cn<ctx->uABC[2]; cn++) // n runs over spins 
 			{
-				if (ctx->GreedFilter){
-					F =	(an>=ctx->GreedFilterMinA && an<=ctx->GreedFilterMaxA) &&
-						(bn>=ctx->GreedFilterMinB && bn<=ctx->GreedFilterMaxB) &&
-						(cn>=ctx->GreedFilterMinC && cn<=ctx->GreedFilterMaxC) ;
-					if (ctx->GreedFilterInvert) F=!F;					
+				if (ctx->GridFilter){
+					F =	(an>=ctx->GridFilterMinA && an<=ctx->GridFilterMaxA) &&
+						(bn>=ctx->GridFilterMinB && bn<=ctx->GridFilterMaxB) &&
+						(cn>=ctx->GridFilterMinC && cn<=ctx->GridFilterMaxC) ;
+					if (ctx->GridFilterInvert) F=!F;					
 				}else{F=true;}
 
 				if (F)
@@ -4684,6 +4726,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 							(ctx->SpinFilter3 && ((S[2]>=ctx->Sz_min3 && S[2]<=ctx->Sz_max3) && (phi>=ctx->phi_min3 && phi<=ctx->phi_max3)) ) ;
 						if (F)
 						{
+							if (j + 1 >= ctx->RenderElementCapacity) goto render_complete;
 							ctx->N_filter++;
 					        j++;
 							i = j*Kinp;			// index of first cane vertex 
@@ -4716,6 +4759,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
                     HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
 					vlength = Unitf(S,S);
 			        // HSVtoRGB( S, RGB, InvertValue, InvertHue);
+			        if (j + 1 >= ctx->RenderElementCapacity) goto render_complete;
 			        j++;
 					i = j*Kinp;			// index of first cane vertex 
 					Vout[i+0] = Px[n+atom];	// new x-component of vertex + translation
@@ -4742,11 +4786,11 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 			{
 			for (int cn = cnini; cn<ctx->uABC[2]; cn++) // cn runs over slice along C_AXIS
 			{
-				if (ctx->GreedFilter){
-					F =	(an>=ctx->GreedFilterMinA && an<=ctx->GreedFilterMaxA) &&
-						(bn>=ctx->GreedFilterMinB && bn<=ctx->GreedFilterMaxB) &&
-						(cn>=ctx->GreedFilterMinC && cn<=ctx->GreedFilterMaxC) ;
-					if (ctx->GreedFilterInvert) F=!F;					
+				if (ctx->GridFilter){
+					F =	(an>=ctx->GridFilterMinA && an<=ctx->GridFilterMaxA) &&
+						(bn>=ctx->GridFilterMinB && bn<=ctx->GridFilterMaxB) &&
+						(cn>=ctx->GridFilterMinC && cn<=ctx->GridFilterMaxC) ;
+					if (ctx->GridFilterInvert) F=!F;					
 				}else{F=true;}
 
 				if (F)
@@ -4766,10 +4810,11 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 							(ctx->SpinFilter3 && ((S[2]>=ctx->Sz_min3 && S[2]<=ctx->Sz_max3) && (phi>=ctx->phi_min3 && phi<=ctx->phi_max3)) ) ;	
 						if (F)
 						{
+							if (j + 1 >= ctx->RenderElementCapacity) goto render_complete;
                             HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);
                             vlength = Unitf(S,S);//metka
 							ctx->N_filter++;
-					        j++;
+							j++;
 							//i = (n-nini)*Kinp;							// index of ferst cane vertex 
 							i = j*Kinp;
 							Vout[i+0] = S[0]*(1-ctx->Pivot)*ctx->Scale*vlength + Px[n+atom];	// new x-component of vertex + translation
@@ -4815,6 +4860,7 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
                     HSVtoRGB(ctx, S, RGB, ctx->InvertValue, ctx->InvertHue);//metka
 					vlength = Unitf(S,S);
 			        // HSVtoRGB( S, RGB, InvertValue, InvertHue);
+			        if (j + 1 >= ctx->RenderElementCapacity) goto render_complete;
 			        j++;
 					//i = (n-nini)*Kinp;							// index of ferst cane vertex 
 					i = j*Kinp;
@@ -4844,6 +4890,98 @@ void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
 			}
 		}
 	}
+
+render_complete:
+	return;
+#endif
+}
+
+static bool SliceContainsBlock(const magnoom_ctx *ctx, int an, int bn, int cn)
+{
+	return (ctx->SliceVisible[A_AXIS] && an == ctx->SliceLayer[A_AXIS] - 1) ||
+		(ctx->SliceVisible[B_AXIS] && bn == ctx->SliceLayer[B_AXIS] - 1) ||
+		(ctx->SliceVisible[C_AXIS] && cn == ctx->SliceLayer[C_AXIS] - 1);
+}
+
+static bool GridContainsBlock(const magnoom_ctx *ctx, int an, int bn, int cn)
+{
+	bool contained;
+	if (!ctx->GridFilter) return true;
+	contained = an >= ctx->GridFilterMinA && an <= ctx->GridFilterMaxA &&
+		bn >= ctx->GridFilterMinB && bn <= ctx->GridFilterMaxB &&
+		cn >= ctx->GridFilterMinC && cn <= ctx->GridFilterMaxC;
+	return ctx->GridFilterInvert ? !contained : contained;
+}
+
+static bool SpinMatchesFilter(const magnoom_ctx *ctx, const float spin[3])
+{
+	int phi = atan2int(spin[1], spin[0]);
+	return (ctx->SpinFilter1 && spin[2] >= ctx->Sz_min1 && spin[2] <= ctx->Sz_max1 && phi >= ctx->phi_min1 && phi <= ctx->phi_max1) ||
+		(ctx->SpinFilter2 && spin[2] >= ctx->Sz_min2 && spin[2] <= ctx->Sz_max2 && phi >= ctx->phi_min2 && phi <= ctx->phi_max2) ||
+		(ctx->SpinFilter3 && spin[2] >= ctx->Sz_min3 && spin[2] <= ctx->Sz_max3 && phi >= ctx->phi_min3 && phi <= ctx->phi_max3);
+}
+
+static void EmitSpinGeometry(magnoom_ctx *ctx, int element, int spin_index, float spin[3])
+{
+	float rgb[3], length = Unitf(spin, spin);
+	int base = element*ctx->VCNumProto;
+	HSVtoRGB(ctx, spin, rgb, ctx->InvertValue, ctx->InvertHue);
+	if (ctx->WhichVectorMode == uPOINT) {
+		ctx->vertices[base] = ctx->PosX[spin_index]; ctx->vertices[base+1] = ctx->PosY[spin_index]; ctx->vertices[base+2] = ctx->PosZ[spin_index];
+		ctx->colors[base] = rgb[0]; ctx->colors[base+1] = rgb[1]; ctx->colors[base+2] = rgb[2];
+		return;
+	}
+	if (ctx->WhichVectorMode == CANE) {
+		for (int end = 0; end < 2; end++) {
+			int i = base + 3*end; float factor = end == 0 ? 1.0f-ctx->Pivot : -ctx->Pivot;
+			ctx->vertices[i] = spin[0]*factor*ctx->Scale*length + ctx->PosX[spin_index];
+			ctx->vertices[i+1] = spin[1]*factor*ctx->Scale*length + ctx->PosY[spin_index];
+			ctx->vertices[i+2] = spin[2]*factor*ctx->Scale*length + ctx->PosZ[spin_index];
+			ctx->colors[i] = rgb[0]; ctx->colors[i+1] = rgb[1]; ctx->colors[i+2] = rgb[2];
+		}
+		return;
+	}
+	for (int k = 0; k < ctx->VCNumProto/3; k++) {
+		int i = base + 3*k;
+		float x = ctx->vertexProto[3*k], y = ctx->vertexProto[3*k+1], z = ctx->vertexProto[3*k+2];
+		float u = 1.0f/(spin[0]*spin[0]+spin[1]*spin[1]+1e-37f);
+		float a = (-spin[1]*x + spin[0]*y)*(1.0f-spin[2])*u;
+		ctx->vertices[i] = (-spin[1]*a+x*spin[2]+spin[0]*z)*ctx->Scale*length+ctx->PosX[spin_index];
+		ctx->vertices[i+1] = (spin[0]*a+y*spin[2]+spin[1]*z)*ctx->Scale*length+ctx->PosY[spin_index];
+		ctx->vertices[i+2] = (z*spin[2]-(spin[0]*x+spin[1]*y))*ctx->Scale*length+ctx->PosZ[spin_index];
+		x = ctx->normalProto[3*k]; y = ctx->normalProto[3*k+1]; z = ctx->normalProto[3*k+2];
+		a = (-spin[1]*x + spin[0]*y)*(1.0f-spin[2])*u;
+		ctx->normals[i] = -spin[1]*a+x*spin[2]+spin[0]*z;
+		ctx->normals[i+1] = spin[0]*a+y*spin[2]+spin[1]*z;
+		ctx->normals[i+2] = z*spin[2]-(spin[0]*x+spin[1]*y);
+		ctx->colors[i] = rgb[0]; ctx->colors[i+1] = rgb[1]; ctx->colors[i+2] = rgb[2];
+	}
+}
+
+void UpdateVerticesNormalsColors(magnoom_ctx *ctx)
+{
+	int emitted = 0;
+	ctx->N_filter = 0;
+	for (int an = 0; an < ctx->uABC[0]; an++) for (int bn = 0; bn < ctx->uABC[1]; bn++) for (int cn = 0; cn < ctx->uABC[2]; cn++) {
+		int block = an + bn*ctx->uABC[0] + cn*ctx->uABC[0]*ctx->uABC[1];
+		bool slice_match = SliceContainsBlock(ctx, an, bn, cn);
+		if (ctx->WhichVectorMode == BOX1) {
+			float spin[3] = {0, 0, 0};
+			for (int atom = 0; atom < ctx->AtomsPerBlock; atom++) { int n = block*ctx->AtomsPerBlock+atom; spin[0] += VEC_X(ctx->bS,n); spin[1] += VEC_Y(ctx->bS,n); spin[2] += VEC_Z(ctx->bS,n); }
+			if (!slice_match && !(GridContainsBlock(ctx, an,bn,cn) && SpinMatchesFilter(ctx, spin))) continue;
+			if (emitted >= ctx->RenderElementCapacity) goto complete;
+			float rgb[3]; HSVtoRGB(ctx, spin, rgb, ctx->InvertValue, ctx->InvertHue);
+			for (int k = 0; k < ctx->VCNumProto/3; k++) { int i = emitted*ctx->VCNumProto+3*k; ctx->vertices[i]=ctx->vertexProto[3*k]+ctx->BlockPosX[block]; ctx->vertices[i+1]=ctx->vertexProto[3*k+1]+ctx->BlockPosY[block]; ctx->vertices[i+2]=ctx->vertexProto[3*k+2]+ctx->BlockPosZ[block]; ctx->normals[i]=ctx->normalProto[3*k]; ctx->normals[i+1]=ctx->normalProto[3*k+1]; ctx->normals[i+2]=ctx->normalProto[3*k+2]; ctx->colors[i]=rgb[0]; ctx->colors[i+1]=rgb[1]; ctx->colors[i+2]=rgb[2]; }
+			emitted++;
+		} else for (int atom = 0; atom < ctx->AtomsPerBlock; atom++) {
+			int n = block*ctx->AtomsPerBlock+atom; float spin[3] = { VEC_X(ctx->bS,n), VEC_Y(ctx->bS,n), VEC_Z(ctx->bS,n) };
+			if (!slice_match && !(GridContainsBlock(ctx,an,bn,cn) && SpinMatchesFilter(ctx, spin))) continue;
+			if (emitted >= ctx->RenderElementCapacity) goto complete;
+			EmitSpinGeometry(ctx, emitted++, n, spin);
+		}
+	}
+complete:
+	ctx->N_filter = emitted;
 }
 
 void UpdateVerticesNormalsColors_BextDC(magnoom_ctx *ctx)

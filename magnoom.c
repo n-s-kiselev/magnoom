@@ -63,17 +63,18 @@
 #endif
 
 static const char SOFTWARE_NAME[] = "Magnoom";
-static const char SOFTWARE_VERSION[] = "1.07";
+static const char SOFTWARE_VERSION[] = "1.08";
 
 #define ABS(x) ((x)<0?-(x):(x))
 
 enum engine_mutex_flags{DO_IT,WAIT,STOP_REQUESTED};
 enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 
-#define THREADS_NUMBER 3
+#define THREADS_NUMBER 9
 #define MAX_ATOMS_PER_BLOCK 5
 #define MAX_SHELL_NUM 16
 #define MAGNOOM_PATH_CAPACITY 4096
+#define MAGNOOM_RENDER_MEMORY_BUDGET (256u*1024u*1024u)
 #define MAGNOOM_MODAL_MESSAGE_CAPACITY 512
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -97,7 +98,7 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 /*****************************************************************************/
 /* Enum types needed by magnoom_ctx fields (formerly in magnoom.h/visualization.c) */
 /*****************************************************************************/
-typedef enum    {A_AXIS, B_AXIS, C_AXIS, FILTER} enSliceMode;
+typedef enum    {A_AXIS, B_AXIS, C_AXIS} enSliceAxis;
 typedef enum    {BEXT_AC_SIN, BEXT_AC_GAUSSIAN, BEXT_AC_SINC, BEXT_AC_CIRCULAR} enBextACWaveform;
 typedef enum    {FILE_FORMAT_UNKNOWN = 0, FILE_FORMAT_CSV, FILE_FORMAT_OVF,
                  FILE_FORMAT_VTK, FILE_FORMAT_BIN, FILE_FORMAT_PNG,
@@ -106,7 +107,7 @@ enum            IntegrationScheme{HEUN,SIB,RK2,RK4,RELAX};
 enum            Average_mode{ALONG_A,ALONG_B, ALONG_C, ALONG_0};
 
 typedef enum    {ORTHO, PERSP} enProjections;
-typedef enum    {RND, HOMO, SKYRM1, SKYRM2, SKYRM3, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B,
+typedef enum    {RND, HOMO, SKYRM1, SKYRM2, BIMERON, BOBBER_T, BOBBER_B, BOBBER_L, BOBBER_L_T, BOBBER_L_B,
                  HOPFION1, SPIRAL, SKYRMION_L, GLOBULA, MultyQ, NORM} enIniState;
 typedef enum    {WHITE, BLACK, RED, GREEN, BLUE, MANUAL} enColors;
 typedef enum    {ARROW1, CONE1, CANE, uPOINT, BOX1} enVectorMode;
@@ -193,13 +194,9 @@ typedef struct NeighborMap {
 /*****************************************************************************/
 typedef struct magnoom_ctx {
 	/* Slicing parameters */
-	int             A_layer_min;
-	int             B_layer_min;
-	int             C_layer_min;
-	int             A_layer_max;
-	int             B_layer_max;
-	int             C_layer_max;
-	enSliceMode     WhichSliceMode;
+	int             SliceVisible[3];
+	int             SliceLayer[3];
+	enSliceAxis     ExportSliceAxis;
 
 	/* Cartesian components of spins, interleaved (S[3*n+0..2] via VEC_X/Y/Z) */
 	double*         S;      /* main spin array, length 3*NOS                */
@@ -323,6 +320,7 @@ typedef struct magnoom_ctx {
 	unsigned int    Max_Numb_Iteration;
 	int             Record;
 	int             BextACEnabled;
+	int             ImageRecordingEnabled;
 	int             BextACModeRecording;
 
 	/* FPS & IPS */
@@ -502,14 +500,14 @@ typedef struct magnoom_ctx {
 	int             phi_min2;
 	int             phi_max3;
 	int             phi_min3;
-	int             GreedFilter;
-	int             GreedFilterInvert;
-	int             GreedFilterMaxA;
-	int             GreedFilterMinA;
-	int             GreedFilterMaxB;
-	int             GreedFilterMinB;
-	int             GreedFilterMaxC;
-	int             GreedFilterMinC;
+	int             GridFilter;
+	int             GridFilterInvert;
+	int             GridFilterMaxA;
+	int             GridFilterMinA;
+	int             GridFilterMaxB;
+	int             GridFilterMinB;
+	int             GridFilterMaxC;
+	int             GridFilterMinC;
 
 	/* drawing arrays: vertices/normals/colors/indices and variants */
 	GLfloat*        vertexProto;
@@ -554,6 +552,7 @@ typedef struct magnoom_ctx {
 	int             ElNum;
 	int             IdNum;
 	int             VCNum;
+	int             RenderElementCapacity;
 	int             IdNum_BextDC;
 	int             VCNum_BextDC;
 	int             IdNum_BOX;
@@ -1072,7 +1071,7 @@ static bool magnoom_change_output_directory(magnoom_ctx *ctx, const char *direct
 	FILE *new_stream;
 
 	if (!magnoom_copy_path(checked_directory, sizeof(checked_directory), directory)) {
-		fprintf(stderr, "Output directory is too long.\n");
+		fprintf(stderr, "The name of output directory is too long.\n");
 		return false;
 	}
 	if (!magnoom_resolve_path(new_path, sizeof(new_path), checked_directory, "table.csv")) return false;
@@ -1275,11 +1274,11 @@ bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positio
 		return false;
 	}
 	size_t block_count = na*nb*nc;
-	/* ARROW1 at the UI limit of 20 faces uses 540 scalar vertex components per spin. */
+	/* Flattened simulation indices are still int until the size_t migration is complete. */
 	if ((size_t)atom_count > SIZE_MAX/block_count ||
-		(size_t)atom_count*block_count > INT_MAX/540 ||
+		(size_t)atom_count*block_count > INT_MAX ||
 		(size_t)atom_count > SIZE_MAX/sizeof(*ctx->Block)) {
-		fprintf(stderr, "magnoom_ctx_set_block: the requested geometry exceeds the supported index range.\n");
+		fprintf(stderr, "magnoom_ctx_set_block: the requested simulation exceeds the supported index range.\n");
 		return false;
 	}
 
@@ -1302,9 +1301,13 @@ bool magnoom_ctx_set_block(magnoom_ctx *ctx, int atom_count, const float positio
 	ctx->NOS_BL = atom_count*ctx->NOB_BL;
 	ctx->NOS_CL = atom_count*ctx->NOB_CL;
 	ctx->iNOS = 1.0/ctx->NOS;
-	ctx->GreedFilterMaxA = ctx->uABC[0]-1;
-	ctx->GreedFilterMaxB = ctx->uABC[1]-1;
-	ctx->GreedFilterMaxC = ctx->uABC[2]-1;
+	ctx->GridFilterMaxA = ctx->uABC[0]-1;
+	ctx->GridFilterMaxB = ctx->uABC[1]-1;
+	ctx->GridFilterMaxC = ctx->uABC[2]-1;
+	for (int axis = 0; axis < 3; axis++) {
+		if (ctx->SliceLayer[axis] < 1) ctx->SliceLayer[axis] = 1;
+		if (ctx->SliceLayer[axis] > ctx->uABC[axis]) ctx->SliceLayer[axis] = ctx->uABC[axis];
+	}
 	free(old_block);
 	return true;
 }
@@ -1321,13 +1324,11 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	memset(ctx, 0, sizeof(*ctx));
 
 	/* Slicing parameters */
-	ctx->A_layer_min = 1;
-	ctx->B_layer_min = 1;
-	ctx->C_layer_min = 1;
-	ctx->A_layer_max = 1;
-	ctx->B_layer_max = 1;
-	ctx->C_layer_max = 1;
-	ctx->WhichSliceMode = C_AXIS;
+	ctx->SliceLayer[A_AXIS] = 1;
+	ctx->SliceLayer[B_AXIS] = 1;
+	ctx->SliceLayer[C_AXIS] = 1;
+	ctx->SliceVisible[C_AXIS] = 1;
+	ctx->ExportSliceAxis = C_AXIS;
 
 	/* Boundary conditions */
 	ctx->Boundary[0] = 1; ctx->Boundary[1] = 1; ctx->Boundary[2] = 0;
@@ -1352,7 +1353,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->Dij[0]=0.0f; ctx->Dij[1]=0.0f; ctx->Dij[2]=0.0f;
 	ctx->Dij[3]=0.0f; ctx->Dij[4]=0.0f; ctx->Dij[5]=0.0f;
 	//NSK
-	ctx->Dij[0]=2*PI/32.0f;
+	ctx->Dij[0]=2*PI/128.0f;
 
 	/* Magnetocrystalline anisotropy */
 	ctx->anisotropy_mode = ANISOTROPY_GLOBAL;
@@ -1390,13 +1391,13 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	ctx->BextDCDirection[0]=0.0f; ctx->BextDCDirection[1]=0.0f; ctx->BextDCDirection[2]=1.0f;
-	ctx->BextDCMagnitude = 0.6*ctx->Dij[0]*ctx->Dij[0];
+	ctx->BextDCMagnitude = 0.3*ctx->Dij[0]*ctx->Dij[0];
 	ctx->BextACDirection[0]=0.0f; ctx->BextACDirection[1]=0.0f; ctx->BextACDirection[2]=1.0f;
 	ctx->BextACOmega = 0.005;
 	ctx->BextACPulseWidth = 20.0f;
 	ctx->BextACWaveform = BEXT_AC_SIN;
 
-	ctx->WhichIntegrationScheme = SIB;
+	ctx->WhichIntegrationScheme = RELAX;//SIB;
 	ctx->WhichAverageMode = ALONG_0;
 
 	/* Spin-torque / current */
@@ -1415,6 +1416,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->rec_iteration = 100;
 	ctx->rec_num_mode = 10;
 	ctx->num_images = 32;
+	ctx->ImageRecordingEnabled = 0;
 	ctx->SleepTime = 1000;
 	ctx->input_directory[0] = '\0';
 	ctx->output_directory[0] = '\0';
@@ -1562,7 +1564,9 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->AXES_LENGTH = 2.0f;
 
 	/* slice/filter thresholds & flags */
-	ctx->SpinFilter1 = 1;
+	ctx->SpinFilter1 = 0;
+	ctx->SpinFilter2 = 0;
+	ctx->SpinFilter3 = 0;
 	ctx->theta_max1 = 95; ctx->theta_min1 = 85;
 	ctx->theta_max2 = 180; ctx->theta_min2 = 160;
 	ctx->theta_max3 = 10; ctx->theta_min3 = 0;
@@ -1590,9 +1594,9 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->Sz_max2 = (float)cos(ctx->theta_min2*PI/180.0);
 	ctx->Sz_min3 = (float)cos(ctx->theta_max3*PI/180.0);
 	ctx->Sz_max3 = (float)cos(ctx->theta_min3*PI/180.0);
-	ctx->GreedFilterMaxA = ctx->uABC[0]-1;
-	ctx->GreedFilterMaxB = ctx->uABC[1]-1;
-	ctx->GreedFilterMaxC = ctx->uABC[2]-1;
+	ctx->GridFilterMaxA = ctx->uABC[0]-1;
+	ctx->GridFilterMaxB = ctx->uABC[1]-1;
+	ctx->GridFilterMaxC = ctx->uABC[2]-1;
 	return true;
 }
 
@@ -1810,12 +1814,11 @@ void SaveBin(magnoom_ctx *ctx, double* S, const char *bin_filename){
 }
 
 
-void SavePng(magnoom_ctx *ctx, double* S, const char *png_filename, enSliceMode WhichSliceMode, int x1, int y1, int z1){
-  if (WhichSliceMode!=FILTER)
+void SavePng(magnoom_ctx *ctx, double* S, const char *png_filename, enSliceAxis slice_axis, int x1, int y1, int z1){
   {
     int scale = 10;
     int N1 = ctx->uABC[0], N2 = ctx->uABC[1];
-    switch (WhichSliceMode){
+    switch (slice_axis){
       case A_AXIS:
           N1 = ctx->uABC[1]; N2 = ctx->uABC[2];
           break;
@@ -1841,7 +1844,7 @@ void SavePng(magnoom_ctx *ctx, double* S, const char *png_filename, enSliceMode 
     for(int i = 0; i < N1; i++){
       for(int j = 0; j < N2; j++){
         int n;
-        switch (WhichSliceMode){
+        switch (slice_axis){
           case A_AXIS:
               n = x1 + i*ctx->uABC[0] + j*ctx->uABC[0]*ctx->uABC[1];
               break;
@@ -2507,6 +2510,16 @@ bool ReallocateMemoryForImages(magnoom_ctx *ctx, int NumImages, int NOS){
     double *image;
     double *dimage;
 
+	if (ctx == NULL) return false;
+	if (!ctx->ImageRecordingEnabled) {
+		free(ctx->Image);
+		free(ctx->dImage);
+		ctx->Image = NULL;
+		ctx->dImage = NULL;
+		ctx->BextACModeRecording = 0;
+		ctx->current_rec_num_mode = 0;
+		return true;
+	}
     if (NumImages <= 0 || NOS <= 0 || (size_t)NumImages > SIZE_MAX / 3 / (size_t)NOS / sizeof(double)) {
         fprintf(stderr, "ReallocateMemoryForImages: invalid image dimensions.\n");
         return false;
@@ -2856,7 +2869,8 @@ main (int argc, char **argv){
 
 	ReallocateMemoryForSpins(&mag_ctx, mag_ctx.NOS);
 	ReallocateMemoryForAllOther(&mag_ctx, mag_ctx.NOS);
-	if (!ReallocateMemoryForImages(&mag_ctx, mag_ctx.num_images, mag_ctx.NOS)) return 1;
+	if (mag_ctx.ImageRecordingEnabled &&
+		!ReallocateMemoryForImages(&mag_ctx, mag_ctx.num_images, mag_ctx.NOS)) return 1;
 
 
 	pthread_mutex_init(&mag_ctx.culc_mutex,0);
@@ -2881,9 +2895,9 @@ main (int argc, char **argv){
 	UpdateVerticesNormalsColors(&mag_ctx);
 	InitVBOMesh(&mag_ctx.spin_mesh, GL_DYNAMIC_DRAW);
 	mag_ctx.spin_mesh.uses_normals = (mag_ctx.WhichVectorMode == BOX1 || mag_ctx.WhichVectorMode == ARROW1 || mag_ctx.WhichVectorMode == CONE1) ? 1 : 0;
-	mag_ctx.spin_mesh.component_count = mag_ctx.VCNum;
+	mag_ctx.spin_mesh.component_count = mag_ctx.N_filter*mag_ctx.VCNumProto;
 	mag_ctx.spin_mesh.component_capacity = mag_ctx.VCNum;
-	mag_ctx.spin_mesh.index_count = mag_ctx.IdNum;
+	mag_ctx.spin_mesh.index_count = mag_ctx.N_filter*mag_ctx.IdNumProto;
 	mag_ctx.spin_mesh.index_capacity = mag_ctx.IdNum;
 	CreateVBOMesh(&mag_ctx.spin_mesh);
 	UploadVBOMesh(&mag_ctx.spin_mesh, mag_ctx.vertices, mag_ctx.normals, mag_ctx.colors, mag_ctx.indices, VBO_UPLOAD_ALL);

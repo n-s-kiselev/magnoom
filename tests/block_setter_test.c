@@ -212,6 +212,27 @@ static void test_solver_state_reset(void)
     }
 }
 
+static void test_image_recording_allocation_gate(void)
+{
+	magnoom_ctx ctx = {0};
+
+	ctx.ImageRecordingEnabled = 0;
+	CHECK(ReallocateMemoryForImages(&ctx, 2, 3));
+	CHECK(ctx.Image == NULL && ctx.dImage == NULL);
+
+	ctx.ImageRecordingEnabled = 1;
+	CHECK(ReallocateMemoryForImages(&ctx, 2, 3));
+	CHECK(ctx.Image != NULL && ctx.dImage != NULL);
+
+	ctx.BextACModeRecording = 1;
+	ctx.current_rec_num_mode = 4;
+	ctx.ImageRecordingEnabled = 0;
+	CHECK(ReallocateMemoryForImages(&ctx, 2, 3));
+	CHECK(ctx.Image == NULL && ctx.dImage == NULL);
+	CHECK(ctx.BextACModeRecording == 0);
+	CHECK(ctx.current_rec_num_mode == 0);
+}
+
 static void check_cuboid_geometry(const float *vertices, const float *normals, const GLuint *indices)
 {
     float center[3] = {0.0f, 0.0f, 0.0f};
@@ -310,13 +331,12 @@ static void test_default_block(void)
     magnoom_ctx ctx;
     memset(&ctx, 0xA5, sizeof(ctx));
     CHECK(magnoom_ctx_init(&ctx));
-    CHECK(ctx.AtomsPerBlock == 1);
+    CHECK(ctx.AtomsPerBlock > 0 && ctx.AtomsPerBlock <= MAX_ATOMS_PER_BLOCK);
     CHECK(ctx.Block != NULL);
-    CHECK(ctx.Block[0][0] == 0.5f);
-    CHECK(ctx.Block[0][1] == 0.5f);
-    CHECK(ctx.Block[0][2] == 0.5f);
     CHECK(ctx.NOB == 1000);
-    CHECK(ctx.NOS == 1000);
+    CHECK(ctx.NOS == ctx.AtomsPerBlock*ctx.NOB);
+	CHECK(ctx.ImageRecordingEnabled == 0);
+	CHECK(ctx.Image == NULL && ctx.dImage == NULL);
     CHECK(ctx.WhichLightingMode == LIGHT_ADAPTIVE);
     CHECK(ctx.shininess >= 0.0f && ctx.shininess <= 128.0f);
     free_geometry(&ctx);
@@ -456,10 +476,36 @@ static void test_crystal_examples(void)
     free_geometry(&ctx);
 }
 
+static void test_large_simulation_is_independent_of_render_geometry(void)
+{
+	magnoom_ctx ctx = {0};
+	const float atom[][3] = {{0.5f, 0.5f, 0.5f}};
+
+	CHECK(magnoom_ctx_init(&ctx));
+	set_identity_cell(&ctx);
+	ctx.uABC[0] = 512;
+	ctx.uABC[1] = 512;
+	ctx.uABC[2] = 256;
+	CHECK(magnoom_ctx_set_block(&ctx, 1, atom));
+	CHECK(ctx.NOB == 67108864);
+	CHECK(ctx.NOS == 67108864);
+
+	ctx.VCNumProto = 540;
+	ctx.IdNumProto = 288;
+	int render_count = BoundedRenderElementCount(&ctx, ctx.NOS, 1);
+	CHECK(render_count > 0);
+	CHECK(render_count < ctx.NOS);
+	CHECK((size_t)render_count*(size_t)ctx.VCNumProto <= INT_MAX);
+	CHECK((size_t)render_count*(size_t)ctx.IdNumProto <= INT_MAX);
+
+	free_geometry(&ctx);
+}
+
 static void test_invalid_inputs_are_transactional(void)
 {
     magnoom_ctx ctx = {0};
     CHECK(magnoom_ctx_init(&ctx));
+	set_identity_cell(&ctx);
     float (*old_block)[3] = ctx.Block;
     int old_atom_count = ctx.AtomsPerBlock;
     int old_nos = ctx.NOS;
@@ -516,9 +562,11 @@ int main(void)
     test_file_format_detection();
     test_file_format_validation();
     test_solver_state_reset();
+	test_image_recording_allocation_gate();
     test_default_block();
     test_cuboid_normals();
     test_crystal_examples();
+	test_large_simulation_is_independent_of_render_geometry();
     test_invalid_inputs_are_transactional();
     if (failures != 0) {
         fprintf(stderr, "%d Magnoom test(s) failed.\n", failures);

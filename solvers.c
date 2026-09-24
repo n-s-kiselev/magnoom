@@ -1427,6 +1427,7 @@ double EvaluateBextAC(magnoom_ctx *ctx)
 
 static void RecordBextACMode(magnoom_ctx *ctx)
 {
+	if (!ctx->ImageRecordingEnabled || ctx->Image == NULL || ctx->dImage == NULL) return;
 	// Save mode snapshot.
 	if (ctx->BextACModeRecording*ctx->BextACEnabled!=0){
 		if (!isfinite(ctx->BextACPeriod) || ctx->BextACPeriod <= 0.0) return;

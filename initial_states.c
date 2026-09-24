@@ -402,76 +402,66 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 			double anti = ctx->chParam1 < 0 ? -1 : 1;
 			double cone = ctx->chParam2*PI/180;
 			double twist = ctx->chParam3;
+			double R = 0.3;//ctx->chSize
 			for (int n=0; n<ctx->NOS; n++){
-				double rx = px[n]/ctx->uABC[0]*ctx->chSize;
-				double ry = py[n]/ctx->uABC[1]*ctx->chSize;
+				double rx = px[n]/ctx->uABC[0];
+				double ry = py[n]/ctx->uABC[1];
 				double rz = pz[n]/LD;	
-				// double rxy = sqrt(rx*rx + ry*ry);
 				double nx = 0.0;
 				double ny = 0.0;
 				double nz = 1.0;
-				// a is the unit vector for rotation axis.
-				double ax = 1.0;
-				double ay = 0.0;
-				double az = 0.0;
-				double bx = 1.0;
-				double by = 0.0;
-				double bz = 0.0;
-				double T = 0.0;
-				double F = 0.0;
-				// if (rxy < ctx->chSize){
-				// 	T = PI*(1-rxy/ctx->chSize);
-				// 	F = anti*atan2(ry,rx) + 0.5*PI;
-				// 	nx = sin(T)*cos(F);
-				// 	ny = sin(T)*sin(F);
-				// 	nz = cos(T);
-				// 	Rodrigues(&nx, &ny, &nz,  0,  0,  1, 2*PI*twist*rz/LD);
-				// 	Rodrigues(&bx, &by, &bz,  0,  0,  1, 2*PI*twist*rz/LD);
-				// 	Rodrigues(&nx, &ny, &nz, bx, by, bz, cone);
-				// }else{
-				// 	nx = sin(cone)*cos(2*PI*rz/LD);
-				// 	ny = sin(cone)*sin(2*PI*rz/LD);
-				// 	nz = cos(cone);
-				// 	nx = 0;
-				// 	ny = 0;
-				// 	nz = 1;
-				// }
+				double mx = 0.0;
+				double my = 0.0;
+				double mz = 1.0;
+				double f0;
 
 				// Vlad aks_in_cone
-				double f0 = (1*PI)*rz - 0.25*PI;
-				double rxp = 8.0*(rx*cos(f0) + ry*sin(f0));
-				double ryp = 8.0*(ry*cos(f0) - rx*sin(f0));
+				// f0 = (1*PI)*rz - 0.25*PI;
+				// //rotate the whole skyrmion as a solid object about z-axis
+				// double rxp = 10*(rx*cos(f0) + ry*sin(f0)); 
+				// double ryp = 10*(ry*cos(f0) - rx*sin(f0));
+				
+				// double gm = 5*(rxp*rxp + ryp*ryp)/4 - 2*rxp*ryp -1;
+				// double gp = 1/(5*(rxp*rxp + ryp*ryp)/4 - 2*rxp*ryp +1);
 
-				double gm = 5*(rxp*rxp + ryp*ryp)/4 - 2*rxp*ryp -1;
-				double gp = 1/(5*(rxp*rxp + ryp*ryp)/4 - 2*rxp*ryp +1);
+				// mx = gp*(2*rxp - ryp);
+				// my = gp*(rxp - 2*ryp);
+				// mz = gp*gm;
 
-				double m1 = gp*(2*rxp - ryp);
-				double m2 = gp*(rxp - 2*ryp);
-				double m3 = gp*gm;
+				// simple axial ansatz:
+				f0 = (4.0/4.0*PI)*rz;// - 0.25*PI;
+				double rxp = (rx*cos(f0) + ry*sin(f0)); 
+				double ryp = (ry*cos(f0) - rx*sin(f0));
+				// rxp *= 2;// OPTIONAL stretching a rounded skyrmion into an ellipse
+				r = sqrt(rxp*rxp + ryp*ryp);
+				if (r < R){
+					T = PI*(1-r/R);
+					F = anti*atan2(ryp,rxp) + 0.5*PI;
+					mx = sin(T)*cos(F);
+					my = sin(T)*sin(F);
+					mz = cos(T);
+				}
 
-				nx = m1*cos(f0) - m2*sin(f0);
-				ny = m2*cos(f0) + m1*sin(f0);
-				nz = m3;
+				nx = mx*cos(f0) - my*sin(f0);
+				ny = my*cos(f0) + mx*sin(f0);
+				nz = mz;
 
-
-				VEC_X(ctx->S,n) = nx;
-				VEC_Y(ctx->S,n) = ny;
-				VEC_Z(ctx->S,n) = nz;
+				// VEC_X(ctx->S,n) = nx;
+				// VEC_Y(ctx->S,n) = ny;
+				// VEC_Z(ctx->S,n) = nz;
 				//cone phase
-				// m1 = nx*cos(2.0*PI*rz) + ny*sin(2.0*PI*rz);
-				// m2 = ny*cos(2.0*PI*rz) - nx*sin(2.0*PI*rz);
-				// m3 = nz;
+				mx = nx*cos(2.0*PI*rz) + ny*sin(2.0*PI*rz);
+				my = ny*cos(2.0*PI*rz) - nx*sin(2.0*PI*rz);
+				mz = nz;
 
-				// nx = m1;
-				// ny = m2*cos(cone) + m3*sin(cone);
-				// nz = m3*cos(cone) - m2*sin(cone);
+				nx = mx;
+				ny = my*cos(cone) + mz*sin(cone);
+				nz = mz*cos(cone) - my*sin(cone);
 
-
-				// VEC_X(ctx->S,n) = nx*cos(2.0*PI*rz) - ny*sin(2.0*PI*rz);
-				// VEC_Y(ctx->S,n) = ny*cos(2.0*PI*rz) + nx*sin(2.0*PI*rz);
-				// VEC_Z(ctx->S,n) = nz;	
-
-
+				VEC_X(ctx->S,n) = nx*cos(2.0*PI*rz) - ny*sin(2.0*PI*rz);
+				VEC_Y(ctx->S,n) = ny*cos(2.0*PI*rz) + nx*sin(2.0*PI*rz);
+				VEC_Z(ctx->S,n) = nz;	
+				
 			}
 		}	
 	break;
