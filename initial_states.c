@@ -223,7 +223,7 @@ void Rz(float T, double* sx, double* sy, double* sz)
 {
 	double sxp,syp,szp;
 	sxp = *sx * cos(T) - *sy * sin(T);
-	syp = *sx * sin(T) - *sy * cos(T);
+	syp = *sx * sin(T) + *sy * cos(T);
 	szp = *sz;
 	*sx = sxp;
 	*sy = syp;
