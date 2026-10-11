@@ -2,7 +2,7 @@ enum WindowMouseButton { WINDOW_MOUSE_LEFT, WINDOW_MOUSE_MIDDLE, WINDOW_MOUSE_RI
 enum WindowButtonState { WINDOW_BUTTON_DOWN, WINDOW_BUTTON_UP };
 enum WindowSpecialKey {
 	WINDOW_KEY_UP = 1, WINDOW_KEY_DOWN, WINDOW_KEY_F1, WINDOW_KEY_F2,
-	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6, WINDOW_KEY_F12
+	WINDOW_KEY_F3, WINDOW_KEY_F4, WINDOW_KEY_F5, WINDOW_KEY_F6
 };
 
 // which button:
@@ -2761,8 +2761,8 @@ void setupTweakBar(magnoom_ctx *ctx)
 		"label='Bext DC arrow scale' min=0.1 max=10 step=0.01 keyIncr='+' keyDecr='-' help='Scale the rendered static external-field arrow.' group='Appearance'");
 
 
-	TwAddVarRW(ctx->view_bar, "Show basis", TW_TYPE_BOOL32, &ctx->AxesOn, " key=CTRL+o  group='Appearance'");
-	TwAddVarRW(ctx->view_bar, "Show box", TW_TYPE_BOOL32, &ctx->BoxOn, " key=CTRL+b group='Appearance'");
+	TwAddVarRW(ctx->view_bar, "Show basis", TW_TYPE_BOOL32, &ctx->AxesOn, " key=o group='Appearance'");
+	TwAddVarRW(ctx->view_bar, "Show box", TW_TYPE_BOOL32, &ctx->BoxOn, " key=b group='Appearance'");
 	TwDefine(" View/Appearance opened=false ");
 
 	{
@@ -3130,11 +3130,11 @@ void setupTweakBar(magnoom_ctx *ctx)
 		"label='Anisotropy map to file' help='Sample the anisotropy energy over (theta, phi) and write CSV + legacy VTK surfaces for every atom and the total'");
 
 
-/*  Info bar F12 */
+/*  Info bar i */
 	ctx->info_bar = TwNewBar("Info");
 	TwDefine(" Info refresh=0.5 ");
 	TwDefine(" Info iconified = false movable = false alwaysbottom=true resizable=false fontstyle=default fontsize=2"); 
-	TwDefine(" Info help='F12: show/hide info-bar' "); // change default tweak bar size and color
+	TwDefine(" Info help='i: show/hide info-bar' "); // change default tweak bar size and color
 	TwDefine(" Info color='10 10 10' alpha=0 "); // change default tweak bar size and color
 	SetBarSize(ctx, ctx->info_bar, 170, 620);
 	SetBarPosition(ctx, ctx->info_bar, 1, 30);
@@ -3204,7 +3204,6 @@ static int GLFWSpecialToWindowKey(int key)
 		case GLFW_KEY_F4: return WINDOW_KEY_F4;
 		case GLFW_KEY_F5: return WINDOW_KEY_F5;
 		case GLFW_KEY_F6: return WINDOW_KEY_F6;
-		case GLFW_KEY_F12: return WINDOW_KEY_F12;
 		default: return 0;
 	}
 }
@@ -3439,6 +3438,17 @@ void HandleKeyDown( magnoom_ctx *ctx, unsigned char key )
 				ctx->dTransXYZ[2] = ctx->TransSpeed*0.1;
 			break;
 
+			case 'i':
+				{
+					int isiconified;
+					TwGetParam(ctx->info_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
+					if (isiconified){
+						TwDefine(" Info iconified=false ");
+					}else{
+						TwDefine(" Info iconified=true ");
+					}
+				}
+				break;
 			case 'x':
 			case 'X':
 				ExecuteCommand(ctx,  XUP );
@@ -3581,14 +3591,6 @@ int isiconified;
 					TwDefine(" Anisotropy iconified=false ");
 				}else{
 					TwDefine(" Anisotropy iconified=true ");
-				}
-				break;
-			case  WINDOW_KEY_F12:
-				TwGetParam(ctx->info_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-					TwDefine(" Info iconified=false ");
-				}else{
-					TwDefine(" Info iconified=true ");
 				}
 				break;
 			//default:
