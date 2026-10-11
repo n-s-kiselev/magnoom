@@ -55,7 +55,7 @@ bool anisotropy_set_k2(magnoom_ctx *ctx, int atom, int i, int j, double value)
 	for (int site = 0; site < ctx->AtomsPerBlock; ++site) {
 		if (!k2_set(ctx->anisotropy_local[site].K2, i, j, value)) return false;
 	}
-	return ctx->AtomsPerBlock > 0;
+	return true;
 }
 
 bool anisotropy_set_k4(magnoom_ctx *ctx, int atom, int i, int j, int k, int l, double value)
@@ -69,7 +69,7 @@ bool anisotropy_set_k4(magnoom_ctx *ctx, int atom, int i, int j, int k, int l, d
 	for (int site = 0; site < ctx->AtomsPerBlock; ++site) {
 		if (!k4_set(ctx->anisotropy_local[site].K4, i, j, k, l, value)) return false;
 	}
-	return ctx->AtomsPerBlock > 0;
+	return true;
 }
 
 double anisotropy_energy(const AnisotropyTensor *tensor, const double m[3])
@@ -97,6 +97,7 @@ void anisotropy_energy_gradient(const AnisotropyTensor *tensor, const double m[3
 		gradient[0] = gradient[1] = gradient[2] = 0.0;
 		return;
 	}
+	/* Copy m first: callers may pass the same array as m and gradient. */
 	spin[0] = m[0]; spin[1] = m[1]; spin[2] = m[2];
 	gradient[0] = gradient[1] = gradient[2] = 0.0;
 
@@ -239,12 +240,10 @@ bool anisotropy_compose_axis_angle(magnoom_ctx *ctx, int atom, const double axis
 {
 	if (ctx == NULL || atom < 0 || atom >= ctx->AtomsPerBlock || axis == NULL) return false;
 	double angle = angle_degrees * (3.141592653589793 / 180.0);
-	double q_new[4] = {0.0, 0.0, 0.0, 1.0};
+	double q_new[4];
 	anisotropy_quaternion_from_axis_angle(axis, angle, q_new);
-	double q_existing[4];
-	memcpy(q_existing, ctx->anisotropy_quaternion[atom], sizeof(q_existing));
 	double q_combined[4];
-	anisotropy_quaternion_multiply(q_new, q_existing, q_combined);
+	anisotropy_quaternion_multiply(q_new, ctx->anisotropy_quaternion[atom], q_combined);
 	return anisotropy_set_quaternion(ctx, atom, q_combined);
 }
 
@@ -435,6 +434,14 @@ static void anisotropy_write_vtk_triangle(FILE *file, bool binary, int a, int b,
 	if (!binary) fputs("\n", file);
 }
 
+/* Surface radius of grid sample (i,j): En, or 1-En for the inverse surface. */
+static double anisotropy_map_radius(const AnisotropyEnergyGrid *grid, const double *En, bool inverse,
+	int i, int j)
+{
+	double en = En[i*grid->n_phi + j];
+	return inverse ? (1.0 - en) : en;
+}
+
 /* Writes grid sample (i,j) as one VTK point at radius En (or 1-En when
  * inverse) along its direction. Both output formats take their coordinates
  * from the same float triple, so ASCII and binary can never disagree in
@@ -444,8 +451,7 @@ static void anisotropy_write_vtk_point(FILE *file, bool binary, const Anisotropy
 {
 	double n[3];
 	anisotropy_map_direction(grid, i, j, n);
-	double en = En[i*grid->n_phi + j];
-	double scale = inverse ? (1.0 - en) : en;
+	double scale = anisotropy_map_radius(grid, En, inverse, i, j);
 	float xyz[3] = { (float)(scale*n[0]), (float)(scale*n[1]), (float)(scale*n[2]) };
 	if (binary) {
 		for (int c = 0; c < 3; ++c) {
@@ -547,17 +553,13 @@ static bool anisotropy_write_energy_vtk(const char *path, VtkFormatMode format,
 	fprintf(file, "POINT_DATA %d\n", point_count);
 	fprintf(file, "SCALARS %s float 1\n", inverse ? "1-En" : "En");
 	fputs("LOOKUP_TABLE default\n", file);
-	anisotropy_write_vtk_scalar(file, binary, inverse ? 1.0 - En[0] : En[0]);
+	anisotropy_write_vtk_scalar(file, binary, anisotropy_map_radius(grid, En, inverse, 0, 0));
 	for (int ring = 1; ring <= n_theta - 2; ++ring) {
 		for (int j = 0; j < n_phi; ++j) {
-			double en = En[ring*n_phi + j];
-			anisotropy_write_vtk_scalar(file, binary, inverse ? 1.0 - en : en);
+			anisotropy_write_vtk_scalar(file, binary, anisotropy_map_radius(grid, En, inverse, ring, j));
 		}
 	}
-	{
-		double en = En[(n_theta - 1)*n_phi];
-		anisotropy_write_vtk_scalar(file, binary, inverse ? 1.0 - en : en);
-	}
+	anisotropy_write_vtk_scalar(file, binary, anisotropy_map_radius(grid, En, inverse, n_theta - 1, 0));
 	if (!binary) fputs("\n", file);
 
 	fclose(file);

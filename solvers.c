@@ -348,7 +348,7 @@ GetTotalEnergy(magnoom_ctx *ctx)
 					i = Ip + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of spin "i"
 					na1 = (Na + na + J)%Na;
 					nb1 = Na * ((Nb + nb + K)%Nb);
-					nc1 = Na * Nb * ((Nc + nc + L)%Nc);;
+					nc1 = Na * Nb * ((Nc + nc + L)%Nc);
 					j = I  + ctx->AtomsPerBlock * ( na1 + nb1 + nc1 );// index of neighbouring spin "j"
 					//Symmetric Heisenberg exchange:
 					// Etot[i]-= Je * (VEC_X(s,i)*VEC_X(s,j)+VEC_Y(s,i)*VEC_Y(s,j)+VEC_Z(s,i)*VEC_Z(s,j));
@@ -371,32 +371,15 @@ GetTotalEnergy(magnoom_ctx *ctx)
 	return tmp0;
 }
 
-// void
-// GetFluctuations( float* rx, float* ry, float* rz, int N ){
-// 	for (int i=0; i<N; i++){
-// 		float s = 2;
-// 		float x,y,z;
-// 		while(s>1){
-// 			x = 2.0 * (0.5 - rand() / (float)RAND_MAX);
-// 			y = 2.0 * (0.5 - rand() / (float)RAND_MAX);
-// 			z = 2.0 * (0.5 - rand() / (float)RAND_MAX);
-// 			s = x*x+y*y+z*z;
-// 		}
-// 		rx[i] = x;
-// 		ry[i] = y;
-// 		rz[i] = z;		
-// 	}
-// }
-
 void
 GetFluctuations(magnoom_ctx *ctx){
 	float *rx = ctx->NoiseX;
 	float *ry = ctx->NoiseY;
 	float *rz = ctx->NoiseZ;
 	const int N = ctx->NOS;
+	float A=sqrt(2*fabs(log(fmaxf(ctx->t_step, FLT_MIN))));
 	for (int i=0; i<N; i++){
 		float r[3];
-		float A=sqrt(2*fabs(log(fmaxf(ctx->t_step, FLT_MIN))));
 		for(int j=0; j<3; j++){
 			double U = ((double)rand() + 1.0) / ((double)RAND_MAX + 2.0);
 			float V = rand() / (float)RAND_MAX;
@@ -1454,7 +1437,6 @@ static void RecordBextACMode(magnoom_ctx *ctx)
 				IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,2) = IMAGE_COMPONENT(ctx->Image,Im,ctx->NOS,i,2) + VEC_Z(ctx->S,i);
 			}
 			printf("tolerance %1.8f \n", tolerance);
-			// printf("ABS(phase - i/(float)num_images)= %1.8f \n", ABS(phase - Im/(float)num_images));
 			printf("Phase %1.8f (%d) (%1.8f)\n", phase,Im,Im/(float)ctx->num_images);
 			printf("Image %d\n", ctx->current_rec_num_mode);
 			if (ctx->current_rec_num_mode==ctx->num_images*ctx->rec_num_mode){
@@ -1483,14 +1465,6 @@ static void RecordBextACMode(magnoom_ctx *ctx)
 						IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)=IMAGE_COMPONENT(ctx->Image,j,ctx->NOS,i,2)/Norm;
 
 					}
-					/* only dm */
-						// char ovf_filename[64] = "";
-						// snprintf(ovf_filename,64,"dm%d.ovf",j);
-						// Save_OVF_b8(Image_x[j], Image_y[j], Image_z[j], ovf_filename);
-					/* only m */
-						// char vtk_filename[64] = "";
-						// snprintf(vtk_filename,64,"phase%d.vtk",j);
-						// Save_VTK(Image_x[j], Image_y[j], Image_z[j],0, vtk_filename);
 					/* m and dm */
 						char vtk_filename[64] = "";
 						char output_path[MAGNOOM_PATH_CAPACITY];
@@ -1533,64 +1507,32 @@ static void RecordBextACMode(magnoom_ctx *ctx)
 }
 	
 
+// Slab [*first, *last) of a side of `length` cells owned by thread `threadindex`:
+// ceil(length/THREADS_NUMBER) cells per thread, the last slab clipped (possibly empty).
+static void CalcThreadSlab(int length, int threadindex, int *first, int *last)
+{
+	int slab = length/THREADS_NUMBER + (length%THREADS_NUMBER != 0);
+	*first = slab*threadindex;
+	*last = slab*(threadindex+1) < length ? slab*(threadindex+1) : length;
+}
+
 /* this function is run by the distinct thread */
 void *CALC_THREAD(void *void_ptr)
 {
     calc_thread_arg *arg = (calc_thread_arg *) void_ptr;
     int threadindex = arg->index;
     magnoom_ctx *ctx = arg->ctx;
-    // printf("threadindex =%d\n", threadindex );
-    int dNa=0;
-    int dNb=0;
-    int dNc=0;
+    int naini = 0, nafin = ctx->uABC[0];
+    int nbini = 0, nbfin = ctx->uABC[1];
+    int ncini = 0, ncfin = ctx->uABC[2];
 
-    if (ctx->uABC[0]%THREADS_NUMBER==0){
-    		dNa = ctx->uABC[0]/THREADS_NUMBER;
-    }else{	dNa = (int)ctx->uABC[0]/THREADS_NUMBER+1;}
-
-    if (ctx->uABC[1]%THREADS_NUMBER==0){
-    		dNb = ctx->uABC[1]/THREADS_NUMBER;
-    }else{	dNb = (int)ctx->uABC[1]/THREADS_NUMBER+1;}
-
-    if (ctx->uABC[2]%THREADS_NUMBER==0){
-    		dNc = ctx->uABC[2]/THREADS_NUMBER;
-    }else{	dNc = (int)ctx->uABC[2]/THREADS_NUMBER+1;}
-
-    int naini=0;
-    int nafin=0;
-    int nbini=0; 
-    int nbfin=0;
-    int ncini=0;
-    int ncfin=0;
-
-    if (ctx->uABC[0]>=ctx->uABC[1]&&ctx->uABC[0]>=ctx->uABC[2]){      //a-axis is the longest side of the box
-    	naini = dNa*threadindex; 
-    	if (dNa*(threadindex+1)<ctx->uABC[0]){
-    		nafin = dNa*(threadindex+1);
-    	}else{
-    		nafin = ctx->uABC[0];
-    	}
-    	nbini = 0; nbfin = ctx->uABC[1];
-    	// nbini = 1; nbfin = ctx->uABC[1];//metka
-    	ncini = 0; ncfin = ctx->uABC[2];
-    }else if (ctx->uABC[2]>=ctx->uABC[0]&&ctx->uABC[2]>=ctx->uABC[1]){//c-axis is the longest side of the box
-    	ncini = dNc*threadindex; 
-    	if ( (dNc*(threadindex+1))<ctx->uABC[2]){
-    		ncfin = dNc*(threadindex+1);
-    	}else{
-    		ncfin = ctx->uABC[2];
-    	}
-    	naini = 0; nafin = ctx->uABC[0];	
-    	nbini = 0; nbfin = ctx->uABC[1];
-    }else if (ctx->uABC[1]>=ctx->uABC[0]&&ctx->uABC[1]>=ctx->uABC[2]){//b-axis is the longest side of the box
-    	nbini = dNb*threadindex; 
-    	if (dNb*(threadindex+1)<ctx->uABC[1]){
-    		nbfin = dNb*(threadindex+1);
-    	}else{
-    		nbfin = ctx->uABC[1];
-    	}
-    	naini = 0; nafin = ctx->uABC[0];	
-    	ncini = 0; ncfin = ctx->uABC[2];    	
+    // Split the longest box side into THREADS_NUMBER slabs (ties: a, then c, then b).
+    if (ctx->uABC[0]>=ctx->uABC[1]&&ctx->uABC[0]>=ctx->uABC[2]){
+    	CalcThreadSlab(ctx->uABC[0], threadindex, &naini, &nafin);
+    }else if (ctx->uABC[2]>=ctx->uABC[0]&&ctx->uABC[2]>=ctx->uABC[1]){
+    	CalcThreadSlab(ctx->uABC[2], threadindex, &ncini, &ncfin);
+    }else{
+    	CalcThreadSlab(ctx->uABC[1], threadindex, &nbini, &nbfin);
     }
 
 	while(!ctx->EngineShutdown)
@@ -1611,7 +1553,6 @@ void *CALC_THREAD(void *void_ptr)
 		
 		switch (ctx->WhichIntegrationScheme){
 			case HEUN: 
-				// SimpleMinimizer(ctx->Sx,ctx->Sy,ctx->Sz,tSx,tSy,tSz,Heffx,Heffy,Heffz,RNx,RNy,RNz,ctx->NOS,damping,t_step,Temperature, threadindex,naini,nafin,nbini,nbfin,ncini,ncfin);
 				StochasticLLG_Heun(ctx, threadindex, naini, nafin, nbini, nbfin, ncini, ncfin);
 			break;
 
@@ -1660,7 +1601,6 @@ void *CALC_THREAD(void *void_ptr)
 			//normalize all spins every 100 iterations
 			if (ctx->WhichIntegrationScheme != RELAX && ctx->ITERATION%100==0)
 			{
-				// printf("ich bin hier!\n");
 				for (int i=0;i<ctx->NOS;i++)
 				{
 					double absS = 1.0f/sqrt(VEC_X(ctx->S,i)*VEC_X(ctx->S,i)+VEC_Y(ctx->S,i)*VEC_Y(ctx->S,i)+VEC_Z(ctx->S,i)*VEC_Z(ctx->S,i));
@@ -1680,14 +1620,6 @@ void *CALC_THREAD(void *void_ptr)
 				ctx->RecordingBuffer[2][ctx->recordsCounter] = ctx->outputMtotal[1]*ctx->iNOS;
 				ctx->RecordingBuffer[3][ctx->recordsCounter] = ctx->outputMtotal[2]*ctx->iNOS;
 				ctx->RecordingBuffer[4][ctx->recordsCounter] = ctx->outputEtotal;
-				//metka test LLG
-				// BigDataBank[0][recordsCounter] = ITERATION*t_step;
-				// BigDataBank[1][recordsCounter] = bSx[0];
-				// BigDataBank[2][recordsCounter] = bSy[0];
-				// BigDataBank[3][recordsCounter] = bSz[1];
-				// BigDataBank[4][recordsCounter] = bSx[1];
-				// BigDataBank[5][recordsCounter] = bSy[1];
-				// BigDataBank[6][recordsCounter] = bSz[1];				
 				ctx->recordsCounter++;
 				if (ctx->recordsCounter==100){
 					magnoom_flush_records_locked(ctx);
@@ -1720,14 +1652,8 @@ void *CALC_THREAD(void *void_ptr)
 			if (ctx->EngineRunState == WAIT) ctx->EngineIdle = true;
 			pthread_mutex_unlock(&ctx->culc_mutex);
 		}else{
-			//all other calculation threads
-			sem_wait(ctx->sem_in[threadindex]);
-			// first button which open the first door in the next (second) thread
-			sem_post(ctx->sem_in[(threadindex+1)%THREADS_NUMBER]);
-			// second door will be open from the last thread (second button)
-			sem_wait(ctx->sem_out[threadindex]);
-			// second button which open the second door in the next (second) thread
-			sem_post(ctx->sem_out[(threadindex+1)%THREADS_NUMBER]);
+			// All other threads wait here for the last thread's bookkeeping above.
+			CalcThreadBarrier(ctx, threadindex);
 		}
 	}
 /* the function must return something - NULL will do */

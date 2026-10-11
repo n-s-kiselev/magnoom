@@ -68,20 +68,22 @@ static void test_path_helpers(void)
     CHECK(executable_directory[0] != '\0');
 }
 
-static bool write_test_file(const char *path, const void *data, size_t size)
+static bool put_test_file(const char *path, const char *mode, const void *data, size_t size)
 {
-    FILE *file = fopen(path, "wb");
+    FILE *file = fopen(path, mode);
     bool success = file != NULL && fwrite(data, 1, size, file) == size;
     if (file != NULL && fclose(file) != 0) success = false;
     return success;
 }
 
+static bool write_test_file(const char *path, const void *data, size_t size)
+{
+    return put_test_file(path, "wb", data, size);
+}
+
 static bool append_test_file(const char *path, const void *data, size_t size)
 {
-    FILE *file = fopen(path, "ab");
-    bool success = file != NULL && fwrite(data, 1, size, file) == size;
-    if (file != NULL && fclose(file) != 0) success = false;
-    return success;
+    return put_test_file(path, "ab", data, size);
 }
 
 static void test_file_format_detection(void)
@@ -506,9 +508,6 @@ static void test_invalid_inputs_are_transactional(void)
     magnoom_ctx ctx = {0};
     CHECK(magnoom_ctx_init(&ctx));
 	set_identity_cell(&ctx);
-    float (*old_block)[3] = ctx.Block;
-    int old_atom_count = ctx.AtomsPerBlock;
-    int old_nos = ctx.NOS;
     const float inside[][3] = {{0.25f, 0.25f, 0.25f}};
     const float upper_face[][3] = {{1.0f, 0.25f, 0.25f}};
     const float near_upper_face[][3] = {{0.9999f, 0.25f, 0.25f}};
@@ -521,9 +520,9 @@ static void test_invalid_inputs_are_transactional(void)
     CHECK(!magnoom_ctx_set_block(&ctx, 1, NULL));
     CHECK(!magnoom_ctx_set_block(&ctx, 1, upper_face));
     CHECK(magnoom_ctx_set_block(&ctx, 1, near_upper_face));
-    old_block = ctx.Block;
-    old_atom_count = ctx.AtomsPerBlock;
-    old_nos = ctx.NOS;
+    float (*old_block)[3] = ctx.Block;
+    int old_atom_count = ctx.AtomsPerBlock;
+    int old_nos = ctx.NOS;
     CHECK(!magnoom_ctx_set_block(&ctx, 1, near_lower_outside));
     CHECK(!magnoom_ctx_set_block(&ctx, 1, outside));
     CHECK(!magnoom_ctx_set_block(&ctx, MAX_ATOMS_PER_BLOCK + 1, too_many_atoms));

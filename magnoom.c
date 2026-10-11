@@ -2806,6 +2806,18 @@ void PrintLatticeInitReport(magnoom_ctx *ctx)
 /*************************************************************************/
 
 #ifndef MAGNOOM_NO_MAIN
+/* Fixed-size lit mesh (box, basis, marker, PBC, BextDC): count == capacity. */
+static void
+InitFixedSizeVBOMesh(vbo_mesh *mesh, GLenum usage, int vertex_components, int index_count)
+{
+	InitVBOMesh(mesh, usage);
+	mesh->uses_normals = 1;
+	mesh->component_count = vertex_components;
+	mesh->component_capacity = vertex_components;
+	mesh->index_count = index_count;
+	mesh->index_capacity = index_count;
+}
+
 int
 main (int argc, char **argv){
 	magnoom_ctx mag_ctx = {0};
@@ -2921,71 +2933,36 @@ main (int argc, char **argv){
 	ReallocateArrayDrawing_BextDC(&mag_ctx);
 	UpdateProtoVerNorInd_BextDC(&mag_ctx);
     UpdateVerticesNormalsColors_BextDC(&mag_ctx);
-	InitVBOMesh(&mag_ctx.BextDC_mesh, GL_STATIC_DRAW);
-	mag_ctx.BextDC_mesh.uses_normals = 1;
-	mag_ctx.BextDC_mesh.component_count = mag_ctx.VCNum_BextDC;
-	mag_ctx.BextDC_mesh.component_capacity = mag_ctx.VCNum_BextDC;
-	mag_ctx.BextDC_mesh.index_count = mag_ctx.IdNum_BextDC;
-	mag_ctx.BextDC_mesh.index_capacity = mag_ctx.IdNum_BextDC;
+	InitFixedSizeVBOMesh(&mag_ctx.BextDC_mesh, GL_STATIC_DRAW, mag_ctx.VCNum_BextDC, mag_ctx.IdNum_BextDC);
 	CreateVBOMesh(&mag_ctx.BextDC_mesh);
     UploadVBOMesh(&mag_ctx.BextDC_mesh, mag_ctx.vertices_BextDC, mag_ctx.normals_BextDC, mag_ctx.colors_BextDC, mag_ctx.indices_BextDC, VBO_UPLOAD_ALL);
 
 	/* --- BOX mesh: static, startup-only --- */
 	ReallocateArrayDrawing_BOX(&mag_ctx);
 	UpdateVerticesNormalsColors_BOX(&mag_ctx);
-	InitVBOMesh(&mag_ctx.box_mesh, GL_STATIC_DRAW);
-	mag_ctx.box_mesh.uses_normals = 1;
-	mag_ctx.box_mesh.component_count = mag_ctx.VCNum_BOX;
-	mag_ctx.box_mesh.component_capacity = mag_ctx.VCNum_BOX;
-	mag_ctx.box_mesh.index_count = mag_ctx.IdNum_BOX;
-	mag_ctx.box_mesh.index_capacity = mag_ctx.IdNum_BOX;
+	InitFixedSizeVBOMesh(&mag_ctx.box_mesh, GL_STATIC_DRAW, mag_ctx.VCNum_BOX, mag_ctx.IdNum_BOX);
 	CreateVBOMesh(&mag_ctx.box_mesh);
 	UploadVBOMesh(&mag_ctx.box_mesh, mag_ctx.vertices_BOX, mag_ctx.normals_BOX, mag_ctx.colors_BOX, mag_ctx.indices_BOX, VBO_UPLOAD_ALL);
 
 	/* --- slice-selection marker: rebuilt when the selection or a layer changes --- */
 	ReallocateArrayDrawing_MARKER(&mag_ctx);
 	UpdateVerticesNormalsColors_MARKER(&mag_ctx);
-	InitVBOMesh(&mag_ctx.marker_mesh, GL_DYNAMIC_DRAW);
-	mag_ctx.marker_mesh.uses_normals = 1;
-	mag_ctx.marker_mesh.component_count = mag_ctx.VCNum_MARKER;
-	mag_ctx.marker_mesh.component_capacity = mag_ctx.VCNum_MARKER;
-	mag_ctx.marker_mesh.index_count = mag_ctx.IdNum_MARKER;
-	mag_ctx.marker_mesh.index_capacity = mag_ctx.IdNum_MARKER;
+	InitFixedSizeVBOMesh(&mag_ctx.marker_mesh, GL_DYNAMIC_DRAW, mag_ctx.VCNum_MARKER, mag_ctx.IdNum_MARKER);
 	CreateVBOMesh(&mag_ctx.marker_mesh);
 	UploadVBOMesh(&mag_ctx.marker_mesh, mag_ctx.vertices_MARKER, mag_ctx.normals_MARKER, mag_ctx.colors_MARKER, mag_ctx.indices_MARKER, VBO_UPLOAD_ALL);
 
 	/* --- BASIS mesh: static, startup-only --- */
 	ReallocateArrayDrawing_BASIS(&mag_ctx);
 	UpdateVerticesNormalsColors_BASIS(&mag_ctx);
-	InitVBOMesh(&mag_ctx.basis_mesh, GL_STATIC_DRAW);
-	mag_ctx.basis_mesh.uses_normals = 1;
-	mag_ctx.basis_mesh.component_count = mag_ctx.VCNum_BASIS;
-	mag_ctx.basis_mesh.component_capacity = mag_ctx.VCNum_BASIS;
-	mag_ctx.basis_mesh.index_count = mag_ctx.IdNum_BASIS;
-	mag_ctx.basis_mesh.index_capacity = mag_ctx.IdNum_BASIS;
+	InitFixedSizeVBOMesh(&mag_ctx.basis_mesh, GL_STATIC_DRAW, mag_ctx.VCNum_BASIS, mag_ctx.IdNum_BASIS);
 	CreateVBOMesh(&mag_ctx.basis_mesh);
 	UploadVBOMesh(&mag_ctx.basis_mesh, mag_ctx.vertices_BASIS, mag_ctx.normals_BASIS, mag_ctx.colors_BASIS, mag_ctx.indices_BASIS, VBO_UPLOAD_ALL);
 
 	/* --- PBC meshes: three static axis meshes, startup-only --- */
 	ReallocateArrayDrawing_PBC(&mag_ctx);
-	InitVBOMesh(&mag_ctx.pbc_mesh[0], GL_STATIC_DRAW);
-	mag_ctx.pbc_mesh[0].uses_normals = 1;
-	mag_ctx.pbc_mesh[0].component_count = mag_ctx.VCNum_PBC;
-	mag_ctx.pbc_mesh[0].component_capacity = mag_ctx.VCNum_PBC;
-	mag_ctx.pbc_mesh[0].index_count = mag_ctx.IdNum_PBC;
-	mag_ctx.pbc_mesh[0].index_capacity = mag_ctx.IdNum_PBC;
-	InitVBOMesh(&mag_ctx.pbc_mesh[1], GL_STATIC_DRAW);
-	mag_ctx.pbc_mesh[1].uses_normals = 1;
-	mag_ctx.pbc_mesh[1].component_count = mag_ctx.VCNum_PBC;
-	mag_ctx.pbc_mesh[1].component_capacity = mag_ctx.VCNum_PBC;
-	mag_ctx.pbc_mesh[1].index_count = mag_ctx.IdNum_PBC;
-	mag_ctx.pbc_mesh[1].index_capacity = mag_ctx.IdNum_PBC;
-	InitVBOMesh(&mag_ctx.pbc_mesh[2], GL_STATIC_DRAW);
-	mag_ctx.pbc_mesh[2].uses_normals = 1;
-	mag_ctx.pbc_mesh[2].component_count = mag_ctx.VCNum_PBC;
-	mag_ctx.pbc_mesh[2].component_capacity = mag_ctx.VCNum_PBC;
-	mag_ctx.pbc_mesh[2].index_count = mag_ctx.IdNum_PBC;
-	mag_ctx.pbc_mesh[2].index_capacity = mag_ctx.IdNum_PBC;
+	InitFixedSizeVBOMesh(&mag_ctx.pbc_mesh[0], GL_STATIC_DRAW, mag_ctx.VCNum_PBC, mag_ctx.IdNum_PBC);
+	InitFixedSizeVBOMesh(&mag_ctx.pbc_mesh[1], GL_STATIC_DRAW, mag_ctx.VCNum_PBC, mag_ctx.IdNum_PBC);
+	InitFixedSizeVBOMesh(&mag_ctx.pbc_mesh[2], GL_STATIC_DRAW, mag_ctx.VCNum_PBC, mag_ctx.IdNum_PBC);
 	UpdateVerticesNormalsColors_PBC(&mag_ctx, 0);
 	UpdateVerticesNormalsColors_PBC(&mag_ctx, 1);
 	UpdateVerticesNormalsColors_PBC(&mag_ctx, 2);
@@ -3034,7 +3011,6 @@ main (int argc, char **argv){
 	free(mag_ctx.S);     			free(mag_ctx.bS);
 	free(mag_ctx.tS);    			free(mag_ctx.t2S);   			free(mag_ctx.t3S);
 	free(mag_ctx.Image);			free(mag_ctx.dImage);
-	/* (unfixed) leak, preserved as-is.                                      */
 	free(mag_ctx.HeffX); 			free(mag_ctx.HeffY); 			free(mag_ctx.HeffZ);
 	free(mag_ctx.NoiseX);   			free(mag_ctx.NoiseY);   			free(mag_ctx.NoiseZ);
 	free(mag_ctx.PosX);    			free(mag_ctx.PosY);    			free(mag_ctx.PosZ);

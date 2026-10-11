@@ -331,9 +331,9 @@ void Display (magnoom_ctx *ctx)
 	// possibly draw the box and periodic boundary condition :
 	if( ctx->BoxOn != 0 ) {	
 		DrawVBOMeshIndexed(&ctx->box_mesh, GL_TRIANGLES, ctx->box_mesh.index_count, 0);
-		if(ctx->Boundary[0]!=0) DrawVBOMeshIndexed(&ctx->pbc_mesh[0], GL_TRIANGLES, ctx->pbc_mesh[0].index_count, 0);
-		if(ctx->Boundary[1]!=0) DrawVBOMeshIndexed(&ctx->pbc_mesh[1], GL_TRIANGLES, ctx->pbc_mesh[1].index_count, 0);
-		if(ctx->Boundary[2]!=0) DrawVBOMeshIndexed(&ctx->pbc_mesh[2], GL_TRIANGLES, ctx->pbc_mesh[2].index_count, 0);
+		for (int k = 0; k < 3; k++) {
+			if (ctx->Boundary[k] != 0) DrawVBOMeshIndexed(&ctx->pbc_mesh[k], GL_TRIANGLES, ctx->pbc_mesh[k].index_count, 0);
+		}
 	}
 	// the selection marker is drawn whether or not the box frame is shown:
 	if (ctx->SliceSelection != SEL_NONE) DrawVBOMeshIndexed(&ctx->marker_mesh, GL_TRIANGLES, ctx->marker_mesh.index_count, 0);
@@ -2768,6 +2768,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 	{
 		static SliceControl slice_controls[3];
 		const char *axis_name[] = { "a", "b", "c" };
+		const char *layer_name[] = { "a_layer", "b_layer", "c_layer" };
 		for (int axis = 0; axis < 3; axis++) {
 			char options[160];
 			slice_controls[axis].ctx = ctx;
@@ -2777,7 +2778,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 				CB_GetSliceVisible, &slice_controls[axis], options);
 			snprintf(options, sizeof(options), " label='%s layer' min=1 max=%d step=1 group='Slices'",
 				axis_name[axis], ctx->uABC[axis]);
-			TwAddVarCB(ctx->view_bar, axis == A_AXIS ? "a_layer" : axis == B_AXIS ? "b_layer" : "c_layer",
+			TwAddVarCB(ctx->view_bar, layer_name[axis],
 				TW_TYPE_INT32, CB_SetSliceLayer, CB_GetSliceLayer, &slice_controls[axis], options);
 		}
 	}
@@ -3389,6 +3390,17 @@ void HandleMouseDrag(magnoom_ctx *ctx, int x, int y)
 	ctx->Ymouse = y;
 }
 
+// Flips a tweak bar between iconified and open. bar_name is the name the bar
+// was created with, as TwDefine() addresses bars by name.
+static void ToggleBarIconified(TwBar *bar, const char *bar_name)
+{
+	int isiconified;
+	char definition[64];
+	TwGetParam(bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
+	snprintf(definition, sizeof(definition), " %s iconified=%s ", bar_name, isiconified ? "false" : "true");
+	TwDefine(definition);
+}
+
 // the keyboard callback:
 void HandleKeyDown( magnoom_ctx *ctx, unsigned char key )
 {   
@@ -3439,15 +3451,7 @@ void HandleKeyDown( magnoom_ctx *ctx, unsigned char key )
 			break;
 
 			case 'i':
-				{
-					int isiconified;
-					TwGetParam(ctx->info_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-					if (isiconified){
-						TwDefine(" Info iconified=false ");
-					}else{
-						TwDefine(" Info iconified=true ");
-					}
-				}
+				ToggleBarIconified(ctx->info_bar, "Info");
 				break;
 			case 'x':
 			case 'X':
@@ -3528,70 +3532,33 @@ void HandleKeyUp( magnoom_ctx *ctx, unsigned char key )
 
 
 void HandleSpecialKey( magnoom_ctx *ctx, int key ){
-int isiconified;
     {
-      // your code here to handle the event	
 		switch( key )
 		{
 			case WINDOW_KEY_UP:
-				if (StepSelectedSliceLayer(ctx, +1)) {
-					if (ctx->SliceVisible[SliceSelectionAxis(ctx)]) ChangeVectorMode(ctx, 1);
-					RefreshSliceMarker(ctx);
-				}
-				break;
 			case WINDOW_KEY_DOWN:
-				if (StepSelectedSliceLayer(ctx, -1)) {
+				if (StepSelectedSliceLayer(ctx, key == WINDOW_KEY_UP ? +1 : -1)) {
 					if (ctx->SliceVisible[SliceSelectionAxis(ctx)]) ChangeVectorMode(ctx, 1);
 					RefreshSliceMarker(ctx);
 				}
 				break;
 			case  WINDOW_KEY_F1:
-				TwGetParam(ctx->help_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-			    	TwDefine(" TW_HELP iconified=false ");				
-				}else{
-					TwDefine(" TW_HELP iconified=true ");
-				}
+				ToggleBarIconified(ctx->help_bar, "TW_HELP");
 				break;
 			case  WINDOW_KEY_F2:
-				TwGetParam(ctx->view_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-					TwDefine(" View iconified=false ");				
-				}else{
-					TwDefine(" View iconified=true ");
-				}
+				ToggleBarIconified(ctx->view_bar, "View");
 				break;
 			case  WINDOW_KEY_F3:
-				TwGetParam(ctx->control_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-					TwDefine(" Parameters&Controls iconified=false ");				
-				}else{
-					TwDefine(" Parameters&Controls iconified=true ");
-				}
+				ToggleBarIconified(ctx->control_bar, "Parameters&Controls");
 				break;
 			case  WINDOW_KEY_F4:
-				TwGetParam(ctx->initial_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-					TwDefine(" Initial_State iconified=false ");				
-				}else{
-					TwDefine(" Initial_State iconified=true ");
-				}
+				ToggleBarIconified(ctx->initial_bar, "Initial_State");
 				break;
 			case  WINDOW_KEY_F5:
-				TwGetParam(ctx->BextAC_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-					TwDefine(" BextAC iconified=false ");
-				}else{
-					TwDefine(" BextAC iconified=true ");
-				}
+				ToggleBarIconified(ctx->BextAC_bar, "BextAC");
 				break;
 			case  WINDOW_KEY_F6:
-				TwGetParam(ctx->anisotropy_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
-				if (isiconified){
-					TwDefine(" Anisotropy iconified=false ");
-				}else{
-					TwDefine(" Anisotropy iconified=true ");
-				}
+				ToggleBarIconified(ctx->anisotropy_bar, "Anisotropy");
 				break;
 			//default:
 				//fprintf( stderr, "Don't know what to do with special key: '%c' (0x%0x)\n", key, key );
@@ -5338,11 +5305,12 @@ void UpdateVerticesNormalsColors_MARKER(magnoom_ctx *ctx)
 	float arm_len[3];
 	float gap[3];
 	for (int k = 0; k < 3; k++) {
-		float length = ctx->uABC[k] * sqrt(abc[k][0]*abc[k][0] + abc[k][1]*abc[k][1] + abc[k][2]*abc[k][2]);
+		double cell_length = sqrt(abc[k][0]*abc[k][0] + abc[k][1]*abc[k][1] + abc[k][2]*abc[k][2]);
+		float length = ctx->uABC[k] * cell_length;
 		float v[3] = {abc[k][0], abc[k][1], abc[k][2]};
 		(void)Unitf(v, unit[k]);
 		// same distance at which UpdateVerticesNormalsColors_PBC() starts the first PBC bar
-		gap[k] = 6.f*d*sqrt(abc[k][0]*abc[k][0] + abc[k][1]*abc[k][1] + abc[k][2]*abc[k][2]);
+		gap[k] = 6.f*d*cell_length;
 		arm_len[k] = 0.25f*length;
 		if (arm_len[k] < 2.f*d) arm_len[k] = 2.f*d;
 	}

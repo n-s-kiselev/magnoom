@@ -327,7 +327,7 @@ static bool write_icns(void)
         !copy_iconset_file(6, "icon_512x512.png") ||
         !copy_iconset_file(7, "icon_512x512@2x.png")) return false;
 
-    if (nob_file_exists(TEMP_ICNS) && !nob_delete_file(TEMP_ICNS)) return false;
+    if (!delete_if_exists(TEMP_ICNS)) return false;
     const char *iconutil = getenv("ICONUTIL");
     if (!iconutil || iconutil[0] == '\0') iconutil = "iconutil";
     Nob_Cmd cmd = {0};
@@ -465,10 +465,8 @@ static bool publish_icons(void)
 {
     published_icon icons[PUBLISHED_ICON_CAPACITY];
     size_t icon_count = get_published_icons(icons);
-    bool had_original[PUBLISHED_ICON_CAPACITY];
-    bool installed[PUBLISHED_ICON_CAPACITY];
-    memset(had_original, 0, sizeof(had_original));
-    memset(installed, 0, sizeof(installed));
+    bool had_original[PUBLISHED_ICON_CAPACITY] = {0};
+    bool installed[PUBLISHED_ICON_CAPACITY] = {0};
 
     if (!recover_publication()) return false;
 

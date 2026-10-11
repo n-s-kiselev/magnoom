@@ -76,14 +76,7 @@ Enorm( float v1[3], float v2[3], float v3[3], float vout[3] )
 {// normal vector to the element based on three vertexes v1, v2, v3	
 	float tmp1[3]={v2[0]-v1[0],v2[1]-v1[1],v2[2]-v1[2]};
 	float tmp2[3]={v3[0]-v1[0],v3[1]-v1[1],v3[2]-v1[2]};
-	// tmp1[0]=v2[0]-v1[0];
-	// tmp1[1]=v2[1]-v1[1];
-	// tmp1[2]=v2[2]-v1[2];
-
-	// tmp2[0]=v3[0]-v1[0];
-	// tmp2[1]=v3[1]-v1[1];
-	// tmp2[2]=v3[2]-v1[2];
-	//Crossf( tmp1, tmp2, tmp3 );
+	// cross product tmp1 x tmp2, written out instead of Crossf
 	vout[0] = (tmp1[1]*tmp2[2] - tmp1[2]*tmp2[1]);
 	vout[1] = (tmp1[2]*tmp2[0] - tmp1[0]*tmp2[2]);
 	vout[2] = (tmp1[0]*tmp2[1] - tmp1[1]*tmp2[0]);
@@ -92,21 +85,8 @@ Enorm( float v1[3], float v2[3], float v3[3], float vout[3] )
 
 void
 Enorm2( float * v1, float * v2, float * v3, float * vout)
-{// normal vector to the element based on three vertexes v1, v2, v3	
-	float tmp1[3];
-	float tmp2[3];
-	tmp1[0]=v2[0]-v1[0];
-	tmp1[1]=v2[1]-v1[1];
-	tmp1[2]=v2[2]-v1[2];
-
-	tmp2[0]=v3[0]-v1[0];
-	tmp2[1]=v3[1]-v1[1];
-	tmp2[2]=v3[2]-v1[2];
-	//Crossf( tmp1, tmp2, tmp3 );
-	vout[0] = (tmp1[1]*tmp2[2] - tmp1[2]*tmp2[1]);
-	vout[1] = (tmp1[2]*tmp2[0] - tmp1[0]*tmp2[2]);
-	vout[2] = (tmp1[0]*tmp2[1] - tmp1[1]*tmp2[0]);
-	(void)Unitf( vout, vout);
+{// same as Enorm, kept for callers passing plain pointers
+	Enorm(v1, v2, v3, vout);
 }
 
 void
@@ -245,7 +225,6 @@ void GetEulerFromQuaternion(float *quat, float *vector)
 void GetQuaternionFromEuler(float *q, float *Rot)
 {
     const float D2R2=0.008726646255;//0.5*Pi/180 degrees to radians
-    // Assuming the angles are in radians.
     float c1 = cos(D2R2 * Rot[1]);//heading
     float s1 = sin(D2R2 * Rot[1]);//heading
     float c2 = cos(D2R2 * Rot[2]);//attitude

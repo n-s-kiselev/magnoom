@@ -284,6 +284,46 @@ void CreatHorisontalBobber(magnoom_ctx *ctx, float * px, float * py, float * pz,
 	}
 }
 
+/* Hexagonal lattice of bobbers on one surface only: Loc_B=1 for the top
+ * (pz>0) half, Loc_B=-1 for the bottom (pz<0) half. Only that half is reset
+ * to the field-polarized state, the other half is left untouched. */
+void CreatBobberLatticeOneSide(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, int Loc_B)
+{
+	float PerBobLat=ctx->chSize;
+	float aBobLat=2*PerBobLat/(sqrt(3)); 
+	float Bob_Radius=0.8*0.5*aBobLat; 
+	float TranLatX;
+	float TranLatY;
+	float CoChDir=ctx->chDir[0]/(sqrt(ctx->chDir[0]*ctx->chDir[0]+ctx->chDir[1]*ctx->chDir[1]));//cos of rotation angle 
+	float SiChDir=ctx->chDir[1]/(sqrt(ctx->chDir[0]*ctx->chDir[0]+ctx->chDir[1]*ctx->chDir[1]));//sin of rotation angle
+	float RotTranLatX;
+	float RotTranLatY;
+
+	for (int n=0; n<ctx->NOS; n++)
+	{	
+		bool onSide = (Loc_B > 0) ? (pz[n] > 0) : (pz[n] < 0);
+		if (onSide)
+		{
+			VEC_X(ctx->S,n) = 0.f;
+			VEC_Y(ctx->S,n) = 0.f;
+			VEC_Z(ctx->S,n) = 1.f;
+		}
+	}
+	
+	int Ntr=10;
+	for (int kx=-Ntr; kx<=Ntr; kx++)
+	{
+		for (int ky=-Ntr; ky<=Ntr; ky++)
+		{
+			TranLatX=aBobLat*kx+aBobLat*0.5*ky;//Tranlation of Bobber Lattice (along X) without rotate
+			TranLatY=PerBobLat*ky;//Tranlation of Bobber Lattice (along Y) without rotate
+			RotTranLatX=CoChDir*TranLatX-SiChDir*TranLatY;//Tranlation of Bobber Lattice (along Y) with rotate in XY
+			RotTranLatY=SiChDir*TranLatX+CoChDir*TranLatY;//Tranlation of  Lattice (along Y) with rotate in XY
+			CreatBobber(ctx, px, py, pz, s, Bob_Radius, RotTranLatX, RotTranLatY, Loc_B);
+		}
+	}	
+}
+
 void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, double * s, int id)
 {
 	float T = 0.f;
@@ -537,79 +577,15 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 	case 8: // bobber_lattice_top
 		if(ctx->chSize>0 && !(ctx->chDir[0]==0&&ctx->chDir[1]==0) )
 		{
-
-			float PerBobLat=ctx->chSize;
-			float aBobLat=2*PerBobLat/(sqrt(3)); 
-			float Bob_Radius=0.8*0.5*aBobLat; 
-			float TranLatX;
-			float TranLatY;
-			float CoChDir=ctx->chDir[0]/(sqrt(ctx->chDir[0]*ctx->chDir[0]+ctx->chDir[1]*ctx->chDir[1]));//cos of rotation angle 
-			float SiChDir=ctx->chDir[1]/(sqrt(ctx->chDir[0]*ctx->chDir[0]+ctx->chDir[1]*ctx->chDir[1]));//sin of rotation angle
-			float RotTranLatX;
-			float RotTranLatY;
-		
-			for (int n=0; n<ctx->NOS; n++)
-			{	
-				if (pz[n]>0)
-				{
-				VEC_X(ctx->S,n) = 0.f;
-				VEC_Y(ctx->S,n) = 0.f;
-				VEC_Z(ctx->S,n) = 1.f;
-				}	
-			}
-			
-			int Ntr=10;
-			for (int kx=-Ntr; kx<=Ntr; kx++)
-			{
-				for (int ky=-Ntr; ky<=Ntr; ky++)
-				{
-					TranLatX=aBobLat*kx+aBobLat*0.5*ky;//Tranlation of Bobber Lattice (along X) without rotate
-					TranLatY=PerBobLat*ky;//Tranlation of Bobber Lattice (along Y) without rotate
-					RotTranLatX=CoChDir*TranLatX-SiChDir*TranLatY;//Tranlation of Bobber Lattice (along Y) with rotate in XY
-					RotTranLatY=SiChDir*TranLatX+CoChDir*TranLatY;//Tranlation of  Lattice (along Y) with rotate in XY
-					CreatBobber(ctx, px, py, pz, s, Bob_Radius, RotTranLatX, RotTranLatY, 1);
-				}
-			}	
+			CreatBobberLatticeOneSide(ctx, px, py, pz, s, 1);
 		}
 	break;
 
 	case 9: // bobber_lattice_bottom
 		if(ctx->chSize>0 && !(ctx->chDir[0]==0&&ctx->chDir[1]==0) )
 		{
-
-			float PerBobLat=ctx->chSize;
-			float aBobLat=2*PerBobLat/(sqrt(3)); 
-			float Bob_Radius=0.8*0.5*aBobLat; 
-			float TranLatX;
-			float TranLatY;
-			float CoChDir=ctx->chDir[0]/(sqrt(ctx->chDir[0]*ctx->chDir[0]+ctx->chDir[1]*ctx->chDir[1]));//cos of rotation angle 
-			float SiChDir=ctx->chDir[1]/(sqrt(ctx->chDir[0]*ctx->chDir[0]+ctx->chDir[1]*ctx->chDir[1]));//sin of rotation angle
-			float RotTranLatX;
-			float RotTranLatY;
-		
-			for (int n=0; n<ctx->NOS; n++)
-			{	
-				if (pz[n]<0)
-				{
-				VEC_X(ctx->S,n) = 0.f;
-				VEC_Y(ctx->S,n) = 0.f;
-				VEC_Z(ctx->S,n) = 1.f;
-				}	
-			}
-			
-			int Ntr=10;
-			for (int kx=-Ntr; kx<=Ntr; kx++)
-			{
-				for (int ky=-Ntr; ky<=Ntr; ky++)
-				{
-					TranLatX=aBobLat*kx+aBobLat*0.5*ky;//Tranlation of Bobber Lattice (along X) without rotate
-					TranLatY=PerBobLat*ky;//Tranlation of Bobber Lattice (along Y) without rotate
-					RotTranLatX=CoChDir*TranLatX-SiChDir*TranLatY;//Tranlation of Bobber Lattice (along Y) with rotate in XY
-					RotTranLatY=SiChDir*TranLatX+CoChDir*TranLatY;//Tranlation of  Lattice (along Y) with rotate in XY
-					CreatBobber(ctx, px, py, pz, s, Bob_Radius, RotTranLatX, RotTranLatY, -1);
-				}
-			}	
-		}	
+			CreatBobberLatticeOneSide(ctx, px, py, pz, s, -1);
+		}
 	break;
 
 	case 10: // hopfion H=1
@@ -995,9 +971,6 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 				// float rz = pz[n]-pz[0];
 				F1 = rx * TPI / Lx;
 				T1 = ry * PI / Ly;
-				VEC_X(ctx->S,n) = 0;
-				VEC_Y(ctx->S,n) = 0;
-				VEC_Z(ctx->S,n) = 1;
 				VEC_X(ctx->S,n) = sin(T1)*cos(F1);
 				VEC_Y(ctx->S,n) = sin(T1)*sin(F1);
 				VEC_Z(ctx->S,n) = cos(T1);
