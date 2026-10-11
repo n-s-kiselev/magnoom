@@ -99,6 +99,9 @@ enum data_mutex_flags{WAIT_DATA,TAKE_DATA};
 /* Enum types needed by magnoom_ctx fields (formerly in magnoom.h/visualization.c) */
 /*****************************************************************************/
 typedef enum    {A_AXIS, B_AXIS, C_AXIS} enSliceAxis;
+/* First three values match enSliceAxis, so a selection below SEL_NONE
+   doubles as a lattice-axis index. */
+typedef enum    {SEL_A_AXIS, SEL_B_AXIS, SEL_C_AXIS, SEL_NONE} enSliceSelection;
 typedef enum    {BEXT_AC_SIN, BEXT_AC_GAUSSIAN, BEXT_AC_SINC, BEXT_AC_CIRCULAR} enBextACWaveform;
 typedef enum    {FILE_FORMAT_UNKNOWN = 0, FILE_FORMAT_CSV, FILE_FORMAT_OVF,
                  FILE_FORMAT_VTK, FILE_FORMAT_BIN, FILE_FORMAT_PNG,
@@ -196,6 +199,7 @@ typedef struct magnoom_ctx {
 	/* Slicing parameters */
 	int             SliceVisible[3];
 	int             SliceLayer[3];
+	enSliceSelection SliceSelection;   /* slice moved by the Up/Down keys */
 	enSliceAxis     ExportSliceAxis;
 
 	/* Cartesian components of spins, interleaved (S[3*n+0..2] via VEC_X/Y/Z) */
@@ -528,6 +532,10 @@ typedef struct magnoom_ctx {
 	GLfloat*        normals_BOX;
 	GLfloat*        colors_BOX;
 	GLuint*         indices_BOX;
+	GLfloat*        vertices_MARKER;
+	GLfloat*        normals_MARKER;
+	GLfloat*        colors_MARKER;
+	GLuint*         indices_MARKER;
 	GLfloat*        vertices_BASIS;
 	GLfloat*        normals_BASIS;
 	GLfloat*        colors_BASIS;
@@ -557,6 +565,8 @@ typedef struct magnoom_ctx {
 	int             VCNum_BextDC;
 	int             IdNum_BOX;
 	int             VCNum_BOX;
+	int             IdNum_MARKER;
+	int             VCNum_MARKER;
 	int             IdNum_BASIS;
 	int             VCNum_BASIS;
 	int             IdNum_PBC;
@@ -566,6 +576,7 @@ typedef struct magnoom_ctx {
 	vbo_mesh        spin_mesh;
 	vbo_mesh        BextDC_mesh;
 	vbo_mesh        box_mesh;
+	vbo_mesh        marker_mesh;
 	vbo_mesh        basis_mesh;
 	vbo_mesh        pbc_mesh[3];
 } magnoom_ctx;
@@ -1328,6 +1339,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->SliceLayer[B_AXIS] = 1;
 	ctx->SliceLayer[C_AXIS] = 1;
 	ctx->SliceVisible[C_AXIS] = 1;
+	ctx->SliceSelection = SEL_C_AXIS;
 	ctx->ExportSliceAxis = C_AXIS;
 
 	/* Boundary conditions */
@@ -2930,6 +2942,18 @@ main (int argc, char **argv){
 	CreateVBOMesh(&mag_ctx.box_mesh);
 	UploadVBOMesh(&mag_ctx.box_mesh, mag_ctx.vertices_BOX, mag_ctx.normals_BOX, mag_ctx.colors_BOX, mag_ctx.indices_BOX, VBO_UPLOAD_ALL);
 
+	/* --- slice-selection marker: rebuilt when the selection or a layer changes --- */
+	ReallocateArrayDrawing_MARKER(&mag_ctx);
+	UpdateVerticesNormalsColors_MARKER(&mag_ctx);
+	InitVBOMesh(&mag_ctx.marker_mesh, GL_DYNAMIC_DRAW);
+	mag_ctx.marker_mesh.uses_normals = 1;
+	mag_ctx.marker_mesh.component_count = mag_ctx.VCNum_MARKER;
+	mag_ctx.marker_mesh.component_capacity = mag_ctx.VCNum_MARKER;
+	mag_ctx.marker_mesh.index_count = mag_ctx.IdNum_MARKER;
+	mag_ctx.marker_mesh.index_capacity = mag_ctx.IdNum_MARKER;
+	CreateVBOMesh(&mag_ctx.marker_mesh);
+	UploadVBOMesh(&mag_ctx.marker_mesh, mag_ctx.vertices_MARKER, mag_ctx.normals_MARKER, mag_ctx.colors_MARKER, mag_ctx.indices_MARKER, VBO_UPLOAD_ALL);
+
 	/* --- BASIS mesh: static, startup-only --- */
 	ReallocateArrayDrawing_BASIS(&mag_ctx);
 	UpdateVerticesNormalsColors_BASIS(&mag_ctx);
@@ -2988,6 +3012,7 @@ main (int argc, char **argv){
 	DestroyVBOMesh(&mag_ctx.spin_mesh);
 	DestroyVBOMesh(&mag_ctx.BextDC_mesh);
 	DestroyVBOMesh(&mag_ctx.box_mesh);
+	DestroyVBOMesh(&mag_ctx.marker_mesh);
 	DestroyVBOMesh(&mag_ctx.basis_mesh);
 	DestroyVBOMesh(&mag_ctx.pbc_mesh[0]);
 	DestroyVBOMesh(&mag_ctx.pbc_mesh[1]);
@@ -3019,6 +3044,7 @@ main (int argc, char **argv){
 	free(mag_ctx.normals);			free(mag_ctx.normals_BextDC); 		free(mag_ctx.normals_BOX); 		free(mag_ctx.normals_PBC_A);
 	free(mag_ctx.colors);			free(mag_ctx.colors_BextDC); 		free(mag_ctx.colors_BOX); 		free(mag_ctx.colors_PBC_A);
 	free(mag_ctx.indices);			free(mag_ctx.indices_BextDC); 		free(mag_ctx.indices_BOX); 		free(mag_ctx.indices_PBC_A);
+	free(mag_ctx.vertices_MARKER); free(mag_ctx.normals_MARKER); free(mag_ctx.colors_MARKER); free(mag_ctx.indices_MARKER);
 	free(mag_ctx.vertexProto);		free(mag_ctx.vertexProto_BextDC);
 	free(mag_ctx.normalProto);		free(mag_ctx.normalProto_BextDC);
 	free(mag_ctx.indicesProto);		free(mag_ctx.indicesProto_BextDC);

@@ -556,6 +556,46 @@ static void test_invalid_inputs_are_transactional(void)
     free_geometry(&ctx);
 }
 
+static void test_slice_selection_state(void)
+{
+    magnoom_ctx ctx = {0};
+    ctx.uABC[0] = 3;
+    ctx.uABC[1] = 2;
+    ctx.uABC[2] = 4;
+
+    ctx.SliceSelection = SEL_A_AXIS;
+    CHECK(SliceSelectionAxis(&ctx) == A_AXIS);
+    CycleSliceSelection(&ctx);
+    CHECK(ctx.SliceSelection == SEL_B_AXIS);
+    CycleSliceSelection(&ctx);
+    CHECK(ctx.SliceSelection == SEL_C_AXIS);
+    CycleSliceSelection(&ctx);
+    CHECK(ctx.SliceSelection == SEL_NONE);
+    CHECK(SliceSelectionAxis(&ctx) == -1);
+    CycleSliceSelection(&ctx);
+    CHECK(ctx.SliceSelection == SEL_A_AXIS);
+
+    /* A hidden slice still moves, and clamps at both ends of 1..uABC[axis]. */
+    ctx.SliceSelection = SEL_B_AXIS;
+    ctx.SliceVisible[B_AXIS] = 0;
+    ctx.SliceLayer[B_AXIS] = 1;
+    CHECK(!StepSelectedSliceLayer(&ctx, -1));
+    CHECK(ctx.SliceLayer[B_AXIS] == 1);
+    CHECK(StepSelectedSliceLayer(&ctx, +1));
+    CHECK(ctx.SliceLayer[B_AXIS] == 2);
+    CHECK(!StepSelectedSliceLayer(&ctx, +1));
+    CHECK(ctx.SliceLayer[B_AXIS] == 2);
+
+    /* SEL_NONE moves nothing and touches no layer. */
+    ctx.SliceSelection = SEL_NONE;
+    ctx.SliceLayer[A_AXIS] = 2;
+    ctx.SliceLayer[C_AXIS] = 3;
+    CHECK(!StepSelectedSliceLayer(&ctx, +1));
+    CHECK(!StepSelectedSliceLayer(&ctx, -1));
+    CHECK(ctx.SliceLayer[A_AXIS] == 2);
+    CHECK(ctx.SliceLayer[C_AXIS] == 3);
+}
+
 int main(void)
 {
     test_path_helpers();
@@ -568,6 +608,7 @@ int main(void)
     test_crystal_examples();
 	test_large_simulation_is_independent_of_render_geometry();
     test_invalid_inputs_are_transactional();
+    test_slice_selection_state();
     if (failures != 0) {
         fprintf(stderr, "%d Magnoom test(s) failed.\n", failures);
         return 1;

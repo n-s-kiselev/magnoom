@@ -38,6 +38,10 @@ void InitSpinComponents(magnoom_ctx *, float * , float * , float * , double * , 
 void UpdateIndices(magnoom_ctx *);
 void UpdateVerticesNormalsColors(magnoom_ctx *);
 void UpdateVerticesNormalsColors_BextDC(magnoom_ctx *);
+void RefreshSliceMarker(magnoom_ctx *);
+static int SliceSelectionAxis(const magnoom_ctx *);
+static int StepSelectedSliceLayer(magnoom_ctx *, int);
+static void CycleSliceSelection(magnoom_ctx *);
 // drawing functions
 void GetBox(magnoom_ctx *);
 void drawVBO(magnoom_ctx *);
@@ -331,6 +335,8 @@ void Display (magnoom_ctx *ctx)
 		if(ctx->Boundary[1]!=0) DrawVBOMeshIndexed(&ctx->pbc_mesh[1], GL_TRIANGLES, ctx->pbc_mesh[1].index_count, 0);
 		if(ctx->Boundary[2]!=0) DrawVBOMeshIndexed(&ctx->pbc_mesh[2], GL_TRIANGLES, ctx->pbc_mesh[2].index_count, 0);
 	}
+	// the selection marker is drawn whether or not the box frame is shown:
+	if (ctx->SliceSelection != SEL_NONE) DrawVBOMeshIndexed(&ctx->marker_mesh, GL_TRIANGLES, ctx->marker_mesh.index_count, 0);
 	// possibly draw the axes:
 	if( ctx->AxesOn != 0 ) DrawVBOMeshIndexed(&ctx->basis_mesh, GL_TRIANGLES, ctx->basis_mesh.index_count, 0);
 
@@ -1086,6 +1092,7 @@ void TW_CALL CB_SetSliceLayer(const void *value, void *clientData)
     if (layer >= 1 && layer <= control->ctx->uABC[control->axis]) {
         control->ctx->SliceLayer[control->axis] = layer;
         ChangeVectorMode(control->ctx, 1);
+        RefreshSliceMarker(control->ctx);
     }
 }
 
@@ -1093,6 +1100,22 @@ void TW_CALL CB_GetSliceLayer(void *value, void *clientData)
 {
     SliceControl *control = (SliceControl *)clientData;
     *(int *)value = control->ctx->SliceLayer[control->axis];
+}
+
+void TW_CALL CB_SetSliceSelection(const void *value, void *clientData)
+{
+    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+    int selection = *(const int *)value;
+    if (selection >= SEL_A_AXIS && selection <= SEL_NONE) {
+        ctx->SliceSelection = (enSliceSelection)selection;
+        RefreshSliceMarker(ctx);
+    }
+}
+
+void TW_CALL CB_GetSliceSelection(void *value, void *clientData)
+{
+    magnoom_ctx *ctx = (magnoom_ctx *)clientData;
+    *(int *)value = ctx->SliceSelection;
 }
 
 void TW_CALL CB_GetThetaMax1(void *value, void *clientData){
@@ -2758,6 +2781,12 @@ void setupTweakBar(magnoom_ctx *ctx)
 				TW_TYPE_INT32, CB_SetSliceLayer, CB_GetSliceLayer, &slice_controls[axis], options);
 		}
 	}
+	{
+		TwEnumVal selection_enum[] = {{SEL_A_AXIS, "a"}, {SEL_B_AXIS, "b"}, {SEL_C_AXIS, "c"}, {SEL_NONE, "none"}};
+		TwType selection_type = TwDefineEnum("Slice selection", selection_enum, 4);
+		TwAddVarCB(ctx->view_bar, "SliceSelection", selection_type, CB_SetSliceSelection, CB_GetSliceSelection, ctx,
+			" label='Selected slice' group='Slices' help='Slice moved by Up/Down; cycled by Ctrl+`' ");
+	}
 	TwDefine(" View/Slices opened=false ");
 	TwAddVarCB(ctx->view_bar, "GridFilter", TW_TYPE_BOOL32, CB_SetGridFilter, CB_GetGridFilter, ctx,
 		" label='Grid filter' true='On' false='Off' group='Filters' ");
@@ -3209,6 +3238,11 @@ void GLFWKeyCallback(int key, int action)
 		ChangeVectorMode(ctx, 1);
 		return;
 	}
+	if (action == GLFW_PRESS && WindowControlIsDown() && key == '`') {
+		CycleSliceSelection(ctx);
+		RefreshSliceMarker(ctx);
+		return;
+	}
 	if (TwEventKeyGLFW(key, action)) return;
 	if (ctx->modal_bar != NULL) return;
 
@@ -3364,71 +3398,6 @@ void HandleKeyDown( magnoom_ctx *ctx, unsigned char key )
 	  // if( false ) fprintf( stderr, "Keyboard: '%c' (0x%0x)\n", c, c );
 		switch( key )
 		{
-#if 0
-			case '<':
-				switch(ctx->WhichSliceMode)
-                {case A_AXIS:
-					if (ctx->A_layer_min>1) {ctx->A_layer_min-=1; ChangeVectorMode(ctx, 0);}
-				 break;
-				 case B_AXIS:
-				    if (ctx->B_layer_min>1) {ctx->B_layer_min-=1; ChangeVectorMode(ctx, 0);}
-				 break;
-				 case C_AXIS:
-				 	if (ctx->C_layer_min>1) {ctx->C_layer_min-=1; ChangeVectorMode(ctx, 0);}
-				 break;	
-				 default:
-				 break;		 
-				}
-			break;
-
-			case '>':
-				switch(ctx->WhichSliceMode)
-                {case A_AXIS:
-					if (ctx->A_layer_min<ctx->A_layer_max) {ctx->A_layer_min+=1; ChangeVectorMode(ctx, 0);}
-				 break;
-				 case B_AXIS:
-				    if (ctx->B_layer_min<ctx->B_layer_max) {ctx->B_layer_min+=1; ChangeVectorMode(ctx, 0);}
-				 break;
-				 case C_AXIS:
-				 	if (ctx->C_layer_min<ctx->C_layer_max) {ctx->C_layer_min+=1; ChangeVectorMode(ctx, 0);}
-				 break;	
-				 default:
-				 break;		 
-				}
-			break;
-
-			case ',':
-				switch(ctx->WhichSliceMode)
-                {case A_AXIS:
-					if (ctx->A_layer_max>ctx->A_layer_min) {ctx->A_layer_max-=1; ChangeVectorMode (ctx, 0);}
-				 break;
-				 case B_AXIS:
-				    if (ctx->B_layer_max>ctx->B_layer_min) {ctx->B_layer_max-=1; ChangeVectorMode (ctx, 0);}
-				 break;
-				 case C_AXIS:
-				 	if (ctx->C_layer_max>ctx->C_layer_min) {ctx->C_layer_max-=1; ChangeVectorMode (ctx, 0);}
-				 break;
-				 default:
-				 break;			 
-				}
-			break;
-
-			case '.':
-				switch(ctx->WhichSliceMode)
-                {case A_AXIS:
-					if (ctx->A_layer_max<ctx->uABC[0]) {ctx->A_layer_max+=1; ChangeVectorMode (ctx, 0);}
-				 break;
-				 case B_AXIS:
-				    if (ctx->B_layer_max<ctx->uABC[1]) {ctx->B_layer_max+=1; ChangeVectorMode (ctx, 0);}
-				 break;
-				 case C_AXIS:
-				 	if (ctx->C_layer_max<ctx->uABC[2]) {ctx->C_layer_max+=1; ChangeVectorMode (ctx, 0);}
-				 break;	
-				 default:
-				 break;		 
-				}
-			break;
-#endif
 
 			case 'q':
 			case 'Q':
@@ -3554,38 +3523,18 @@ int isiconified;
       // your code here to handle the event	
 		switch( key )
 		{
-#if 0
 			case WINDOW_KEY_UP:
-				switch (ctx->WhichSliceMode)
-				{case A_AXIS:
-					if (ctx->A_layer_max < ctx->uABC[0]) {ctx->A_layer_max+=1; ctx->A_layer_min+=1; ChangeVectorMode(ctx, 1);}
-				 break;
-				 case B_AXIS:
-				    if (ctx->B_layer_max < ctx->uABC[1]) {ctx->B_layer_max+=1; ctx->B_layer_min+=1; ChangeVectorMode(ctx, 1);}
-				 break;
-				 case C_AXIS:
-				 	if (ctx->C_layer_max < ctx->uABC[2]) {ctx->C_layer_max+=1; ctx->C_layer_min+=1; ChangeVectorMode(ctx, 1);}
-				 break;	
-				 default:
-				 break;		 
+				if (StepSelectedSliceLayer(ctx, +1)) {
+					if (ctx->SliceVisible[SliceSelectionAxis(ctx)]) ChangeVectorMode(ctx, 1);
+					RefreshSliceMarker(ctx);
 				}
 				break;
 			case WINDOW_KEY_DOWN:
-				switch (ctx->WhichSliceMode)
-				{case A_AXIS:
-					if (ctx->A_layer_min>1) {ctx->A_layer_min-=1; ctx->A_layer_max-=1; ChangeVectorMode(ctx, 1);}
-				 break;
-				 case B_AXIS:
-				    if (ctx->B_layer_min>1) {ctx->B_layer_min-=1; ctx->B_layer_max-=1; ChangeVectorMode(ctx, 1);}
-				 break;
-				 case C_AXIS:
-				 	if (ctx->C_layer_min>1) {ctx->C_layer_min-=1; ctx->C_layer_max-=1; ChangeVectorMode(ctx, 1);} 
-				 break;
-				 default:
-				 break;
+				if (StepSelectedSliceLayer(ctx, -1)) {
+					if (ctx->SliceVisible[SliceSelectionAxis(ctx)]) ChangeVectorMode(ctx, 1);
+					RefreshSliceMarker(ctx);
 				}
 				break;
-#endif
 			case  WINDOW_KEY_F1:
 				TwGetParam(ctx->help_bar, NULL, "iconified", TW_PARAM_INT32, 1, &isiconified);
 				if (isiconified){
@@ -4903,6 +4852,29 @@ static bool SliceContainsBlock(const magnoom_ctx *ctx, int an, int bn, int cn)
 		(ctx->SliceVisible[C_AXIS] && cn == ctx->SliceLayer[C_AXIS] - 1);
 }
 
+static int SliceSelectionAxis(const magnoom_ctx *ctx)
+{
+	return ctx->SliceSelection == SEL_NONE ? -1 : (int)ctx->SliceSelection;
+}
+
+// Ctrl+` order: a -> b -> c -> none -> a.
+static void CycleSliceSelection(magnoom_ctx *ctx)
+{
+	ctx->SliceSelection = (enSliceSelection)((ctx->SliceSelection + 1) % 4);
+}
+
+// Returns 1 only when the layer actually changed, so callers can skip
+// refreshing when the slice is already at the end of its range.
+static int StepSelectedSliceLayer(magnoom_ctx *ctx, int delta)
+{
+	int axis = SliceSelectionAxis(ctx);
+	if (axis < 0) return 0;
+	int layer = ctx->SliceLayer[axis] + delta;
+	if (layer < 1 || layer > ctx->uABC[axis]) return 0;
+	ctx->SliceLayer[axis] = layer;
+	return 1;
+}
+
 static bool GridContainsBlock(const magnoom_ctx *ctx, int an, int bn, int cn)
 {
 	bool contained;
@@ -5321,6 +5293,89 @@ void UpdateVerticesNormalsColors_BOX(magnoom_ctx *ctx)
 
 	tr[0]+=ctx->abc[0][0]*ctx->uABC[0]; tr[1]+=ctx->abc[0][1]*ctx->uABC[0]; tr[2]+=ctx->abc[0][2]*ctx->uABC[0];
 	parallelepiped(ctx->abc, tr, d, d, length_c, color, 11, vertices, normals, colors, indices );//(1,1,0)-->(1,1,1)
+}
+
+void ReallocateArrayDrawing_MARKER(magnoom_ctx *ctx)
+{
+	free(ctx->vertices_MARKER); free(ctx->normals_MARKER); free(ctx->colors_MARKER); free(ctx->indices_MARKER);
+	int ElNum_MARKER = 6*2*8; // number of triangles: 4 corners x 2 arms
+	ctx->IdNum_MARKER = 3*ElNum_MARKER; // number of indices
+	ctx->VCNum_MARKER = 6*4*3*8;
+	// calloc so that a marker uploaded while no slice is selected holds zeros, not garbage
+	ctx->vertices_MARKER = (float  *)calloc(ctx->VCNum_MARKER, sizeof( float  ));
+	ctx->normals_MARKER  = (float  *)calloc(ctx->VCNum_MARKER, sizeof( float  ));
+	ctx->colors_MARKER   = (float  *)calloc(ctx->VCNum_MARKER, sizeof( float  ));
+	ctx->indices_MARKER  = (GLuint *)calloc(ctx->IdNum_MARKER, sizeof( GLuint ));
+}
+
+// Red L-shaped brackets at the four corners of the selected slice plane. The
+// plane spans the full box in the two in-plane lattice directions and sits at
+// the middle of the selected layer along its own axis. Corners are pushed
+// outward to the distance of the first PBC bar, so the arms surround the slice
+// without covering its spins.
+void UpdateVerticesNormalsColors_MARKER(magnoom_ctx *ctx)
+{
+	int k0 = SliceSelectionAxis(ctx);
+	if (k0 < 0) return;
+	int k1 = (k0+1)%3;
+	int k2 = (k0+2)%3;
+	float *vertices = ctx->vertices_MARKER;
+	float *normals = ctx->normals_MARKER;
+	float *colors = ctx->colors_MARKER;
+	GLuint *indices = ctx->indices_MARKER;
+	const float (*box)[3] = ctx->Box;
+	const float (*abc)[3] = ctx->abc;
+	const float d = ctx->WireWidth;
+	const float color[3] = {1.0f, 0.0f, 0.0f};
+
+	// Same lattice origin as the box frame and UpdateSpinPositions().
+	float origin[3];
+	for (int i = 0; i < 3; i++) origin[i] = -(box[0][i]+box[1][i]+box[2][i])/2.f;
+
+	float unit[3][3];
+	float arm_len[3];
+	float gap[3];
+	for (int k = 0; k < 3; k++) {
+		float length = ctx->uABC[k] * sqrt(abc[k][0]*abc[k][0] + abc[k][1]*abc[k][1] + abc[k][2]*abc[k][2]);
+		float v[3] = {abc[k][0], abc[k][1], abc[k][2]};
+		(void)Unitf(v, unit[k]);
+		// same distance at which UpdateVerticesNormalsColors_PBC() starts the first PBC bar
+		gap[k] = 6.f*d*sqrt(abc[k][0]*abc[k][0] + abc[k][1]*abc[k][1] + abc[k][2]*abc[k][2]);
+		arm_len[k] = 0.25f*length;
+		if (arm_len[k] < 2.f*d) arm_len[k] = 2.f*d;
+	}
+
+	int slot = 0;
+	for (int u = 0; u < 2; u++) for (int v = 0; v < 2; v++) {
+		float corner[3];
+		for (int i = 0; i < 3; i++) {
+			corner[i] = origin[i] + abc[k0][i]*(ctx->SliceLayer[k0]-0.5f)
+				+ abc[k1][i]*u*ctx->uABC[k1] + abc[k2][i]*v*ctx->uABC[k2]
+				+ (u ? 1.f : -1.f)*gap[k1]*unit[k1][i] + (v ? 1.f : -1.f)*gap[k2]*unit[k2][i];
+		}
+		for (int arm = 0; arm < 2; arm++) {
+			int a = arm == 0 ? k1 : k2; // axis the arm runs along
+			int b = arm == 0 ? k2 : k1; // in-plane axis that only gives thickness
+			int at_upper_end = arm == 0 ? u : v;
+			float tr[3];
+			float scale[3];
+			scale[k0] = d;
+			scale[a] = arm_len[a];
+			scale[b] = d;
+			for (int i = 0; i < 3; i++) {
+				tr[i] = corner[i] - d/2.f*(unit[k0][i] + unit[b][i]);
+				if (at_upper_end) tr[i] -= arm_len[a]*unit[a][i];
+			}
+			parallelepiped(abc, tr, scale[0], scale[1], scale[2], color, slot++, vertices, normals, colors, indices);
+		}
+	}
+}
+
+void RefreshSliceMarker(magnoom_ctx *ctx)
+{
+	if (ctx->SliceSelection == SEL_NONE) return;
+	UpdateVerticesNormalsColors_MARKER(ctx);
+	UploadVBOMesh(&ctx->marker_mesh, ctx->vertices_MARKER, ctx->normals_MARKER, ctx->colors_MARKER, ctx->indices_MARKER, VBO_UPLOAD_ALL);
 }
 
 void UpdateVerticesNormalsColors_BASIS(magnoom_ctx *ctx)
