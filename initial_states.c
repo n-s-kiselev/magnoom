@@ -398,10 +398,16 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 
 	case 4: // Bimeron in cone
 		if(ctx->chSize>0){
-			double LD = 2*PI*ctx->Jij[0]/ctx->Dij[0];
-			double anti = ctx->chParam1 < 0 ? -1 : 1;
-			double cone = ctx->chParam2*PI/180;
-			double twist = ctx->chParam3;
+			// double anti = ctx->chParam1 < 0 ? -1 : 1;
+			// double cone = ctx->chParam2*PI/180;
+			// double twist = ctx->chParam3;
+			// double LD = 2*PI*ctx->Jij[0]/ctx->Dij[0];
+			double LD = 32;//cuboids
+			double anti = -1;//bimeron / antibimeron 
+			double cone = 60*PI/180;// cone phase angle
+			double twist = 2;//how many revolutions bimeron does along z-axis
+			// twist = 1 new type of antibimeron exist at B>~0.3*BD
+			// twist = 2 ordinary antibimeron exist at low field
 			double R = 0.3;//ctx->chSize
 			for (int n=0; n<ctx->NOS; n++){
 				double rx = px[n]/ctx->uABC[0];
@@ -429,7 +435,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 				// mz = gp*gm;
 
 				// simple axial ansatz:
-				f0 = (4.0/4.0*PI)*rz;// - 0.25*PI;
+				f0 = twist*PI*rz;// - 0.25*PI;
 				double rxp = (rx*cos(f0) + ry*sin(f0)); 
 				double ryp = (ry*cos(f0) - rx*sin(f0));
 				// rxp *= 2;// OPTIONAL stretching a rounded skyrmion into an ellipse
@@ -446,6 +452,7 @@ void InitSpinComponents(magnoom_ctx *ctx, float * px, float * py, float * pz, do
 				ny = my*cos(f0) + mx*sin(f0);
 				nz = mz;
 
+				// for test:
 				// VEC_X(ctx->S,n) = nx;
 				// VEC_Y(ctx->S,n) = ny;
 				// VEC_Z(ctx->S,n) = nz;
