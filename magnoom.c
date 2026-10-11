@@ -1365,7 +1365,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 	ctx->Dij[0]=0.0f; ctx->Dij[1]=0.0f; ctx->Dij[2]=0.0f;
 	ctx->Dij[3]=0.0f; ctx->Dij[4]=0.0f; ctx->Dij[5]=0.0f;
 	//NSK
-	ctx->Dij[0]=2*PI/128.0f;
+	ctx->Dij[0]=2*PI/32.0f;
 
 	/* Magnetocrystalline anisotropy */
 	ctx->anisotropy_mode = ANISOTROPY_GLOBAL;
@@ -1403,7 +1403,7 @@ bool magnoom_ctx_init(magnoom_ctx *ctx)
 
 	/* External magnetic field: static (DC) and time-dependent (AC) components */
 	ctx->BextDCDirection[0]=0.0f; ctx->BextDCDirection[1]=0.0f; ctx->BextDCDirection[2]=1.0f;
-	ctx->BextDCMagnitude = 0.3*ctx->Dij[0]*ctx->Dij[0];
+	ctx->BextDCMagnitude = 0.35*ctx->Dij[0]*ctx->Dij[0];
 	ctx->BextACDirection[0]=0.0f; ctx->BextACDirection[1]=0.0f; ctx->BextACDirection[2]=1.0f;
 	ctx->BextACOmega = 0.005;
 	ctx->BextACPulseWidth = 20.0f;
