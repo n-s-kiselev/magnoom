@@ -189,9 +189,9 @@ double GetTotalEnergyFerro(magnoom_ctx *ctx)
 	double *Etot = ctx->Etot;
 	const int N = ctx->NOS;
 	double tmp0=1.0/sqrt(sx*sx+sy*sy+sz*sz);
-	sx = sx/tmp0;
-	sy = sy/tmp0;
-	sz = sz/tmp0;
+	sx *= tmp0;
+	sy *= tmp0;
+	sz *= tmp0;
 	tmp0=0;
 	//single spin interactions (or potentila terms): Zeeman and Anizotropy:
 	for (int i=0; i<N; i++)
