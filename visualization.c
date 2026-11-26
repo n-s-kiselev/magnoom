@@ -2786,7 +2786,7 @@ void setupTweakBar(magnoom_ctx *ctx)
 		TwEnumVal selection_enum[] = {{SEL_A_AXIS, "a"}, {SEL_B_AXIS, "b"}, {SEL_C_AXIS, "c"}, {SEL_NONE, "none"}};
 		TwType selection_type = TwDefineEnum("Slice selection", selection_enum, 4);
 		TwAddVarCB(ctx->view_bar, "SliceSelection", selection_type, CB_SetSliceSelection, CB_GetSliceSelection, ctx,
-			" label='Selected slice' group='Slices' help='Slice moved by Up/Down; cycled by Ctrl+`' ");
+			" label='Selected slice' group='Slices' help='Slice moved by Up/Down; cycled by Tab' ");
 	}
 	TwDefine(" View/Slices opened=false ");
 	TwAddVarCB(ctx->view_bar, "GridFilter", TW_TYPE_BOOL32, CB_SetGridFilter, CB_GetGridFilter, ctx,
@@ -3222,6 +3222,16 @@ static int WindowControlIsDown(void)
 	return glfwGetKey(GLFW_KEY_LCTRL) == GLFW_PRESS || glfwGetKey(GLFW_KEY_RCTRL) == GLFW_PRESS;
 }
 
+static int WindowAltIsDown(void)
+{
+	return glfwGetKey(GLFW_KEY_LALT) == GLFW_PRESS || glfwGetKey(GLFW_KEY_RALT) == GLFW_PRESS;
+}
+
+static int WindowModifierIsDown(void)
+{
+	return WindowShiftIsDown() || WindowControlIsDown() || WindowAltIsDown();
+}
+
 void GLFWKeyCallback(int key, int action)
 {
 	magnoom_ctx *ctx = g_ctx;
@@ -3238,13 +3248,15 @@ void GLFWKeyCallback(int key, int action)
 		ChangeVectorMode(ctx, 1);
 		return;
 	}
-	if (action == GLFW_PRESS && WindowControlIsDown() && key == '`') {
+	if (TwEventKeyGLFW(key, action)) return;
+	if (ctx->modal_bar != NULL) return;
+
+	// Checked after AntTweakBar so Tab still reaches a text field being edited.
+	if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
 		CycleSliceSelection(ctx);
 		RefreshSliceMarker(ctx);
 		return;
 	}
-	if (TwEventKeyGLFW(key, action)) return;
-	if (ctx->modal_bar != NULL) return;
 
 	int special = GLFWSpecialToWindowKey(key);
 	if (special && action != GLFW_RELEASE) {
@@ -3453,19 +3465,20 @@ void HandleKeyDown( magnoom_ctx *ctx, unsigned char key )
 			case 'i':
 				ToggleBarIconified(ctx->info_bar, "Info");
 				break;
+			// View presets fire only on a bare key, so modified X/Y/Z stay free.
 			case 'x':
 			case 'X':
-				ExecuteCommand(ctx,  XUP );
+				if (!WindowModifierIsDown()) ExecuteCommand(ctx,  XUP );
 			break;
 
 			case 'y':
 			case 'Y':
-				ExecuteCommand(ctx,  YUP );
+				if (!WindowModifierIsDown()) ExecuteCommand(ctx,  YUP );
 			break;
 
 			case 'z':
 			case 'Z':
-				ExecuteCommand(ctx,  ZUP );
+				if (!WindowModifierIsDown()) ExecuteCommand(ctx,  ZUP );
 			break;
 
 			case TW_KEY_ESCAPE:
@@ -4826,7 +4839,7 @@ static int SliceSelectionAxis(const magnoom_ctx *ctx)
 	return ctx->SliceSelection == SEL_NONE ? -1 : (int)ctx->SliceSelection;
 }
 
-// Ctrl+` order: a -> b -> c -> none -> a.
+// Tab order: a -> b -> c -> none -> a.
 static void CycleSliceSelection(magnoom_ctx *ctx)
 {
 	ctx->SliceSelection = (enSliceSelection)((ctx->SliceSelection + 1) % 4);
