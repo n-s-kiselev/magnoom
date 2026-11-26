@@ -5324,7 +5324,7 @@ void UpdateVerticesNormalsColors_MARKER(magnoom_ctx *ctx)
 		(void)Unitf(v, unit[k]);
 		// same distance at which UpdateVerticesNormalsColors_PBC() starts the first PBC bar
 		gap[k] = 6.f*d*cell_length;
-		arm_len[k] = 0.25f*length;
+		arm_len[k] = 0.15f*length;
 		if (arm_len[k] < 2.f*d) arm_len[k] = 2.f*d;
 	}
 
@@ -5332,7 +5332,7 @@ void UpdateVerticesNormalsColors_MARKER(magnoom_ctx *ctx)
 	for (int u = 0; u < 2; u++) for (int v = 0; v < 2; v++) {
 		float corner[3];
 		for (int i = 0; i < 3; i++) {
-			corner[i] = origin[i] + abc[k0][i]*(ctx->SliceLayer[k0]-0.5f)
+			corner[i] = origin[i] + abc[k0][i]*(ctx->SliceLayer[k0]-1.f)
 				+ abc[k1][i]*u*ctx->uABC[k1] + abc[k2][i]*v*ctx->uABC[k2]
 				+ (u ? 1.f : -1.f)*gap[k1]*unit[k1][i] + (v ? 1.f : -1.f)*gap[k2]*unit[k2][i];
 		}
@@ -5340,14 +5340,16 @@ void UpdateVerticesNormalsColors_MARKER(magnoom_ctx *ctx)
 			int a = arm == 0 ? k1 : k2; // axis the arm runs along
 			int b = arm == 0 ? k2 : k1; // in-plane axis that only gives thickness
 			int at_upper_end = arm == 0 ? u : v;
+			int at_upper_side = arm == 0 ? v : u; // thickness must also grow inward
 			float tr[3];
 			float scale[3];
-			scale[k0] = d;
+			scale[k0] = 1.0f;//d;//NSK
 			scale[a] = arm_len[a];
 			scale[b] = d;
 			for (int i = 0; i < 3; i++) {
-				tr[i] = corner[i] - d/2.f*(unit[k0][i] + unit[b][i]);
+				tr[i] = corner[i];// - d/2.f*(unit[k0][i] + unit[b][i]);//NSK
 				if (at_upper_end) tr[i] -= arm_len[a]*unit[a][i];
+				if (at_upper_side) tr[i] -= d*unit[b][i];
 			}
 			parallelepiped(abc, tr, scale[0], scale[1], scale[2], color, slot++, vertices, normals, colors, indices);
 		}
